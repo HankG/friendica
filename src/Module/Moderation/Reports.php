@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -56,9 +56,24 @@ class Reports extends BaseModeration
 
 		$pager = new Pager($this->l10n, $this->args->getQueryString(), 10);
 
-		$query = $this->database->p("SELECT `report`.`id`, `report`.`cid`, `report`.`comment`, `report`.`forward`, `report`.`created`, `report`.`reporter-id`,
-			`report`.`category`, `report`.`rules`, `contact`.`micro`, `contact`.`name`, `contact`.`nick`, `contact`.`url`, `contact`.`addr` FROM report
-			INNER JOIN `contact` ON `contact`.`id` = `report`.`cid` ORDER BY `report`.`created` DESC LIMIT ?, ?", $pager->getStart(), $pager->getItemsPerPage());
+		$query = $this->database->p(
+			"SELECT
+	`report`.`id`, `report`.`cid`, `report`.`comment`, `report`.`forward`, `report`.`created`, `report`.`reporter-id`,
+	`report`.`category-id`,
+	(
+		SELECT GROUP_CONCAT(`report-rule`.`text` ORDER BY `report-rule`.`line-id` SEPARATOR \"\n\")
+		FROM `report-rule`
+		WHERE `report-rule`.`rid` = `report`.`id`
+		GROUP BY `report-rule`.`rid`
+	) AS `rules`,
+	`contact`.`micro`, `contact`.`name`, `contact`.`nick`, `contact`.`url`, `contact`.`addr`
+FROM report
+INNER JOIN `contact` ON `contact`.`id` = `report`.`cid`
+ORDER BY `report`.`created` DESC
+LIMIT ?, ?",
+			$pager->getStart(),
+			$pager->getItemsPerPage(),
+		);
 
 		$reports = [];
 		while ($report = $this->database->fetch($query)) {
@@ -76,7 +91,7 @@ class Reports extends BaseModeration
 		while ($post = $this->database->fetch($posts)) {
 			if (in_array($post['rid'], array_keys($reports))) {
 				$post['created'] = DateTimeFormat::local($post['created'], DateTimeFormat::MYSQL);
-				$post['body']    = BBCode::toPlaintext($post['body']);
+				$post['body']    = BBCode::toPlaintext($post['body'] ?? '');
 
 				$reports[$post['rid']]['posts'][] = $post;
 			}
@@ -95,8 +110,6 @@ class Reports extends BaseModeration
 			'$th_reports' => [$this->t('Created'), $this->t('Photo'), $this->t('Name'), $this->t('Comment'), $this->t('Category')],
 
 			// values //
-			'$baseurl' => $this->baseUrl,
-
 			'$reports'       => $reports,
 			'$total_reports' => $this->tt('%s total report', '%s total reports', $total),
 			'$paginate'      => $pager->renderFull($total),

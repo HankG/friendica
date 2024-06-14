@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -39,10 +39,10 @@ use Friendica\Core\L10n;
 use Friendica\Core\System;
 use Friendica\Core\Theme;
 use Friendica\Database\Database;
-use Friendica\Model\Contact;
-use Friendica\Model\Profile;
 use Friendica\Module\Special\HTTPException as ModuleHTTPException;
 use Friendica\Network\HTTPException;
+use Friendica\Protocol\ATProtocol\DID;
+use Friendica\Security\OpenWebAuth;
 use Friendica\Util\DateTimeFormat;
 use Friendica\Util\HTTPInputData;
 use Friendica\Util\HTTPSignature;
@@ -63,8 +63,8 @@ use Psr\Log\LoggerInterface;
 class App
 {
 	const PLATFORM = 'Friendica';
-	const CODENAME = 'Giant Rhubarb';
-	const VERSION  = '2023.09-dev';
+	const CODENAME = 'Yellow Archangel';
+	const VERSION  = '2024.06-dev';
 
 	// Allow themes to control internal parameters
 	// by changing App values in theme.php
@@ -92,6 +92,9 @@ class App
 	private $currentTheme;
 	/** @var string The name of the current mobile theme */
 	private $currentMobileTheme;
+
+	/** @var Authentication */
+	private $auth;
 
 	/**
 	 * @var IManageConfigValues The config
@@ -132,42 +135,6 @@ class App
 	 * @var IHandleUserSessions
 	 */
 	private $session;
-
-	/**
-	 * @deprecated 2022.03
-	 * @see IHandleUserSessions::isAuthenticated()
-	 */
-	public function isLoggedIn(): bool
-	{
-		return $this->session->isAuthenticated();
-	}
-
-	/**
-	 * @deprecated 2022.03
-	 * @see IHandleUserSessions::isSiteAdmin()
-	 */
-	public function isSiteAdmin(): bool
-	{
-		return $this->session->isSiteAdmin();
-	}
-
-	/**
-	 * @deprecated 2022.03
-	 * @see IHandleUserSessions::getLocalUserId()
-	 */
-	public function getLoggedInUserId(): int
-	{
-		return $this->session->getLocalUserId();
-	}
-
-	/**
-	 * @deprecated 2022.03
-	 * @see IHandleUserSessions::getLocalUserNickname()
-	 */
-	public function getLoggedInUserNickname(): string
-	{
-		return $this->session->getLocalUserNickname();
-	}
 
 	/**
 	 * Set the profile owner ID
@@ -314,8 +281,9 @@ class App
 	 * @param DbaDefinition               $dbaDefinition
 	 * @param ViewDefinition              $viewDefinition
 	 */
-	public function __construct(Database $database, IManageConfigValues $config, App\Mode $mode, BaseURL $baseURL, LoggerInterface $logger, Profiler $profiler, L10n $l10n, Arguments $args, IManagePersonalConfigValues $pConfig, IHandleUserSessions $session, DbaDefinition $dbaDefinition, ViewDefinition $viewDefinition)
+	public function __construct(Authentication $auth, Database $database, IManageConfigValues $config, App\Mode $mode, BaseURL $baseURL, LoggerInterface $logger, Profiler $profiler, L10n $l10n, Arguments $args, IManagePersonalConfigValues $pConfig, IHandleUserSessions $session, DbaDefinition $dbaDefinition, ViewDefinition $viewDefinition)
 	{
+		$this->auth           = $auth;
 		$this->database       = $database;
 		$this->config         = $config;
 		$this->mode           = $mode;
@@ -565,8 +533,9 @@ class App
 	 */
 	public function runFrontend(App\Router $router, IManagePersonalConfigValues $pconfig, Authentication $auth, App\Page $page, Nav $nav, ModuleHTTPException $httpException, HTTPInputData $httpInput, float $start_time, array $server)
 	{
-		$requeststring = ($_SERVER['REQUEST_METHOD'] ?? '') . ' ' . ($_SERVER['REQUEST_URI'] ?? '') . ' ' . ($_SERVER['SERVER_PROTOCOL'] ?? '');
-		$this->logger->debug('Request received', ['address' => $_SERVER['REMOTE_ADDR'] ?? '', 'request' => $requeststring, 'referer' => $_SERVER['HTTP_REFERER'] ?? '', 'user-agent' => $_SERVER['HTTP_USER_AGENT'] ?? '']);
+		$requeststring = ($server['REQUEST_METHOD'] ?? '') . ' ' . ($server['REQUEST_URI'] ?? '') . ' ' . ($server['SERVER_PROTOCOL'] ?? '');
+		$this->logger->debug('Request received', ['address' => $server['REMOTE_ADDR'] ?? '', 'request' => $requeststring, 'referer' => $server['HTTP_REFERER'] ?? '', 'user-agent' => $server['HTTP_USER_AGENT'] ?? '']);
+		$request_start = microtime(true);
 
 		$this->profiler->set($start_time, 'start');
 		$this->profiler->set(microtime(true), 'classinit');
@@ -592,10 +561,12 @@ class App
 				Core\Hook::callAll('init_1');
 			}
 
+			DID::routeRequest($this->args->getCommand(), $server);
+
 			if ($this->mode->isNormal() && !$this->mode->isBackend()) {
-				$requester = HTTPSignature::getSigner('', $_SERVER);
+				$requester = HTTPSignature::getSigner('', $server);
 				if (!empty($requester)) {
-					Profile::addVisitorCookieForHandle($requester);
+					OpenWebAuth::addVisitorCookieForHandle($requester);
 				}
 			}
 
@@ -605,17 +576,8 @@ class App
 				// Valid profile links contain a path with "/profile/" and no query parameters
 				if ((parse_url($_GET['zrl'], PHP_URL_QUERY) == '') &&
 					strpos(parse_url($_GET['zrl'], PHP_URL_PATH) ?? '', '/profile/') !== false) {
-					if ($this->session->get('visitor_home') != $_GET['zrl']) {
-						$this->session->set('my_url', $_GET['zrl']);
-						$this->session->set('authenticated', 0);
-
-						$remote_contact = Contact::getByURL($_GET['zrl'], false, ['subscribe']);
-						if (!empty($remote_contact['subscribe'])) {
-							$_SESSION['remote_comment'] = $remote_contact['subscribe'];
-						}
-					}
-
-					Model\Profile::zrlInit($this);
+					$this->auth->setUnauthenticatedVisitor($_GET['zrl']);
+					OpenWebAuth::zrlInit();
 				} else {
 					// Someone came with an invalid parameter, maybe as a DDoS attempt
 					// We simply stop processing here
@@ -626,14 +588,14 @@ class App
 
 			if (!empty($_GET['owt']) && $this->mode->isNormal()) {
 				$token = $_GET['owt'];
-				Model\Profile::openWebAuthInit($token);
+				OpenWebAuth::init($token);
 			}
 
 			if (!$this->mode->isBackend()) {
 				$auth->withSession($this);
 			}
 
-			if (empty($_SESSION['authenticated'])) {
+			if ($this->session->isUnauthenticated()) {
 				header('X-Account-Management-Status: none');
 			}
 
@@ -651,6 +613,11 @@ class App
 				Core\Update::check($this->getBasePath(), false);
 				Core\Addon::loadAddons();
 				Core\Hook::loadHooks();
+			}
+
+			// Compatibility with Hubzilla
+			if ($moduleName == 'rpost') {
+				$this->baseURL->redirect('compose');
 			}
 
 			// Compatibility with the Android Diaspora client
@@ -712,13 +679,13 @@ class App
 
 			// Wrapping HTML responses in the theme template
 			if ($response->getHeaderLine(ICanCreateResponses::X_HEADER) === ICanCreateResponses::TYPE_HTML) {
-				$response = $page->run($this, $this->baseURL, $this->args, $this->mode, $response, $this->l10n, $this->profiler, $this->config, $pconfig, $nav, $this->session->getLocalUserId());
+				$response = $page->run($this, $this->session, $this->baseURL, $this->args, $this->mode, $response, $this->l10n, $this->profiler, $this->config, $pconfig, $nav, $this->session->getLocalUserId());
 			}
 
-			$this->logger->debug('Request processed sucessfully', ['response' => $response->getStatusCode(), 'address' => $_SERVER['REMOTE_ADDR'] ?? '', 'request' => $requeststring, 'referer' => $_SERVER['HTTP_REFERER'] ?? '', 'user-agent' => $_SERVER['HTTP_USER_AGENT'] ?? '']);
+			$this->logger->debug('Request processed sucessfully', ['response' => $response->getStatusCode(), 'address' => $server['REMOTE_ADDR'] ?? '', 'request' => $requeststring, 'referer' => $server['HTTP_REFERER'] ?? '', 'user-agent' => $server['HTTP_USER_AGENT'] ?? '', 'duration' => number_format(microtime(true) - $request_start, 3)]);
 			System::echoResponse($response);
 		} catch (HTTPException $e) {
-			$this->logger->debug('Request processed with exception', ['response' => $e->getCode(), 'address' => $_SERVER['REMOTE_ADDR'] ?? '', 'request' => $requeststring, 'referer' => $_SERVER['HTTP_REFERER'] ?? '', 'user-agent' => $_SERVER['HTTP_USER_AGENT'] ?? '']);
+			$this->logger->debug('Request processed with exception', ['response' => $e->getCode(), 'address' => $server['REMOTE_ADDR'] ?? '', 'request' => $requeststring, 'referer' => $server['HTTP_REFERER'] ?? '', 'user-agent' => $server['HTTP_USER_AGENT'] ?? '', 'duration' => number_format(microtime(true) - $request_start, 3)]);
 			$httpException->rawContent($e);
 		}
 		$page->logRuntime($this->config, 'runFrontend');

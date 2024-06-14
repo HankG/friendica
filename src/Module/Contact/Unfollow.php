@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -133,12 +133,12 @@ class Unfollow extends \Friendica\BaseModule
 			'$keywords_label' => ''
 		]);
 
-		$this->page['aside'] = Widget\VCard::getHTML(Contact::getByURL($contact['url'], false));
+		$this->page['aside'] = Widget\VCard::getHTML(Contact::getByURL($contact['url'], false), false, true);
 
 		$o .= Renderer::replaceMacros(Renderer::getMarkupTemplate('section_title.tpl'), ['$title' => $this->t('Posts and Replies')]);
 
 		// Show last public posts
-		$o .= Contact::getPostsFromUrl($contact['url']);
+		$o .= Contact::getPostsFromUrl($contact['url'], $this->userSession->getLocalUserId());
 
 		return $o;
 	}

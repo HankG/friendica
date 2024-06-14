@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -56,13 +56,14 @@ class Queue extends BaseAdmin
 		}
 
 		// @TODO Move to Model\WorkerQueue::getEntries()
-		$entries = DBA::select('workerqueue', ['id', 'parameter', 'created', 'priority', 'command'], $condition, ['limit' => 999, 'order' => ['created']]);
+		$entries = DBA::select('workerqueue', ['id', 'parameter', 'created', 'next_try', 'priority', 'command'], $condition, ['limit' => 999, 'order' => ['created']]);
 
 		$r = [];
 		while ($entry = DBA::fetch($entries)) {
 			// fix GH-5469. ref: src/Core/Worker.php:217
 			$entry['parameter'] = Arrays::recursiveImplode(json_decode($entry['parameter'], true), ': ');
 			$entry['created'] = DateTimeFormat::local($entry['created']);
+			$entry['next_try'] = DateTimeFormat::local($entry['next_try']);
 			$r[] = $entry;
 		}
 		DBA::close($entries);
@@ -76,8 +77,10 @@ class Queue extends BaseAdmin
 			'$command_header' => DI::l10n()->t('Command'),
 			'$param_header' => DI::l10n()->t('Job Parameters'),
 			'$created_header' => DI::l10n()->t('Created'),
+			'$next_try_header' => DI::l10n()->t('Next Try'),
 			'$prio_header' => DI::l10n()->t('Priority'),
 			'$info' => $info,
+			'$status' => $status,
 			'$entries' => $r,
 		]);
 	}

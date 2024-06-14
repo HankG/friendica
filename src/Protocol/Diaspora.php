@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -41,6 +41,7 @@ use Friendica\Model\Post;
 use Friendica\Model\Tag;
 use Friendica\Model\User;
 use Friendica\Network\HTTPClient\Client\HttpClientAccept;
+use Friendica\Network\HTTPClient\Client\HttpClientRequest;
 use Friendica\Network\HTTPException;
 use Friendica\Network\Probe;
 use Friendica\Protocol\Delivery;
@@ -48,6 +49,7 @@ use Friendica\Util\Crypto;
 use Friendica\Util\DateTimeFormat;
 use Friendica\Util\Map;
 use Friendica\Util\Network;
+use Friendica\Util\Proxy;
 use Friendica\Util\Strings;
 use Friendica\Util\XML;
 use GuzzleHttp\Psr7\Uri;
@@ -796,7 +798,7 @@ class Diaspora
 	 */
 	private static function key(WebFingerUri $uri): string
 	{
-		Logger::info('Fetching diaspora key', ['handle' => $uri->getAddr(), 'callstack' => System::callstack(20)]);
+		Logger::info('Fetching diaspora key', ['handle' => $uri->getAddr()]);
 		try {
 			return DI::dsprContact()->getByAddr($uri)->pubKey;
 		} catch (HTTPException\NotFoundException | \InvalidArgumentException $e) {
@@ -1080,7 +1082,7 @@ class Diaspora
 
 		Logger::info('Fetch post from ' . $source_url);
 
-		$envelope = DI::httpClient()->fetch($source_url, HttpClientAccept::MAGIC);
+		$envelope = DI::httpClient()->fetch($source_url, HttpClientAccept::MAGIC, 0, '', HttpClientRequest::DIASPORA);
 		if ($envelope) {
 			Logger::info('Envelope was fetched.');
 			$x = self::verifyMagicEnvelope($envelope);
@@ -1192,6 +1194,7 @@ class Diaspora
 	{
 		$fields = [
 			'id', 'parent', 'body', 'wall', 'uri', 'guid', 'private', 'origin',
+			'allow_cid', 'allow_gid', 'deny_cid', 'deny_gid',
 			'author-name', 'author-link', 'author-avatar', 'gravity',
 			'owner-name', 'owner-link', 'owner-avatar'
 		];
@@ -1567,6 +1570,12 @@ class Diaspora
 		$datarray['verb'] = Activity::POST;
 		$datarray['gravity'] = Item::GRAVITY_COMMENT;
 
+		$datarray['private']   = $toplevel_parent_item['private'];
+		$datarray['allow_cid'] = $toplevel_parent_item['allow_cid'];
+		$datarray['allow_gid'] = $toplevel_parent_item['allow_gid'];
+		$datarray['deny_cid']  = $toplevel_parent_item['deny_cid'];
+		$datarray['deny_gid']  = $toplevel_parent_item['deny_gid'];
+
 		$datarray['thr-parent'] = $thr_parent ?: $toplevel_parent_item['uri'];
 
 		$datarray['object-type'] = Activity\ObjectType::COMMENT;
@@ -1595,7 +1604,7 @@ class Diaspora
 			$datarray['diaspora_signed_text'] = json_encode($data);
 		}
 
-		if (Item::isTooOld($datarray)) {
+		if (DI::contentItem()->isTooOld($datarray['created'], $datarray['uid'])) {
 			Logger::info('Comment is too old', ['created' => $datarray['created'], 'uid' => $datarray['uid'], 'guid' => $datarray['guid']]);
 			return false;
 		}
@@ -1823,6 +1832,13 @@ class Diaspora
 
 		$datarray['verb'] = $verb;
 		$datarray['gravity'] = Item::GRAVITY_ACTIVITY;
+
+		$datarray['private']   = $toplevel_parent_item['private'];
+		$datarray['allow_cid'] = $toplevel_parent_item['allow_cid'];
+		$datarray['allow_gid'] = $toplevel_parent_item['allow_gid'];
+		$datarray['deny_cid']  = $toplevel_parent_item['deny_cid'];
+		$datarray['deny_gid']  = $toplevel_parent_item['deny_gid'];
+
 		$datarray['thr-parent'] = $toplevel_parent_item['uri'];
 
 		$datarray['object-type'] = Activity\ObjectType::NOTE;
@@ -1846,7 +1862,7 @@ class Diaspora
 			$datarray['diaspora_signed_text'] = json_encode($data);
 		}
 
-		if (Item::isTooOld($datarray)) {
+		if (DI::contentItem()->isTooOld($datarray['created'], $datarray['uid'])) {
 			Logger::info('Like is too old', ['created' => $datarray['created'], 'uid' => $datarray['uid'], 'guid' => $datarray['guid']]);
 			return false;
 		}
@@ -2009,7 +2025,7 @@ class Diaspora
 		// Diaspora doesn't provide a date for a participation
 		$datarray['changed'] = $datarray['created'] = $datarray['edited'] = DateTimeFormat::utcNow();
 
-		if (Item::isTooOld($datarray)) {
+		if (DI::contentItem()->isTooOld($datarray['created'], $datarray['uid'])) {
 			Logger::info('Participation is too old', ['created' => $datarray['created'], 'uid' => $datarray['uid'], 'guid' => $datarray['guid']]);
 			return false;
 		}
@@ -2379,7 +2395,7 @@ class Diaspora
 
 		self::fetchGuid($datarray);
 
-		if (Item::isTooOld($datarray)) {
+		if (DI::contentItem()->isTooOld($datarray['created'], $datarray['uid'])) {
 			Logger::info('Reshare is too old', ['created' => $datarray['created'], 'uid' => $datarray['uid'], 'guid' => $datarray['guid']]);
 			return false;
 		}
@@ -2724,7 +2740,7 @@ class Diaspora
 
 		self::fetchGuid($datarray);
 
-		if (Item::isTooOld($datarray)) {
+		if (DI::contentItem()->isTooOld($datarray['created'], $datarray['uid'])) {
 			Logger::info('Status is too old', ['created' => $datarray['created'], 'uid' => $datarray['uid'], 'guid' => $datarray['guid']]);
 			return false;
 		}
@@ -2922,7 +2938,7 @@ class Diaspora
 	 * @throws \Friendica\Network\HTTPException\InternalServerErrorException
 	 * @throws \ImagickException
 	 */
-	private static function transmit(array $owner, array $contact, string $envelope, bool $public_batch, string $guid = ''): int
+	private static function transmit(array $contact, string $envelope, bool $public_batch, string $guid = ''): int
 	{
 		$enabled = intval(DI::config()->get('system', 'diaspora_enabled'));
 		if (!$enabled) {
@@ -2953,7 +2969,7 @@ class Diaspora
 		if (!intval(DI::config()->get('system', 'diaspora_test'))) {
 			$content_type = (($public_batch) ? 'application/magic-envelope+xml' : 'application/json');
 
-			$postResult = DI::httpClient()->post($dest_url . '/', $envelope, ['Content-Type' => $content_type]);
+			$postResult = DI::httpClient()->post($dest_url . '/', $envelope, ['Content-Type' => $content_type], 0, HttpClientRequest::DIASPORA);
 			$return_code = $postResult->getReturnCode();
 		} else {
 			Logger::notice('test_mode');
@@ -3022,12 +3038,12 @@ class Diaspora
 			// The "addr" field should always be filled.
 			// If this isn't the case, it will raise a notice some lines later.
 			// And in the log we will see where it came from, and we can handle it there.
-			Logger::notice('Empty addr', ['contact' => $contact ?? [], 'callstack' => System::callstack(20)]);
+			Logger::notice('Empty addr', ['contact' => $contact ?? []]);
 		}
 
 		$envelope = self::buildMessage($msg, $owner, $contact, $owner['uprvkey'], $pubkey ?? '', $public_batch);
 
-		$return_code = self::transmit($owner, $contact, $envelope, $public_batch, $guid);
+		$return_code = self::transmit($contact, $envelope, $public_batch, $guid);
 
 		Logger::info('Transmitted message', ['owner' => $owner['uid'], 'target' => $contact['addr'], 'type' => $type, 'guid' => $guid, 'result' => $return_code]);
 
@@ -3245,7 +3261,9 @@ class Diaspora
 		/// @todo - establish "all day" events in Friendica
 		$eventdata['all_day'] = 'false';
 
-		$eventdata['timezone'] = 'UTC';
+		// @todo Should be user timezone - but only if the event is supposed to be displayed
+		// in that specific timezone and not the user's timezone.
+		// $eventdata['timezone'] = 'UTC';
 
 		if ($event['start']) {
 			$eventdata['start'] = DateTimeFormat::utc($event['start'], $mask);
@@ -3601,7 +3619,7 @@ class Diaspora
 		if (
 			$item['author-id'] != $thread_parent_item['author-id']
 			&& ($thread_parent_item['gravity'] != Item::GRAVITY_PARENT)
-			&& (empty($item['uid']) || !Feature::isEnabled($item['uid'], 'explicit_mentions'))
+			&& (empty($item['uid']) || !Feature::isEnabled($item['uid'], Feature::EXPLICIT_MENTIONS))
 			&& !DI::config()->get('system', 'disable_implicit_mentions')
 		) {
 			$body = self::prependParentAuthorMention($body, $thread_parent_item['author-link']);
@@ -3870,7 +3888,7 @@ class Diaspora
 	 */
 	private static function createProfileData(int $uid): array
 	{
-		$profile = DBA::selectFirst('owner-view', ['uid', 'addr', 'name', 'location', 'net-publish', 'dob', 'about', 'pub_keywords'], ['uid' => $uid]);
+		$profile = User::getOwnerDataById($uid);
 
 		if (!DBA::isResult($profile)) {
 			return [];
@@ -3880,17 +3898,21 @@ class Diaspora
 
 		$data = [
 			'author'           => $profile['addr'],
+			'edited_at'        => DateTimeFormat::utc($profile['updated']),
+			'full_name'        => $profile['name'],
 			'first_name'       => $split_name['first'],
 			'last_name'        => $split_name['last'],
-			'image_url'        => DI::baseUrl() . '/photo/custom/300/' . $profile['uid'] . '.jpg',
-			'image_url_medium' => DI::baseUrl() . '/photo/custom/100/' . $profile['uid'] . '.jpg',
-			'image_url_small'  => DI::baseUrl() . '/photo/custom/50/'  . $profile['uid'] . '.jpg',
-			'searchable'       => ($profile['net-publish'] ? 'true' : 'false'),
+			'image_url'        => User::getAvatarUrl($profile, Proxy::SIZE_SMALL),
+			'image_url_medium' => User::getAvatarUrl($profile, Proxy::SIZE_THUMB),
+			'image_url_small'  => User::getAvatarUrl($profile, Proxy::SIZE_MICRO),
+			'bio'              => null,
 			'birthday'         => null,
-			'about'            => null,
+			'gender'           => null,
 			'location'         => null,
-			'tag_string'       => null,
+			'searchable'       => ($profile['net-publish'] ? 'true' : 'false'),
+			'public'           => 'false',
 			'nsfw'             => 'false',
+			'tag_string'       => null,
 		];
 
 		if ($data['searchable'] === 'true') {
@@ -3904,7 +3926,7 @@ class Diaspora
 				$data['birthday'] = DateTimeFormat::utc($year . '-' . $month . '-' . $day, 'Y-m-d');
 			}
 
-			$data['about'] = BBCode::toMarkdown($profile['about'] ?? '');
+			$data['bio'] = BBCode::toMarkdown($profile['about'] ?? '');
 
 			$data['location'] = $profile['location'];
 			$data['tag_string'] = '';
@@ -3963,8 +3985,10 @@ class Diaspora
 
 		// @todo Split this into single worker jobs
 		foreach ($recipients as $recipient) {
-			Logger::info('Send updated profile data for user ' . $uid . ' to contact ' . $recipient['id']);
-			self::buildAndTransmit($owner, $recipient, 'profile', $message);
+			if ((empty($recipient['gsid']) || GServer::isReachableById($recipient['gsid'])) && !Contact\User::isBlocked($recipient['id'], $uid)) {
+				Logger::info('Send updated profile data for user ' . $uid . ' to contact ' . $recipient['id']);
+				self::buildAndTransmit($owner, $recipient, 'profile', $message);
+			}
 		}
 	}
 

@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -28,18 +28,14 @@ use Friendica\Content\GroupManager;
 use Friendica\Core\Cache\Capability\ICanCache;
 use Friendica\Core\Cache\Enum\Duration;
 use Friendica\Core\Config\Capability\IManageConfigValues;
-use Friendica\Core\Hook;
 use Friendica\Core\L10n;
 use Friendica\Core\PConfig\Capability\IManagePersonalConfigValues;
 use Friendica\Core\Session\Capability\IHandleUserSessions;
-use Friendica\Core\System;
 use Friendica\Database\Database;
-use Friendica\Database\DBA;
 use Friendica\Model\Circle;
 use Friendica\Model\Post;
 use Friendica\Model\User;
 use Friendica\Model\Verb;
-use Friendica\Module\Conversation\Network;
 use Friendica\Module\Register;
 use Friendica\Module\Response;
 use Friendica\Navigation\Notifications\Entity;
@@ -106,7 +102,6 @@ class Ping extends BaseModule
 		$intro_count     = 0;
 		$mail_count      = 0;
 		$home_count      = 0;
-		$network_count   = 0;
 		$register_count  = 0;
 		$sysnotify_count = 0;
 		$circles_unseen   = [];
@@ -126,36 +121,15 @@ class Ping extends BaseModule
 			}
 
 			$condition = [
-				"`unseen` AND `uid` = ? AND NOT `origin` AND (`vid` != ? OR `vid` IS NULL)",
+				"`unseen` AND `uid` = ? AND NOT `origin` AND `wall` AND (`vid` != ? OR `vid` IS NULL)",
 				$this->session->getLocalUserId(), Verb::getID(Activity::FOLLOW)
 			];
 
-			// No point showing counts for non-top-level posts when the network page is ordered by received field
-			if (Network::getTimelineOrderBySession($this->session, $this->pconfig) == 'received') {
-				$condition = DBA::mergeConditions($condition, ["`parent` = `id`"]);
-			}
+			$home_count = Post::count($condition);
 
-			$items_unseen = $this->database->toArray(Post::selectForUser(
-				$this->session->getLocalUserId(),
-				['wall', 'uid', 'uri-id'],
-				$condition,
-				['limit' => 1000],
-			));
-			$arr = ['items' => $items_unseen];
-			Hook::callAll('network_ping', $arr);
-
-			foreach ($items_unseen as $item) {
-				if ($item['wall']) {
-					$home_count++;
-				} else {
-					$network_count++;
-				}
-			}
-
-			$compute_circle_counts = $this->config->get('system','compute_group_counts') ?? $this->config->get('system','compute_circle_counts');
-			if ($network_count && $compute_circle_counts) {
+			if ($this->config->get('system','compute_circle_counts')) {
 				// Find out how unseen network posts are spread across circles
-				foreach (Circle::countUnseen() as $circle_count) {
+				foreach (Circle::countUnseen($this->session->getLocalUserId()) as $circle_count) {
 					if ($circle_count['count'] > 0) {
 						$circles_unseen[] = $circle_count;
 					}
@@ -175,7 +149,7 @@ class Ping extends BaseModule
 			$myurl      = $this->session->getMyUrl();
 			$mail_count = $this->database->count('mail', ["`uid` = ? AND NOT `seen` AND `from-url` != ?", $this->session->getLocalUserId(), $myurl]);
 
-			if (intval($this->config->get('config', 'register_policy')) === Register::APPROVE && $this->session->isSiteAdmin()) {
+			if (Register::getPolicy() === Register::APPROVE && $this->session->isSiteAdmin()) {
 				$registrations = \Friendica\Model\Register::getPending();
 				$register_count = count($registrations);
 			}
@@ -214,7 +188,7 @@ class Ping extends BaseModule
 				if (!$this->notify->shouldShowOnDesktop($notification)) {
 					return null;
 				}
-				if (($notification->type == Post\UserNotification::TYPE_NONE) && in_array($owner['page-flags'], [User::PAGE_FLAGS_NORMAL, User::PAGE_FLAGS_PRVGROUP])) {
+				if (($notification->type == Post\UserNotification::TYPE_NONE) && in_array($owner['page-flags'], [User::PAGE_FLAGS_NORMAL, User::PAGE_FLAGS_PRVGROUP, User::PAGE_FLAGS_COMM_MAN])) {
 					return null;
 				}
 				try {
@@ -282,7 +256,6 @@ class Ping extends BaseModule
 		$data             = [];
 		$data['intro']    = $intro_count;
 		$data['mail']     = $mail_count;
-		$data['net']      = ($network_count < 1000) ? $network_count : '999+';
 		$data['home']     = ($home_count < 1000) ? $home_count : '999+';
 		$data['register'] = $register_count;
 

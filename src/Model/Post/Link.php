@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -22,7 +22,6 @@
 namespace Friendica\Model\Post;
 
 use Friendica\Core\Logger;
-use Friendica\Core\System;
 use Friendica\Database\Database;
 use Friendica\Database\DBA;
 use Friendica\DI;
@@ -32,6 +31,7 @@ use Friendica\Util\HTTPSignature;
 use Friendica\Util\Images;
 use Friendica\Util\Proxy;
 use Friendica\Object\Image;
+use Friendica\Util\Network;
 
 /**
  * Class Link
@@ -67,7 +67,7 @@ class Link
 		}
 
 		if (!in_array(parse_url($url, PHP_URL_SCHEME), ['http', 'https'])) {
-			Logger::info('Bad URL, quitting', ['uri-id' => $uriId, 'url' => $url, 'callstack' => System::callstack(20)]);
+			Logger::info('Bad URL, quitting', ['uri-id' => $uriId, 'url' => $url]);
 			return $url;
 		}
 
@@ -78,7 +78,7 @@ class Link
 		} else {
 			$fields = self::fetchMimeType($url);
 			$fields['uri-id'] = $uriId;
-			$fields['url'] = $url;
+			$fields['url'] = Network::sanitizeUrl($url);
 
 			DBA::insert('post-link', $fields, Database::INSERT_IGNORE);
 			$id = DBA::lastInsertId();
@@ -134,15 +134,23 @@ class Link
 			Logger::notice('Error fetching url', ['url' => $url, 'exception' => $exception]);
 			return [];
 		}
-		$fields = ['mimetype' => $curlResult->getHeader('Content-Type')[0]];
 
-		$img_str = $curlResult->getBody();
-		$image = new Image($img_str, Images::getMimeTypeByData($img_str));
-		if ($image->isValid()) {
-			$fields['mimetype'] = $image->getType();
-			$fields['width']    = $image->getWidth();
-			$fields['height']   = $image->getHeight();
-			$fields['blurhash'] = $image->getBlurHash();
+		if (!$curlResult->isSuccess()) {
+			Logger::notice('Fetching unsuccessful', ['url' => $url]);
+			return [];
+		}
+
+		$fields = ['mimetype' => $curlResult->getContentType()];
+
+		if (Images::isSupportedMimeType($fields['mimetype'])) {
+			$img_str = $curlResult->getBodyString();
+			$image = new Image($img_str, $fields['mimetype'], $url);
+			if ($image->isValid()) {
+				$fields['mimetype'] = $image->getType();
+				$fields['width']    = $image->getWidth();
+				$fields['height']   = $image->getHeight();
+				$fields['blurhash'] = $image->getBlurHash();
+			}
 		}
 
 		return $fields;

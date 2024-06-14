@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -26,12 +26,12 @@ use Friendica\BaseModule;
 use Friendica\Core\L10n;
 use Friendica\Core\Renderer;
 use Friendica\Core\Session\Capability\IHandleUserSessions;
-use Friendica\Core\System;
 use Friendica\Model\Photo;
 use Friendica\Module\Response;
 use Friendica\Network\HTTPException\UnauthorizedException;
 use Friendica\Util\Images;
 use Friendica\Util\Profiler;
+use Friendica\Util\Proxy;
 use Friendica\Util\Strings;
 use Psr\Log\LoggerInterface;
 
@@ -86,7 +86,7 @@ class Browser extends BaseModule
 			'$folders'  => $albums,
 			'$files'    => $photosArray,
 			'$cancel'   => $this->t('Cancel'),
-			'$nickname' => $this->app->getLoggedInUserNickname(),
+			'$nickname' => $this->session->getLocalUserNickname(),
 			'$upload'   => $this->t('Upload'),
 		]);
 
@@ -99,8 +99,7 @@ class Browser extends BaseModule
 
 	protected function map_files(array $record): array
 	{
-		$types      = Images::supportedTypes();
-		$ext        = $types[$record['type']];
+		$ext        = Images::getExtensionByMimeType($record['type']);
 		$filename_e = $record['filename'];
 
 		// Take the largest picture that is smaller or equal 640 pixels
@@ -109,16 +108,16 @@ class Browser extends BaseModule
 			[
 				"`resource-id` = ? AND `height` <= ? AND `width` <= ?",
 				$record['resource-id'],
-				640,
-				640
+				Proxy::PIXEL_MEDIUM,
+				Proxy::PIXEL_MEDIUM
 			],
 			['order' => ['scale']]);
 		$scale = $photo['scale'] ?? $record['loq'];
 
 		return [
-			sprintf('%s/photos/%s/image/%s', $this->baseUrl, $this->app->getLoggedInUserNickname(), $record['resource-id']),
+			sprintf('%s/photos/%s/image/%s', $this->baseUrl, $this->session->getLocalUserNickname(), $record['resource-id']),
 			$filename_e,
-			sprintf('%s/photo/%s-%s.%s', $this->baseUrl, $record['resource-id'], $scale, $ext),
+			sprintf('%s/photo/%s-%s%s', $this->baseUrl, $record['resource-id'], $scale, $ext),
 			$record['desc'],
 		];
 	}

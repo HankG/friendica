@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -29,6 +29,7 @@ use Friendica\Model\Profile;
 use Friendica\Model\User;
 use Friendica\Network\HTTPClient\Client\HttpClientAccept;
 use Friendica\Network\HTTPClient\Client\HttpClientOptions;
+use Friendica\Network\HTTPClient\Client\HttpClientRequest;
 use GuzzleHttp\Psr7\Uri;
 
 /* This class is used to verify the homepage link of a user profile.
@@ -64,13 +65,13 @@ class CheckRelMeProfileLink
 		}
 
 		$xrd_timeout = DI::config()->get('system', 'xrd_timeout');
-		$curlResult  = DI::httpClient()->get($owner['homepage'], HttpClientAccept::HTML, [HttpClientOptions::TIMEOUT => $xrd_timeout]);
+		$curlResult  = DI::httpClient()->get($owner['homepage'], HttpClientAccept::HTML, [HttpClientOptions::TIMEOUT => $xrd_timeout, HttpClientOptions::REQUEST => HttpClientRequest::CONTACTVERIFIER]);
 		if (!$curlResult->isSuccess()) {
 			Logger::notice('Could not cURL the homepage URL', ['owner homepage' => $owner['homepage']]);
 			return;
 		}
 
-		$content = $curlResult->getBody();
+		$content = $curlResult->getBodyString();
 		if (!$content) {
 			Logger::notice('Empty body of the fetched homepage link). Cannot verify the relation to profile of UID %s.', ['uid' => $uid, 'owner homepage' => $owner['homepage']]);
 			return;

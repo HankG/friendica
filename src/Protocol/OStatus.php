@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -41,6 +41,8 @@ use Friendica\Model\Post;
 use Friendica\Model\Tag;
 use Friendica\Model\User;
 use Friendica\Network\HTTPClient\Client\HttpClientAccept;
+use Friendica\Network\HTTPClient\Client\HttpClientOptions;
+use Friendica\Network\HTTPClient\Client\HttpClientRequest;
 use Friendica\Network\Probe;
 use Friendica\Util\DateTimeFormat;
 use Friendica\Util\Images;
@@ -734,9 +736,9 @@ class OStatus
 	private static function fetchRelated(string $related, string $related_uri, array $importer)
 	{
 		$stored = false;
-		$curlResult = DI::httpClient()->get($related, HttpClientAccept::ATOM_XML);
+		$curlResult = DI::httpClient()->get($related, HttpClientAccept::ATOM_XML, [HttpClientOptions::REQUEST => HttpClientRequest::OSTATUS]);
 
-		if (!$curlResult->isSuccess() || empty($curlResult->getBody())) {
+		if (!$curlResult->isSuccess() || empty($curlResult->getBodyString())) {
 			return;
 		}
 
@@ -745,12 +747,12 @@ class OStatus
 		if ($curlResult->inHeader('Content-Type') &&
 			in_array('application/atom+xml', $curlResult->getHeader('Content-Type'))) {
 			Logger::info('Directly fetched XML for URI ' . $related_uri);
-			$xml = $curlResult->getBody();
+			$xml = $curlResult->getBodyString();
 		}
 
 		if ($xml == '') {
 			$doc = new DOMDocument();
-			if (!@$doc->loadHTML($curlResult->getBody())) {
+			if (!@$doc->loadHTML($curlResult->getBodyString())) {
 				return;
 			}
 			$xpath = new DOMXPath($doc);
@@ -766,11 +768,11 @@ class OStatus
 					}
 				}
 				if ($atom_file != '') {
-					$curlResult = DI::httpClient()->get($atom_file, HttpClientAccept::ATOM_XML);
+					$curlResult = DI::httpClient()->get($atom_file, HttpClientAccept::ATOM_XML, [HttpClientOptions::REQUEST => HttpClientRequest::OSTATUS]);
 
 					if ($curlResult->isSuccess()) {
 						Logger::info('Fetched XML for URI ' . $related_uri);
-						$xml = $curlResult->getBody();
+						$xml = $curlResult->getBodyString();
 					}
 				}
 			}
@@ -778,22 +780,22 @@ class OStatus
 
 		// Workaround for older GNU Social servers
 		if (($xml == '') && strstr($related, '/notice/')) {
-			$curlResult = DI::httpClient()->get(str_replace('/notice/', '/api/statuses/show/', $related) . '.atom', HttpClientAccept::ATOM_XML);
+			$curlResult = DI::httpClient()->get(str_replace('/notice/', '/api/statuses/show/', $related) . '.atom', HttpClientAccept::ATOM_XML, [HttpClientOptions::REQUEST => HttpClientRequest::OSTATUS]);
 
 			if ($curlResult->isSuccess()) {
 				Logger::info('GNU Social workaround to fetch XML for URI ' . $related_uri);
-				$xml = $curlResult->getBody();
+				$xml = $curlResult->getBodyString();
 			}
 		}
 
 		// Even more worse workaround for GNU Social ;-)
 		if ($xml == '') {
 			$related_guess = self::convertHref($related_uri);
-			$curlResult = DI::httpClient()->get(str_replace('/notice/', '/api/statuses/show/', $related_guess) . '.atom', HttpClientAccept::ATOM_XML);
+			$curlResult = DI::httpClient()->get(str_replace('/notice/', '/api/statuses/show/', $related_guess) . '.atom', HttpClientAccept::ATOM_XML, [HttpClientOptions::REQUEST => HttpClientRequest::OSTATUS]);
 
 			if ($curlResult->isSuccess()) {
 				Logger::info('GNU Social workaround 2 to fetch XML for URI ' . $related_uri);
-				$xml = $curlResult->getBody();
+				$xml = $curlResult->getBodyString();
 			}
 		}
 
@@ -1470,6 +1472,8 @@ class OStatus
 			$entry = $doc->createElement('entry');
 
 			if ($owner['contact-type'] == Contact::TYPE_COMMUNITY) {
+				$entry->setAttribute('xmlns:activity', ActivityNamespace::ACTIVITY);
+
 				$contact = Contact::getByURL($item['author-link']) ?: $owner;
 				$contact['nickname'] = $contact['nickname'] ?? $contact['nick'];
 				$author = self::addAuthor($doc, $contact, false);

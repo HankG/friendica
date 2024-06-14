@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -64,7 +64,7 @@ class Logout extends BaseModule
 	{
 		$visitor_home = null;
 		if ($this->session->getRemoteUserId()) {
-			$visitor_home = Profile::getMyURL();
+			$visitor_home = $this->session->getMyUrl();
 			$this->cache->delete('zrlInit:' . $visitor_home);
 		}
 

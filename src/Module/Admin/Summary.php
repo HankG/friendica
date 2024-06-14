@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -196,7 +196,7 @@ class Summary extends BaseAdmin
 			'$title'          => DI::l10n()->t('Administration'),
 			'$page'           => DI::l10n()->t('Summary'),
 			'$queues'         => $queues,
-			'$version'        => [DI::l10n()->t('Version'), App::VERSION],
+			'$version_label'  => DI::l10n()->t('Version'),
 			'$platform'       => App::PLATFORM,
 			'$codename'       => App::CODENAME,
 			'$build'          => DI::config()->get('system', 'build'),

@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -41,7 +41,7 @@ class Retweet extends BaseApi
 {
 	protected function post(array $request = [])
 	{
-		self::checkAllowedScope(self::SCOPE_WRITE);
+		$this->checkAllowedScope(self::SCOPE_WRITE);
 		$uid = self::getCurrentUserID();
 
 		$id = $this->getRequestValue($request, 'id', 0);
@@ -54,7 +54,7 @@ class Retweet extends BaseApi
 		$item   = Post::selectFirst($fields, ['uri-id' => $id, 'uid' => [0, $uid], 'private' => [Item::PUBLIC, Item::UNLISTED]], ['order' => ['uid' => true]]);
 
 		if (DBA::isResult($item) && !empty($item['body'])) {
-			if (in_array($item['network'], [Protocol::ACTIVITYPUB, Protocol::DFRN, Protocol::TWITTER])) {
+			if (in_array($item['network'], [Protocol::ACTIVITYPUB, Protocol::DFRN, Protocol::BLUESKY, Protocol::TUMBLR, Protocol::TWITTER])) {
 				if (!Item::performActivity($id, 'announce', $uid)) {
 					throw new InternalServerErrorException();
 				}

@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -47,6 +47,8 @@ class View extends BaseAdmin
 		$filters_valid_values = [
 			'level' => [
 				'',
+				LogLevel::EMERGENCY,
+				LogLevel::ALERT,
 				LogLevel::CRITICAL,
 				LogLevel::ERROR,
 				LogLevel::WARNING,
@@ -54,7 +56,7 @@ class View extends BaseAdmin
 				LogLevel::INFO,
 				LogLevel::DEBUG,
 			],
-			'context' => ['', 'index', 'worker'],
+			'context' => ['', 'index', 'worker', 'daemon'],
 		];
 		$filters = [
 			'level'   => $_GET['level'] ?? '',
@@ -71,10 +73,10 @@ class View extends BaseAdmin
 		} else {
 			try {
 				$data = DI::parsedLogIterator()
-						->open($f)
-						->withLimit(self::LIMIT)
-						->withFilters($filters)
-						->withSearch($search);
+					->open($f)
+					->withLimit(self::LIMIT)
+					->withFilters($filters)
+					->withSearch($search);
 			} catch (\Exception $e) {
 				$error = DI::l10n()->t('Couldn\'t open <strong>%1$s</strong> log file.<br/>Check to see if file %1$s is readable.', $f);
 			}

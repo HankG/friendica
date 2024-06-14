@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -25,6 +25,7 @@ use Friendica\Content\Text\BBCode;
 use Friendica\DI;
 use Friendica\Network\HTTPException\InternalServerErrorException;
 use Friendica\Test\FixtureTest;
+use Friendica\Util\Strings;
 
 class BBCodeTest extends FixtureTest
 {
@@ -35,7 +36,6 @@ class BBCodeTest extends FixtureTest
 	{
 		parent::setUp();
 		DI::config()->set('system', 'remove_multiplicated_lines', false);
-		DI::config()->set('system', 'no_oembed', false);
 		DI::config()->set('system', 'allowed_link_protocols', []);
 		DI::config()->set('system', 'url', 'https://friendica.local');
 		DI::config()->set('system', 'no_smilies', false);
@@ -149,7 +149,7 @@ class BBCodeTest extends FixtureTest
 	public function testAutoLinking(string $data, bool $assertHTML)
 	{
 		$output = BBCode::convert($data);
-		$assert = $this->HTMLPurifier->purify('<a href="' . $data . '" target="_blank" rel="noopener noreferrer">' . $data . '</a>');
+		$assert = $this->HTMLPurifier->purify('<a href="' . $data . '" target="_blank" rel="noopener noreferrer">' . Strings::getStyledURL($data) . '</a>');
 		if ($assertHTML) {
 			self::assertEquals($assert, $output);
 		} else {
@@ -161,23 +161,23 @@ class BBCodeTest extends FixtureTest
 	{
 		return [
 			'bug-7271-condensed-space' => [
-				'expectedHtml' => '<ol><li> <a href="http://example.com/" target="_blank" rel="noopener noreferrer">http://example.com/</a></li></ol>',
-				'text' => '[ol][*] http://example.com/[/ol]',
+				'expectedHtml' => '<ol><li> <a href="http://example.com/" target="_blank" rel="noopener noreferrer">example.com/</a></li></ol>',
+				'text' => '[ol][li] http://example.com/[/ol]',
 			],
 			'bug-7271-condensed-nospace' => [
-				'expectedHtml' => '<ol><li><a href="http://example.com/" target="_blank" rel="noopener noreferrer">http://example.com/</a></li></ol>',
-				'text' => '[ol][*]http://example.com/[/ol]',
+				'expectedHtml' => '<ol><li><a href="http://example.com/" target="_blank" rel="noopener noreferrer">example.com/</a></li></ol>',
+				'text' => '[ol][li]http://example.com/[/ol]',
 			],
 			'bug-7271-indented-space' => [
-				'expectedHtml' => '<ul><li> <a href="http://example.com/" target="_blank" rel="noopener noreferrer">http://example.com/</a></li></ul>',
+				'expectedHtml' => '<ul><li> <a href="http://example.com/" target="_blank" rel="noopener noreferrer">example.com/</a></li></ul>',
 				'text' => '[ul]
-[*] http://example.com/
+[li] http://example.com/
 [/ul]',
 			],
 			'bug-7271-indented-nospace' => [
-				'expectedHtml' => '<ul><li><a href="http://example.com/" target="_blank" rel="noopener noreferrer">http://example.com/</a></li></ul>',
+				'expectedHtml' => '<ul><li><a href="http://example.com/" target="_blank" rel="noopener noreferrer">example.com/</a></li></ul>',
 				'text' => '[ul]
-[*]http://example.com/
+[li]http://example.com/
 [/ul]',
 			],
 			'bug-2199-named-size' => [
@@ -263,7 +263,7 @@ Karl Marx - Die ursprüngliche Akkumulation
 			],
 			'task-12900-multiple-paragraphs' => [
 				'expectedHTML' => '<h4>Header</h4><ul><li>One</li><li>Two</li></ul><p>This is a paragraph<br>with a line feed.</p><p>Second Chapter</p>',
-				'text' => "[h4]Header[/h4][ul][*]One[*]Two[/ul]\n\nThis is a paragraph\nwith a line feed.\n\nSecond Chapter",
+				'text' => "[h4]Header[/h4][ul][li]One[li]Two[/ul]\n\nThis is a paragraph\nwith a line feed.\n\nSecond Chapter",
 			],
 			'task-12900-header-with-paragraphs' => [
 				'expectedHTML' => '<h4>Header</h4><p>Some Chapter</p>',
@@ -271,11 +271,11 @@ Karl Marx - Die ursprüngliche Akkumulation
 			],
 			'bug-12842-ul-newlines' => [
 				'expectedHTML' => '<p>This is:</p><ul><li>some</li><li>amazing</li><li>list</li></ul>',
-				'text' => "This is:\r\n[ul]\r\n[*]some\r\n[*]amazing\r\n[*]list\r\n[/ul]",
+				'text' => "This is:\r\n[ul]\r\n[li]some\r\n[li]amazing\r\n[li]list\r\n[/ul]",
 			],
 			'bug-12842-ol-newlines' => [
 				'expectedHTML' => '<p>This is:</p><ol><li>some</li><li>amazing</li><li>list</li></ol>',
-				'text' => "This is:\r\n[ol]\r\n[*]some\r\n[*]amazing\r\n[*]list\r\n[/ol]",
+				'text' => "This is:\r\n[ol]\r\n[li]some\r\n[li]amazing\r\n[li]list\r\n[/ol]",
 			],
 			'task-12917-tabs-between-linebreaks' => [
 				'expectedHTML' => '<p>Paragraph</p><p>New Paragraph</p>',

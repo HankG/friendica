@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -24,6 +24,7 @@ namespace Friendica\Protocol;
 use Friendica\Core\Logger;
 use Friendica\Core\Protocol;
 use Friendica\Core\System;
+use Friendica\DI;
 use Friendica\Model\APContact;
 use Friendica\Model\Contact;
 use Friendica\Model\User;
@@ -64,6 +65,7 @@ class ActivityPub
 	const CONTEXT = [
 		'https://www.w3.org/ns/activitystreams', 'https://w3id.org/security/v1',
 		[
+			'ostatus' => 'http://ostatus.org#',
 			'vcard' => 'http://www.w3.org/2006/vcard/ns#',
 			'dfrn' => 'http://purl.org/macgirvin/dfrn/1.0/',
 			'diaspora' => 'https://diasporafoundation.org/ns/',
@@ -85,6 +87,11 @@ class ActivityPub
 		]
 	];
 	const ACCOUNT_TYPES = ['Person', 'Organization', 'Service', 'Group', 'Application', 'Tombstone'];
+
+	CONST ARTICLE_DEFAULT     = 0;
+	CONST ARTICLE_USE_SUMMARY = 1;
+	CONST ARTICLE_EMBED_TITLE = 2;
+
 	/**
 	 * Checks if the web request is done for the AP protocol
 	 *
@@ -93,29 +100,17 @@ class ActivityPub
 	public static function isRequest(): bool
 	{
 		header('Vary: Accept', false);
-
-		$isrequest = stristr($_SERVER['HTTP_ACCEPT'] ?? '', 'application/activity+json') ||
-			stristr($_SERVER['HTTP_ACCEPT'] ?? '', 'application/json') ||
-			stristr($_SERVER['HTTP_ACCEPT'] ?? '', 'application/ld+json');
-
-		if ($isrequest) {
+		if (stristr($_SERVER['HTTP_ACCEPT'] ?? '', 'application/activity+json') || stristr($_SERVER['HTTP_ACCEPT'] ?? '', 'application/ld+json')) {
 			Logger::debug('Is AP request', ['accept' => $_SERVER['HTTP_ACCEPT'], 'agent' => $_SERVER['HTTP_USER_AGENT'] ?? '']);
+			return true;
 		}
 
-		return $isrequest;
-	}
+		if (stristr($_SERVER['HTTP_ACCEPT'] ?? '', 'application/json')) {
+			Logger::debug('Is JSON request', ['accept' => $_SERVER['HTTP_ACCEPT'], 'agent' => $_SERVER['HTTP_USER_AGENT'] ?? '']);
+			return true;
+		}
 
-	/**
-	 * Fetches ActivityPub content from the given url
-	 *
-	 * @param string  $url content url
-	 * @param integer $uid User ID for the signature
-	 * @return array
-	 * @throws \Friendica\Network\HTTPException\InternalServerErrorException
-	 */
-	public static function fetchContent(string $url, int $uid = 0): array
-	{
-		return HTTPSignature::fetch($url, $uid);
+		return false;
 	}
 
 	private static function getAccountType(array $apcontact): int
@@ -216,7 +211,7 @@ class ActivityPub
 	 */
 	public static function fetchOutbox(string $url, int $uid)
 	{
-		$data = self::fetchContent($url, $uid);
+		$data = HTTPSignature::fetch($url, $uid);
 		if (empty($data)) {
 			return;
 		}
@@ -255,7 +250,7 @@ class ActivityPub
 			return [];
 		}
 
-		$data = self::fetchContent($url, $uid);
+		$data = HTTPSignature::fetch($url, $uid);
 		if (empty($data)) {
 			return [];
 		}
@@ -307,7 +302,7 @@ class ActivityPub
 			return false;
 		}
 
-		if (empty($apcontact['gsid'] || empty($apcontact['baseurl']))) {
+		if (empty($apcontact['gsid']) || empty($apcontact['baseurl'])) {
 			Logger::debug('No server found', ['uid' => $uid, 'signer' => $signer, 'called_by' => $called_by]);
 			return false;
 		}
@@ -318,7 +313,18 @@ class ActivityPub
 			return false;
 		}
 
-		// @todo Look for user blocked domains
+		$limited = DI::config()->get('system', 'limited_servers');
+		if (!empty($limited)) {
+			$servers = explode(',', str_replace(' ', '', $limited));
+			$host = parse_url($apcontact['baseurl'], PHP_URL_HOST);
+			if (!empty($host) && in_array($host, $servers)) {
+				return false;
+			}
+		}
+
+		if (DI::userGServer()->isIgnoredByUser($uid, $apcontact['gsid'])) {
+			return false;
+		}
 
 		Logger::debug('Server is an accepted requester', ['uid' => $uid, 'id' => $apcontact['gsid'], 'url' => $apcontact['baseurl'], 'signer' => $signer, 'called_by' => $called_by]);
 

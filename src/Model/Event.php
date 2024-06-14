@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -362,7 +362,7 @@ class Event
 		$item['allow_gid']     = $event['allow_gid'];
 		$item['deny_cid']      = $event['deny_cid'];
 		$item['deny_gid']      = $event['deny_gid'];
-		$item['private']       = $event['allow_cid'] && $event['allow_gid'] && $event['deny_cid'] && $event['deny_gid'] ? 0 : 1;
+		$item['private']       = $event['allow_cid'] || $event['allow_gid'] || $event['deny_cid'] || $event['deny_gid'];
 		$item['visible']       = 1;
 		$item['verb']          = Activity::POST;
 		$item['object-type']   = Activity\ObjectType::EVENT;
@@ -516,7 +516,7 @@ class Event
 			throw new HTTPException\UnauthorizedException(DI::l10n()->t('Access to this profile has been restricted.'));
 		}
 
-		if (!DI::userSession()->isAuthenticated() && !Feature::isEnabled($owner['uid'], 'public_calendar')) {
+		if (!DI::userSession()->isAuthenticated() && !Feature::isEnabled($owner['uid'], Feature::PUBLIC_CALENDAR)) {
 			throw new HTTPException\UnauthorizedException(DI::l10n()->t('Permission denied.'));
 		}
 
@@ -636,7 +636,7 @@ class Event
 	{
 		$fmt = DI::l10n()->t('l, F j');
 
-		$item = Post::selectFirst(['plink', 'author-name', 'author-network', 'author-id', 'author-avatar', 'author-link', 'private', 'uri-id'], ['id' => $event['itemid']]);
+		$item = Post::selectFirst(['plink', 'author-name', 'author-network', 'author-id', 'author-avatar', 'author-link', 'author-alias', 'private', 'uri-id'], ['id' => $event['itemid']]);
 		if (empty($item)) {
 			// Using default values when no item had been found
 			$item = ['plink' => '', 'author-name' => '', 'author-avatar' => '', 'author-link' => '', 'private' => Item::PUBLIC, 'uri-id' => ($event['uri-id'] ?? 0)];
@@ -925,9 +925,6 @@ class Event
 			$end_short   = '';
 		}
 
-		// Format the event location.
-		$location = self::locationToArray($item['event-location']);
-
 		// Construct the profile link (magic-auth).
 		$author       = [
 			'uid'     => 0,
@@ -964,7 +961,7 @@ class Event
 			'$show_map_label' => DI::l10n()->t('Show map'),
 			'$hide_map_label' => DI::l10n()->t('Hide map'),
 			'$map_btn_label'  => DI::l10n()->t('Show map'),
-			'$location'       => $location
+			'$location'       => self::locationToTemplateVars($item['event-location']),
 		]);
 
 		return $return;
@@ -984,7 +981,7 @@ class Event
 	 * 'coordinates' => Latitude and longitude (e.g. '48.864716,2.349014').<br>
 	 * @throws \Friendica\Network\HTTPException\InternalServerErrorException
 	 */
-	private static function locationToArray(string $s = ''): array
+	private static function locationToTemplateVars(string $s = ''): array
 	{
 		if ($s == '') {
 			return [];

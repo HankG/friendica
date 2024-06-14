@@ -110,6 +110,12 @@ span.connector {
   margin: 0;
 }
 
+.wall-item-response {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .type-link blockquote, .type-video blockquote {
   margin-left: 0px;
   max-height: 160px;
@@ -742,4 +748,44 @@ figure.img-allocated-height img{
 #contactblock .icon {
 	width: 48px;
 	height: 48px;
+}
+
+/**
+ * Log levels colorized in the admin panel
+ **/
+.loglevel-debug {
+}
+.loglevel-info {
+	color: #0f009f; /* blue */
+}
+.loglevel-notice {
+	color: #007e01; /* green */
+}
+.loglevel-warning {
+	color: #de9600; /* dark orange */
+	font-weight: bold;
+}
+.loglevel-error {
+	color: #ff0000; /* red */
+	font-weight: bold;
+}
+.loglevel-critical {
+	color: #731289; /* purple */
+	font-weight: bold;
+}
+.loglevel-alert {
+	color: #ff0000; /* red */
+	font-weight: bold;
+	font-style: italic;
+}
+.loglevel-emergency {
+	color: #731289; /* purple */
+	font-weight: bold;
+	font-style: italic;
+}
+
+summary.wall-item-summary {
+	font-weight: bold;
+	font-style: oblique;
+  padding-bottom: 5px;
 }

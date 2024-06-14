@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -297,7 +297,7 @@ class Item
 
 			if ($this->activity->match($item['verb'], Activity::TAG)) {
 				$fields = [
-					'author-id', 'author-link', 'author-name', 'author-network',
+					'author-id', 'author-link', 'author-name', 'author-network', 'author-link', 'author-alias',
 					'verb', 'object-type', 'resource-id', 'body', 'plink'
 				];
 				$obj = Post::selectFirst($fields, ['uri' => $item['parent-uri']]);
@@ -382,7 +382,7 @@ class Item
 			'url'     => $item['author-link'],
 			'alias'   => $item['author-alias'],
 		];
-		$profile_link = Contact::magicLinkByContact($author, $item['author-link']);
+		$profile_link = Contact::magicLinkByContact($author, Contact::getProfileLink($author));
 		if (strpos($profile_link, 'contact/redir/') === 0) {
 			$status_link  = $profile_link . '?' . http_build_query(['url' => $item['author-link'] . '/status']);
 			$photos_link  = $profile_link . '?' . http_build_query(['url' => $item['author-link'] . '/photos']);
@@ -439,8 +439,10 @@ class Item
 			];
 
 			if (!empty($item['language'])) {
-				$menu[$this->l10n->t('Languages')] = 'javascript:alert(\'' . ItemModel::getLanguageMessage($item) . '\');';
+				$menu[$this->l10n->t('Languages')] = 'javascript:displayLanguage(' . $item['uri-id'] . ');';
 			}
+
+			$menu[$this->l10n->t('Search Text')] = 'javascript:displaySearchText(' . $item['uri-id'] . ');';
 
 			if ((($cid == 0) || ($rel == Contact::FOLLOWER)) &&
 				in_array($item['network'], Protocol::FEDERATED)
@@ -635,7 +637,7 @@ class Item
 	public function addSharedPost(array $item, string $body = ''): string
 	{
 		if (empty($body)) {
-			$body = $item['body'];
+			$body = $item['body'] ?? '';
 		}
 
 		if (empty($item['quote-uri-id']) || ($item['quote-uri-id'] == $item['uri-id'])) {
@@ -694,7 +696,7 @@ class Item
 			$item['body'] = Post\Media::addAttachmentsToBody($item['uri-id'], $item['body']);
 		}
 
-		$shared_content = BBCode::getShareOpeningTag($item['author-name'], $item['author-link'], $item['author-avatar'], $item['plink'], $item['created'], $item['guid'], $item['uri']);
+		$shared_content = BBCode::getShareOpeningTag($item['author-name'], $item['author-link'], $item['author-avatar'], $item['plink'] ?? $item['uri'], $item['created'], $item['guid'], $item['uri']);
 
 		if (!empty($item['title'])) {
 			$shared_content .= '[h3]' . $item['title'] . "[/h3]\n";
@@ -799,14 +801,14 @@ class Item
 	 */
 	public function addShareLink(string $body, int $quote_uri_id): string
 	{
-		$post = Post::selectFirstPost(['uri', 'plink'], ['uri-id' => $quote_uri_id]);
+		$post = Post::selectFirstPost(['uri'], ['uri-id' => $quote_uri_id]);
 		if (empty($post)) {
 			return $body;
 		}
 
 		$body = BBCode::removeSharedData($body);
 
-		$body .= "\n♲ " . ($post['plink'] ?: $post['uri']);
+		$body .= "\nRE: " . $post['uri'];
 
 		return $body;
 	}
@@ -909,40 +911,6 @@ class Item
 		return $post;
 	}
 
-	public function moveAttachmentsFromBodyToAttach(array $post): array
-	{
-		if (!preg_match_all('/(\[attachment\]([0-9]+)\[\/attachment\])/', $post['body'], $match)) {
-			return $post;
-		}
-
-		foreach ($match[2] as $attachment_id) {
-			$attachment = Attach::selectFirst(['id', 'uid', 'filename', 'filesize', 'filetype'], ['id' => $attachment_id, 'uid' => $post['uid']]);
-			if (empty($attachment)) {
-				continue;
-			}
-			if ($post['attach']) {
-				$post['attach'] .= ',';
-			}
-			$post['attach'] .= Post\Media::getAttachElement(
-				$this->baseURL . '/attach/' . $attachment['id'],
-				$attachment['filesize'],
-				$attachment['filetype'],
-				$attachment['filename'] ?? ''
-			);
-
-			$fields = [
-				'allow_cid' => $post['allow_cid'], 'allow_gid' => $post['allow_gid'],
-				'deny_cid' => $post['deny_cid'], 'deny_gid' => $post['deny_gid']
-			];
-			$condition = ['id' => $attachment_id];
-			Attach::update($fields, $condition);
-		}
-
-		$post['body'] = str_replace($match[1], '', $post['body']);
-
-		return $post;
-	}
-
 	private function setObjectType(array $post): array
 	{
 		if (empty($post['post-type'])) {
@@ -991,12 +959,14 @@ class Item
 			$post['deny_gid']  = $owner['deny_gid'];
 		}
 
-		if ($post['allow_gid'] || $post['allow_cid'] || $post['deny_gid'] || $post['deny_cid']) {
-			$post['private'] = ItemModel::PRIVATE;
-		} elseif ($this->pConfig->get($post['uid'], 'system', 'unlisted')) {
-			$post['private'] = ItemModel::UNLISTED;
-		} else {
-			$post['private'] = ItemModel::PUBLIC;
+		if (!isset($post['private'])) {
+			if ($post['allow_gid'] || $post['allow_cid'] || $post['deny_gid'] || $post['deny_cid']) {
+				$post['private'] = ItemModel::PRIVATE;
+			} elseif ($this->pConfig->get($post['uid'], 'system', 'unlisted')) {
+				$post['private'] = ItemModel::UNLISTED;
+			} else {
+				$post['private'] = ItemModel::PUBLIC;
+			}
 		}
 
 		if (empty($post['contact-id'])) {
@@ -1020,8 +990,13 @@ class Item
 		return $post;
 	}
 
-	public function finalizePost(array $post): array
+	public function finalizePost(array $post, bool $preview): array
 	{
+		if ($preview) {
+			$post['body'] = Attach::addAttachmentToBody($post['body'], $post['uid']);
+		} else {
+			Attach::setPermissionFromBody($post);
+		}
 		if (preg_match("/\[attachment\](.*?)\[\/attachment\]/ism", $post['body'], $matches)) {
 			$post['body'] = preg_replace("/\[attachment].*?\[\/attachment\]/ism", PageInfo::getFooterFromUrl($matches[1]), $post['body']);
 		}
@@ -1042,7 +1017,7 @@ class Item
 
 	public function postProcessPost(array $post, array $recipients = [])
 	{
-		if (!\Friendica\Content\Feature::isEnabled($post['uid'], 'explicit_mentions') && ($post['gravity'] == ItemModel::GRAVITY_COMMENT)) {
+		if (!Feature::isEnabled($post['uid'], Feature::EXPLICIT_MENTIONS) && ($post['gravity'] == ItemModel::GRAVITY_COMMENT)) {
 			Tag::createImplicitMentions($post['uri-id'], $post['thr-parent-id']);
 		}
 
@@ -1065,5 +1040,72 @@ class Item
 				$author['thumb'] ?? ''
 			));
 		}
+	}
+
+	public function copyPermissions(int $fromUriId, int $toUriId, int $parentUriId)
+	{
+		$from          = Post::selectFirstPost(['author-id'], ['uri-id' => $fromUriId]);
+		$from_author   = DBA::selectFirst('account-view', ['ap-followers'], ['id' => $from['author-id']]);
+		$to            = Post::selectFirstPost(['author-id'], ['uri-id' => $toUriId]);
+		$to_author     = DBA::selectFirst('account-view', ['ap-followers'], ['id' => $to['author-id']]);
+		$parent        = Post::selectFirstPost(['author-id'], ['uri-id' => $parentUriId]);
+		$parent_author = DBA::selectFirst('account-view', ['ap-followers'], ['id' => $parent['author-id']]);
+
+		$followers = '';
+		foreach (array_column(Tag::getByURIId($parentUriId, [Tag::TO, Tag::CC, Tag::BCC]), 'url') as $url) {
+			if ($url == $parent_author['ap-followers']) {
+				$followers = $url;
+				break;
+			}
+		}
+
+		$existing = array_column(Tag::getByURIId($toUriId, [Tag::TO, Tag::CC, Tag::BCC]), 'url');
+
+		foreach (Tag::getByURIId($fromUriId, [Tag::TO, Tag::CC, Tag::BCC]) as $receiver) {
+			if ($receiver['url'] == $from_author['ap-followers']) {
+				if (!empty($followers)) {
+					$receiver['url']  = $followers;
+					$receiver['name'] = trim(parse_url($receiver['url'], PHP_URL_PATH), '/');
+					Tag::store($toUriId, $receiver['type'], $receiver['name'], $receiver['url']);
+				}
+				$receiver['url']  = $to_author['ap-followers'];
+				$receiver['name'] = trim(parse_url($receiver['url'], PHP_URL_PATH), '/');
+			}
+			if (in_array($receiver['url'], $existing)) {
+				continue;
+			}
+			Tag::store($toUriId, $receiver['type'], $receiver['name'], $receiver['url']);
+		}
+	}
+
+	/**
+	 * Check if the item is too old
+	 *
+	 * @param string $created
+	 * @param integer $uid
+	 * @return boolean item is too old
+	 */
+	public function isTooOld(string $created, int $uid = 0): bool
+	{
+		// check for create date and expire time
+		$expire_interval = DI::config()->get('system', 'dbclean-expire-days', 0);
+
+		if ($uid) {
+			$user = DBA::selectFirst('user', ['expire'], ['uid' => $uid]);
+			if (DBA::isResult($user) && ($user['expire'] > 0) && (($user['expire'] < $expire_interval) || ($expire_interval == 0))) {
+				$expire_interval = $user['expire'];
+			}
+		}
+
+		if (($expire_interval > 0) && !empty($created)) {
+			$expire_date = time() - ($expire_interval * 86400);
+			$created_date = strtotime($created);
+			if ($created_date < $expire_date) {
+				Logger::notice('Item created before expiration interval.', ['created' => date('c', $created_date), 'expired' => date('c', $expire_date)]);
+				return true;
+			}
+		}
+
+		return false;
 	}
 }

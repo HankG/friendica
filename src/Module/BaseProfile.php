@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -91,7 +91,7 @@ class BaseProfile extends BaseModule
 			];
 		} else {
 			$owner = User::getByNickname($nickname, ['uid']);
-			if(DI::userSession()->isAuthenticated() || $owner && Feature::isEnabled($owner['uid'], 'public_calendar')) {
+			if(DI::userSession()->isAuthenticated() || $owner && Feature::isEnabled($owner['uid'], Feature::PUBLIC_CALENDAR)) {
 				$tabs[] = [
 					'label' => DI::l10n()->t('Calendar'),
 					'url'   => DI::baseUrl() . '/calendar/show/' . $nickname,

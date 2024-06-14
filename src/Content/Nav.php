@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -30,12 +30,12 @@ use Friendica\Core\Renderer;
 use Friendica\Core\Session\Capability\IHandleUserSessions;
 use Friendica\Database\Database;
 use Friendica\Model\Contact;
-use Friendica\Model\Profile;
 use Friendica\Model\User;
 use Friendica\Module\Conversation\Community;
 use Friendica\Module\Home;
 use Friendica\Module\Security\Login;
 use Friendica\Network\HTTPException;
+use Friendica\Security\OpenWebAuth;
 
 class Nav
 {
@@ -251,7 +251,7 @@ class Nav
 			$nav['home'] = [$homelink, $this->l10n->t('Home'), '', $this->l10n->t('Home Page')];
 		}
 
-		if (intval($this->config->get('config', 'register_policy')) === \Friendica\Module\Register::OPEN && !$this->session->isAuthenticated()) {
+		if (\Friendica\Module\Register::getPolicy() === \Friendica\Module\Register::OPEN && !$this->session->isAuthenticated()) {
 			$nav['register'] = ['register', $this->l10n->t('Register'), '', $this->l10n->t('Create an account')];
 		}
 
@@ -281,11 +281,11 @@ class Nav
 
 		$gdirpath = 'directory';
 		if ($this->config->get('system', 'singleuser') && $this->config->get('system', 'directory')) {
-			$gdirpath = Profile::zrl($this->config->get('system', 'directory'), true);
+			$gdirpath = OpenWebAuth::getZrlUrl($this->config->get('system', 'directory'), true);
 		}
 
-		if (($this->session->getLocalUserId() || $this->config->get('system', 'community_page_style') != Community::DISABLED_VISITOR) &&
-			!($this->config->get('system', 'community_page_style') == Community::DISABLED)) {
+		if (Feature::isEnabled($this->session->getLocalUserId(), Feature::COMMUNITY) && (($this->session->getLocalUserId() || $this->config->get('system', 'community_page_style') != Community::DISABLED_VISITOR) &&
+			!($this->config->get('system', 'community_page_style') == Community::DISABLED))) {
 			$nav['community'] = ['community', $this->l10n->t('Community'), '', $this->l10n->t('Conversations on this and other servers')];
 		}
 

@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -58,6 +58,8 @@ use Friendica\Database\Database;
 use Friendica\DI;
 use Friendica\Model\User;
 use Friendica\Network\HTTPClient\Client\HttpClientAccept;
+use Friendica\Network\HTTPClient\Client\HttpClientOptions;
+use Friendica\Network\HTTPClient\Client\HttpClientRequest;
 use Friendica\Network\HTTPException;
 use Friendica\Util\PidFile;
 
@@ -240,7 +242,7 @@ class ExAuth
 
 		$url = ($ssl ? 'https' : 'http') . '://' . $host . '/noscrape/' . $user;
 
-		$curlResult = DI::httpClient()->get($url, HttpClientAccept::JSON);
+		$curlResult = DI::httpClient()->get($url, HttpClientAccept::JSON, [HttpClientOptions::REQUEST => HttpClientRequest::CONTACTVERIFIER]);
 
 		if (!$curlResult->isSuccess()) {
 			return false;
@@ -250,7 +252,7 @@ class ExAuth
 			return false;
 		}
 
-		$json = @json_decode($curlResult->getBody());
+		$json = @json_decode($curlResult->getBodyString());
 		if (!is_object($json)) {
 			return false;
 		}

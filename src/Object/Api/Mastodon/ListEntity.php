@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -34,6 +34,8 @@ class ListEntity extends BaseDataTransferObject
 	protected $id;
 	/** @var string */
 	protected $title;
+	/** @var string */
+	protected $replies_policy;
 
 	/**
 	 * Creates an list record
@@ -42,9 +44,9 @@ class ListEntity extends BaseDataTransferObject
 	 * @param string $title
 	 * @throws \Friendica\Network\HTTPException\InternalServerErrorException
 	 */
-	public function __construct(int $id, string $title, string $policy)
+	public function __construct(string $id, string $title, string $policy)
 	{
-		$this->id             = (string)$id;
+		$this->id             = $id;
 		$this->title          = $title;
 		$this->replies_policy = $policy;
 	}

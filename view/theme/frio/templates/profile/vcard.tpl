@@ -70,12 +70,21 @@
 				</button>
 			</div>
 			{{/if}}
-                        {{if $profile.addr}}
-				<div id="mention-link-button">
-					<button type="button" id="mention-link" class="btn btn-labeled btn-primary" onclick="openWallMessage('compose/0?body={{if $profile.forum==1}}!{{else}}@{{/if}}{{$profile.addr}}')">
-					       <span class=""><i class="fa fa-pencil-square-o"></i></span>
-					       <span class="">{{$mention}}</span>
-				</div>
+            {{if $profile.addr}}
+			<div id="mention-link-button">
+				<button type="button" id="mention-link" class="btn btn-labeled btn-primary" onclick="openWallMessage('{{$mention_url}}')">
+					<span class=""><i class="fa fa-pencil-square-o"></i></span>
+					<span class="">{{$mention_label}}</span>
+				</button>
+			</div>
+			{{/if}}
+            {{if $network_label}}
+			<div id="showgroup-button">
+				<a id="showgroup" class="btn btn-labeled btn-primary" href="{{$network_url}}">
+					<span class=""><i class="fa fa-group"></i></span>
+					<span class="">{{$network_label}}</span>
+				</a>
+			</div>
 			{{/if}}
 		</div>
 		{{/if}}

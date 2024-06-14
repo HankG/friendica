@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -56,7 +56,8 @@
 			"push" => ["application-token", "push"],
 		],
 		"query" => "FROM `application-token`
-			INNER JOIN `application` ON `application-token`.`application-id` = `application`.`id`"
+			INNER JOIN `application` ON `application-token`.`application-id` = `application`.`id`
+			INNER JOIN `user` ON `user`.`uid` = `application-token`.`uid` AND `user`.`verified` AND NOT `user`.`blocked` AND NOT `user`.`account_removed` AND NOT `user`.`account_expired`"
 	],
 	"circle-member-view" => [
 		"fields" => [
@@ -86,6 +87,535 @@
 		"query" => "FROM `group_member`
 			INNER JOIN `contact` ON `group_member`.`contact-id` = `contact`.`id`
 			INNER JOIN `group` ON `group_member`.`gid` = `group`.`id`"
+	],
+	"post-counts-view" => [
+		"fields" => [
+			"uri-id" => ["post-counts", "uri-id"],
+			"vid" => ["post-counts", "vid"],
+			"verb" => ["verb", "name"],
+			"reaction" => ["post-counts", "reaction"],
+			"parent-uri-id" => ["post-counts", "parent-uri-id"],
+			"count" => ["post-counts", "count"],
+		],
+		"query" => "FROM `post-counts`
+			INNER JOIN `verb` ON `verb`.`id` = `post-counts`.`vid`"
+	],
+	"post-engagement-user-view" => [
+		"fields" => [
+			"uid" => ["post-thread-user", "uid"],
+			"uri-id" => ["post-engagement", "uri-id"],
+			"owner-id" => ["post-engagement", "owner-id"],
+			"media-type" => ["post-engagement", "media-type"],
+			"language" => ["post-engagement", "language"],
+			"searchtext" => ["post-engagement", "searchtext"],
+			"size" => ["post-engagement", "size"],
+			"commented" => ["post-thread-user", "commented"],
+			"received" => ["post-thread-user", "received"],
+			"created" => ["post-thread-user", "created"],
+			"network" => ["post-thread-user", "network"],
+			"restricted" => ["post-engagement", "language"],
+			"comments" => "0",
+			"activities" => "0",
+		],
+		"query" => "FROM `post-thread-user`
+			INNER JOIN `post-engagement` ON `post-engagement`.`uri-id` = `post-thread-user`.`uri-id`
+			INNER JOIN `post-user` ON `post-user`.`id` = `post-thread-user`.`post-user-id`
+			STRAIGHT_JOIN `contact` ON `contact`.`id` = `post-thread-user`.`contact-id`
+			STRAIGHT_JOIN `contact` AS `authorcontact` ON `authorcontact`.`id` = `post-thread-user`.`author-id`
+			STRAIGHT_JOIN `contact` AS `ownercontact` ON `ownercontact`.`id` = `post-thread-user`.`owner-id`
+			WHERE `post-user`.`visible` AND NOT `post-user`.`deleted`
+			AND (NOT `contact`.`readonly` AND NOT `contact`.`blocked` AND NOT `contact`.`pending`)
+			AND (`post-thread-user`.`hidden` IS NULL OR NOT `post-thread-user`.`hidden`)
+			AND NOT `authorcontact`.`blocked` AND NOT `ownercontact`.`blocked`
+			AND NOT EXISTS(SELECT `cid`  FROM `user-contact` WHERE `uid` = `post-thread-user`.`uid` AND `cid` IN (`authorcontact`.`id`, `ownercontact`.`id`) AND (`blocked` OR `ignored`))
+			AND NOT EXISTS(SELECT `gsid` FROM `user-gserver` WHERE `uid` = `post-thread-user`.`uid` AND `gsid` IN (`authorcontact`.`gsid`, `ownercontact`.`gsid`) AND `ignored`)"
+	],
+	"post-timeline-view" => [
+		"fields" => [
+			"uid" => ["post-user", "uid"],
+			"uri-id" => ["post-user", "uri-id"],
+			"gravity" => ["post-user", "gravity"],
+			"created" => ["post-user", "created"],
+			"edited" => ["post-user", "edited"],
+			"commented" => ["post-thread-user", "commented"],
+			"received" => ["post-user", "received"],
+			"changed" => ["post-thread-user", "changed"],
+			"private" => ["post-user", "private"],
+			"visible" => ["post-user", "visible"],
+			"deleted" => ["post-user", "deleted"],
+			"origin" => ["post-user", "origin"],
+			"global" => ["post-user", "global"],
+			"network" => ["post-user", "network"],
+			"protocol" => ["post-user", "protocol"],
+			"vid" => ["post-user", "vid"],
+			"contact-id" => ["post-user", "contact-id"],
+			"contact-blocked" => ["contact", "blocked"],
+			"contact-readonly" => ["contact", "readonly"],
+			"contact-pending" => ["contact", "pending"],
+			"contact-rel" => ["contact", "rel"],
+			"contact-uid" => ["contact", "uid"],
+			"self" => ["contact", "self"],
+			"author-id" => ["post-user", "author-id"],
+			"author-blocked" => ["author", "blocked"],
+			"author-hidden" => ["author", "hidden"],
+			"author-gsid" => ["author", "gsid"],
+			"owner-id" => ["post-user", "owner-id"],
+			"owner-blocked" => ["owner", "blocked"],
+			"owner-gsid" => ["owner", "gsid"],
+			"causer-id" => ["post-user", "causer-id"],
+			"causer-blocked" => ["causer", "blocked"],
+			"causer-gsid" => ["causer", "gsid"],
+		],
+		"query" => "FROM `post-user`
+			LEFT JOIN `post-thread-user` ON `post-thread-user`.`uri-id` = `post-user`.`parent-uri-id` AND `post-thread-user`.`uid` = `post-user`.`uid`
+			STRAIGHT_JOIN `contact` ON `contact`.`id` = `post-user`.`contact-id`
+			STRAIGHT_JOIN `contact` AS `author` ON `author`.`id` = `post-user`.`author-id`
+			STRAIGHT_JOIN `contact` AS `owner` ON `owner`.`id` = `post-user`.`owner-id`
+			LEFT JOIN `contact` AS `causer` ON `causer`.`id` = `post-user`.`causer-id`"
+	],
+	"post-timeline-origin-view" => [
+		"fields" => [
+			"uid" => ["post-origin", "uid"],
+			"uri-id" => ["post-origin", "uri-id"],
+			"gravity" => ["post-origin", "gravity"],
+			"created" => ["post-origin", "created"],
+			"edited" => ["post-user", "edited"],
+			"commented" => ["post-thread-user", "commented"],
+			"received" => ["post-origin", "received"],
+			"changed" => ["post-thread-user", "changed"],
+			"private" => ["post-origin", "private"],
+			"visible" => ["post-user", "visible"],
+			"deleted" => ["post-user", "deleted"],
+			"origin" => "true",
+			"global" => ["post-user", "global"],
+			"network" => ["post-user", "network"],
+			"protocol" => ["post-user", "protocol"],
+			"vid" => ["post-origin", "vid"],
+			"contact-id" => ["post-user", "contact-id"],
+			"contact-blocked" => ["contact", "blocked"],
+			"contact-readonly" => ["contact", "readonly"],
+			"contact-pending" => ["contact", "pending"],
+			"contact-rel" => ["contact", "rel"],
+			"contact-uid" => ["contact", "uid"],
+			"self" => ["contact", "self"],
+			"author-id" => ["post-user", "author-id"],
+			"author-blocked" => ["author", "blocked"],
+			"author-hidden" => ["author", "hidden"],
+			"author-gsid" => ["author", "gsid"],
+			"owner-id" => ["post-user", "owner-id"],
+			"owner-blocked" => ["owner", "blocked"],
+			"owner-gsid" => ["owner", "gsid"],
+			"causer-id" => ["post-user", "causer-id"],
+			"causer-blocked" => ["causer", "blocked"],
+			"causer-gsid" => ["causer", "gsid"],
+		],
+		"query" => "FROM `post-origin`
+			INNER JOIN `post-user` ON `post-user`.`id` = `post-origin`.`id`
+			LEFT JOIN `post-thread-user` ON `post-thread-user`.`uri-id` = `post-origin`.`parent-uri-id` AND `post-thread-user`.`uid` = `post-origin`.`uid`
+			STRAIGHT_JOIN `contact` ON `contact`.`id` = `post-user`.`contact-id`
+			STRAIGHT_JOIN `contact` AS `author` ON `author`.`id` = `post-user`.`author-id`
+			STRAIGHT_JOIN `contact` AS `owner` ON `owner`.`id` = `post-user`.`owner-id`
+			LEFT JOIN `contact` AS `causer` ON `causer`.`id` = `post-user`.`causer-id`"
+	],
+	"post-searchindex-user-view" => [
+		"fields" => [
+			"uid" => ["post-thread-user", "uid"],
+			"uri-id" => ["post-searchindex", "uri-id"],
+			"owner-id" => ["post-searchindex", "owner-id"],
+			"media-type" => ["post-searchindex", "media-type"],
+			"language" => ["post-searchindex", "language"],
+			"searchtext" => ["post-searchindex", "searchtext"],
+			"size" => ["post-searchindex", "size"],
+			"commented" => ["post-thread-user", "commented"],
+			"received" => ["post-thread-user", "received"],
+			"created" => ["post-thread-user", "created"],
+			"network" => ["post-thread-user", "network"],
+			"restricted" => ["post-searchindex", "language"],
+			"comments" => "0",
+			"activities" => "0",
+		],
+		"query" => "FROM `post-thread-user`
+			INNER JOIN `post-searchindex` ON `post-searchindex`.`uri-id` = `post-thread-user`.`uri-id`
+			INNER JOIN `post-user` ON `post-user`.`id` = `post-thread-user`.`post-user-id`
+			STRAIGHT_JOIN `contact` ON `contact`.`id` = `post-thread-user`.`contact-id`
+			STRAIGHT_JOIN `contact` AS `authorcontact` ON `authorcontact`.`id` = `post-thread-user`.`author-id`
+			STRAIGHT_JOIN `contact` AS `ownercontact` ON `ownercontact`.`id` = `post-thread-user`.`owner-id`
+			WHERE `post-user`.`visible` AND NOT `post-user`.`deleted`
+			AND (NOT `contact`.`readonly` AND NOT `contact`.`blocked` AND NOT `contact`.`pending`)
+			AND (`post-thread-user`.`hidden` IS NULL OR NOT `post-thread-user`.`hidden`)
+			AND NOT `authorcontact`.`blocked` AND NOT `ownercontact`.`blocked`
+			AND NOT EXISTS(SELECT `cid`  FROM `user-contact` WHERE `uid` = `post-thread-user`.`uid` AND `cid` IN (`authorcontact`.`id`, `ownercontact`.`id`) AND (`blocked` OR `ignored`))
+			AND NOT EXISTS(SELECT `gsid` FROM `user-gserver` WHERE `uid` = `post-thread-user`.`uid` AND `gsid` IN (`authorcontact`.`gsid`, `ownercontact`.`gsid`) AND `ignored`)"
+	],
+	"post-origin-view" => [
+		"fields" => [
+			"id" => ["post-origin", "id"],
+			"post-user-id" => ["post-origin", "id"],
+			"uid" => ["post-origin", "uid"],
+			"parent" => ["post-thread-user", "post-user-id"],
+			"uri" => ["item-uri", "uri"],
+			"uri-id" => ["post-origin", "uri-id"],
+			"parent-uri" => ["parent-item-uri", "uri"],
+			"parent-uri-id" => ["post-origin", "parent-uri-id"],
+			"thr-parent" => ["thr-parent-item-uri", "uri"],
+			"thr-parent-id" => ["post-origin", "thr-parent-id"],
+			"conversation" => ["conversation-item-uri", "uri"],
+			"conversation-id" => ["post-thread-user", "conversation-id"],
+			"quote-uri" => ["quote-item-uri", "uri"],
+			"quote-uri-id" => ["post-content", "quote-uri-id"],
+			"guid" => ["item-uri", "guid"],
+			"wall" => ["post-origin", "wall"],
+			"gravity" => ["post-origin", "gravity"],
+			"extid" => ["external-item-uri", "uri"],
+			"external-id" => ["post-user", "external-id"],
+			"created" => ["post-origin", "created"],
+			"edited" => ["post-user", "edited"],
+			"commented" => ["post-thread-user", "commented"],
+			"received" => ["post-origin", "received"],
+			"changed" => ["post-thread-user", "changed"],
+			"post-type" => ["post-user", "post-type"],
+			"post-reason" => ["post-user", "post-reason"],
+			"private" => ["post-origin", "private"],
+			"pubmail" => ["post-thread-user", "pubmail"],
+			"visible" => ["post-user", "visible"],
+			"starred" => ["post-thread-user", "starred"],
+			"unseen" => ["post-user", "unseen"],
+			"deleted" => ["post-user", "deleted"],
+			"origin" => "true",
+			"parent-origin" => ["post-thread-user", "origin"],
+			"mention" => ["post-thread-user", "mention"],
+			"global" => ["post-user", "global"],
+			"featured" => "EXISTS(SELECT `type` FROM `post-collection` WHERE `type` = 0 AND `uri-id` = `post-origin`.`uri-id`)",
+			"network" => ["post-user", "network"],
+			"protocol" => ["post-user", "protocol"],
+			"vid" => ["post-origin", "vid"],
+			"psid" => ["post-user", "psid"],
+			"verb" => "IF (`post-origin`.`vid` IS NULL, '', `verb`.`name`)",
+			"title" => ["post-content", "title"],
+			"content-warning" => ["post-content", "content-warning"],
+			"raw-body" => ["post-content", "raw-body"],
+			"body" => "IFNULL (`post-content`.`body`, '')",
+			"rendered-hash" => ["post-content", "rendered-hash"],
+			"rendered-html" => ["post-content", "rendered-html"],
+			"language" => ["post-content", "language"],
+			"plink" => ["post-content", "plink"],
+			"location" => ["post-content", "location"],
+			"coord" => ["post-content", "coord"],
+			"sensitive" => ["post-content", "sensitive"],
+			"restrictions" => ["post-user", "restrictions"],
+			"app" => ["post-content", "app"],
+			"object-type" => ["post-content", "object-type"],
+			"object" => ["post-content", "object"],
+			"target-type" => ["post-content", "target-type"],
+			"target" => ["post-content", "target"],
+			"resource-id" => ["post-content", "resource-id"],
+			"contact-id" => ["post-user", "contact-id"],
+			"contact-uri-id" => ["contact", "uri-id"],
+			"contact-link" => ["contact", "url"],
+			"contact-addr" => ["contact", "addr"],
+			"contact-name" => ["contact", "name"],
+			"contact-nick" => ["contact", "nick"],
+			"contact-avatar" => ["contact", "thumb"],
+			"contact-network" => ["contact", "network"],
+			"contact-blocked" => ["contact", "blocked"],
+			"contact-hidden" => ["contact", "hidden"],
+			"contact-readonly" => ["contact", "readonly"],
+			"contact-archive" => ["contact", "archive"],
+			"contact-pending" => ["contact", "pending"],
+			"contact-rel" => ["contact", "rel"],
+			"contact-uid" => ["contact", "uid"],
+			"contact-contact-type" => ["contact", "contact-type"],
+			"writable" => "IF (`post-user`.`network` IN ('apub', 'dfrn', 'dspr', 'stat'), true, `contact`.`writable`)",
+			"self" => ["contact", "self"],
+			"cid" => ["contact", "id"],
+			"alias" => ["contact", "alias"],
+			"photo" => ["contact", "photo"],
+			"name-date" => ["contact", "name-date"],
+			"uri-date" => ["contact", "uri-date"],
+			"avatar-date" => ["contact", "avatar-date"],
+			"thumb" => ["contact", "thumb"],
+			"author-id" => ["post-user", "author-id"],
+			"author-uri-id" => ["author", "uri-id"],
+			"author-link" => ["author", "url"],
+			"author-addr" => ["author", "addr"],
+			"author-name" => "IF (`contact`.`url` = `author`.`url` AND `contact`.`name` != '', `contact`.`name`, `author`.`name`)",
+			"author-nick" => ["author", "nick"],
+			"author-alias" => ["author", "alias"],
+			"author-avatar" => "IF (`contact`.`url` = `author`.`url` AND `contact`.`thumb` != '', `contact`.`thumb`, `author`.`thumb`)",
+			"author-network" => ["author", "network"],
+			"author-blocked" => ["author", "blocked"],
+			"author-hidden" => ["author", "hidden"],
+			"author-updated" => ["author", "updated"],
+			"author-contact-type" => ["author", "contact-type"],
+			"author-gsid" => ["author", "gsid"],
+			"author-baseurl" => ["author", "baseurl"],
+			"owner-id" => ["post-user", "owner-id"],
+			"owner-uri-id" => ["owner", "uri-id"],
+			"owner-link" => ["owner", "url"],
+			"owner-addr" => ["owner", "addr"],
+			"owner-name" => "IF (`contact`.`url` = `owner`.`url` AND `contact`.`name` != '', `contact`.`name`, `owner`.`name`)",
+			"owner-nick" => ["owner", "nick"],
+			"owner-alias" => ["owner", "alias"],
+			"owner-avatar" => "IF (`contact`.`url` = `owner`.`url` AND `contact`.`thumb` != '', `contact`.`thumb`, `owner`.`thumb`)",
+			"owner-network" => ["owner", "network"],
+			"owner-blocked" => ["owner", "blocked"],
+			"owner-hidden" => ["owner", "hidden"],
+			"owner-updated" => ["owner", "updated"],
+			"owner-gsid" => ["owner", "gsid"],
+			"owner-contact-type" => ["owner", "contact-type"],
+			"causer-id" => ["post-user", "causer-id"],
+			"causer-uri-id" => ["causer", "uri-id"],
+			"causer-link" => ["causer", "url"],
+			"causer-addr" => ["causer", "addr"],
+			"causer-name" => ["causer", "name"],
+			"causer-nick" => ["causer", "nick"],
+			"causer-alias" => ["causer", "alias"],
+			"causer-avatar" => ["causer", "thumb"],
+			"causer-network" => ["causer", "network"],
+			"causer-blocked" => ["causer", "blocked"],
+			"causer-hidden" => ["causer", "hidden"],
+			"causer-gsid" => ["causer", "gsid"],
+			"causer-contact-type" => ["causer", "contact-type"],
+			"postopts" => ["post-delivery-data", "postopts"],
+			"inform" => ["post-delivery-data", "inform"],
+			"delivery_queue_count" => ["post-delivery-data", "queue_count"],
+			"delivery_queue_done" => ["post-delivery-data", "queue_done"],
+			"delivery_queue_failed" => ["post-delivery-data", "queue_failed"],
+			"allow_cid" => "IF (`post-user`.`psid` IS NULL, '', `permissionset`.`allow_cid`)",
+			"allow_gid" => "IF (`post-user`.`psid` IS NULL, '', `permissionset`.`allow_gid`)",
+			"deny_cid" => "IF (`post-user`.`psid` IS NULL, '', `permissionset`.`deny_cid`)",
+			"deny_gid" => "IF (`post-user`.`psid` IS NULL, '', `permissionset`.`deny_gid`)",
+			"event-id" => ["post-user", "event-id"],
+			"event-created" => ["event", "created"],
+			"event-edited" => ["event", "edited"],
+			"event-start" => ["event", "start"],
+			"event-finish" => ["event", "finish"],
+			"event-summary" => ["event", "summary"],
+			"event-desc" => ["event", "desc"],
+			"event-location" => ["event", "location"],
+			"event-type" => ["event", "type"],
+			"event-nofinish" => ["event", "nofinish"],
+			"event-ignore" => ["event", "ignore"],
+			"question-id" => ["post-question", "id"],
+			"question-multiple" => ["post-question", "multiple"],
+			"question-voters" => ["post-question", "voters"],
+			"question-end-time" => ["post-question", "end-time"],
+			"has-categories" => "EXISTS(SELECT `uri-id` FROM `post-category` WHERE `post-category`.`uri-id` = `post-origin`.`uri-id` AND `post-category`.`uid` = `post-origin`.`uid`)",
+			"has-media" => "EXISTS(SELECT `id` FROM `post-media` WHERE `post-media`.`uri-id` = `post-origin`.`uri-id`)",
+			"signed_text" => ["diaspora-interaction", "interaction"],
+			"parent-guid" => ["parent-item-uri", "guid"],
+			"parent-network" => ["post-thread-user", "network"],
+			"parent-author-id" => ["post-thread-user", "author-id"],
+			"parent-author-link" => ["parent-post-author", "url"],
+			"parent-author-name" => ["parent-post-author", "name"],
+			"parent-author-nick" => ["parent-post-author", "nick"],
+			"parent-author-network" => ["parent-post-author", "network"],
+		],
+		"query" => "FROM `post-origin`
+			INNER JOIN `post-user` ON `post-user`.`id` = `post-origin`.`id`
+			INNER JOIN `post-thread-user` ON `post-thread-user`.`uri-id` = `post-origin`.`parent-uri-id` AND `post-thread-user`.`uid` = `post-origin`.`uid`
+			STRAIGHT_JOIN `contact` ON `contact`.`id` = `post-user`.`contact-id`
+			STRAIGHT_JOIN `contact` AS `author` ON `author`.`id` = `post-user`.`author-id`
+			STRAIGHT_JOIN `contact` AS `owner` ON `owner`.`id` = `post-user`.`owner-id`
+			LEFT JOIN `contact` AS `causer` ON `causer`.`id` = `post-user`.`causer-id`
+			LEFT JOIN `item-uri` ON `item-uri`.`id` = `post-origin`.`uri-id`
+			LEFT JOIN `item-uri` AS `thr-parent-item-uri` ON `thr-parent-item-uri`.`id` = `post-origin`.`thr-parent-id`
+			LEFT JOIN `item-uri` AS `parent-item-uri` ON `parent-item-uri`.`id` = `post-origin`.`parent-uri-id`
+			LEFT JOIN `item-uri` AS `conversation-item-uri` ON `conversation-item-uri`.`id` = `post-thread-user`.`conversation-id`
+			LEFT JOIN `item-uri` AS `external-item-uri` ON `external-item-uri`.`id` = `post-user`.`external-id`
+			LEFT JOIN `verb` ON `verb`.`id` = `post-origin`.`vid`
+			LEFT JOIN `event` ON `event`.`id` = `post-user`.`event-id`
+			LEFT JOIN `diaspora-interaction` ON `diaspora-interaction`.`uri-id` = `post-origin`.`uri-id`
+			LEFT JOIN `post-content` ON `post-content`.`uri-id` = `post-origin`.`uri-id`
+			LEFT JOIN `item-uri` AS `quote-item-uri` ON `quote-item-uri`.`id` = `post-content`.`quote-uri-id`
+			LEFT JOIN `post-delivery-data` ON `post-delivery-data`.`uri-id` = `post-origin`.`uri-id`
+			LEFT JOIN `post-question` ON `post-question`.`uri-id` = `post-origin`.`uri-id`
+			LEFT JOIN `permissionset` ON `permissionset`.`id` = `post-user`.`psid`
+			LEFT JOIN `contact` AS `parent-post-author` ON `parent-post-author`.`id` = `post-thread-user`.`author-id`"
+	],
+	"post-thread-origin-view" => [
+		"fields" => [
+			"id" => ["post-origin", "id"],
+			"post-user-id" => ["post-origin", "id"],
+			"uid" => ["post-origin", "uid"],
+			"parent" => ["post-thread-user", "post-user-id"],
+			"uri" => ["item-uri", "uri"],
+			"uri-id" => ["post-origin", "uri-id"],
+			"parent-uri" => ["parent-item-uri", "uri"],
+			"parent-uri-id" => ["post-origin", "parent-uri-id"],
+			"thr-parent" => ["thr-parent-item-uri", "uri"],
+			"thr-parent-id" => ["post-origin", "thr-parent-id"],
+			"conversation" => ["conversation-item-uri", "uri"],
+			"conversation-id" => ["post-thread-user", "conversation-id"],
+			"quote-uri" => ["quote-item-uri", "uri"],
+			"quote-uri-id" => ["post-content", "quote-uri-id"],
+			"guid" => ["item-uri", "guid"],
+			"wall" => ["post-origin", "wall"],
+			"gravity" => ["post-origin", "gravity"],
+			"extid" => ["external-item-uri", "uri"],
+			"external-id" => ["post-user", "external-id"],
+			"created" => ["post-origin", "created"],
+			"edited" => ["post-user", "edited"],
+			"commented" => ["post-thread-user", "commented"],
+			"received" => ["post-origin", "received"],
+			"changed" => ["post-thread-user", "changed"],
+			"post-type" => ["post-user", "post-type"],
+			"post-reason" => ["post-user", "post-reason"],
+			"private" => ["post-origin", "private"],
+			"pubmail" => ["post-thread-user", "pubmail"],
+			"ignored" => ["post-thread-user", "ignored"],
+			"visible" => ["post-user", "visible"],
+			"starred" => ["post-thread-user", "starred"],
+			"unseen" => ["post-thread-user", "unseen"],
+			"deleted" => ["post-user", "deleted"],
+			"origin" => "true",
+			"mention" => ["post-thread-user", "mention"],
+			"global" => ["post-user", "global"],
+			"featured" => "EXISTS(SELECT `type` FROM `post-collection` WHERE `type` = 0 AND `uri-id` = `post-thread-user`.`uri-id`)",
+			"network" => ["post-thread-user", "network"],
+			"vid" => ["post-origin", "vid"],
+			"psid" => ["post-thread-user", "psid"],
+			"verb" => "IF (`post-origin`.`vid` IS NULL, '', `verb`.`name`)",
+			"title" => ["post-content", "title"],
+			"content-warning" => ["post-content", "content-warning"],
+			"raw-body" => ["post-content", "raw-body"],
+			"body" => ["post-content", "body"],
+			"rendered-hash" => ["post-content", "rendered-hash"],
+			"rendered-html" => ["post-content", "rendered-html"],
+			"language" => ["post-content", "language"],
+			"plink" => ["post-content", "plink"],
+			"location" => ["post-content", "location"],
+			"coord" => ["post-content", "coord"],
+			"sensitive" => ["post-content", "sensitive"],
+			"restrictions" => ["post-user", "restrictions"],
+			"app" => ["post-content", "app"],
+			"object-type" => ["post-content", "object-type"],
+			"object" => ["post-content", "object"],
+			"target-type" => ["post-content", "target-type"],
+			"target" => ["post-content", "target"],
+			"resource-id" => ["post-content", "resource-id"],
+			"contact-id" => ["post-thread-user", "contact-id"],
+			"contact-uri-id" => ["contact", "uri-id"],
+			"contact-link" => ["contact", "url"],
+			"contact-addr" => ["contact", "addr"],
+			"contact-name" => ["contact", "name"],
+			"contact-nick" => ["contact", "nick"],
+			"contact-avatar" => ["contact", "thumb"],
+			"contact-network" => ["contact", "network"],
+			"contact-blocked" => ["contact", "blocked"],
+			"contact-hidden" => ["contact", "hidden"],
+			"contact-readonly" => ["contact", "readonly"],
+			"contact-archive" => ["contact", "archive"],
+			"contact-pending" => ["contact", "pending"],
+			"contact-rel" => ["contact", "rel"],
+			"contact-uid" => ["contact", "uid"],
+			"contact-gsid" => ["contact", "gsid"],
+			"contact-contact-type" => ["contact", "contact-type"],
+			"writable" => "IF (`post-user`.`network` IN ('apub', 'dfrn', 'dspr', 'stat'), true, `contact`.`writable`)",
+			"self" => ["contact", "self"],
+			"cid" => ["contact", "id"],
+			"alias" => ["contact", "alias"],
+			"photo" => ["contact", "photo"],
+			"name-date" => ["contact", "name-date"],
+			"uri-date" => ["contact", "uri-date"],
+			"avatar-date" => ["contact", "avatar-date"],
+			"thumb" => ["contact", "thumb"],
+			"author-id" => ["post-thread-user", "author-id"],
+			"author-uri-id" => ["author", "uri-id"],
+			"author-link" => ["author", "url"],
+			"author-addr" => ["author", "addr"],
+			"author-name" => "IF (`contact`.`url` = `author`.`url` AND `contact`.`name` != '', `contact`.`name`, `author`.`name`)",
+			"author-nick" => ["author", "nick"],
+			"author-alias" => ["author", "alias"],
+			"author-avatar" => "IF (`contact`.`url` = `author`.`url` AND `contact`.`thumb` != '', `contact`.`thumb`, `author`.`thumb`)",
+			"author-network" => ["author", "network"],
+			"author-blocked" => ["author", "blocked"],
+			"author-hidden" => ["author", "hidden"],
+			"author-updated" => ["author", "updated"],
+			"author-contact-type" => ["author", "contact-type"],
+			"author-gsid" => ["author", "gsid"],
+			"owner-id" => ["post-thread-user", "owner-id"],
+			"owner-uri-id" => ["owner", "uri-id"],
+			"owner-link" => ["owner", "url"],
+			"owner-addr" => ["owner", "addr"],
+			"owner-name" => "IF (`contact`.`url` = `owner`.`url` AND `contact`.`name` != '', `contact`.`name`, `owner`.`name`)",
+			"owner-nick" => ["owner", "nick"],
+			"owner-alias" => ["owner", "alias"],
+			"owner-avatar" => "IF (`contact`.`url` = `owner`.`url` AND `contact`.`thumb` != '', `contact`.`thumb`, `owner`.`thumb`)",
+			"owner-network" => ["owner", "network"],
+			"owner-blocked" => ["owner", "blocked"],
+			"owner-hidden" => ["owner", "hidden"],
+			"owner-updated" => ["owner", "updated"],
+			"owner-gsid" => ["owner", "gsid"],
+			"owner-contact-type" => ["owner", "contact-type"],
+			"causer-id" => ["post-thread-user", "causer-id"],
+			"causer-uri-id" => ["causer", "uri-id"],
+			"causer-link" => ["causer", "url"],
+			"causer-addr" => ["causer", "addr"],
+			"causer-name" => ["causer", "name"],
+			"causer-nick" => ["causer", "nick"],
+			"causer-alias" => ["causer", "alias"],
+			"causer-avatar" => ["causer", "thumb"],
+			"causer-network" => ["causer", "network"],
+			"causer-blocked" => ["causer", "blocked"],
+			"causer-hidden" => ["causer", "hidden"],
+			"causer-gsid" => ["causer", "gsid"],
+			"causer-contact-type" => ["causer", "contact-type"],
+			"postopts" => ["post-delivery-data", "postopts"],
+			"inform" => ["post-delivery-data", "inform"],
+			"delivery_queue_count" => ["post-delivery-data", "queue_count"],
+			"delivery_queue_done" => ["post-delivery-data", "queue_done"],
+			"delivery_queue_failed" => ["post-delivery-data", "queue_failed"],
+			"allow_cid" => "IF (`post-thread-user`.`psid` IS NULL, '', `permissionset`.`allow_cid`)",
+			"allow_gid" => "IF (`post-thread-user`.`psid` IS NULL, '', `permissionset`.`allow_gid`)",
+			"deny_cid" => "IF (`post-thread-user`.`psid` IS NULL, '', `permissionset`.`deny_cid`)",
+			"deny_gid" => "IF (`post-thread-user`.`psid` IS NULL, '', `permissionset`.`deny_gid`)",
+			"event-id" => ["post-user", "event-id"],
+			"event-created" => ["event", "created"],
+			"event-edited" => ["event", "edited"],
+			"event-start" => ["event", "start"],
+			"event-finish" => ["event", "finish"],
+			"event-summary" => ["event", "summary"],
+			"event-desc" => ["event", "desc"],
+			"event-location" => ["event", "location"],
+			"event-type" => ["event", "type"],
+			"event-nofinish" => ["event", "nofinish"],
+			"event-ignore" => ["event", "ignore"],
+			"question-id" => ["post-question", "id"],
+			"question-multiple" => ["post-question", "multiple"],
+			"question-voters" => ["post-question", "voters"],
+			"question-end-time" => ["post-question", "end-time"],
+			"has-categories" => "EXISTS(SELECT `uri-id` FROM `post-category` WHERE `post-category`.`uri-id` = `post-thread-user`.`uri-id` AND `post-category`.`uid` = `post-thread-user`.`uid`)",
+			"has-media" => "EXISTS(SELECT `id` FROM `post-media` WHERE `post-media`.`uri-id` = `post-thread-user`.`uri-id`)",
+			"signed_text" => ["diaspora-interaction", "interaction"],
+			"parent-guid" => ["parent-item-uri", "guid"],
+			"parent-network" => ["post-thread-user", "network"],
+			"parent-author-id" => ["post-thread-user", "author-id"],
+			"parent-author-link" => ["author", "url"],
+			"parent-author-name" => ["author", "name"],
+			"parent-author-nick" => ["author", "nick"],
+			"parent-author-network" => ["author", "network"],
+		],
+		"query" => "FROM `post-origin`
+			INNER JOIN `post-thread-user` ON `post-thread-user`.`uri-id` = `post-origin`.`uri-id` AND `post-thread-user`.`uid` = `post-origin`.`uid`
+			INNER JOIN `post-user` ON `post-user`.`id` = `post-origin`.`id`
+			STRAIGHT_JOIN `contact` ON `contact`.`id` = `post-thread-user`.`contact-id`
+			STRAIGHT_JOIN `contact` AS `author` ON `author`.`id` = `post-thread-user`.`author-id`
+			STRAIGHT_JOIN `contact` AS `owner` ON `owner`.`id` = `post-thread-user`.`owner-id`
+			LEFT JOIN `contact` AS `causer` ON `causer`.`id` = `post-thread-user`.`causer-id`
+			LEFT JOIN `item-uri` ON `item-uri`.`id` = `post-origin`.`uri-id`
+			LEFT JOIN `item-uri` AS `thr-parent-item-uri` ON `thr-parent-item-uri`.`id` = `post-origin`.`thr-parent-id`
+			LEFT JOIN `item-uri` AS `parent-item-uri` ON `parent-item-uri`.`id` = `post-origin`.`parent-uri-id`
+			LEFT JOIN `item-uri` AS `conversation-item-uri` ON `conversation-item-uri`.`id` = `post-thread-user`.`conversation-id`
+			LEFT JOIN `item-uri` AS `external-item-uri` ON `external-item-uri`.`id` = `post-user`.`external-id`
+			LEFT JOIN `verb` ON `verb`.`id` = `post-origin`.`vid`
+			LEFT JOIN `event` ON `event`.`id` = `post-user`.`event-id`
+			LEFT JOIN `diaspora-interaction` ON `diaspora-interaction`.`uri-id` = `post-origin`.`uri-id`
+			LEFT JOIN `post-content` ON `post-content`.`uri-id` = `post-origin`.`uri-id`
+			LEFT JOIN `item-uri` AS `quote-item-uri` ON `quote-item-uri`.`id` = `post-content`.`quote-uri-id`
+			LEFT JOIN `post-delivery-data` ON `post-delivery-data`.`uri-id` = `post-origin`.`uri-id`
+			LEFT JOIN `post-question` ON `post-question`.`uri-id` = `post-origin`.`uri-id`
+			LEFT JOIN `permissionset` ON `permissionset`.`id` = `post-thread-user`.`psid`"
 	],
 	"post-user-view" => [
 		"fields" => [
@@ -141,6 +671,8 @@
 			"plink" => ["post-content", "plink"],
 			"location" => ["post-content", "location"],
 			"coord" => ["post-content", "coord"],
+			"sensitive" => ["post-content", "sensitive"],
+			"restrictions" => ["post-user", "restrictions"],
 			"app" => ["post-content", "app"],
 			"object-type" => ["post-content", "object-type"],
 			"object" => ["post-content", "object"],
@@ -184,6 +716,7 @@
 			"author-blocked" => ["author", "blocked"],
 			"author-hidden" => ["author", "hidden"],
 			"author-updated" => ["author", "updated"],
+			"author-contact-type" => ["author", "contact-type"],
 			"author-gsid" => ["author", "gsid"],
 			"author-baseurl" => ["author", "baseurl"],
 			"owner-id" => ["post-user", "owner-id"],
@@ -322,6 +855,8 @@
 			"plink" => ["post-content", "plink"],
 			"location" => ["post-content", "location"],
 			"coord" => ["post-content", "coord"],
+			"sensitive" => ["post-content", "sensitive"],
+			"restrictions" => ["post-user", "restrictions"],
 			"app" => ["post-content", "app"],
 			"object-type" => ["post-content", "object-type"],
 			"object" => ["post-content", "object"],
@@ -366,6 +901,7 @@
 			"author-blocked" => ["author", "blocked"],
 			"author-hidden" => ["author", "hidden"],
 			"author-updated" => ["author", "updated"],
+			"author-contact-type" => ["author", "contact-type"],
 			"author-gsid" => ["author", "gsid"],
 			"owner-id" => ["post-thread-user", "owner-id"],
 			"owner-uri-id" => ["owner", "uri-id"],
@@ -489,6 +1025,7 @@
 			"plink" => ["post-content", "plink"],
 			"location" => ["post-content", "location"],
 			"coord" => ["post-content", "coord"],
+			"sensitive" => ["post-content", "sensitive"],
 			"app" => ["post-content", "app"],
 			"object-type" => ["post-content", "object-type"],
 			"object" => ["post-content", "object"],
@@ -532,6 +1069,7 @@
 			"author-blocked" => ["author", "blocked"],
 			"author-hidden" => ["author", "hidden"],
 			"author-updated" => ["author", "updated"],
+			"author-contact-type" => ["author", "contact-type"],
 			"author-gsid" => ["author", "gsid"],
 			"owner-id" => ["post", "owner-id"],
 			"owner-uri-id" => ["owner", "uri-id"],
@@ -632,6 +1170,7 @@
 			"plink" => ["post-content", "plink"],
 			"location" => ["post-content", "location"],
 			"coord" => ["post-content", "coord"],
+			"sensitive" => ["post-content", "sensitive"],
 			"app" => ["post-content", "app"],
 			"object-type" => ["post-content", "object-type"],
 			"object" => ["post-content", "object"],
@@ -675,6 +1214,7 @@
 			"author-blocked" => ["author", "blocked"],
 			"author-hidden" => ["author", "hidden"],
 			"author-updated" => ["author", "updated"],
+			"author-contact-type" => ["author", "contact-type"],
 			"author-gsid" => ["author", "gsid"],
 			"owner-id" => ["post-thread", "owner-id"],
 			"owner-uri-id" => ["owner", "uri-id"],
@@ -797,34 +1337,6 @@
 			LEFT JOIN `tag` ON `post-tag`.`tid` = `tag`.`id`
 			LEFT JOIN `contact` ON `post-tag`.`cid` = `contact`.`id`"
 	],
-	"network-item-view" => [
-		"fields" => [
-			"uri-id" => ["post-user", "uri-id"],
-			"parent" => ["post-thread-user", "post-user-id"],
-			"received" => ["post-user", "received"],
-			"commented" => ["post-thread-user", "commented"],
-			"created" => ["post-user", "created"],
-			"uid" => ["post-user", "uid"],
-			"starred" => ["post-thread-user", "starred"],
-			"mention" => ["post-thread-user", "mention"],
-			"network" => ["post-user", "network"],
-			"unseen" => ["post-user", "unseen"],
-			"gravity" => ["post-user", "gravity"],
-			"contact-id" => ["post-user", "contact-id"],
-			"contact-type" => ["ownercontact", "contact-type"],
-		],
-		"query" => "FROM `post-user`
-			INNER JOIN `post-thread-user` ON `post-thread-user`.`uri-id` = `post-user`.`parent-uri-id` AND `post-thread-user`.`uid` = `post-user`.`uid`
-			STRAIGHT_JOIN `contact` ON `contact`.`id` = `post-thread-user`.`contact-id`
-			STRAIGHT_JOIN `contact` AS `authorcontact` ON `authorcontact`.`id` = `post-thread-user`.`author-id`
-			STRAIGHT_JOIN `contact` AS `ownercontact` ON `ownercontact`.`id` = `post-thread-user`.`owner-id`
-			WHERE `post-user`.`visible` AND NOT `post-user`.`deleted`
-			AND (NOT `contact`.`readonly` AND NOT `contact`.`blocked` AND NOT `contact`.`pending`)
-			AND (`post-user`.`hidden` IS NULL OR NOT `post-user`.`hidden`)
-			AND NOT `authorcontact`.`blocked` AND NOT `ownercontact`.`blocked`
-			AND NOT EXISTS(SELECT `cid`    FROM `user-contact` WHERE `uid` = `post-thread-user`.`uid` AND `cid` IN (`authorcontact`.`id`, `ownercontact`.`id`) AND (`blocked` OR `ignored`))
-			AND NOT EXISTS(SELECT `gsid`   FROM `user-gserver` WHERE `uid` = `post-thread-user`.`uid` AND `gsid` IN (`authorcontact`.`gsid`, `ownercontact`.`gsid`) AND `ignored`)"
-	],
 	"network-thread-view" => [
 		"fields" => [
 			"uri-id" => ["post-thread-user", "uri-id"],
@@ -848,8 +1360,34 @@
 			AND (NOT `contact`.`readonly` AND NOT `contact`.`blocked` AND NOT `contact`.`pending`)
 			AND (`post-thread-user`.`hidden` IS NULL OR NOT `post-thread-user`.`hidden`)
 			AND NOT `authorcontact`.`blocked` AND NOT `ownercontact`.`blocked`
-			AND NOT EXISTS(SELECT `cid`    FROM `user-contact` WHERE `uid` = `post-thread-user`.`uid` AND `cid` IN (`authorcontact`.`id`, `ownercontact`.`id`) AND (`blocked` OR `ignored`))
-			AND NOT EXISTS(SELECT `gsid`   FROM `user-gserver` WHERE `uid` = `post-thread-user`.`uid` AND `gsid` IN (`authorcontact`.`gsid`, `ownercontact`.`gsid`) AND `ignored`)"
+			AND NOT EXISTS(SELECT `cid`  FROM `user-contact` WHERE `uid` = `post-thread-user`.`uid` AND `cid` IN (`post-thread-user`.`author-id`, `post-thread-user`.`owner-id`, `post-thread-user`.`causer-id`) AND (`blocked` OR `ignored` OR `channel-only`))
+			AND NOT EXISTS(SELECT `gsid` FROM `user-gserver` WHERE `uid` = `post-thread-user`.`uid` AND `gsid` IN (`authorcontact`.`gsid`, `ownercontact`.`gsid`) AND `ignored`)"
+	],
+	"network-thread-circle-view" => [
+		"fields" => [
+			"uri-id" => ["post-thread-user", "uri-id"],
+			"parent" => ["post-thread-user", "post-user-id"],
+			"received" => ["post-thread-user", "received"],
+			"commented" => ["post-thread-user", "commented"],
+			"created" => ["post-thread-user", "created"],
+			"uid" => ["post-thread-user", "uid"],
+			"starred" => ["post-thread-user", "starred"],
+			"mention" => ["post-thread-user", "mention"],
+			"network" => ["post-thread-user", "network"],
+			"contact-id" => ["post-thread-user", "contact-id"],
+			"contact-type" => ["ownercontact", "contact-type"],
+		],
+		"query" => "FROM `post-thread-user`
+			INNER JOIN `post-user` ON `post-user`.`id` = `post-thread-user`.`post-user-id`
+			STRAIGHT_JOIN `contact` ON `contact`.`id` = `post-thread-user`.`contact-id`
+			STRAIGHT_JOIN `contact` AS `authorcontact` ON `authorcontact`.`id` = `post-thread-user`.`author-id`
+			STRAIGHT_JOIN `contact` AS `ownercontact` ON `ownercontact`.`id` = `post-thread-user`.`owner-id`
+			WHERE `post-user`.`visible` AND NOT `post-user`.`deleted`
+			AND (NOT `contact`.`readonly` AND NOT `contact`.`blocked` AND NOT `contact`.`pending`)
+			AND (`post-thread-user`.`hidden` IS NULL OR NOT `post-thread-user`.`hidden`)
+			AND NOT `authorcontact`.`blocked` AND NOT `ownercontact`.`blocked`
+			AND NOT EXISTS(SELECT `cid`  FROM `user-contact` WHERE `uid` = `post-thread-user`.`uid` AND `cid` IN (`post-thread-user`.`author-id`, `post-thread-user`.`owner-id`, `post-thread-user`.`causer-id`) AND (`blocked` OR `ignored`))
+			AND NOT EXISTS(SELECT `gsid` FROM `user-gserver` WHERE `uid` = `post-thread-user`.`uid` AND `gsid` IN (`authorcontact`.`gsid`, `ownercontact`.`gsid`) AND `ignored`)"
 	],
 	"owner-view" => [
 		"fields" => [
@@ -943,8 +1481,6 @@
 			"blockwall" => ["user", "blockwall"],
 			"hidewall" => ["user", "hidewall"],
 			"blocktags" => ["user", "blocktags"],
-			"unkmail" => ["user", "unkmail"],
-			"cntunkmail" => ["user", "cntunkmail"],
 			"notify-flags" => ["user", "notify-flags"],
 			"page-flags" => ["user", "page-flags"],
 			"account-type" => ["user", "account-type"],

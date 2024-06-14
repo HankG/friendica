@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -188,7 +188,7 @@ class Display extends BaseModule
 			$author = Contact::getById($item['author-id']);
 		}
 
-		if (Network::isLocalLink($author['url'])) {
+		if ($this->baseUrl->isLocalUrl($author['url'])) {
 			Profile::load($this->app, $author['nick'], false);
 		} else {
 			$this->page['aside'] = Widget\VCard::getHTML($author);

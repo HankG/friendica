@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -28,6 +28,7 @@ use Friendica\Content\Post\Entity\PostMedia;
 use Friendica\Content\Text\BBCode;
 use Friendica\Content\Text\HTML;
 use Friendica\Core\Hook;
+use Friendica\Core\L10n;
 use Friendica\Core\Logger;
 use Friendica\Core\Protocol;
 use Friendica\Core\Renderer;
@@ -36,6 +37,9 @@ use Friendica\Core\Worker;
 use Friendica\Database\DBA;
 use Friendica\DI;
 use Friendica\Model\Post\Category;
+use Friendica\Network\HTTPClient\Client\HttpClientAccept;
+use Friendica\Network\HTTPClient\Client\HttpClientOptions;
+use Friendica\Network\HTTPClient\Client\HttpClientRequest;
 use Friendica\Network\HTTPException\InternalServerErrorException;
 use Friendica\Network\HTTPException\ServiceUnavailableException;
 use Friendica\Protocol\Activity;
@@ -43,6 +47,7 @@ use Friendica\Protocol\ActivityPub;
 use Friendica\Protocol\Delivery;
 use Friendica\Protocol\Diaspora;
 use Friendica\Util\DateTimeFormat;
+use Friendica\Util\HTTPSignature;
 use Friendica\Util\Map;
 use Friendica\Util\Network;
 use Friendica\Util\Proxy;
@@ -97,14 +102,14 @@ class Item
 		'uid', 'id', 'parent', 'guid', 'network', 'gravity',
 		'uri-id', 'uri', 'thr-parent-id', 'thr-parent', 'parent-uri-id', 'parent-uri', 'conversation',
 		'commented', 'created', 'edited', 'received', 'verb', 'object-type', 'postopts', 'plink',
-		'wall', 'private', 'starred', 'origin', 'parent-origin', 'title', 'body', 'language',
+		'wall', 'private', 'starred', 'origin', 'parent-origin', 'title', 'body', 'language', 'sensitive',
 		'content-warning', 'location', 'coord', 'app', 'rendered-hash', 'rendered-html', 'object',
 		'quote-uri', 'quote-uri-id', 'allow_cid', 'allow_gid', 'deny_cid', 'deny_gid', 'mention', 'global',
 		'author-id', 'author-link', 'author-alias', 'author-name', 'author-avatar', 'author-network', 'author-updated', 'author-gsid', 'author-baseurl', 'author-addr', 'author-uri-id',
 		'owner-id', 'owner-link', 'owner-alias', 'owner-name', 'owner-avatar', 'owner-network', 'owner-contact-type', 'owner-updated', 'owner-gsid',
 		'causer-id', 'causer-link', 'causer-alias', 'causer-name', 'causer-avatar', 'causer-contact-type', 'causer-network', 'causer-gsid',
 		'contact-id', 'contact-uid', 'contact-link', 'contact-name', 'contact-avatar',
-		'writable', 'self', 'cid', 'alias',
+		'writable', 'restrictions', 'self', 'cid', 'alias', 'post-reason',
 		'event-created', 'event-edited', 'event-start', 'event-finish',
 		'event-summary', 'event-desc', 'event-location', 'event-type',
 		'event-nofinish', 'event-ignore', 'event-id',
@@ -117,7 +122,7 @@ class Item
 	const DELIVER_FIELDLIST = [
 		'uid', 'id', 'parent', 'uri-id', 'uri', 'thr-parent', 'parent-uri', 'guid',
 		'parent-guid', 'conversation', 'received', 'created', 'edited', 'verb', 'object-type', 'object', 'target',
-		'private', 'title', 'body', 'raw-body', 'location', 'coord', 'app',
+		'private', 'title', 'content-warning', 'body', 'raw-body', 'language', 'location', 'coord', 'app', 'sensitive',
 		'inform', 'deleted', 'extid', 'post-type', 'post-reason', 'gravity',
 		'allow_cid', 'allow_gid', 'deny_cid', 'deny_gid',
 		'author-id', 'author-addr', 'author-link', 'author-name', 'author-avatar', 'owner-id', 'owner-link', 'contact-uid',
@@ -138,7 +143,7 @@ class Item
 		'allow_cid', 'allow_gid', 'deny_cid', 'deny_gid', 'post-type', 'post-reason',
 		'private', 'pubmail', 'visible', 'starred',
 		'unseen', 'deleted', 'origin', 'mention', 'global', 'network',
-		'title', 'content-warning', 'body', 'location', 'coord', 'app',
+		'title', 'content-warning', 'body', 'language', 'location', 'coord', 'app',
 		'rendered-hash', 'rendered-html', 'object-type', 'object', 'target-type', 'target',
 		'author-id', 'author-link', 'author-name', 'author-avatar', 'author-network',
 		'owner-id', 'owner-link', 'owner-name', 'owner-avatar', 'causer-id'
@@ -163,6 +168,11 @@ class Item
 	const GRAVITY_ACTIVITY = 3;
 	const GRAVITY_COMMENT  = 6;
 	const GRAVITY_UNKNOWN  = 9;
+
+	// Restrictions
+	const CANT_REPLY    = 1;
+	const CANT_LIKE     = 2;
+	const CANT_ANNOUNCE = 4;
 
 	/**
 	 * Update existing item entries
@@ -194,6 +204,10 @@ class Item
 
 		if (!empty($fields['edited'])) {
 			$previous = Post::selectFirst(['edited'], $condition);
+		}
+
+		if (!empty($fields['body'])) {
+			$fields['body'] = self::setHashtags($fields['body']);
 		}
 
 		$rows = Post::update($fields, $condition);
@@ -238,6 +252,10 @@ class Item
 				$content_fields['raw-body'] = BBCode::removeAttachment($content_fields['raw-body']);
 
 				Post\Content::update($item['uri-id'], $content_fields);
+
+				$searchtext = Post\Engagement::getSearchTextForUriId($item['uri-id'], true);
+				DBA::update('post-engagement', ['searchtext' => $searchtext], ['uri-id' => $item['uri-id']]);
+				Post\SearchIndex::update($item['uri-id']);
 			}
 
 			if (!empty($fields['file'])) {
@@ -330,11 +348,11 @@ class Item
 	 */
 	public static function markForDeletionById(int $item_id, int $priority = Worker::PRIORITY_HIGH): bool
 	{
-		Logger::info('Mark item for deletion by id', ['id' => $item_id, 'callstack' => System::callstack()]);
+		Logger::info('Mark item for deletion by id', ['id' => $item_id]);
 		// locate item to be deleted
 		$fields = [
 			'id', 'uri', 'uri-id', 'uid', 'parent', 'parent-uri-id', 'origin',
-			'deleted', 'resource-id', 'event-id',
+			'thr-parent-id', 'deleted', 'resource-id', 'event-id', 'vid', 'body',
 			'verb', 'object-type', 'object', 'target', 'contact-id', 'psid', 'gravity'
 		];
 		$item = Post::selectFirst($fields, ['id' => $item_id]);
@@ -413,6 +431,10 @@ class Item
 
 		DI::notify()->deleteForItem($item['uri-id']);
 		DI::notification()->deleteForItem($item['uri-id']);
+
+		if (in_array($item['gravity'], [self::GRAVITY_ACTIVITY, self::GRAVITY_COMMENT])) {
+			Post\Counts::update($item['thr-parent-id'], $item['parent-uri-id'], $item['vid'], $item['verb'], $item['body']);
+		}
 
 		Logger::info('Item has been marked for deletion.', ['id' => $item_id]);
 
@@ -676,38 +698,6 @@ class Item
 	}
 
 	/**
-	 * Check if the item array is too old
-	 *
-	 * @param array $item Item record
-	 * @return boolean item is too old
-	 */
-	public static function isTooOld(array $item): bool
-	{
-		// check for create date and expire time
-		$expire_interval = DI::config()->get('system', 'dbclean-expire-days', 0);
-
-		$user = DBA::selectFirst('user', ['expire'], ['uid' => $item['uid']]);
-		if (DBA::isResult($user) && ($user['expire'] > 0) && (($user['expire'] < $expire_interval) || ($expire_interval == 0))) {
-			$expire_interval = $user['expire'];
-		}
-
-		if (($expire_interval > 0) && !empty($item['created'])) {
-			$expire_date = time() - ($expire_interval * 86400);
-			$created_date = strtotime($item['created']);
-			if ($created_date < $expire_date) {
-				Logger::notice('Item created before expiration interval.', [
-					'created' => date('c', $created_date),
-					'expired' => date('c', $expire_date),
-					'$item' => $item
-				]);
-				return true;
-			}
-		}
-
-		return false;
-	}
-
-	/**
 	 * Return the id of the given item array if it has been stored before
 	 *
 	 * @param array $item Item record
@@ -775,7 +765,7 @@ class Item
 	{
 		$fields = [
 			'uid', 'uri', 'parent-uri', 'id', 'deleted',
-			'uri-id', 'parent-uri-id',
+			'uri-id', 'parent-uri-id', 'restrictions', 'verb',
 			'allow_cid', 'allow_gid', 'deny_cid', 'deny_gid',
 			'wall', 'private', 'origin', 'author-id'
 		];
@@ -795,7 +785,12 @@ class Item
 		}
 
 		if (!DBA::isResult($parent)) {
-			Logger::notice('item parent was not found - ignoring item', ['uri-id' => $item['uri-id'], 'thr-parent-id' => $item['thr-parent-id'], 'uid' => $item['uid'], 'callstack' => System::callstack(20)]);
+			Logger::notice('item parent was not found - ignoring item', ['uri-id' => $item['uri-id'], 'thr-parent-id' => $item['thr-parent-id'], 'uid' => $item['uid']]);
+			return [];
+		}
+
+		if (self::hasRestrictions($item, $parent['author-id'], $parent['restrictions'])) {
+			Logger::notice('Restrictions apply - ignoring item', ['restrictions' => $parent['restrictions'], 'verb' => $parent['verb'], 'uri-id' => $item['uri-id'], 'thr-parent-id' => $item['thr-parent-id'], 'uid' => $item['uid']]);
 			return [];
 		}
 
@@ -854,7 +849,7 @@ class Item
 	private static function prepareOriginPost(array $item): array
 	{
 		$item = DI::contentItem()->initializePost($item);
-		$item = DI::contentItem()->finalizePost($item);
+		$item = DI::contentItem()->finalizePost($item, false);
 
 		return $item;
 	}
@@ -880,6 +875,10 @@ class Item
 			if (is_int($notify) && in_array($notify, Worker::PRIORITIES)) {
 				$priority = $notify;
 			}
+
+			// Mastodon style API visibility
+			$copy_permissions = ($item['visibility'] ?? 'private') == 'private';
+			unset($item['visibility']);
 		} else {
 			$item['network'] = trim(($item['network'] ?? '') ?: Protocol::PHANTOM);
 		}
@@ -1014,7 +1013,7 @@ class Item
 
 		if (
 			!empty($item['direction']) && in_array($item['direction'], [Conversation::PUSH, Conversation::RELAY]) &&
-			empty($item['origin']) && self::isTooOld($item)
+			empty($item['origin']) && DI::contentItem()->isTooOld($item['created'], $item['uid'])
 		) {
 			Logger::info('Item is too old', ['item' => $item]);
 			return 0;
@@ -1038,13 +1037,15 @@ class Item
 
 			// Reshares have to keep their permissions to allow groups to work
 			if (!$defined_permissions && (!$item['origin'] || ($item['verb'] != Activity::ANNOUNCE))) {
-				$item['allow_cid']     = $toplevel_parent['allow_cid'];
-				$item['allow_gid']     = $toplevel_parent['allow_gid'];
-				$item['deny_cid']      = $toplevel_parent['deny_cid'];
-				$item['deny_gid']      = $toplevel_parent['deny_gid'];
+				// Don't store the permissions on pure AP posts
+				$store_permissions = ($item['network'] != Protocol::ACTIVITYPUB) || $item['origin'] || !empty($item['diaspora_signed_text']);
+				$item['allow_cid'] = $store_permissions ? $toplevel_parent['allow_cid'] : '';
+				$item['allow_gid'] = $store_permissions ? $toplevel_parent['allow_gid'] : '';
+				$item['deny_cid']  = $store_permissions ? $toplevel_parent['deny_cid'] : '';
+				$item['deny_gid']  = $store_permissions ? $toplevel_parent['deny_gid'] : '';
 			}
 
-			$parent_origin         = $toplevel_parent['origin'];
+			$parent_origin = $toplevel_parent['origin'];
 
 			// Don't federate received participation messages
 			if ($item['verb'] != Activity::FOLLOW) {
@@ -1088,8 +1089,6 @@ class Item
 			) {
 				$item['object-type'] = Activity\ObjectType::IMAGE;
 			}
-
-			$item = DI::contentItem()->moveAttachmentsFromBodyToAttach($item);
 		}
 
 		$item['parent-uri-id'] = ItemURI::getIdByURI($item['parent-uri']);
@@ -1183,7 +1182,7 @@ class Item
 			if (!empty($quote_id)) {
 				// This is one of these "should not happen" situations.
 				// The protocol implementations should already have done this job.
-				Logger::notice('Quote-uri-id detected in post', ['id' => $quote_id, 'guid' => $item['guid'], 'uri-id' => $item['uri-id'], 'callstack' => System::callstack(20)]);
+				Logger::notice('Quote-uri-id detected in post', ['id' => $quote_id, 'guid' => $item['guid'], 'uri-id' => $item['uri-id']]);
 				$item['quote-uri-id'] = $quote_id;
 			}
 		}
@@ -1211,8 +1210,6 @@ class Item
 
 		// Check for hashtags in the body and repair or add hashtag links
 		$item['body'] = self::setHashtags($item['body']);
-
-		$item['language'] = self::getLanguage($item);
 
 		$notify_type = Delivery::POST;
 
@@ -1262,6 +1259,17 @@ class Item
 			}
 		}
 
+		// Store tags from the body if this hadn't been handled previously in the protocol classes
+		if (!Tag::existsForPost($item['uri-id'])) {
+			Tag::storeFromBody($item['uri-id'], $item['body']);
+		}
+
+		if (in_array($item['gravity'], [self::GRAVITY_PARENT, self::GRAVITY_COMMENT]) && (!isset($item['sensitive']) || is_null($item['sensitive']))) {
+			$item['sensitive'] = Tag::existsTagForPost($item['uri-id'], 'nsfw');
+		}
+
+		$item['language'] = self::getLanguage($item);
+
 		$inserted = Post::insert($item['uri-id'], $item);
 
 		if ($item['gravity'] == self::GRAVITY_PARENT) {
@@ -1299,11 +1307,6 @@ class Item
 			Post\DeliveryData::insert($item['uri-id'], $delivery_data);
 		}
 
-		// Store tags from the body if this hadn't been handled previously in the protocol classes
-		if (!Tag::existsForPost($item['uri-id'])) {
-			Tag::storeFromBody($item['uri-id'], $item['body']);
-		}
-
 		$condition = ['uri-id' => $item['uri-id'], 'uid' => $item['uid']];
 		if (Post::exists($condition)) {
 			Logger::notice('Item is already inserted - aborting', $condition);
@@ -1330,6 +1333,8 @@ class Item
 			self::spool($orig_item);
 			return 0;
 		}
+
+		Post\Origin::insert($posted_item);
 
 		// update the commented timestamp on the parent
 		if (DI::config()->get('system', 'like_no_comment')) {
@@ -1359,6 +1364,9 @@ class Item
 
 		if ($notify) {
 			DI::contentItem()->postProcessPost($posted_item);
+			if ($copy_permissions && ($posted_item['thr-parent-id'] != $posted_item['uri-id']) && ($posted_item['private'] == self::PRIVATE)) {
+				DI::contentItem()->copyPermissions($posted_item['thr-parent-id'], $posted_item['uri-id'], $posted_item['parent-uri-id']);
+			}
 		} else {
 			Hook::callAll('post_remote_end', $posted_item);
 		}
@@ -1405,23 +1413,112 @@ class Item
 		}
 
 		if (!empty($source) && ($transmit || DI::config()->get('debug', 'store_source'))) {
-			Post\Activity::insert($item['uri-id'], $source);
+			Post\Activity::insert($posted_item['uri-id'], $source);
 		}
 
 		if ($transmit) {
+			ActivityPub\Transmitter::storeReceiversForItem($posted_item);
+
 			Worker::add(['priority' => $priority, 'dont_fork' => true], 'Notifier', $notify_type, (int)$posted_item['uri-id'], (int)$posted_item['uid']);
 		}
 
-		// Fill the cache with the rendered content.
-		if (in_array($posted_item['gravity'], [self::GRAVITY_PARENT, self::GRAVITY_COMMENT]) && ($posted_item['uid'] == 0)) {
-			self::updateDisplayCache($posted_item['uri-id']);
-		}
-
 		if ($inserted) {
-			Post\Engagement::storeFromItem($posted_item);
+			// Fill the cache with the rendered content.
+			if (in_array($posted_item['gravity'], [self::GRAVITY_PARENT, self::GRAVITY_COMMENT])) {
+				self::updateDisplayCache($posted_item['uri-id']);
+			}
+
+			if (in_array($posted_item['gravity'], [self::GRAVITY_ACTIVITY, self::GRAVITY_COMMENT])) {
+				Post\Counts::update($posted_item['thr-parent-id'], $posted_item['parent-uri-id'], $posted_item['vid'], $posted_item['verb'], $posted_item['body']);
+			}
+
+			$engagement_uri_id = Post\Engagement::storeFromItem($posted_item);
+
+			if (in_array($posted_item['gravity'], [self::GRAVITY_PARENT, self::GRAVITY_COMMENT])) {
+				Post\SearchIndex::insert($posted_item['uri-id'], $posted_item['created']);
+			} elseif ($posted_item['verb'] == Activity::ANNOUNCE) {
+				Post\SearchIndex::update($posted_item['thr-parent-id']);
+			}
+
+			if (($posted_item['gravity'] == self::GRAVITY_ACTIVITY) && ($posted_item['verb'] == Activity::ANNOUNCE) && ($posted_item['parent-uri-id'] == $posted_item['thr-parent-id'])) {
+				self::reshareChannelPost($posted_item['thr-parent-id'], $posted_item['author-id']);
+			} elseif ($engagement_uri_id) {
+				self::reshareChannelPost($engagement_uri_id);
+			}
 		}
 
 		return $post_user_id;
+	}
+
+	private static function hasRestrictions(array $item, int $author_id, int $restrictions = null): bool
+	{
+		if (empty($restrictions) || ($author_id == $item['author-id'])) {
+			return false;
+		}
+
+		if (($restrictions & self::CANT_REPLY) && ($item['verb'] == Activity::POST)) {
+			return true;
+		}
+
+		if (($restrictions & self::CANT_ANNOUNCE) && ($item['verb'] == Activity::ANNOUNCE)) {
+			return true;
+		}
+
+		if (($restrictions & self::CANT_LIKE) && in_array($item['verb'], [Activity::LIKE, Activity::DISLIKE, Activity::ATTEND, Activity::ATTENDMAYBE, Activity::ATTENDNO])) {
+			return true;
+		}
+
+		return false;
+	}
+
+	private static function reshareChannelPost(int $uri_id, int $reshare_id = 0)
+	{
+		if (!DI::config()->get('system', 'allow_relay_channels')) {
+			return;
+		}
+
+		$item = Post::selectFirst(['id', 'private', 'network', 'language', 'owner-id'], ['uri-id' => $uri_id, 'uid' => 0]);
+		if (empty($item['id'])) {
+			Logger::debug('Post not found', ['uri-id' => $uri_id]);
+			return;
+		}
+
+		if (($item['private'] != self::PUBLIC) || !in_array($item['network'], [Protocol::ACTIVITYPUB, Protocol::DFRN])) {
+			Logger::debug('Not a public post or no AP or DFRN post', ['uri-id' => $uri_id]);
+			return;
+		}
+
+		$engagement = DBA::selectFirst('post-engagement', ['searchtext', 'media-type'], ['uri-id' => $uri_id]);
+		if (empty($engagement['searchtext'])) {
+			Logger::debug('No engagement found', ['uri-id' => $uri_id]);
+			return;
+		}
+
+		$language = !empty($item['language']) ? array_key_first(json_decode($item['language'], true)) : '';
+		$tags     = array_column(Tag::getByURIId($uri_id, [Tag::HASHTAG]), 'name');
+
+		Logger::debug('Prepare check', ['uri-id' => $uri_id, 'language' => $language, 'tags' => $tags, 'searchtext' => $engagement['searchtext'], 'media_type' => $engagement['media-type'], 'owner' => $item['owner-id'], 'reshare' => $reshare_id]);
+
+		$count = 0;
+		foreach (DI::userDefinedChannel()->getMatchingChannelUsers($engagement['searchtext'], $language, $tags, $engagement['media-type'], $item['owner-id'], $reshare_id) as $uid) {
+			$condition = [
+				'verb' => Activity::ANNOUNCE, 'deleted' => false, 'gravity' => self::GRAVITY_ACTIVITY,
+				'author-id' => Contact::getPublicIdByUserId($uid), 'uid' => $uid, 'thr-parent-id' => $uri_id
+			];
+			if (!Post::exists($condition)) {
+				Logger::debug('Reshare post', ['uid' => $uid, 'uri-id' => $uri_id]);
+				$allow_cid = '';
+				$allow_gid = '<' . Circle::FOLLOWERS . '>';
+				$deny_cid  = '';
+				$deny_gid  = '';
+				self::performActivity($item['id'], 'announce', $uid, $allow_cid, $allow_gid, $deny_cid, $deny_gid);
+			} else {
+				Logger::debug('Reshare already exists', ['uid' => $uid, 'uri-id' => $uri_id]);
+			}
+			$count++;
+		}
+
+		Logger::debug('Check done', ['uri-id' => $uri_id, 'count' => $count]);
 	}
 
 	/**
@@ -1475,6 +1572,10 @@ class Item
 	 */
 	private static function setOwnerforResharedItem(array $item)
 	{
+		if ($item['uid'] == 0) {
+			return;
+		}
+
 		$parent = Post::selectFirst(
 			['id', 'causer-id', 'owner-id', 'author-id', 'author-link', 'origin', 'post-reason'],
 			['uri-id' => $item['thr-parent-id'], 'uid' => $item['uid']]
@@ -1526,7 +1627,25 @@ class Item
 			return;
 		}
 
+		$languages = $item['language'] ? array_keys(json_decode($item['language'], true)) : [];
+
 		foreach (Tag::getUIDListByURIId($item['uri-id']) as $uid => $tags) {
+			if (!empty($languages)) {
+				$keep = false;
+				$user_languages = User::getWantedLanguages($uid);
+				foreach ($user_languages as $language) {
+					if (in_array($language, $languages)) {
+						$keep = true;
+					}
+				}
+				if ($keep) {
+					Logger::debug('Wanted languages found', ['uid' => $uid, 'user-languages' => $user_languages, 'item-languages' => $languages]);
+				} else {
+					Logger::debug('No wanted languages found', ['uid' => $uid, 'user-languages' => $user_languages, 'item-languages' => $languages]);
+					continue;
+				}
+			}
+
 			$stored = self::storeForUserByUriId($item['uri-id'], $uid, ['post-reason' => self::PR_TAG]);
 			Logger::info('Stored item for users', ['uri-id' => $item['uri-id'], 'uid' => $uid, 'stored' => $stored]);
 			foreach ($tags as $tag) {
@@ -1981,19 +2100,35 @@ class Item
 	 * @return string detected language
 	 * @throws \Text_LanguageDetect_Exception
 	 */
-	private static function getLanguage(array $item): string
+	private static function getLanguage(array $item): ?string
 	{
 		if (!empty($item['language'])) {
 			return $item['language'];
 		}
 
-		if (!in_array($item['gravity'], [self::GRAVITY_PARENT, self::GRAVITY_COMMENT]) || empty($item['body'])) {
-			return '';
+		$transmitted = [];
+		foreach ($item['transmitted-languages'] ??  [] as $language) {
+			$transmitted[$language] = 0;
 		}
 
-		$languages = self::getLanguageArray(trim($item['title'] . "\n" . $item['body']), 3, $item['uri-id'], $item['author-id']);
-		if (empty($languages)) {
-			return '';
+		if (!in_array($item['gravity'], [self::GRAVITY_PARENT, self::GRAVITY_COMMENT])) {
+			return !empty($transmitted) ? json_encode($transmitted) : null;
+		}
+
+		$content = trim(($item['title'] ?? '') . ' ' . ($item['content-warning'] ?? '') . ' ' . ($item['body'] ?? ''));
+
+		if (empty($content) && !empty($item['quote-uri-id'])) {
+			$quoted = Post::selectFirstPost(['language'], ['uri-id' => $item['quote-uri-id']]);
+			if (!empty($quoted['language'])) {
+				return $quoted['language'];
+			}
+		}
+
+		$languages = self::getLanguageArray($content, 3, $item['uri-id'], $item['author-id'], $transmitted);
+
+		if (!empty($transmitted)) {
+			$languages = array_merge($transmitted, $languages);
+			arsort($languages);
 		}
 
 		return json_encode($languages);
@@ -2006,71 +2141,151 @@ class Item
 	 * @param integer $count
 	 * @param integer $uri_id
 	 * @param integer $author_id
+	 * @param array   $default
 	 * @return array
 	 */
-	public static function getLanguageArray(string $body, int $count, int $uri_id = 0, int $author_id = 0): array
+	public static function getLanguageArray(string $body, int $count, int $uri_id = 0, int $author_id = 0, array $default = []): array
 	{
-		$naked_body = BBCode::toSearchText($body, $uri_id);
+		$default = $default ?: [L10n::UNDETERMINED_LANGUAGE => 1];
 
-		if ((count(explode(' ', $naked_body)) < 10) && (mb_strlen($naked_body) < 30) && $author_id) {
+		$searchtext = BBCode::toSearchText($body, $uri_id);
+
+		if ((count(explode(' ', $searchtext)) < 10) && (mb_strlen($searchtext) < 30) && $author_id) {
 			$author = Contact::selectFirst(['about'], ['id' => $author_id]);
 			if (!empty($author['about'])) {
 				$about = BBCode::toSearchText($author['about'], 0);
-				$about = self::getDominantLanguage($about);
-				Logger::debug('About field added', ['author' => $author_id, 'body' => $naked_body, 'about' => $about]);
-				$naked_body .= ' ' . $about;
+				Logger::debug('About field added', ['author' => $author_id, 'body' => $searchtext, 'about' => $about]);
+				$searchtext .= ' ' . $about;
 			}
 		}
 
-		if (empty($naked_body)) {
-			return [];
+		if (empty($searchtext)) {
+			return $default;
 		}
 
-		$naked_body = self::getDominantLanguage($naked_body);
+		$ld = new Language(DI::l10n()->getDetectableLanguages());
 
-		$availableLanguages = DI::l10n()->getAvailableLanguages(true);
-		$availableLanguages = DI::l10n()->convertForLanguageDetection($availableLanguages);
+		$result = [];
 
-		$ld = new Language(array_keys($availableLanguages));
-		$languages = $ld->detect($naked_body)->limit(0, $count)->close() ?: [];
+		foreach (self::splitByBlocks($searchtext) as $block) {
+			$languages = $ld->detect($block)->close() ?: [];
 
-		$data = [
-			'text'     => $naked_body,
-			'detected' => $languages,
-			'uri-id'   => $uri_id,
-		];
+			$data = [
+				'text'      => $block,
+				'detected'  => $languages,
+				'uri-id'    => $uri_id,
+				'author-id' => $author_id,
+			];
+			Hook::callAll('detect_languages', $data);
 
-		Hook::callAll('detect_languages', $data);
-		$languages = $data['detected'];
+			foreach ($data['detected'] as $language => $quality) {
+				$result[$language] = max($result[$language] ?? 0, $quality * (strlen($block) / strlen($searchtext)));
+			}
+		}
 
+		$result = self::compactLanguages($result);
+		if (empty($result)) {
+			return $default;
+		}
+
+		arsort($result);
+		return array_slice($result, 0, $count);
+	}
+
+	/**
+	 * Concert the language code in the detection result to ISO 639-1.
+	 * On duplicates the system uses the higher quality value.
+	 *
+	 * @param array $result
+	 * @return array
+	 */
+	private static function compactLanguages(array $result): array
+	{
+		$languages = [];
+		foreach ($result as $language => $quality) {
+			if ($quality == 0) {
+				continue;
+			}
+			$code = DI::l10n()->toISO6391($language);
+			if (empty($languages[$code]) || ($languages[$code] < $quality)) {
+				$languages[$code] = $quality;
+			}
+		}
 		return $languages;
 	}
 
 	/**
-	 * Check if latin or non latin are dominant in the body and only return the dominant one
+	 * Split a string into different unicode blocks
+	 * Currently the text is split into the latin and the non latin part.
 	 *
 	 * @param string $body
-	 * @return string
+	 * @return array
 	 */
-	private static function getDominantLanguage(string $body): string
+	private static function splitByBlocks(string $body): array
 	{
-		$latin = '';
-		$non_latin = '';
+		if (!class_exists('IntlChar')) {
+			return [$body];
+		}
+
+		$blocks         = [];
+		$previous_block = 0;
+
 		for ($i = 0; $i < mb_strlen($body); $i++) {
 			$character = mb_substr($body, $i, 1);
-			$ord = mb_ord($character);
+			$previous  = ($i > 0) ? mb_substr($body, $i - 1, 1) : '';
+			$next      = ($i < mb_strlen($body)) ? mb_substr($body, $i + 1, 1) : '';
 
-			// We add the most common characters to both strings.
-			if (($ord <= 64) || ($ord >= 91 && $ord <= 96) || ($ord >= 123 && $ord <= 191) || in_array($ord, [215, 247]) || ($ord >= 697 && $ord <= 735) || ($ord > 65535)) {
-				$latin .= $character;
-				$non_latin .= $character;
-			} elseif ($ord < 768) {
-				$latin .= $character;
+			if (!\IntlChar::isalpha($character)) {
+				if (($previous != '') && (\IntlChar::isalpha($previous))) {
+					$previous_block = self::getBlockCode($previous);
+				}
+
+				$block = (($next != '') && \IntlChar::isalpha($next)) ? self::getBlockCode($next) : $previous_block;
+				$blocks[$block] = ($blocks[$block] ?? '') . $character;
 			} else {
-				$non_latin .= $character;
+				$block = self::getBlockCode($character);
+				$blocks[$block] = ($blocks[$block] ?? '') . $character;
 			}
 		}
-		return (mb_strlen($latin) > mb_strlen($non_latin)) ? $latin : $non_latin;
+
+		foreach (array_keys($blocks) as $key) {
+			$blocks[$key] = trim($blocks[$key]);
+			if (empty($blocks[$key])) {
+				unset($blocks[$key]);
+			}
+		}
+
+		return array_values($blocks);
+	}
+
+	/**
+	 * returns the block code for the given character
+	 *
+	 * @param string $character
+	 * @return integer 0 = no alpha character (blank, signs, emojis, ...), 1 = latin character, 2 = character in every other language
+	 */
+	private static function getBlockCode(string $character): int
+	{
+		if (!\IntlChar::isalpha($character)) {
+			return 0;
+		}
+		return self::isLatin($character) ? 1 : 2;
+	}
+
+	/**
+	 * Checks if the given character is in one of the latin code blocks
+	 *
+	 * @param string $character
+	 * @return boolean
+	 */
+	private static function isLatin(string $character): bool
+	{
+		return in_array(\IntlChar::getBlockCode($character), [
+			\IntlChar::BLOCK_CODE_BASIC_LATIN, \IntlChar::BLOCK_CODE_LATIN_1_SUPPLEMENT,
+			\IntlChar::BLOCK_CODE_LATIN_EXTENDED_A, \IntlChar::BLOCK_CODE_LATIN_EXTENDED_B,
+			\IntlChar::BLOCK_CODE_LATIN_EXTENDED_C, \IntlChar::BLOCK_CODE_LATIN_EXTENDED_D,
+			\IntlChar::BLOCK_CODE_LATIN_EXTENDED_E, \IntlChar::BLOCK_CODE_LATIN_EXTENDED_ADDITIONAL
+		]);
 	}
 
 	public static function getLanguageMessage(array $item): string
@@ -2079,7 +2294,20 @@ class Item
 
 		$used_languages = '';
 		foreach (json_decode($item['language'], true) as $language => $reliability) {
-			$used_languages .= $iso639->languageByCode1($language) . ' (' . $language . "): " . number_format($reliability, 5) . '\n';
+			$code = DI::l10n()->toISO6391($language);
+
+			if ($code == L10n::UNDETERMINED_LANGUAGE) {
+				$native = $language = DI::l10n()->t('Undetermined');
+			} else {
+				$native   = $iso639->nativeByCode1($code);
+				$language = $iso639->languageByCode1($code);
+			}
+
+			if ($native != $language) {
+				$used_languages .= DI::l10n()->t('%s (%s - %s): %s', $native, $language, $code, number_format($reliability, 5)) . '\n';
+			} else {
+				$used_languages .= DI::l10n()->t('%s (%s): %s', $native, $code, number_format($reliability, 5)) . '\n';
+			}
 		}
 		$used_languages = DI::l10n()->t('Detected languages in this post:\n%s', $used_languages);
 		return $used_languages;
@@ -2107,12 +2335,12 @@ class Item
 
 		$hostPart = $host ?: $parsed['host'] ?? '';
 		if (!$hostPart) {
-			Logger::warning('Empty host GUID part', ['uri' => $uri, 'host' => $host, 'parsed' => $parsed, 'callstack' => System::callstack(10)]);
+			Logger::warning('Empty host GUID part', ['uri' => $uri, 'host' => $host, 'parsed' => $parsed]);
 		}
 
 		// Glue it together to be able to make a hash from it
 		if (!empty($parsed)) {
-			$host_id = implode('/', $parsed);
+			$host_id = implode('/', (array)$parsed);
 		} else {
 			$host_id = $uri;
 		}
@@ -2265,7 +2493,7 @@ class Item
 				}
 
 				$basetag = str_replace('_', ' ', substr($tag, 1));
-				$newtag = '#[url=' . DI::baseUrl() . '/search?tag=' . $basetag . ']' . $basetag . '[/url]';
+				$newtag = '#[url=' . DI::baseUrl() . '/search?tag=' . urlencode($basetag) . ']' . $basetag . '[/url]';
 
 				$body = str_replace($tag, $newtag, $body);
 			}
@@ -2457,9 +2685,12 @@ class Item
 			$result = self::insert($datarray2);
 			Logger::info('remote-self post original item', ['contact' => $contact['url'], 'result' => $result, 'item' => $datarray2]);
 		} else {
-			$datarray['private'] = self::PUBLIC;
 			$datarray['app'] = 'Feed';
 			$result = true;
+		}
+
+		if ($result) {
+			unset($datarray['private']);
 		}
 
 		return (bool)$result;
@@ -3101,8 +3332,8 @@ class Item
 	public static function prepareBody(array &$item, bool $attach = false, bool $is_preview = false, bool $only_cache = false): string
 	{
 		$a = DI::app();
+		$uid = DI::userSession()->getLocalUserId();
 		Hook::callAll('prepare_body_init', $item);
-
 
 		// In order to provide theme developers more possibilities, event items
 		// are treated differently.
@@ -3208,8 +3439,8 @@ class Item
 				$filter_reasons[] = DI::l10n()->t('Content from %s is collapsed', $item['author-name']);
 			}
 
-			if (!empty($item['content-warning']) && (!DI::userSession()->getLocalUserId() || !DI::pConfig()->get(DI::userSession()->getLocalUserId(), 'system', 'disable_cw', false))) {
-				$filter_reasons[] = DI::l10n()->t('Content warning: %s', $item['content-warning']);
+			if ($item['sensitive'] && (!$uid || !DI::pConfig()->get($uid, 'system', 'disable_cw', false))) {
+				$filter_reasons[] = DI::l10n()->t('Sensitive content');
 			}
 
 			$item['attachments'] = $itemSplitAttachments;
@@ -3307,6 +3538,7 @@ class Item
 					return Renderer::replaceMacros(Renderer::getMarkupTemplate('content/image/single_with_height_allocation.tpl'), [
 						'$image' => $PostMedia,
 						'$allocated_height' => $PostMedia->getAllocatedHeight(),
+						'$allocated_max_width' => ($PostMedia->previewWidth ?? $PostMedia->width) . 'px',
 					]);
 				}, $s);
 			} else {
@@ -3337,7 +3569,7 @@ class Item
 		unset($urlparts['fragment']);
 
 		try {
-			$url = (string)Uri::fromParts($urlparts);
+			$url = (string)Uri::fromParts((array)$urlparts);
 		} catch (\InvalidArgumentException $e) {
 			DI::logger()->notice('Invalid URL', ['$url' => $url, '$urlparts' => $urlparts]);
 			/* See https://github.com/friendica/friendica/issues/12113
@@ -3427,11 +3659,8 @@ class Item
 				continue;
 			}
 
-			if ($PostMedia->mimetype->type == 'image') {
-				$preview_size = $PostMedia->width > $PostMedia->height ? Proxy::SIZE_MEDIUM : Proxy::SIZE_LARGE;
-				$preview_url = DI::baseUrl() . $PostMedia->getPreviewPath($preview_size);
-			} elseif ($PostMedia->preview) {
-				$preview_size = Proxy::SIZE_LARGE;
+			if ($PostMedia->mimetype->type == 'image' || $PostMedia->preview) {
+				$preview_size = Proxy::SIZE_MEDIUM;
 				$preview_url = DI::baseUrl() . $PostMedia->getPreviewPath($preview_size);
 			} else {
 				$preview_size = 0;
@@ -3443,14 +3672,24 @@ class Item
 			}
 
 			if ($PostMedia->mimetype->type == 'video') {
+				if (($PostMedia->height ?? 0) > ($PostMedia->width ?? 0)) {
+					$height = min(DI::config()->get('system', 'max_video_height') ?: '100%', $PostMedia->height);
+					$width  = 'auto';
+				} else {
+					$height = 'auto';
+					$width  = '100%';
+				}
 				/// @todo Move the template to /content as well
 				$media = Renderer::replaceMacros(Renderer::getMarkupTemplate('video_top.tpl'), [
 					'$video' => [
-						'id'      => $PostMedia->id,
-						'src'     => (string)$PostMedia->url,
-						'name'    => $PostMedia->name ?: $PostMedia->url,
-						'preview' => $preview_url,
-						'mime'    => (string)$PostMedia->mimetype,
+						'id'          => $PostMedia->id,
+						'src'         => (string)$PostMedia->url,
+						'name'        => $PostMedia->name ?: $PostMedia->url,
+						'preview'     => $preview_url,
+						'mime'        => (string)$PostMedia->mimetype,
+						'height'      => $height,
+						'width'       => $width,
+						'description' => $PostMedia->description,
 					],
 				]);
 				if (($item['post-type'] ?? null) == Item::PT_VIDEO) {
@@ -3590,6 +3829,7 @@ class Item
 		} elseif (preg_match("/.*(\[attachment.*?\].*?\[\/attachment\]).*/ism", $body, $match)) {
 			$data = BBCode::getAttachmentData($match[1]);
 		}
+
 		DI::profiler()->stopRecording();
 
 		if (isset($data['url']) && !in_array(strtolower($data['url']), $ignore_links)) {
@@ -3612,6 +3852,11 @@ class Item
 				$preview_mode = DI::pConfig()->get(DI::userSession()->getLocalUserId(), 'system', 'preview_mode', BBCode::PREVIEW_LARGE);
 				if ($preview_mode != BBCode::PREVIEW_NONE) {
 					$rendered = BBCode::convertAttachment('', BBCode::INTERNAL, false, $data, $uriid, $preview_mode);
+				} elseif (!self::containsLink($content, $data['url'], Post\Media::HTML)) {
+					$rendered = Renderer::replaceMacros(Renderer::getMarkupTemplate('content/link.tpl'), [
+						'$url'   => $data['url'],
+						'$title' => $data['title'],
+					]);
 				} else {
 					$rendered = '';
 				}
@@ -3648,7 +3893,7 @@ class Item
 		DI::profiler()->startRecording('rendering');
 		$trailing = '';
 		foreach ($PostMedias as $PostMedia) {
-			if (strpos($item['body'], $PostMedia->url)) {
+			if (strpos($item['body'], (string)$PostMedia->url)) {
 				continue;
 			}
 
@@ -3695,16 +3940,16 @@ class Item
 			foreach ($options as $key => $option) {
 				if ($question['voters'] > 0) {
 					$percent = $option['replies'] / $question['voters'] * 100;
-					$options[$key]['vote'] = DI::l10n()->tt('%2$s (%3$d%%, %1$d vote)', '%2$s (%3$d%%, %1$d votes)', $option['replies'], $option['name'], round($percent, 1));
+					$options[$key]['vote'] = DI::l10n()->tt('%2$s (%3$d%%, %1$d vote)', '%2$s (%3$d%%, %1$d votes)', $option['replies'] ?? 0, $option['name'], round($percent, 1));
 				} else {
-					$options[$key]['vote'] = DI::l10n()->tt('%2$s (%1$d vote)', '%2$s (%1$d votes)', $option['replies'], $option['name']);
+					$options[$key]['vote'] = DI::l10n()->tt('%2$s (%1$d vote)', '%2$s (%1$d votes)', $option['replies'] ?? 0, $option['name']);
 				}
 			}
 
 			if (!empty($question['voters']) && !empty($question['endtime'])) {
-				$summary = DI::l10n()->tt('%d voter. Poll end: %s', '%d voters. Poll end: %s', $question['voters'], Temporal::getRelativeDate($question['endtime']));
+				$summary = DI::l10n()->tt('%d voter. Poll end: %s', '%d voters. Poll end: %s', $question['voters'] ?? 0, Temporal::getRelativeDate($question['endtime']));
 			} elseif (!empty($question['voters'])) {
-				$summary = DI::l10n()->tt('%d voter.', '%d voters.', $question['voters']);
+				$summary = DI::l10n()->tt('%d voter.', '%d voters.', $question['voters'] ?? 0);
 			} elseif (!empty($question['endtime'])) {
 				$summary = DI::l10n()->t('Poll end: %s', Temporal::getRelativeDate($question['endtime']));
 			} else {
@@ -3732,8 +3977,15 @@ class Item
 	{
 		if (!empty($item['plink']) && Network::isValidHttpUrl($item['plink'])) {
 			$plink = $item['plink'];
-		} elseif (!empty($item['uri']) && Network::isValidHttpUrl($item['uri']) && !Network::isLocalLink($item['uri'])) {
+		} elseif (!empty($item['uri']) && Network::isValidHttpUrl($item['uri']) && !DI::baseUrl()->isLocalUrl($item['uri'])) {
 			$plink = $item['uri'];
+		}
+
+		if (($item['post-reason'] == self::PR_ANNOUNCEMENT) && ($item['owner-contact-type'] == Contact::TYPE_COMMUNITY) && ($item['owner-network'] == Protocol::DFRN)) {
+			$contact = Contact::getById($item['owner-id'], ['baseurl']);
+			if (!empty($contact['baseurl'])) {
+				$plink = $contact['baseurl'] . '/display/' . $item['guid'];
+			}
 		}
 
 		if (DI::userSession()->getLocalUserId()) {
@@ -3852,11 +4104,12 @@ class Item
 	 * Fetches item for given URI or plink
 	 *
 	 * @param string $uri
-	 * @param integer $uid
+	 * @param int    $uid
+	 * @param int    $completion
 	 *
 	 * @return integer item id
 	 */
-	public static function fetchByLink(string $uri, int $uid = 0): int
+	public static function fetchByLink(string $uri, int $uid = 0, int $completion = ActivityPub\Receiver::COMPLETION_MANUAL): int
 	{
 		Logger::info('Trying to fetch link', ['uid' => $uid, 'uri' => $uri]);
 		$item_id = self::searchByLink($uri, $uid);
@@ -3877,9 +4130,17 @@ class Item
 			return is_numeric($hookData['item_id']) ? $hookData['item_id'] : 0;
 		}
 
-		$fetched_uri = ActivityPub\Processor::fetchMissingActivity($uri, [], '', ActivityPub\Receiver::COMPLETION_MANUAL, $uid);
+		try {
+			$curlResult = DI::httpClient()->head($uri, [HttpClientOptions::ACCEPT_CONTENT => HttpClientAccept::JSON_AS, HttpClientOptions::REQUEST => HttpClientRequest::ACTIVITYPUB]);
+			if (HTTPSignature::isValidContentType($curlResult->getContentType(), $uri)) {
+				$fetched_uri = ActivityPub\Processor::fetchMissingActivity($uri, [], '', $completion, $uid);
+			}
+		} catch (\Throwable $th) {
+			Logger::info('Invalid link', ['uid' => $uid, 'uri' => $uri, 'code' => $th->getCode(), 'message' => $th->getMessage()]);
+			return 0;
+		}
 
-		if ($fetched_uri) {
+		if (!empty($fetched_uri)) {
 			$item_id = self::searchByLink($fetched_uri, $uid);
 		} else {
 			$item_id = Diaspora::fetchByURL($uri);
@@ -3937,7 +4198,7 @@ class Item
 		}
 
 		$url = $shared['message_id'] ?: $shared['link'];
-		$id = self::fetchByLink($url);
+		$id = self::fetchByLink($url, 0, ActivityPub\Receiver::COMPLETION_ASYNC);
 		if (!$id) {
 			Logger::notice('Post could not be fetched.', ['url' => $url, 'uid' => $uid]);
 			return 0;

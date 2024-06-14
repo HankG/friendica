@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -22,7 +22,6 @@
 namespace Friendica\Network\Factory;
 
 use Friendica\BaseFactory;
-use Friendica\Core\System;
 use Friendica\Network\Entity;
 
 /**
@@ -43,7 +42,7 @@ class MimeType extends BaseFactory
 				$filetype = strtolower($types[0]);
 				$subtype = strtolower($types[1]);
 			} else {
-				$this->logger->notice('Unknown MimeType', ['type' => $contentType, 'callstack' => System::callstack(10)]);
+				$this->logger->notice('Unknown MimeType', ['type' => $contentType]);
 			}
 
 			$parameters = [];

@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -78,7 +78,7 @@ class Show extends BaseModule
 			$this->baseUrl->redirect('profile/' . $nickname . '/restricted');
 		}
 
-		if (!$this->session->isAuthenticated() && !Feature::isEnabled($owner['uid'], 'public_calendar')) {
+		if (!$this->session->isAuthenticated() && !Feature::isEnabled($owner['uid'], Feature::PUBLIC_CALENDAR)) {
 			$this->sysMessages->addNotice($this->t('Permission denied.'));
 			return Login::form();
 		}
@@ -91,7 +91,7 @@ class Show extends BaseModule
 		$this->page->registerFooterScript('view/asset/moment/min/moment-with-locales.min.js');
 		$this->page->registerFooterScript('view/asset/fullcalendar/dist/fullcalendar.min.js');
 
-		$is_owner = $nickname == $this->app->getLoggedInUserNickname();
+		$is_owner = $nickname == $this->session->getLocalUserNickname();
 
 		$htpl = Renderer::getMarkupTemplate('calendar/calendar_head.tpl');
 		$this->page['htmlhead'] .= Renderer::replaceMacros($htpl, [

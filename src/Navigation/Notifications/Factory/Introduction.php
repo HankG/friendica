@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -22,7 +22,6 @@
 namespace Friendica\Navigation\Notifications\Factory;
 
 use Exception;
-use Friendica\App;
 use Friendica\App\BaseURL;
 use Friendica\BaseFactory;
 use Friendica\Content\Text\BBCode;
@@ -58,7 +57,7 @@ class Introduction extends BaseFactory
 	/** @var string */
 	private $nick;
 
-	public function __construct(LoggerInterface $logger, Database $dba, BaseURL $baseUrl, L10n $l10n, App $app, IManagePersonalConfigValues $pConfig, IHandleUserSessions $session)
+	public function __construct(LoggerInterface $logger, Database $dba, BaseURL $baseUrl, L10n $l10n, IManagePersonalConfigValues $pConfig, IHandleUserSessions $session)
 	{
 		parent::__construct($logger);
 
@@ -67,7 +66,7 @@ class Introduction extends BaseFactory
 		$this->l10n    = $l10n;
 		$this->pConfig = $pConfig;
 		$this->session = $session;
-		$this->nick    = $app->getLoggedInUserNickname() ?? '';
+		$this->nick    = $session->getLocalUserNickname() ?? '';
 	}
 
 	/**

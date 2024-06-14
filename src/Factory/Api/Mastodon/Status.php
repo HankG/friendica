@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -24,6 +24,7 @@ namespace Friendica\Factory\Api\Mastodon;
 use Friendica\BaseFactory;
 use Friendica\Content\ContactSelector;
 use Friendica\Content\Item as ContentItem;
+use Friendica\Content\Smilies;
 use Friendica\Content\Text\BBCode;
 use Friendica\Core\Logger;
 use Friendica\Database\Database;
@@ -31,7 +32,6 @@ use Friendica\Database\DBA;
 use Friendica\DI;
 use Friendica\Model\Item;
 use Friendica\Model\Post;
-use Friendica\Model\Tag as TagModel;
 use Friendica\Model\Verb;
 use Friendica\Network\HTTPException;
 use Friendica\Object\Api\Mastodon\Status\FriendicaDeliveryData;
@@ -57,8 +57,8 @@ class Status extends BaseFactory
 	private $mstdnCardFactory;
 	/** @var Attachment */
 	private $mstdnAttachmentFactory;
-	/** @var Error */
-	private $mstdnErrorFactory;
+	/** @var Emoji */
+	private $mstdnEmojiFactory;
 	/** @var Poll */
 	private $mstdnPollFactory;
 	/** @var ContentItem */
@@ -74,7 +74,7 @@ class Status extends BaseFactory
 		Tag $mstdnTagFactory,
 		Card $mstdnCardFactory,
 		Attachment $mstdnAttachmentFactory,
-		Error $mstdnErrorFactory,
+		Emoji $mstdnEmojiFactory,
 		Poll $mstdnPollFactory,
 		ContentItem $contentItem,
 		ACLFormatter $aclFormatter
@@ -86,7 +86,7 @@ class Status extends BaseFactory
 		$this->mstdnTagFactory        = $mstdnTagFactory;
 		$this->mstdnCardFactory       = $mstdnCardFactory;
 		$this->mstdnAttachmentFactory = $mstdnAttachmentFactory;
-		$this->mstdnErrorFactory      = $mstdnErrorFactory;
+		$this->mstdnEmojiFactory      = $mstdnEmojiFactory;
 		$this->mstdnPollFactory       = $mstdnPollFactory;
 		$this->contentItem            = $contentItem;
 		$this->aclFormatter           = $aclFormatter;
@@ -107,7 +107,7 @@ class Status extends BaseFactory
 	{
 		$fields = ['uri-id', 'uid', 'author-id', 'causer-id', 'author-uri-id', 'author-link', 'causer-uri-id', 'post-reason', 'starred', 'app', 'title', 'body', 'raw-body', 'content-warning', 'question-id',
 			'created', 'edited', 'commented', 'received', 'changed', 'network', 'thr-parent-id', 'parent-author-id', 'language', 'uri', 'plink', 'private', 'vid', 'gravity', 'featured', 'has-media', 'quote-uri-id',
-			'delivery_queue_count', 'delivery_queue_done','delivery_queue_failed', 'allow_cid', 'deny_cid', 'allow_gid', 'deny_gid'];
+			'delivery_queue_count', 'delivery_queue_done','delivery_queue_failed', 'allow_cid', 'deny_cid', 'allow_gid', 'deny_gid', 'sensitive'];
 		$item = Post::selectFirst($fields, ['uri-id' => $uriId, 'uid' => [0, $uid]], ['order' => ['uid' => true]]);
 		if (!$item) {
 			$mail = DBA::selectFirst('mail', ['id'], ['uri-id' => $uriId, 'uid' => $uid]);
@@ -212,7 +212,7 @@ class Status extends BaseFactory
 			$item['featured']
 		);
 
-		$sensitive   = $this->dba->exists('tag-view', ['uri-id' => $uriId, 'name' => 'nsfw', 'type' => TagModel::HASHTAG]);
+		$sensitive   = (bool)$item['sensitive'];
 		$application = new \Friendica\Object\Api\Mastodon\Application($item['app'] ?: ContactSelector::networkToName($item['network'], $item['author-link']));
 
 		$mentions    = $this->mstdnMentionFactory->createFromUriId($uriId)->getArrayCopy();
@@ -283,6 +283,21 @@ class Status extends BaseFactory
 			}
 		}
 
+		$emojis = null;
+		if (DI::baseUrl()->isLocalUrl($item['uri'])) {
+			$used_smilies = Smilies::extractUsedSmilies($item['raw-body'] ?: $item['body'], $normalized);
+			if ($item['raw-body']) {
+				$item['raw-body'] = $normalized;
+			} elseif ($item['body']) {
+				$item['body'] = $normalized;
+			}
+			$emojis = $this->mstdnEmojiFactory->createCollectionFromArray($used_smilies)->getArrayCopy(true);
+		} else {
+			if (preg_match_all("(\[emoji=(.*?)](.*?)\[/emoji])ism", $item['body'] ?: $item['raw-body'], $matches)) {
+				$emojis = $this->mstdnEmojiFactory->createCollectionFromArray(array_combine($matches[2], $matches[1]))->getArrayCopy(true);
+			}
+		}
+
 		if ($is_reshare) {
 			try {
 				$reshare = $this->createFromUriId($uriId, $uid, $display_quote, false, false)->toArray();
@@ -309,7 +324,7 @@ class Status extends BaseFactory
 		$visibility_data = $uid != $item['uid'] ? null : new FriendicaVisibility($this->aclFormatter->expand($item['allow_cid']), $this->aclFormatter->expand($item['deny_cid']), $this->aclFormatter->expand($item['allow_gid']), $this->aclFormatter->expand($item['deny_gid']));
 		$friendica       = new FriendicaExtension($item['title'] ?? '', $item['changed'], $item['commented'], $item['received'], $counts->dislikes, $origin_dislike, $delivery_data, $visibility_data);
 
-		return new \Friendica\Object\Api\Mastodon\Status($item, $account, $counts, $userAttributes, $sensitive, $application, $mentions, $tags, $card, $attachments, $in_reply, $reshare, $friendica, $quote, $poll);
+		return new \Friendica\Object\Api\Mastodon\Status($item, $account, $counts, $userAttributes, $sensitive, $application, $mentions, $tags, $card, $attachments, $in_reply, $reshare, $friendica, $quote, $poll, $emojis);
 	}
 
 	/**
@@ -359,7 +374,7 @@ class Status extends BaseFactory
 	{
 		$item = ActivityPub\Transmitter::getItemArrayFromMail($id, true);
 		if (empty($item)) {
-			$this->mstdnErrorFactory->RecordNotFound();
+			throw new HTTPException\NotFoundException('Mail record not found with id: ' . $id);
 		}
 
 		$account = $this->mstdnAccountFactory->createFromContactId($item['author-id']);

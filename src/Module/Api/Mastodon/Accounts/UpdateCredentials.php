@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -36,7 +36,7 @@ class UpdateCredentials extends BaseApi
 {
 	protected function patch(array $request = [])
 	{
-		self::checkAllowedScope(self::SCOPE_WRITE);
+		$this->checkAllowedScope(self::SCOPE_WRITE);
 		$uid = self::getCurrentUserID();
 
 		$owner = User::getOwnerDataById($uid);
@@ -71,6 +71,7 @@ class UpdateCredentials extends BaseApi
 		}
 
 		if ($user['account-type'] == Contact::TYPE_COMMUNITY) {
+			// @todo Support for PAGE_FLAGS_COMM_MAN
 			$user['page-flags'] = $request['locked'] ? User::PAGE_FLAGS_PRVGROUP : User::PAGE_FLAGS_COMMUNITY;
 		} elseif ($user['account-type'] == Contact::TYPE_PERSON) {
 			if ($request['locked']) {

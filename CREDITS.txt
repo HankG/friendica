@@ -31,6 +31,8 @@ Angristan
 Anthronaut
 Anton
 Antron Samurai
+Anubis2814
+arcanicanis
 Arian - Cazare Muncitori
 Asher Pen
 atjn
@@ -51,6 +53,7 @@ BinkaDroid
 Bjoessi
 bkil
 bob lebonche
+Boluwatife Victor
 Boris Daniel Martinez Millàn
 bufalo1973
 ButterflyOfFire
@@ -69,8 +72,8 @@ Christian Wiwie
 Cohan Robinson
 Colby Sollars
 Copiis
-Copiis Praeesse
 CrystalStiletto
+csolisr
 Cyboulette
 Cyryl Sochacki
 czarnystokrotek
@@ -98,6 +101,7 @@ Eelco Maljaars
 effex7
 Elena
 emilia.krawczyk
+Entropy Engineer
 Eric Côté
 Erich
 erik
@@ -108,10 +112,12 @@ F1per 3y
 Fabian Dost
 Fabio Comuni
 Farida Khalaf
+Faris
 felixgilles
 Filip Bugaj
 Filip H.F. "FiXato" Slagter
 Finn Dean
+Florent C.
 FlxAlbroscheit
 foss-
 Francesco Apruzzese
@@ -121,24 +127,29 @@ Gerhard Seeber
 gerhard6380
 Gert Cauwenberg
 Gidi Kroon
+git-marijus
 GLComo
 greeneyedred
 Gregory Smith
 Grischa Brockhaus
+groen
 gudzpoz
 GunChleoc
 guzzisti
 Haakon Meland Eriksen
+haheute
 Hank Grabowski
 Hannes Heute
 Hans Meine
 Hauke
 Hauke Altmann
+Henrik Härkönen
 Herbert Thielen
 hlad
 hoergen
 Hubert Kościański
 Hypolite Petovan
+ike
 Ilmari
 ImgBotApp
 irhen
@@ -156,6 +167,7 @@ Johannes Schwab
 John Brazil
 John Mortensen
 Jonatan Nyberg
+Jonathan Lamothe
 Jonny Tischbein
 Josef Moravek
 Josh Soref
@@ -168,11 +180,13 @@ Karolina
 Kastal András
 Keenan Pepper
 Keith Fernie
+keithhacks
 Klaus Weidenbach
 Koyu Berteon
 kPherox
 Kris
 Kristoffer Grundström
+ktlinux
 KulikAlex
 Lea1995polish
 Leberwurscht
@@ -211,6 +225,7 @@ Michal Šupler
 Michalina
 Mike Macgirvin
 miqrogroove
+Morgan McMillian
 mpanhans
 mytbk
 nathilia-peirce
@@ -244,8 +259,10 @@ Pierre Bernardeau
 Pierre Rudloff
 Piotr Blonkowski
 Piotr Strębski
+pixelroot
 pokerazor
 R C
+r1pu5u
 Rabuzarus
 Radek
 Rafael Garau
@@ -254,6 +271,7 @@ Rain Hawk
 Rainulf Pineda
 Ralf Thees
 ralph van der honing
+Raroun
 Ratten
 rcmaniac
 RealKinetix
@@ -269,6 +287,7 @@ Roland Häder
 Ruud Schilders
 rwa
 Ryan Voots
+S. Brusch
 S.Krumbholz
 Sakałoŭ Alaksiej
 Sam
@@ -281,9 +300,11 @@ Senex Petrovic
 Seth
 SickShark X
 Silke Meyer
+Simon
 Simon L'nu
 Simon Rupf
 Simó Albert i Beltran
+snajafov
 softmetz
 soko1
 Spencer Dub
@@ -314,6 +335,7 @@ TiMESPLiNTER
 Tino
 Tobias Diekershoff
 Tobias Hößl
+Tobias Quathamer
 Tom
 Tom Aurlund
 Tom Hu
@@ -324,6 +346,7 @@ Torbjörn Andersson
 TORminator
 trebor
 tschlotfeldt
+tslmuun
 Tubuntu
 Tupambae.org
 U-SOUND\mike
@@ -345,6 +368,7 @@ Waldemar Stoczkowski
 Walter Bulbazor
 Wanting Chen
 Wil Tur
+Wladimir Palant
 Wouter Broers
 Xiaofei Xu
 XMPPはいいぞ

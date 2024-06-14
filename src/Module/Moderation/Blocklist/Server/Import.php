@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -130,7 +130,6 @@ class Import extends \Friendica\Module\BaseModeration
 			'$mode_append'         => ['mode', $this->t('Append'), 'append', $this->t('Imports patterns from the file that weren\'t already existing in the current blocklist.'), 'checked="checked"'],
 			'$mode_replace'        => ['mode', $this->t('Replace'), 'replace', $this->t('Replaces the current blocklist by the imported patterns.')],
 			'$blocklist'           => $this->blocklist,
-			'$baseurl'             => $this->baseUrl,
 			'$form_security_token' => self::getFormSecurityToken('moderation_blocklist_import')
 		]);
 	}

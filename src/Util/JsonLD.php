@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -26,6 +26,7 @@ use Friendica\Core\Logger;
 use Exception;
 use Friendica\Core\System;
 use Friendica\DI;
+use Friendica\Protocol\ActivityPub;
 
 /**
  * This class contain methods to work with JsonLD data
@@ -57,6 +58,9 @@ class JsonLD
 				break;
 			case 'https://www.w3.org/ns/activitystreams':
 				$url = DI::basePath() . '/static/activitystreams.jsonld';
+				break;
+			case 'https://www.w3.org/ns/did/v1':
+				$url = DI::basePath() . '/static/did-v1.jsonld';
 				break;
 			case 'https://funkwhale.audio/ns':
 				$url = DI::basePath() . '/static/funkwhale.audio.jsonld';
@@ -171,9 +175,14 @@ class JsonLD
 			'mobilizon' => (object)['@id' => 'https://joinmobilizon.org/ns#', '@type' => '@id'],
 			'fedibird' => (object)['@id' => 'http://fedibird.com/ns#', '@type' => '@id'],
 			'misskey' => (object)['@id' => 'https://misskey-hub.net/ns#', '@type' => '@id'],
+			'pixelfed' => (object)['@id' => 'http://pixelfed.org/ns#', '@type' => '@id'],
 		];
 
 		$orig_json = $json;
+
+		if (empty($json['@context'])) {
+			$json['@context'] = ActivityPub::CONTEXT;
+		}
 
 		// Preparation for adding possibly missing content to the context
 		if (!empty($json['@context']) && is_string($json['@context'])) {
@@ -208,7 +217,7 @@ class JsonLD
 			Logger::notice('compacting error', ['msg' => $e->getMessage(), 'previous' => $e->getPrevious(), 'line' => $e->getLine()]);
 			if ($logfailed && DI::config()->get('debug', 'ap_log_failure')) {
 				$tempfile = tempnam(System::getTempPath(), 'failed-jsonld');
-				file_put_contents($tempfile, json_encode(['json' => $orig_json, 'callstack' => System::callstack(20), 'msg' => $e->getMessage(), 'previous' => $e->getPrevious()], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
+				file_put_contents($tempfile, json_encode(['json' => $orig_json, 'msg' => $e->getMessage(), 'previous' => $e->getPrevious()], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
 				Logger::notice('Failed message stored', ['file' => $tempfile]);
 			}
 		}

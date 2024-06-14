@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -102,13 +102,13 @@ class Trust extends BaseModule
 			}
 
 			try {
-				$this->auth->setForUser($this->app, User::getById($this->app->getLoggedInUserId()), true, true);
+				$this->auth->setForUser($this->app, User::getById($this->session->getLocalUserId()), true, true);
 				$this->baseUrl->redirect($this->session->pop('return_path', ''));
 			} catch (FoundException | TemporaryRedirectException | MovedPermanentlyException $e) {
 				// exception wanted!
 				throw $e;
 			} catch (\Exception $e) {
-				$this->logger->warning('Unexpected error during authentication.', ['user' => $this->app->getLoggedInUserId(), 'exception' => $exception]);
+				$this->logger->warning('Unexpected error during authentication.', ['user' => $this->session->getLocalUserId(), 'exception' => $exception]);
 			}
 		}
 	}
@@ -123,15 +123,15 @@ class Trust extends BaseModule
 			try {
 				$trustedBrowser = $this->trustedBrowserRepository->selectOneByHash($this->cookie->get('2fa_cookie_hash'));
 				if (!$trustedBrowser->trusted) {
-					$this->auth->setForUser($this->app, User::getById($this->app->getLoggedInUserId()), true, true);
+					$this->auth->setForUser($this->app, User::getById($this->session->getLocalUserId()), true, true);
 					$this->baseUrl->redirect($this->session->pop('return_path', ''));
 				}
 			} catch (TrustedBrowserNotFoundException $exception) {
-				$this->logger->notice('Trusted Browser of the cookie not found.', ['cookie_hash' => $this->cookie->get('trusted'), 'uid' => $this->app->getLoggedInUserId(), 'exception' => $exception]);
+				$this->logger->notice('Trusted Browser of the cookie not found.', ['cookie_hash' => $this->cookie->get('trusted'), 'uid' => $this->session->getLocalUserId(), 'exception' => $exception]);
 			} catch (TrustedBrowserPersistenceException $exception) {
-				$this->logger->warning('Unexpected persistence exception.', ['cookie_hash' => $this->cookie->get('trusted'), 'uid' => $this->app->getLoggedInUserId(), 'exception' => $exception]);
+				$this->logger->warning('Unexpected persistence exception.', ['cookie_hash' => $this->cookie->get('trusted'), 'uid' => $this->session->getLocalUserId(), 'exception' => $exception]);
 			} catch (\Exception $exception) {
-				$this->logger->warning('Unexpected exception.', ['cookie_hash' => $this->cookie->get('trusted'), 'uid' => $this->app->getLoggedInUserId(), 'exception' => $exception]);
+				$this->logger->warning('Unexpected exception.', ['cookie_hash' => $this->cookie->get('trusted'), 'uid' => $this->session->getLocalUserId(), 'exception' => $exception]);
 			}
 		}
 

@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -140,7 +140,8 @@ class Addon
 			$func();
 		}
 
-		Hook::delete(['file' => 'addon/' . $addon . '/' . $addon . '.php']);
+		// Handles both relative and absolute file paths
+		Hook::delete(['`file` LIKE ?', "%addon/$addon/$addon.php"]);
 
 		unset(self::$addons[array_search($addon, self::$addons)]);
 	}

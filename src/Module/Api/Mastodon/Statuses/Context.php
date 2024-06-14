@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -41,7 +41,7 @@ class Context extends BaseApi
 		$uid = self::getCurrentUserID();
 
 		if (empty($this->parameters['id'])) {
-			DI::mstdnError()->UnprocessableEntity();
+			$this->logAndJsonError(422, $this->errorFactory->UnprocessableEntity());
 		}
 
 		$request = $this->getRequest([
@@ -116,7 +116,7 @@ class Context extends BaseApi
 				}
 				DBA::close($posts);
 			} else {
-				DI::mstdnError()->RecordNotFound();
+				$this->logAndJsonError(404, $this->errorFactory->RecordNotFound());
 			}
 		}
 
@@ -129,7 +129,11 @@ class Context extends BaseApi
 		$display_quotes = self::appSupportsQuotes();
 
 		foreach (array_slice($ancestors, 0, $request['limit']) as $ancestor) {
-			$statuses['ancestors'][] = DI::mstdnStatus()->createFromUriId($ancestor, $uid, $display_quotes);
+			try {
+				$statuses['ancestors'][] = DI::mstdnStatus()->createFromUriId($ancestor, $uid, $display_quotes);
+			} catch (\Throwable $th) {
+				$this->logger->info('Post not fetchable', ['uri-id' => $ancestor, 'uid' => $uid, 'error' => $th]);
+			}
 		}
 
 		$descendants = array_diff(self::getChildren($id, $children), $deleted);
@@ -137,7 +141,11 @@ class Context extends BaseApi
 		asort($descendants);
 
 		foreach (array_slice($descendants, 0, $request['limit']) as $descendant) {
-			$statuses['descendants'][] = DI::mstdnStatus()->createFromUriId($descendant, $uid, $display_quotes);
+			try {
+				$statuses['descendants'][] = DI::mstdnStatus()->createFromUriId($descendant, $uid, $display_quotes);
+			} catch (\Throwable $th) {
+				$this->logger->info('Post not fetchable', ['uri-id' => $descendant, 'uid' => $uid, 'error' => $th]);
+			}
 		}
 
 		$this->jsonExit($statuses);

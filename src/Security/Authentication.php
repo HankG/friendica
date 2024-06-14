@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -34,12 +34,12 @@ use Friendica\DI;
 use Friendica\Model\User;
 use Friendica\Network\HTTPException;
 use Friendica\Security\TwoFactor\Repository\TrustedBrowser;
-use Friendica\Util\DateTimeFormat;
 use Friendica\Util\Network;
 use LightOpenID;
 use Friendica\Core\L10n;
 use Friendica\Core\Worker;
 use Friendica\Model\Contact;
+use Friendica\Util\Strings;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -146,7 +146,7 @@ class Authentication
 				$this->cookie->send();
 
 				// Do the authentication if not done by now
-				if (!$this->session->get('authenticated')) {
+				if (!$this->session->isAuthenticated()) {
 					$this->setForUser($a, $user);
 
 					if ($this->config->get('system', 'paranoia')) {
@@ -156,57 +156,44 @@ class Authentication
 			}
 		}
 
-		if ($this->session->get('authenticated')) {
-			if ($this->session->get('visitor_id') && !$this->session->get('uid')) {
-				$contact = $this->dba->selectFirst('contact', ['id'], ['id' => $this->session->get('visitor_id')]);
-				if ($this->dba->isResult($contact)) {
-					$a->setContactId($contact['id']);
-				}
+		if ($this->session->isVisitor()) {
+			$contact = $this->dba->selectFirst('contact', ['id'], ['id' => $this->session->get('visitor_id')]);
+			if ($this->dba->isResult($contact)) {
+				$a->setContactId($contact['id']);
 			}
+		}
 
-			if ($this->session->get('uid')) {
-				// already logged in user returning
-				$check = $this->config->get('system', 'paranoia');
-				// extra paranoia - if the IP changed, log them out
-				if ($check && ($this->session->get('addr') != $this->remoteAddress)) {
-					$this->logger->notice('Session address changed. Paranoid setting in effect, blocking session. ', [
-						'addr'        => $this->session->get('addr'),
-						'remote_addr' => $this->remoteAddress
-					]
-					);
-					$this->session->clear();
-					$this->baseUrl->redirect();
-				}
-
-				$user = $this->dba->selectFirst(
-					'user',
-					[],
-					[
-						'uid'             => $this->session->get('uid'),
-						'blocked'         => false,
-						'account_expired' => false,
-						'account_removed' => false,
-						'verified'        => true,
-					]
+		if ($this->session->isAuthenticated()) {
+			// already logged in user returning
+			$check = $this->config->get('system', 'paranoia');
+			// extra paranoia - if the IP changed, log them out
+			if ($check && ($this->session->get('addr') != $this->remoteAddress)) {
+				$this->logger->notice('Session address changed. Paranoid setting in effect, blocking session. ', [
+					'addr'        => $this->session->get('addr'),
+					'remote_addr' => $this->remoteAddress
+				]
 				);
-				if (!$this->dba->isResult($user)) {
-					$this->session->clear();
-					$this->baseUrl->redirect();
-				}
-
-				// Make sure to refresh the last login time for the user if the user
-				// stays logged in for a long time, e.g. with "Remember Me"
-				$login_refresh = false;
-				if (!$this->session->get('last_login_date')) {
-					$this->session->set('last_login_date', DateTimeFormat::utcNow());
-				}
-				if (strcmp(DateTimeFormat::utc('now - 12 hours'), $this->session->get('last_login_date')) > 0) {
-					$this->session->set('last_login_date', DateTimeFormat::utcNow());
-					$login_refresh = true;
-				}
-
-				$this->setForUser($a, $user, false, false, $login_refresh);
+				$this->session->clear();
+				$this->baseUrl->redirect();
 			}
+
+			$user = $this->dba->selectFirst(
+				'user',
+				[],
+				[
+					'uid'             => $this->session->get('uid'),
+					'blocked'         => false,
+					'account_expired' => false,
+					'account_removed' => false,
+					'verified'        => true,
+				]
+			);
+			if (!$this->dba->isResult($user)) {
+				$this->session->clear();
+				$this->baseUrl->redirect();
+			}
+
+			$this->setForUser($a, $user);
 		}
 	}
 
@@ -283,7 +270,6 @@ class Authentication
 
 		// if we haven't failed up this point, log them in.
 		$this->session->set('remember', $remember);
-		$this->session->set('last_login_date', DateTimeFormat::utcNow());
 
 		$openid_identity = $this->session->get('openid_identity');
 		$openid_server   = $this->session->get('openid_server');
@@ -311,7 +297,7 @@ class Authentication
 	 * @param array $user_record The current "user" record
 	 * @param bool  $login_initial
 	 * @param bool  $interactive
-	 * @param bool  $login_refresh
+	 * @param bool  $refresh_login
 	 *
 	 * @throws HTTPException\FoundException
 	 * @throws HTTPException\MovedPermanentlyException
@@ -321,7 +307,7 @@ class Authentication
 	 * @throws HTTPException\InternalServerErrorException In case of Friendica specific exceptions
 	 *
 	 */
-	public function setForUser(App $a, array $user_record, bool $login_initial = false, bool $interactive = false, bool $login_refresh = false)
+	public function setForUser(App $a, array $user_record, bool $login_initial = false, bool $interactive = false, bool $refresh_login = true)
 	{
 		$my_url = $this->baseUrl . '/profile/' . $user_record['nickname'];
 
@@ -354,13 +340,9 @@ class Authentication
 
 		$this->setXAccMgmtStatusHeader($user_record);
 
-		if ($login_initial || $login_refresh) {
-			$this->dba->update('user', ['last-activity' => DateTimeFormat::utcNow('Y-m-d'), 'login_date' => DateTimeFormat::utcNow()], ['uid' => $user_record['uid']]);
+		User::updateLastActivity($user_record, $refresh_login);
 
-			// Set the login date for all identities of the user
-			$this->dba->update('user', ['last-activity' => DateTimeFormat::utcNow('Y-m-d'), 'login_date' => DateTimeFormat::utcNow()],
-				['parent-uid' => $user_record['uid'], 'account_removed' => false]);
-
+		if ($login_initial) {
 			// Regularly update suggestions
 			if (Contact\Relation::areSuggestionsOutdated($user_record['uid'])) {
 				Worker::add(Worker::PRIORITY_MEDIUM, 'UpdateSuggestions', $user_record['uid']);
@@ -460,6 +442,27 @@ class Authentication
 			throw new HTTPException\ForbiddenException();
 		} else {
 			$this->baseUrl->redirect('2fa');
+		}
+	}
+
+	/**
+	 * Set the URL of an unauthenticated visitor
+	 *
+	 * @param string $url
+	 * @return void
+	 */
+	public function setUnauthenticatedVisitor(string $url)
+	{
+		if (Strings::compareLink($this->session->get('visitor_home'), $url)) {
+			return;
+		}
+		
+		$this->session->set('my_url', $url);
+		$this->session->set('authenticated', 0);
+		
+		$remote_contact = Contact::getByURL($url, false, ['subscribe']);
+		if (!empty($remote_contact['subscribe'])) {
+			$this->session->set('remote_comment', $remote_contact['subscribe']);
 		}
 	}
 }

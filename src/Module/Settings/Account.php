@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -46,7 +46,7 @@ class Account extends BaseSettings
 {
 	protected function post(array $request = [])
 	{
-		if (!DI::app()->isLoggedIn()) {
+		if (!DI::userSession()->isAuthenticated()) {
 			throw new HTTPException\ForbiddenException(DI::l10n()->t('Permission denied.'));
 		}
 
@@ -56,7 +56,7 @@ class Account extends BaseSettings
 
 		$a = DI::app();
 
-		$user = User::getById($a->getLoggedInUserId());
+		$user = User::getById($this->session->getLocalUserId());
 
 		if (!empty($request['password-submit'])) {
 			$newpass = $request['password'];
@@ -160,8 +160,6 @@ class Account extends BaseSettings
 			$hidewall     = !empty($request['hidewall']);
 			$blockwall    = empty($request['blockwall']); // this setting is inverted!
 			$blocktags    = empty($request['blocktags']); // this setting is inverted!
-			$unkmail      = !empty($request['unkmail']);
-			$cntunkmail   = intval($request['cntunkmail'] ?? 0);
 			$def_gid      = intval($request['circle-selection'] ?? 0);
 
 			$aclFormatter = DI::aclFormatter();
@@ -185,8 +183,6 @@ class Account extends BaseSettings
 				'blockwall'  => $blockwall,
 				'hidewall'   => $hidewall,
 				'blocktags'  => $blocktags,
-				'unkmail'    => $unkmail,
-				'cntunkmail' => $cntunkmail,
 			];
 
 			$profile_fields = [
@@ -199,6 +195,7 @@ class Account extends BaseSettings
 				DI::sysmsg()->addNotice(DI::l10n()->t('Settings were not updated.'));
 			}
 
+			User::setCommunityUserSettings(DI::userSession()->getLocalUserId());
 			DI::baseUrl()->redirect($redirectUrl);
 		}
 
@@ -317,41 +314,22 @@ class Account extends BaseSettings
 				$page_flags = User::PAGE_FLAGS_SOAPBOX;
 			} elseif ($account_type == User::ACCOUNT_TYPE_NEWS && $page_flags != User::PAGE_FLAGS_SOAPBOX) {
 				$page_flags = User::PAGE_FLAGS_SOAPBOX;
-			} elseif ($account_type == User::ACCOUNT_TYPE_COMMUNITY && !in_array($page_flags, [User::PAGE_FLAGS_COMMUNITY, User::PAGE_FLAGS_PRVGROUP])) {
+			} elseif ($account_type == User::ACCOUNT_TYPE_COMMUNITY && !in_array($page_flags, [User::PAGE_FLAGS_COMMUNITY, User::PAGE_FLAGS_PRVGROUP, User::PAGE_FLAGS_COMM_MAN])) {
 				$page_flags = User::PAGE_FLAGS_COMMUNITY;
+			} elseif ($account_type == User::ACCOUNT_TYPE_RELAY && $page_flags != User::PAGE_FLAGS_SOAPBOX) {
+				$page_flags = User::PAGE_FLAGS_SOAPBOX;
 			}
 
-			$fields         = [];
-			$profile_fields = [];
-
-			if ($account_type == User::ACCOUNT_TYPE_COMMUNITY) {
-				DI::pConfig()->set(DI::userSession()->getLocalUserId(), 'system', 'unlisted', true);
-
-				$fields = [
-					'allow_cid' => '',
-					'allow_gid' => $page_flags == User::PAGE_FLAGS_PRVGROUP ?
-							'<' . Circle::FOLLOWERS . '>'
-							: '',
-					'deny_cid'  => '',
-					'deny_gid'  => '',
-					'blockwall' => true,
-					'blocktags' => true,
-				];
-
-				$profile_fields = [
-					'hide-friends' => true,
-				];
-			}
-
-			$fields = array_merge($fields, [
+			$fields = [
 				'page-flags'   => $page_flags,
 				'account-type' => $account_type,
-			]);
+			];
 
-			if (!User::update($fields, DI::userSession()->getLocalUserId()) || !empty($profile_fields) && !Profile::update($profile_fields, DI::userSession()->getLocalUserId())) {
+			if (!User::update($fields, DI::userSession()->getLocalUserId())) {
 				DI::sysmsg()->addNotice(DI::l10n()->t('Settings were not updated.'));
 			}
 
+			User::setCommunityUserSettings(DI::userSession()->getLocalUserId());
 			DI::baseUrl()->redirect($redirectUrl);
 		}
 
@@ -416,11 +394,11 @@ class Account extends BaseSettings
 
 		$a = DI::app();
 
-		$user = User::getById($a->getLoggedInUserId());
+		$user = User::getById($this->session->getLocalUserId());
 
 		$username         = $user['username'];
 		$email            = $user['email'];
-		$nickname         = $a->getLoggedInUserNickname();
+		$nickname         = DI::userSession()->getLocalUserNickname();
 		$timezone         = $user['timezone'];
 		$language         = $user['language'];
 		$notify           = $user['notify-flags'];
@@ -428,8 +406,6 @@ class Account extends BaseSettings
 		$openid           = $user['openid'];
 		$maxreq           = $user['maxreq'];
 		$expire           = $user['expire'] ?: '';
-		$unkmail          = $user['unkmail'];
-		$cntunkmail       = $user['cntunkmail'];
 
 		$expire_items        = DI::pConfig()->get(DI::userSession()->getLocalUserId(), 'expire', 'items', true);
 		$expire_notes        = DI::pConfig()->get(DI::userSession()->getLocalUserId(), 'expire', 'notes', true);
@@ -443,10 +419,22 @@ class Account extends BaseSettings
 		// Set the account type to "Community" when the page is a community page but the account type doesn't fit
 		// This is only happening on the first visit after the update
 		if (
-			in_array($user['page-flags'], [User::PAGE_FLAGS_COMMUNITY, User::PAGE_FLAGS_PRVGROUP])
+			in_array($user['page-flags'], [User::PAGE_FLAGS_COMMUNITY, User::PAGE_FLAGS_PRVGROUP, User::PAGE_FLAGS_COMM_MAN])
 			&& $user['account-type'] != User::ACCOUNT_TYPE_COMMUNITY
 		) {
 			$user['account-type'] = User::ACCOUNT_TYPE_COMMUNITY;
+		}
+
+		if (DI::config()->get('system', 'allow_relay_channels')) {
+			$account_relay = [
+				'account-type',
+				DI::l10n()->t('Channel Relay'),
+				User::ACCOUNT_TYPE_RELAY,
+				DI::l10n()->t('Account for a service that automatically shares content based on user defined channels.'),
+				$user['account-type'] == User::ACCOUNT_TYPE_RELAY
+			];
+		} else {
+			$account_relay = null;
 		}
 
 		$pageset_tpl = Renderer::getMarkupTemplate('settings/pagetypes.tpl');
@@ -459,6 +447,7 @@ class Account extends BaseSettings
 			'$type_organisation' => User::ACCOUNT_TYPE_ORGANISATION,
 			'$type_news'         => User::ACCOUNT_TYPE_NEWS,
 			'$type_community'    => User::ACCOUNT_TYPE_COMMUNITY,
+			'$type_relay'        => User::ACCOUNT_TYPE_RELAY,
 			'$account_person'    => [
 				'account-type',
 				DI::l10n()->t('Personal Page'),
@@ -487,6 +476,7 @@ class Account extends BaseSettings
 				DI::l10n()->t('Account for community discussions.'),
 				$user['account-type'] == User::ACCOUNT_TYPE_COMMUNITY
 			],
+			'$account_relay' => $account_relay,
 			'$page_normal' => [
 				'page-flags',
 				DI::l10n()->t('Normal Account Page'),
@@ -507,6 +497,13 @@ class Account extends BaseSettings
 				User::PAGE_FLAGS_COMMUNITY,
 				DI::l10n()->t('Automatically approves all contact requests.'),
 				$user['page-flags'] == User::PAGE_FLAGS_COMMUNITY
+			],
+			'$page_community_manually' => [
+				'page-flags',
+				DI::l10n()->t('Public Group - Restricted'),
+				User::PAGE_FLAGS_COMM_MAN,
+				DI::l10n()->t('Contact requests have to be manually approved.'),
+				$user['page-flags'] == User::PAGE_FLAGS_COMM_MAN
 			],
 			'$page_freelove' => [
 				'page-flags',
@@ -591,12 +588,10 @@ class Account extends BaseSettings
 			'$accessiblephotos'   => ['accessible-photos', DI::l10n()->t('Make all posted pictures accessible'), DI::pConfig()->get(DI::userSession()->getLocalUserId(), 'system', 'accessible-photos'), DI::l10n()->t("This option makes every posted picture accessible via the direct link. This is a workaround for the problem that most other networks can't handle permissions on pictures. Non public pictures still won't be visible for the public on your photo albums though.")],
 			'$blockwall'          => ['blockwall', DI::l10n()->t('Allow friends to post to your profile page?'), (intval($user['blockwall']) ? '0' : '1'), DI::l10n()->t('Your contacts may write posts on your profile wall. These posts will be distributed to your contacts')],
 			'$blocktags'          => ['blocktags', DI::l10n()->t('Allow friends to tag your posts?'), (intval($user['blocktags']) ? '0' : '1'), DI::l10n()->t('Your contacts can add additional tags to your posts.')],
-			'$unkmail'            => ['unkmail', DI::l10n()->t('Permit unknown people to send you private mail?'), $unkmail, DI::l10n()->t('Friendica network users may send you private messages even if they are not in your contact list.')],
-			'$cntunkmail'         => ['cntunkmail', DI::l10n()->t('Maximum private messages per day from unknown people:'), $cntunkmail, DI::l10n()->t("(to prevent spam abuse)")],
 			'$circle_select'      => Circle::getSelectorHTML(DI::userSession()->getLocalUserId(), $user['def_gid'], 'circle-selection', DI::l10n()->t('Default privacy circle for new contacts')),
 			'$circle_select_group' => Circle::getSelectorHTML(DI::userSession()->getLocalUserId(), DI::pConfig()->get(DI::userSession()->getLocalUserId(), 'system', 'default-group-gid', $user['def_gid']), 'circle-selection-group', DI::l10n()->t('Default privacy circle for new group contacts')),
 			'$permissions'        => DI::l10n()->t('Default Post Permissions'),
-			'$aclselect'          => ACL::getFullSelectorHTML(DI::page(), $a->getLoggedInUserId()),
+			'$aclselect'          => ACL::getFullSelectorHTML(DI::page(), $this->session->getLocalUserId()),
 
 			'$expire' => [
 				'label'        => DI::l10n()->t('Expiration settings'),

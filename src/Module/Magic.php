@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -25,8 +25,10 @@ use Exception;
 use Friendica\App;
 use Friendica\BaseModule;
 use Friendica\Core\L10n;
+use Friendica\Core\Protocol;
 use Friendica\Core\Session\Capability\IHandleUserSessions;
 use Friendica\Core\System;
+use Friendica\Core\Worker;
 use Friendica\Database\Database;
 use Friendica\Model\Contact;
 use Friendica\Model\GServer;
@@ -34,9 +36,10 @@ use Friendica\Model\User;
 use Friendica\Network\HTTPClient\Capability\ICanSendHttpRequests;
 use Friendica\Network\HTTPClient\Client\HttpClientOptions;
 use Friendica\Util\HTTPSignature;
+use Friendica\Util\Network;
 use Friendica\Util\Profiler;
 use Friendica\Util\Strings;
-use GuzzleHttp\Psr7\Uri;
+use Friendica\Worker\UpdateContact;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -74,10 +77,12 @@ class Magic extends BaseModule
 
 		$this->logger->debug('Invoked', ['request' => $request]);
 
-		$addr  = $request['addr'] ?? '';
-		$dest  = $request['dest'] ?? '';
-		$bdest = $request['bdest'] ?? '';
-		$owa   = intval($request['owa'] ?? 0);
+		$addr     = $request['addr'] ?? '';
+		$bdest    = $request['bdest'] ?? '';
+		$dest     = $request['dest'] ?? '';
+		$rev      = intval($request['rev'] ?? 0);
+		$owa      = intval($request['owa'] ?? 0);
+		$delegate = $request['delegate'] ?? '';
 
 		// bdest is preferred as it is hex-encoded and can survive url rewrite and argument parsing
 		if (!empty($bdest)) {
@@ -111,27 +116,47 @@ class Magic extends BaseModule
 			$this->app->redirect($dest);
 		}
 
+		$dest = Network::removeUrlParameter($dest, 'zid');
+		$dest = Network::removeUrlParameter($dest, 'f');
+		
 		// OpenWebAuth
 		$owner = User::getOwnerDataById($this->userSession->getLocalUserId());
 
 		if (!empty($contact['gsid'])) {
-			$gserver = $this->dba->selectFirst('gserver', ['url'], ['id' => $contact['gsid']]);
-			if (empty($gserver)) {
-				$this->logger->notice('Server not found, redirecting to destination.', ['gsid' => $contact['gsid'], 'dest' => $dest]);
-				System::externalRedirect($dest);
-			}
-
-			$basepath = $gserver['url'];
+			$gsid = $contact['gsid'];
 		} elseif (GServer::check($target)) {
-			$basepath = (string)GServer::cleanUri(new Uri($target));
-		} else {
+			$gsid = GServer::getID($target);
+		}
+
+		if (empty($gsid)) {
 			$this->logger->notice('The target is not a server path, redirecting to destination.', ['target' => $target]);
 			System::externalRedirect($dest);
 		}
 
+		$gserver = $this->dba->selectFirst('gserver', ['url', 'network', 'openwebauth'], ['id' => $gsid]);
+		if (empty($gserver)) {
+			$this->logger->notice('Server not found, redirecting to destination.', ['gsid' => $gsid, 'dest' => $dest]);
+			System::externalRedirect($dest);
+		}
+
+		$openwebauth = $gserver['openwebauth'];
+
+		// This part can be removed, when all server entries had been updated. So removing it in 2025 should be safe.
+		if (empty($openwebauth) && ($gserver['network'] == Protocol::DFRN)) {
+			$this->logger->notice('Open Web Auth path not provided. Assume default path', ['gsid' => $gsid, 'dest' => $dest]);
+			$openwebauth = $gserver['url'] . '/owa';
+			// Update contact to assign the path to the server
+			UpdateContact::add(Worker::PRIORITY_MEDIUM, $contact['id']);
+		}
+
+		if (empty($openwebauth)) {
+			$this->logger->debug('Server does not support open web auth, redirecting to destination.', ['gsid' => $gsid, 'dest' => $dest]);
+			System::externalRedirect($dest);
+		}
+
 		$header = [
-			'Accept'          => 'application/x-dfrn+json, application/x-zot+json',
-			'X-Open-Web-Auth' => Strings::getRandomHex()
+			'Accept'          => 'application/x-zot+json',
+			'X-Open-Web-Auth' => Strings::getRandomHex(),
 		];
 
 		// Create a header that is signed with the local users private key.
@@ -141,13 +166,13 @@ class Magic extends BaseModule
 			'acct:' . $owner['addr']
 		);
 
-		$this->logger->info('Fetch from remote system', ['basepath' => $basepath, 'headers' => $header]);
+		$this->logger->info('Fetch from remote system', ['openwebauth' => $openwebauth, 'headers' => $header]);
 
 		// Try to get an authentication token from the other instance.
 		try {
-			$curlResult = $this->httpClient->request('get', $basepath . '/owa', [HttpClientOptions::HEADERS => $header]);
+			$curlResult = $this->httpClient->request('get', $openwebauth, [HttpClientOptions::HEADERS => $header]);
 		} catch (Exception $exception) {
-			$this->logger->notice('URL is invalid, redirecting to destination.', ['url' => $basepath, 'error' => $exception, 'dest' => $dest]);
+			$this->logger->notice('URL is invalid, redirecting to destination.', ['url' => $openwebauth, 'error' => $exception, 'dest' => $dest]);
 			System::externalRedirect($dest);
 		}
 		if (!$curlResult->isSuccess()) {
@@ -155,7 +180,7 @@ class Magic extends BaseModule
 			System::externalRedirect($dest);
 		}
 
-		$j = json_decode($curlResult->getBody(), true);
+		$j = json_decode($curlResult->getBodyString(), true);
 		if (empty($j) || !$j['success']) {
 			$this->logger->notice('Invalid JSON, redirecting to destination.', ['json' => $j, 'dest' => $dest]);
 			$this->app->redirect($dest);

@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -25,7 +25,7 @@ use Friendica\Core\Logger;
 use Friendica\Core\Worker;
 use Friendica\Database\DBA;
 use Friendica\Util\DateTimeFormat;
-use Friendica\Util\Network;
+use GuzzleHttp\Psr7\Uri;
 
 class PushSubscriber
 {
@@ -179,7 +179,7 @@ class PushSubscriber
 
 		$parts = parse_url($subscriber['callback_url']);
 		unset($parts['path']);
-		$server_url = Network::unparseURL($parts);
+		$server_url = (string)Uri::fromParts((array)$parts);
 		$gsid = GServer::getID($server_url, true);
 		if (!empty($gsid)) {
 			GServer::setProtocol($gsid, Post\DeliveryData::OSTATUS);

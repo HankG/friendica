@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -25,6 +25,7 @@ use Friendica\Core\Logger;
 use Friendica\Database\DBA;
 use Friendica\DI;
 use Friendica\Model\PushSubscriber;
+use Friendica\Network\HTTPClient\Client\HttpClientRequest;
 use Friendica\Protocol\OStatus;
 
 class PubSubPublish
@@ -73,14 +74,17 @@ class PubSubPublish
 
 		$headers = [
 			'Content-type' => 'application/atom+xml',
-			'Link' => sprintf('<%s>;rel=hub,<%s>;rel=self',
-					DI::baseUrl() . '/pubsubhubbub/' . $subscriber['nickname'],
-					$subscriber['topic']),
-			'X-Hub-Signature' => 'sha1=' . $hmac_sig];
+			'Link' => sprintf(
+				'<%s>;rel=hub,<%s>;rel=self',
+				DI::baseUrl() . '/pubsubhubbub/' . $subscriber['nickname'],
+				$subscriber['topic']
+			),
+			'X-Hub-Signature' => 'sha1=' . $hmac_sig
+		];
 
 		Logger::debug('POST', ['headers' => $headers, 'params' => $params]);
 
-		$postResult = DI::httpClient()->post($subscriber['callback_url'], $params, $headers);
+		$postResult = DI::httpClient()->post($subscriber['callback_url'], $params, $headers, 0, HttpClientRequest::PUBSUB);
 		$ret = $postResult->getReturnCode();
 
 		if ($ret >= 200 && $ret <= 299) {

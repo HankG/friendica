@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -42,7 +42,7 @@ class Bookmarklet extends BaseModule
 
 		if (!DI::userSession()->getLocalUserId()) {
 			$output = '<h2>' . DI::l10n()->t('Login') . '</h2>';
-			$output .= Login::form(DI::args()->getQueryString(), intval($config->get('config', 'register_policy')) === Register::CLOSED ? false : true);
+			$output .= Login::form(DI::args()->getQueryString(), Register::getPolicy() !== Register::CLOSED);
 			return $output;
 		}
 

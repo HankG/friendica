@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -31,9 +31,9 @@ use Friendica\Core\Hook;
 use Friendica\Core\L10n;
 use Friendica\Core\PConfig\Capability\IManagePersonalConfigValues;
 use Friendica\Core\Renderer;
+use Friendica\Core\Session\Model\UserSession;
 use Friendica\Core\Theme;
 use Friendica\Database\DBA;
-use Friendica\DI;
 use Friendica\Model\Contact;
 use Friendica\Model\Item;
 use Friendica\Model\User;
@@ -64,7 +64,14 @@ class Compose extends BaseModule
 	/** @var IManageConfigValues */
 	private $config;
 
-	public function __construct(IManageConfigValues $config, IManagePersonalConfigValues $pConfig, App\Page $page, ACLFormatter $ACLFormatter, SystemMessages $systemMessages, L10n $l10n, App\BaseURL $baseUrl, App\Arguments $args, LoggerInterface $logger, Profiler $profiler, Response $response, array $server, array $parameters = [])
+	/** @var UserSession */
+	private $session;
+
+	/** @var App */
+	private $app;
+
+
+	public function __construct(App $app, UserSession $session, IManageConfigValues $config, IManagePersonalConfigValues $pConfig, App\Page $page, ACLFormatter $ACLFormatter, SystemMessages $systemMessages, L10n $l10n, App\BaseURL $baseUrl, App\Arguments $args, LoggerInterface $logger, Profiler $profiler, Response $response, array $server, array $parameters = [])
 	{
 		parent::__construct($l10n, $baseUrl, $args, $logger, $profiler, $response, $server, $parameters);
 
@@ -73,6 +80,8 @@ class Compose extends BaseModule
 		$this->page           = $page;
 		$this->pConfig        = $pConfig;
 		$this->config         = $config;
+		$this->session        = $session;
+		$this->app            = $app;
 	}
 
 	protected function post(array $request = [])
@@ -80,7 +89,7 @@ class Compose extends BaseModule
 		if (!empty($_REQUEST['body'])) {
 			$_REQUEST['return'] = 'network';
 			require_once 'mod/item.php';
-			item_post(DI::app());
+			item_post();
 		} else {
 			$this->systemMessages->addNotice($this->l10n->t('Please enter a post body.'));
 		}
@@ -88,13 +97,11 @@ class Compose extends BaseModule
 
 	protected function content(array $request = []): string
 	{
-		if (!DI::userSession()->getLocalUserId()) {
+		if (!$this->session->getLocalUserId()) {
 			return Login::form('compose');
 		}
 
-		$a = DI::app();
-
-		if ($a->getCurrentTheme() !== 'frio') {
+		if ($this->app->getCurrentTheme() !== 'frio') {
 			throw new NotImplementedException($this->l10n->t('This feature is only available with the frio theme.'));
 		}
 
@@ -110,7 +117,7 @@ class Compose extends BaseModule
 			}
 		}
 
-		$user = User::getById(DI::userSession()->getLocalUserId(), ['allow_cid', 'allow_gid', 'deny_cid', 'deny_gid', 'default-location']);
+		$user = User::getById($this->session->getLocalUserId(), ['allow_cid', 'allow_gid', 'deny_cid', 'deny_gid', 'default-location']);
 
 		$contact_allow_list = $this->ACLFormatter->expand($user['allow_cid']);
 		$circle_allow_list  = $this->ACLFormatter->expand($user['allow_gid']);
@@ -122,7 +129,7 @@ class Compose extends BaseModule
 				$compose_title = $this->l10n->t('Compose new personal note');
 				$type = 'note';
 				$doesFederate = false;
-				$contact_allow_list = [$a->getContactId()];
+				$contact_allow_list = [$this->app->getContactId()];
 				$circle_allow_list = [];
 				$contact_deny_list = [];
 				$circle_deny_list = [];
@@ -165,9 +172,9 @@ class Compose extends BaseModule
 		$this->page->registerFooterScript(Theme::getPathForFile('js/linkPreview.js'));
 		$this->page->registerFooterScript(Theme::getPathForFile('js/compose.js'));
 
-		$contact = Contact::getById($a->getContactId());
+		$contact = Contact::getById($this->app->getContactId());
 
-		if ($this->pConfig->get(DI::userSession()->getLocalUserId(), 'system', 'set_creation_date')) {
+		if ($this->pConfig->get($this->session->getLocalUserId(), 'system', 'set_creation_date')) {
 			$created_at = Temporal::getDateTimeField(
 				new \DateTime(DBA::NULL_DATETIME),
 				new \DateTime('now'),
@@ -205,8 +212,8 @@ class Compose extends BaseModule
 				'location_disabled'    => $this->l10n->t('Location services are disabled. Please check the website\'s permissions on your device'),
 				'wait'                 => $this->l10n->t('Please wait'),
 				'placeholdertitle'     => $this->l10n->t('Set title'),
-				'placeholdercategory'  => Feature::isEnabled(DI::userSession()->getLocalUserId(),'categories') ? $this->l10n->t('Categories (comma-separated list)') : '',
-				'always_open_compose'  => $this->pConfig->get(DI::userSession()->getLocalUserId(), 'frio', 'always_open_compose',
+				'placeholdercategory'  => Feature::isEnabled($this->session->getLocalUserId(), Feature::CATEGORIES) ? $this->l10n->t('Categories (comma-separated list)') : '',
+				'always_open_compose'  => $this->pConfig->get($this->session->getLocalUserId(), 'frio', 'always_open_compose',
 					$this->config->get('frio', 'always_open_compose', false)) ? '' :
 						$this->l10n->t('You can make this page always open when you use the New Post button in the <a href="/settings/display">Theme Customization settings</a>.'),
 			],
@@ -237,7 +244,7 @@ class Compose extends BaseModule
 
 			'$jotplugins'   => $jotplugins,
 			'$rand_num'     => Crypto::randomDigits(12),
-			'$acl_selector'  => ACL::getFullSelectorHTML($this->page, $a->getLoggedInUserId(), $doesFederate, [
+			'$acl_selector'  => ACL::getFullSelectorHTML($this->page, $this->session->getLocalUserId(), $doesFederate, [
 				'allow_cid' => $contact_allow_list,
 				'allow_gid' => $circle_allow_list,
 				'deny_cid'  => $contact_deny_list,

@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -45,7 +45,7 @@ class Inbox extends BaseApi
 
 	protected function rawContent(array $request = [])
 	{
-		self::checkAllowedScope(self::SCOPE_READ);
+		$this->checkAllowedScope(self::SCOPE_READ);
 		$uid  = self::getCurrentUserID();
 		$page = $request['page'] ?? null;
 
@@ -75,6 +75,11 @@ class Inbox extends BaseApi
 
 		if (empty($postdata)) {
 			throw new \Friendica\Network\HTTPException\BadRequestException();
+		}
+
+		if (!HTTPSignature::isValidContentType($this->server['CONTENT_TYPE'] ?? '')) {
+			Logger::notice('Unexpected content type', ['content-type' => $this->server['CONTENT_TYPE'] ?? '', 'agent' => $this->server['HTTP_USER_AGENT'] ?? '']);
+			throw new \Friendica\Network\HTTPException\UnsupportedMediaTypeException();
 		}
 
 		if (DI::config()->get('debug', 'ap_inbox_log')) {

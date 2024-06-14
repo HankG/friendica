@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -28,6 +28,8 @@ use Friendica\Database\Database;
 use Friendica\Model\PushSubscriber;
 use Friendica\Module\Response;
 use Friendica\Network\HTTPClient\Capability\ICanSendHttpRequests;
+use Friendica\Network\HTTPClient\Client\HttpClientAccept;
+use Friendica\Network\HTTPClient\Client\HttpClientRequest;
 use Friendica\Network\HTTPException;
 use Friendica\Util\Profiler;
 use Friendica\Util\Strings;
@@ -153,8 +155,8 @@ class PubSubHubBub extends \Friendica\BaseModule
 		$hub_callback = rtrim($hub_callback, ' ?&#');
 		$separator    = parse_url($hub_callback, PHP_URL_QUERY) === null ? '?' : '&';
 
-		$fetchResult = $this->httpClient->fetchFull($hub_callback . $separator . $params);
-		$body        = $fetchResult->getBody();
+		$fetchResult = $this->httpClient->fetchFull($hub_callback . $separator . $params, HttpClientAccept::DEFAULT, 0, '', HttpClientRequest::PUBSUB);
+		$body        = $fetchResult->getBodyString();
 		$returnCode  = $fetchResult->getReturnCode();
 
 		// give up if the HTTP return code wasn't a success (2xx)

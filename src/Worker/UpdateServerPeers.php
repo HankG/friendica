@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -27,6 +27,8 @@ use Friendica\Database\DBA;
 use Friendica\DI;
 use Friendica\Model\GServer;
 use Friendica\Network\HTTPClient\Client\HttpClientAccept;
+use Friendica\Network\HTTPClient\Client\HttpClientOptions;
+use Friendica\Network\HTTPClient\Client\HttpClientRequest;
 use Friendica\Util\Network;
 use Friendica\Util\Strings;
 
@@ -40,13 +42,17 @@ class UpdateServerPeers
 	 */
 	public static function execute(string $url)
 	{
-		$ret = DI::httpClient()->get($url . '/api/v1/instance/peers', HttpClientAccept::JSON);
-		if (!$ret->isSuccess() || empty($ret->getBody())) {
+		if (!DI::config()->get('system', 'poco_discovery')) {
+			return;
+		}
+
+		$ret = DI::httpClient()->get($url . '/api/v1/instance/peers', HttpClientAccept::JSON, [HttpClientOptions::REQUEST => HttpClientRequest::SERVERDISCOVER]);
+		if (!$ret->isSuccess() || empty($ret->getBodyString())) {
 			Logger::info('Server is not reachable or does not offer the "peers" endpoint', ['url' => $url]);
 			return;
 		}
 
-		$peers = json_decode($ret->getBody());
+		$peers = json_decode($ret->getBodyString());
 		if (empty($peers) || !is_array($peers)) {
 			Logger::info('Server does not have any peers listed', ['url' => $url]);
 			return;

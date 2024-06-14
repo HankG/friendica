@@ -103,6 +103,9 @@ When a certain language is forced, the language remains until session is closed.
 <a name="contacts"></a>
 ### How do blocked, ignored, archived and hidden contacts behave?
 
+These are various categories of contacts that are restricted in some way.
+Many of these types are related to [Safety](help/Safety).
+
 ##### Blocked
 
 Direct communication will be blocked.
@@ -126,7 +129,7 @@ However, unlike blocking, existing posts this person made before being archived 
 
 ##### Hidden
 
-Contact not be displayed in your public friend list.
+The contact not be displayed in your public friend list.
 However, a hidden contact will appear normally in conversations and this may expose their hidden status to anybody who can see the conversation.
 
 <a name="removed"></a>
@@ -178,12 +181,12 @@ The available features are client specific and may differ.
 #### Android
 
 * [AndStatus](http://andstatus.org) ([F-Droid](https://f-droid.org/repository/browse/?fdid=org.andstatus.app), [Google Play](https://play.google.com/store/apps/details?id=org.andstatus.app))
-* [Fedi](https://github.com/Big-Fig/Fediverse.app) ([Google Play](https://play.google.com/store/apps/details?id=com.fediverse.app))
 * [Fedilab](https://fedilab.app) ([F-Droid](https://f-droid.org/app/fr.gouv.etalab.mastodon), [Google Play](https://play.google.com/store/apps/details?id=app.fedilab.android))
 * [Friendiqa](https://git.friendi.ca/lubuwest/Friendiqa) ([F-Droid](https://git.friendi.ca/lubuwest/Friendiqa#install), [Google Play](https://play.google.com/store/apps/details?id=org.qtproject.friendiqa))
-* [Husky](https://git.sr.ht/~captainepoch/husky) ([F-Droid](https://f-droid.org/repository/browse/?fdid=su.xash.husky), [Google Play](https://play.google.com/store/apps/details?id=su.xash.husky))
+* [Husky](https://codeberg.org/husky/husky) ([F-Droid](https://f-droid.org/repository/browse/?fdid=su.xash.husky), [Google Play](https://play.google.com/store/apps/details?id=su.xash.husky))
 * [Mastodon](https://github.com/mastodon/mastodon-android) ([F-Droid](https://f-droid.org/en/packages/org.joinmastodon.android/), [Google Play](https://play.google.com/store/apps/details?id=org.joinmastodon.android))
-* [Subway Tooter](https://github.com/tateisu/SubwayTooter) ([F-Droid](https://android.izzysoft.de/repo/apk/jp.juggler.subwaytooter))
+* [Pachli](https://pachli.app/) ([F-Droid](https://f-droid.org/en/packages/app.pachli/), [Google Play](https://play.google.com/store/apps/details?id=app.pachli))
+* [Subway Tooter](https://github.com/tateisu/SubwayTooter) ([F-Droid via Izzy](https://android.izzysoft.de/repo/apk/jp.juggler.subwaytooter.noFcm))
 * [Tooot](https://tooot.app/) ([Google Play](https://play.google.com/store/apps/details?id=com.xmflsct.app.tooot))
 * [Tusky](https://tusky.app) ([F-Droid](https://f-droid.org/repository/browse/?fdid=com.keylesspalace.tusky), [Google Play](https://play.google.com/store/apps/details?id=com.keylesspalace.tusky))
 * [TwidereX](https://github.com/TwidereProject/TwidereX-Android) ([F-Droid](https://f-droid.org/en/packages/com.twidere.twiderex/), [Google Play](https://play.google.com/store/apps/details?id=com.twidere.twiderex))
@@ -193,7 +196,7 @@ The available features are client specific and may differ.
 
 * [Mastodon](https://joinmastodon.org/apps) ([App Store](https://apps.apple.com/us/app/mastodon-for-iphone/id1571998974))
 * [Stella*](https://www.stella-app.net/) ([App Store](https://apps.apple.com/us/app/stella-for-mastodon-twitter/id921372048))
-* [Tooot](https://github.com/tooot-app) ([App Store](https://apps.apple.com/app/id1549772269)
+* [Tooot](https://github.com/tooot-app) ([App Store](https://apps.apple.com/app/id1549772269))
 * [TwidereX](https://github.com/TwidereProject/TwidereX-iOS) ([App Store](https://apps.apple.com/app/twidere-x/id1530314034))
 
 #### Linux
@@ -211,7 +214,7 @@ The available features are client specific and may differ.
 #### Windows
 
 * [TheDesk](https://thedesk.top/en/) ([GitHub](https://github.com/cutls/TheDesk))
-* [Whalebird](https://whalebird.social/en/desktop/contents) ([Website Download](https://whalebird.social/en/desktop/contents/downloads#windows), [GitHub](https://github.com/h3poteto/whalebird-desktop))
+* [Whalebird](https://whalebird.social/en/desktop/contents) ([Microsoft Store](https://apps.microsoft.com/detail/9nbw4csdv5hc), [GitHub](https://github.com/h3poteto/whalebird-desktop))
 
 #### Web Frontend
 

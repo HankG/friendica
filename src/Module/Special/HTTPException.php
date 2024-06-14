@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -138,7 +138,6 @@ class HTTPException
 					'code'        => $e->getCode(),
 					'description' => $e->getDescription(),
 					'query'       => $this->args->getQueryString(),
-					'callstack'   => System::callstack(20),
 					'method'      => $this->args->getMethod(),
 					'agent'       => $this->server['HTTP_USER_AGENT'] ?? ''
 				]);

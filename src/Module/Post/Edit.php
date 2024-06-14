@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -105,7 +105,7 @@ class Edit extends BaseModule
 		$this->page['htmlhead'] .= Renderer::replaceMacros(Renderer::getMarkupTemplate('jot-header.tpl'), [
 			'$ispublic'  => '&nbsp;',
 			'$geotag'    => '',
-			'$nickname'  => $this->app->getLoggedInUserNickname(),
+			'$nickname'  => $this->session->getLocalUserNickname(),
 			'$is_mobile' => $this->mode->isMobile(),
 		]);
 
@@ -156,7 +156,7 @@ class Edit extends BaseModule
 			'$title'               => $item['title'],
 			'$placeholdertitle'    => $this->t('Set title'),
 			'$category'            => Post\Category::getCSVByURIId($item['uri-id'], $this->session->getLocalUserId(), Post\Category::CATEGORY),
-			'$placeholdercategory' => (Feature::isEnabled($this->session->getLocalUserId(), 'categories') ? $this->t("Categories \x28comma-separated list\x29") : ''),
+			'$placeholdercategory' => (Feature::isEnabled($this->session->getLocalUserId(), Feature::CATEGORIES) ? $this->t("Categories \x28comma-separated list\x29") : ''),
 			'$emtitle'             => $this->t('Example: bob@example.com, mary@example.com'),
 			'$lockstate'           => $lockstate,
 			'$acl'                 => '',

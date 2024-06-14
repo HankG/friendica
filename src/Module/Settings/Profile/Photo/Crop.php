@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -55,7 +55,7 @@ class Crop extends BaseSettings
 		$selectionW = intval($_POST['width']  ?? 0);
 		$selectionH = intval($_POST['height'] ?? 0);
 
-		$path = 'profile/' . DI::app()->getLoggedInUserNickname();
+		$path = 'profile/' . DI::userSession()->getLocalUserNickname();
 
 		$base_image = Photo::selectFirst([], ['resource-id' => $resource_id, 'uid' => DI::userSession()->getLocalUserId(), 'scale' => $scale]);
 		if (DBA::isResult($base_image)) {
@@ -195,7 +195,7 @@ class Crop extends BaseSettings
 
 			DI::sysmsg()->addInfo(DI::l10n()->t('Profile picture successfully updated.'));
 
-			DI::baseUrl()->redirect('profile/' . DI::app()->getLoggedInUserNickname());
+			DI::baseUrl()->redirect('profile/' . DI::userSession()->getLocalUserNickname());
 		}
 
 		$Image = Photo::getImageForPhoto($photos[0]);
@@ -213,7 +213,7 @@ class Crop extends BaseSettings
 
 		DI::page()['htmlhead'] .= Renderer::replaceMacros(Renderer::getMarkupTemplate('settings/profile/photo/crop_head.tpl'), []);
 
-		$filename = $imagecrop['resource-id'] . '-' . $imagecrop['scale'] . '.' . $imagecrop['ext'];
+		$filename = $imagecrop['resource-id'] . '-' . $imagecrop['scale'] . $imagecrop['ext'];
 		$tpl = Renderer::getMarkupTemplate('settings/profile/photo/crop.tpl');
 		$o = Renderer::replaceMacros($tpl, [
 			'$filename'  => $filename,

@@ -65,11 +65,14 @@
 					data-data="{{$row->data}}" data-source="{{$row->source}}">
 					<td>{{$row->date}}</td>
 					<td class="
-						{{if $row->level == "CRITICAL"}}bg-danger
+						{{if $row->level == "EMERGENCY"}}bg-danger
+						{{elseif $row->level == "ALERT"}}bg-danger
+						{{elseif $row->level == "CRITICAL"}}bg-danger
 						{{elseif $row->level == "ERROR"}}bg-danger
 						{{elseif $row->level == "WARNING"}}bg-warning
 						{{elseif $row->level == "NOTICE"}}bg-info
-						{{elseif $row->level == "DEBUG"}}text-muted
+						{{elseif $row->level == "INFO"}}bg-info
+						{{else}}text-muted
 						{{/if}}
 					">{{$row->level}}</td>
 					<td>{{$row->context}}</td>

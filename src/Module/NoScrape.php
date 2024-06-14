@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -43,7 +43,7 @@ class NoScrape extends BaseModule
 			$which = $this->parameters['nick'];
 		} elseif (DI::userSession()->getLocalUserId() && isset($this->parameters['profile']) && DI::args()->get(2) == 'view') {
 			// view infos about a known profile (needs a login)
-			$which = $a->getLoggedInUserNickname();
+			$which = DI::userSession()->getLocalUserNickname();
 		} else {
 			$this->jsonError(403, 'Authentication required');
 		}

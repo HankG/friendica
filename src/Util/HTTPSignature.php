@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -34,6 +34,7 @@ use Friendica\Model\User;
 use Friendica\Network\HTTPClient\Capability\ICanHandleHttpResponses;
 use Friendica\Network\HTTPClient\Client\HttpClientAccept;
 use Friendica\Network\HTTPClient\Client\HttpClientOptions;
+use Friendica\Network\HTTPClient\Client\HttpClientRequest;
 
 /**
  * Implements HTTP Signatures per draft-cavage-http-signatures-07.
@@ -69,7 +70,7 @@ class HTTPSignature
 
 		// Decide if $data arrived via controller submission or curl.
 		$headers = [];
-		$headers['(request-target)'] = strtolower(DI::args()->getMethod()).' '.$_SERVER['REQUEST_URI'];
+		$headers['(request-target)'] = strtolower(DI::args()->getMethod()) . ' ' . $_SERVER['REQUEST_URI'];
 
 		foreach ($_SERVER as $k => $v) {
 			if (strpos($k, 'HTTP_') === 0) {
@@ -280,7 +281,7 @@ class HTTPSignature
 		$content = json_encode($data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
 		// Header data that is about to be signed.
-		$host = parse_url($target, PHP_URL_HOST);
+		$host = strtolower(parse_url($target, PHP_URL_HOST));
 		$path = parse_url($target, PHP_URL_PATH);
 		$digest = 'SHA-256=' . base64_encode(hash('sha256', $content, true));
 		$content_length = strlen($content);
@@ -293,7 +294,7 @@ class HTTPSignature
 			'Host' => $host
 		];
 
-		$signed_data = "(request-target): post " . $path . "\ndate: ". $date . "\ncontent-length: " . $content_length . "\ndigest: " . $digest . "\nhost: " . $host;
+		$signed_data = "(request-target): post " . $path . "\ndate: " . $date . "\ncontent-length: " . $content_length . "\ndigest: " . $digest . "\nhost: " . $host;
 
 		$signature = base64_encode(Crypto::rsaSign($signed_data, $owner['uprvkey'], 'sha256'));
 
@@ -301,7 +302,7 @@ class HTTPSignature
 
 		$headers['Content-Type'] = 'application/activity+json';
 
-		$postResult = DI::httpClient()->post($target, $content, $headers, DI::config()->get('system', 'curl_timeout'));
+		$postResult = DI::httpClient()->post($target, $content, $headers, DI::config()->get('system', 'curl_timeout'), HttpClientRequest::ACTIVITYPUB);
 		$return_code = $postResult->getReturnCode();
 
 		Logger::info('Transmit to ' . $target . ' returned ' . $return_code);
@@ -420,7 +421,7 @@ class HTTPSignature
 	 * @return array JSON array
 	 * @throws \Friendica\Network\HTTPException\InternalServerErrorException
 	 */
-	public static function fetch(string $request, int $uid): array
+	public static function fetch(string $request, int $uid = 0): array
 	{
 		try {
 			$curlResult = self::fetchRaw($request, $uid);
@@ -433,16 +434,39 @@ class HTTPSignature
 			return [];
 		}
 
-		if (!$curlResult->isSuccess() || empty($curlResult->getBody())) {
+		if (!$curlResult->isSuccess() || empty($curlResult->getBodyString())) {
+			Logger::debug('Fetching was unsuccessful', ['url' => $request, 'return-code' => $curlResult->getReturnCode(), 'error-number' => $curlResult->getErrorNumber(), 'error' => $curlResult->getError()]);
 			return [];
 		}
 
-		$content = json_decode($curlResult->getBody(), true);
+		$content = json_decode($curlResult->getBodyString(), true);
 		if (empty($content) || !is_array($content)) {
 			return [];
 		}
 
+		if (!self::isValidContentType($curlResult->getContentType(), $request)) {
+			return [];
+		}
+
 		return $content;
+	}
+
+	/**
+	 * Check if the provided content type is a valid LD JSON mime type
+	 *
+	 * @param string $contentType
+	 * @return boolean
+	 */
+	public static function isValidContentType(string $contentType, string $url = ''): bool
+	{
+		if (in_array(current(explode(';', $contentType)), ['application/activity+json', 'application/ld+json'])) {
+			return true;
+		}
+
+		if (current(explode(';', $contentType)) == 'application/json') {
+			Logger::notice('Unexpected content type, possibly from a remote system that is not standard compliant.', ['content-type' => $contentType, 'url' => $url]);
+		}
+		return false;
 	}
 
 	/**
@@ -478,14 +502,14 @@ class HTTPSignature
 
 		if (!empty($owner['uprvkey'])) {
 			// Header data that is about to be signed.
-			$host = parse_url($request, PHP_URL_HOST);
+			$host = strtolower(parse_url($request, PHP_URL_HOST));
 			$path = parse_url($request, PHP_URL_PATH);
 			$date = DateTimeFormat::utcNow(DateTimeFormat::HTTP);
 
 			$header['Date'] = $date;
 			$header['Host'] = $host;
 
-			$signed_data = "(request-target): get " . $path . "\ndate: ". $date . "\nhost: " . $host;
+			$signed_data = "(request-target): get " . $path . "\ndate: " . $date . "\nhost: " . $host;
 
 			$signature = base64_encode(Crypto::rsaSign($signed_data, $owner['uprvkey'], 'sha256'));
 
@@ -494,6 +518,7 @@ class HTTPSignature
 
 		$curl_opts                             = $opts;
 		$curl_opts[HttpClientOptions::HEADERS] = $header;
+		$curl_opts[HttpClientOptions::REQUEST] = HttpClientRequest::ACTIVITYPUB;
 
 		if (!empty($opts['nobody'])) {
 			$curlResult = DI::httpClient()->head($request, $curl_opts);

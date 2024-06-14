@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -220,19 +220,20 @@ class System
 
 		proc_close($resource);
 
-		$this->logger->info('Executed "proc_open"', ['command' => $cmdline, 'callstack' => System::callstack(10)]);
+		$this->logger->info('Executed "proc_open"', ['command' => $cmdline]);
 	}
 
 	/**
 	 * Returns a string with a callstack. Can be used for logging.
 	 *
-	 * @param integer $depth  How many calls to include in the stacks after filtering
-	 * @param int     $offset How many calls to shave off the top of the stack, for example if
-	 *                        this is called from a centralized method that isn't relevant to the callstack
-	 * @param bool    $full   If enabled, the callstack is not compacted
+	 * @param integer $depth   How many calls to include in the stacks after filtering
+	 * @param int     $offset  How many calls to shave off the top of the stack, for example if
+	 *                         this is called from a centralized method that isn't relevant to the callstack
+	 * @param bool    $full    If enabled, the callstack is not compacted
+	 * @param array   $exclude
 	 * @return string
 	 */
-	public static function callstack(int $depth = 4, int $offset = 0, bool $full = false): string
+	public static function callstack(int $depth = 4, int $offset = 0, bool $full = false, array $exclude = []): string
 	{
 		$trace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS);
 
@@ -247,6 +248,10 @@ class System
 
 		while ($func = array_pop($trace)) {
 			if (!empty($func['class'])) {
+				if (in_array($func['class'], $exclude)) {
+					continue;
+				}
+
 				if (!$full && in_array($previous['function'], ['insert', 'fetch', 'toArray', 'exists', 'count', 'selectFirst', 'selectToArray',
 					'select', 'update', 'delete', 'selectFirstForUser', 'selectForUser'])
 					&& (substr($previous['class'], 0, 15) === 'Friendica\Model')) {
@@ -343,7 +348,7 @@ class System
 	public static function httpError($httpCode, $message = '', $content = '')
 	{
 		if ($httpCode >= 400) {
-			Logger::debug('Exit with error', ['code' => $httpCode, 'message' => $message, 'callstack' => System::callstack(20), 'method' => DI::args()->getMethod(), 'agent' => $_SERVER['HTTP_USER_AGENT'] ?? '']);
+			Logger::debug('Exit with error', ['code' => $httpCode, 'message' => $message, 'method' => DI::args()->getMethod(), 'agent' => $_SERVER['HTTP_USER_AGENT'] ?? '']);
 		}
 		DI::apiResponse()->setStatus($httpCode, $message);
 
@@ -376,7 +381,7 @@ class System
 	public static function jsonError($httpCode, $content, $content_type = 'application/json')
 	{
 		if ($httpCode >= 400) {
-			Logger::debug('Exit with error', ['code' => $httpCode, 'content_type' => $content_type, 'callstack' => System::callstack(20), 'method' => DI::args()->getMethod(), 'agent' => $_SERVER['HTTP_USER_AGENT'] ?? '']);
+			Logger::debug('Exit with error', ['code' => $httpCode, 'content_type' => $content_type, 'method' => DI::args()->getMethod(), 'agent' => $_SERVER['HTTP_USER_AGENT'] ?? '']);
 		}
 		DI::apiResponse()->setStatus($httpCode);
 		self::jsonExit($content, $content_type);
@@ -468,7 +473,7 @@ class System
 			return false;
 		}
 
-		return max($load_arr[0], $load_arr[1]);
+		return round(max($load_arr[0], $load_arr[1]), 2);
 	}
 
 	/**
@@ -519,7 +524,7 @@ class System
 	public static function externalRedirect($url, $code = 302)
 	{
 		if (empty(parse_url($url, PHP_URL_SCHEME))) {
-			Logger::warning('No fully qualified URL provided', ['url' => $url, 'callstack' => self::callstack(20)]);
+			Logger::warning('No fully qualified URL provided', ['url' => $url]);
 			DI::baseUrl()->redirect($url);
 		}
 

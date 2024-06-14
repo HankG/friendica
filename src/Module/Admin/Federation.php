@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -43,19 +43,23 @@ class Federation extends BaseAdmin
 			'birdsitelive' => ['name' => 'BirdsiteLIVE', 'color' => '#1b6ec2'], // Color from the page
 			'bookwyrm'     => ['name' => 'BookWyrm', 'color' => '#00d1b2'], // Color from the page
 			'castopod'     => ['name' => 'Castopod', 'color' => '#00564a'], // Background color from the page
+			'cherrypick'   => ['name' => 'Cherrypick', 'color' => 'pink'], // Color from one of the instabces
 			'diaspora'     => ['name' => 'Diaspora', 'color' => '#a1a1a1'], // logo is black and white, makes a gray
 			'calckey'      => ['name' => 'firefish (Calckey)', 'color' => '#1c4a5c'], // Color from the page
+			'sharkey'      => ['name' => 'Sharkey', 'color' => 'lightpink'], // Font color from the homepage
 			'foundkey'     => ['name' => 'Foundkey', 'color' => '#609926'], // Some random color from the repository
 			'funkwhale'    => ['name' => 'Funkwhale', 'color' => '#4082B4'], // From the homepage
 			'gancio'       => ['name' => 'Gancio', 'color' => '#7253ed'], // Fontcolor from the page
 			'gnusocial'    => ['name' => 'GNU Social/Statusnet', 'color' => '#a22430'], // dark red from the logo
 			'gotosocial'   => ['name' => 'GoToSocial', 'color' => '#df8958'], // Some color from their mascot
 			'hometown'     => ['name' => 'Hometown', 'color' => '#1f70c1'], // Color from the Patreon page
-			'honk'         => ['name' => 'Honk', 'color' => '##0d0d0d'], // Background color from the page
+			'honk'         => ['name' => 'Honk', 'color' => '#0d0d0d'], // Background color from the page
 			'hubzilla'     => ['name' => 'Hubzilla/Red Matrix', 'color' => '#43488a'], // blue from the logo
+			'iceshrimp'    => ['name' => 'iceshrimp', 'color' => 'mediumslateblue'], // Color that is used in their software
 			'kbin'         => ['name' => 'kbin', 'color' => '#61366b'], // Color from their main instance
 			'lemmy'        => ['name' => 'Lemmy', 'color' => '#00c853'], // Green from the page
 			'mastodon'     => ['name' => 'Mastodon', 'color' => '#1a9df9'], // blue from the Mastodon logo
+			'mbin'         => ['name' => 'mbin', 'color' => '#3c3c3c'], // Color from one of their instances
 			'microblog'    => ['name' => 'Microblog', 'color' => '#fdb52b'], // Color from the page
 			'misskey'      => ['name' => 'Misskey', 'color' => '#ccfefd'], // Font color of the homepage
 			'mobilizon'    => ['name' => 'Mobilizon', 'color' => '#ffd599'], // Background color of parts of the homepage
@@ -66,8 +70,10 @@ class Federation extends BaseAdmin
 			'pixelfed'     => ['name' => 'Pixelfed', 'color' => '#11da47'], // One of the logo colors
 			'pleroma'      => ['name' => 'Pleroma', 'color' => '#E46F0F'], // Orange from the text that is used on Pleroma instances
 			'plume'        => ['name' => 'Plume', 'color' => '#7765e3'], // From the homepage
+			'postmarks'    => ['name' => 'Postmarks', 'color' => 'darkblue'], // Header color from the homepage
 			'relay'        => ['name' => 'ActivityPub Relay', 'color' => '#888888'], // Grey like the second color of the ActivityPub logo
 			'socialhome'   => ['name' => 'SocialHome', 'color' => '#52056b'], // lilac from the Django Image used at the Socialhome homepage
+			'snac'         => ['name' => 'Snac', 'color' => '#2966a8'], // Color from one of their themes
 			'takahe'       => ['name' => 'Takahē', 'color' => '#26323c'], // Background color of the homepage
 			'wildebeest'   => ['name' => 'Wildebeest', 'color' => '#0055dc'], // Color of the mascot
 			'wordpress'    => ['name' => 'WordPress', 'color' => '#016087'], // Background color of the homepage
@@ -93,7 +99,7 @@ class Federation extends BaseAdmin
 			SUM(IFNULL(`local-posts`, 0) + IFNULL(`local-comments`, 0)) AS `posts`,
 			SUM(IFNULL(`active-month-users`, `active-week-users`)) AS `month`,
 			SUM(IFNULL(`active-halfyear-users`, `active-week-users`)) AS `halfyear`, `platform`,
-			ANY_VALUE(`network`) AS `network`, MAX(`version`) AS `version`
+			MIN(`network`) AS `network`, MAX(`version`) AS `version`
 			FROM `gserver` WHERE NOT `failed` AND `platform` != ? AND `detection-method` != ? AND NOT `network` IN (?, ?) GROUP BY `platform`",
 				'', GServer::DETECT_MANUAL, Protocol::PHANTOM, Protocol::FEED);
 		while ($gserver = DBA::fetch($gservers)) {
@@ -185,8 +191,8 @@ class Federation extends BaseAdmin
 
 			$gserver['platform']    = $systems[$platform]['name'];
 			$gserver['totallbl']    = DI::l10n()->tt('%2$s total system'                   , '%2$s total systems'                     , $gserver['total'], number_format($gserver['total']));
-			$gserver['monthlbl']    = DI::l10n()->tt('%2$s active user last month'         , '%2$s active users last month'           , $gserver['month'] ?? 0, number_format($gserver['month']));
-			$gserver['halfyearlbl'] = DI::l10n()->tt('%2$s active user last six months'    , '%2$s active users last six months'      , $gserver['halfyear'] ?? 0, number_format($gserver['halfyear']));
+			$gserver['monthlbl']    = DI::l10n()->tt('%2$s active user last month'         , '%2$s active users last month'           , $gserver['month'] ?? 0, number_format($gserver['month'] ?? 0));
+			$gserver['halfyearlbl'] = DI::l10n()->tt('%2$s active user last six months'    , '%2$s active users last six months'      , $gserver['halfyear'] ?? 0, number_format($gserver['halfyear'] ?? 0));
 			$gserver['userslbl']    = DI::l10n()->tt('%2$s registered user'                , '%2$s registered users'                  , $gserver['users'], number_format($gserver['users']));
 			$gserver['postslbl']    = DI::l10n()->tt('%2$s locally created post or comment', '%2$s locally created posts and comments', $gserver['posts'], number_format($gserver['posts']));
 
@@ -215,7 +221,6 @@ class Federation extends BaseAdmin
 			'$page' => DI::l10n()->t('Federation Statistics'),
 			'$intro' => $intro,
 			'$counts' => $counts,
-			'$version' => App::VERSION,
 			'$legendtext' => DI::l10n()->tt('Currently this node is aware of %2$s node (%3$s active users last month, %4$s active users last six months, %5$s registered users in total) from the following platforms:', 'Currently this node is aware of %2$s nodes (%3$s active users last month, %4$s active users last six months, %5$s registered users in total) from the following platforms:', $total, number_format($total), number_format($month), number_format($halfyear), number_format($users)),
 		]);
 	}

@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -121,7 +121,7 @@ class Xrd extends BaseModule
 			'aliases' => [$owner['url']],
 			'links'   => [
 				[
-					'rel'  => 'http://webfinger.net/rel/profile-page',
+					'rel'  => ActivityNamespace::WEBFINGERPROFILE,
 					'type' => 'text/html',
 					'href' => $owner['url'],
 				],
@@ -131,7 +131,7 @@ class Xrd extends BaseModule
 					'href' => $owner['url'],
 				],
 				[
-					'rel'      => 'http://ostatus.org/schema/1.0/subscribe',
+					'rel'      => ActivityNamespace::OSTATUSSUB,
 					'template' => $baseURL . '/contact/follow?url={uri}',
 				],
 				[
@@ -144,12 +144,12 @@ class Xrd extends BaseModule
 					'href' => $baseURL . '/salmon/' . $owner['nickname'],
 				],
 				[
-					'rel'  => 'http://microformats.org/profile/hcard',
+					'rel'  => ActivityNamespace::HCARD,
 					'type' => 'text/html',
 					'href' => $baseURL . '/hcard/' . $owner['nickname'],
 				],
 				[
-					'rel'  => 'http://joindiaspora.com/seed_location',
+					'rel'  => ActivityNamespace::DIASPORA_SEED,
 					'type' => 'text/html',
 					'href' => $baseURL,
 				],
@@ -171,7 +171,7 @@ class Xrd extends BaseModule
 			],
 			'links'   => [
 				[
-					'rel'  => ActivityNamespace::DFRN ,
+					'rel'  => ActivityNamespace::DFRN,
 					'href' => $owner['url'],
 				],
 				[
@@ -180,7 +180,7 @@ class Xrd extends BaseModule
 					'href' => $owner['poll'],
 				],
 				[
-					'rel'  => 'http://webfinger.net/rel/profile-page',
+					'rel'  => ActivityNamespace::WEBFINGERPROFILE,
 					'type' => 'text/html',
 					'href' => $owner['url'],
 				],
@@ -190,17 +190,17 @@ class Xrd extends BaseModule
 					'href' => $owner['url'],
 				],
 				[
-					'rel'  => 'http://microformats.org/profile/hcard',
+					'rel'  => ActivityNamespace::HCARD,
 					'type' => 'text/html',
 					'href' => $baseURL . '/hcard/' . $owner['nickname'],
 				],
 				[
-					'rel'  => 'http://webfinger.net/rel/avatar',
+					'rel'  => ActivityNamespace::WEBFINGERAVATAR,
 					'type' => $avatar['type'],
 					'href' => User::getAvatarUrl($owner),
 				],
 				[
-					'rel'  => 'http://joindiaspora.com/seed_location',
+					'rel'  => ActivityNamespace::DIASPORA_SEED,
 					'type' => 'text/html',
 					'href' => $baseURL,
 				],
@@ -217,7 +217,7 @@ class Xrd extends BaseModule
 					'href' => $baseURL . '/salmon/' . $owner['nickname'] . '/mention',
 				],
 				[
-					'rel'      => 'http://ostatus.org/schema/1.0/subscribe',
+					'rel'      => ActivityNamespace::OSTATUSSUB,
 					'template' => $baseURL . '/contact/follow?url={uri}',
 				],
 				[
@@ -225,7 +225,7 @@ class Xrd extends BaseModule
 					'href' => 'data:application/magic-public-key,' . Salmon::salmonKey($owner['spubkey']),
 				],
 				[
-					'rel'  => 'http://purl.org/openwebauth/v1',
+					'rel'  => ActivityNamespace::OPENWEBAUTH,
 					'type' => 'application/x-zot+json',
 					'href' => $baseURL . '/owa',
 				],
@@ -263,28 +263,28 @@ class Xrd extends BaseModule
 				],
 				'3:link' => [
 					'@attributes' => [
-						'rel'  => 'http://webfinger.net/rel/profile-page',
+						'rel'  => ActivityNamespace::WEBFINGERPROFILE,
 						'type' => 'text/html',
 						'href' => $owner['url']
 					]
 				],
 				'4:link' => [
 					'@attributes' => [
-						'rel'  => 'http://microformats.org/profile/hcard',
+						'rel'  => ActivityNamespace::HCARD,
 						'type' => 'text/html',
 						'href' => $baseURL . '/hcard/' . $owner['nickname']
 					]
 				],
 				'5:link' => [
 					'@attributes' => [
-						'rel'  => 'http://webfinger.net/rel/avatar',
+						'rel'  => ActivityNamespace::WEBFINGERAVATAR,
 						'type' => $avatar['type'],
 						'href' => User::getAvatarUrl($owner)
 					]
 				],
 				'6:link' => [
 					'@attributes' => [
-						'rel'  => 'http://joindiaspora.com/seed_location',
+						'rel'  => ActivityNamespace::DIASPORA_SEED,
 						'type' => 'text/html',
 						'href' => $baseURL
 					]
@@ -309,7 +309,7 @@ class Xrd extends BaseModule
 				],
 				'10:link' => [
 					'@attributes' => [
-						'rel'  => 'http://ostatus.org/schema/1.0/subscribe',
+						'rel'      => ActivityNamespace::OSTATUSSUB,
 						'template' => $baseURL . '/contact/follow?url={uri}'
 					]
 				],
@@ -321,7 +321,7 @@ class Xrd extends BaseModule
 				],
 				'12:link' => [
 					'@attributes' => [
-						'rel'  => 'http://purl.org/openwebauth/v1',
+						'rel'  => ActivityNamespace::OPENWEBAUTH,
 						'type' => 'application/x-zot+json',
 						'href' => $baseURL . '/owa'
 					]

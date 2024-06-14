@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -28,6 +28,7 @@ use Friendica\DI;
 use Friendica\Model\User;
 use Friendica\Module\Security\Login;
 use Friendica\Protocol\ActivityPub;
+use Friendica\Protocol\ZOT;
 
 /**
  * Home module - Landing page of the current node
@@ -38,6 +39,8 @@ class Home extends BaseModule
 	{
 		if (ActivityPub::isRequest()) {
 			DI::baseUrl()->redirect(User::getActorName());
+		} elseif (ZOT::isRequest()) {
+			$this->jsonExit(ZOT::getSiteInfo(), 'application/x-zot+json');
 		}
 	}
 
@@ -51,7 +54,7 @@ class Home extends BaseModule
 
 		Hook::callAll('home_init', $ret);
 
-		if (DI::userSession()->getLocalUserId() && ($app->getLoggedInUserNickname())) {
+		if (DI::userSession()->getLocalUserId() && (DI::userSession()->getLocalUserNickname())) {
 			DI::baseUrl()->redirect('network');
 		}
 
@@ -73,7 +76,7 @@ class Home extends BaseModule
 			}
 		}
 
-		$login = Login::form(DI::args()->getQueryString(), $config->get('config', 'register_policy') === Register::CLOSED ? 0 : 1);
+		$login = Login::form(DI::args()->getQueryString(), Register::getPolicy() !== Register::CLOSED);
 
 		$content = '';
 		Hook::callAll('home_content', $content);

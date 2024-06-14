@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -57,7 +57,7 @@ class Avatar
 			return $fields;
 		}
 
-		if (Network::isLocalLink($avatar) || empty($avatar)) {
+		if (DI::baseUrl()->isLocalUrl($avatar) || empty($avatar)) {
 			self::deleteCache($contact);
 			return $fields;
 		}
@@ -80,13 +80,18 @@ class Avatar
 			return $fields;
 		}
 
-		$img_str = $fetchResult->getBody();
+		if (!$fetchResult->isSuccess()) {
+			Logger::debug('Fetching was unsuccessful', ['avatar' => $avatar]);
+			return $fields;
+		}
+
+		$img_str = $fetchResult->getBodyString();
 		if (empty($img_str)) {
 			Logger::debug('Avatar is invalid', ['avatar' => $avatar]);
 			return $fields;
 		}
 
-		$image = new Image($img_str, Images::getMimeTypeByData($img_str));
+		$image = new Image($img_str, $fetchResult->getContentType(), $avatar);
 		if (!$image->isValid()) {
 			Logger::debug('Avatar picture is invalid', ['avatar' => $avatar]);
 			return $fields;
@@ -115,7 +120,7 @@ class Avatar
 			return $fields;
 		}
 
-		if (Network::isLocalLink($contact['avatar']) || empty($contact['avatar'])) {
+		if (DI::baseUrl()->isLocalUrl($contact['avatar']) || empty($contact['avatar'])) {
 			self::deleteCache($contact);
 			return $fields;
 		}
@@ -145,7 +150,7 @@ class Avatar
 			return '';
 		}
 
-		$path = $filename . $size . '.' . $image->getExt();
+		$path = $filename . $size . $image->getExt();
 
 		$basepath = self::basePath();
 		if (empty($basepath)) {

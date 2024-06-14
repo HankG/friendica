@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -21,6 +21,7 @@
 
 namespace Friendica\Content\Widget;
 
+use Friendica\Content\Conversation\Entity\Community;
 use Friendica\Core\Renderer;
 use Friendica\DI;
 use Friendica\Model\Tag;
@@ -39,9 +40,9 @@ class TrendingTags
 	 * @return string Formatted HTML code
 	 * @throws \Exception
 	 */
-	public static function getHTML(string $content = 'global', int $period = 24): string
+	public static function getHTML(string $content = Community::GLOBAL, int $period = 24): string
 	{
-		if ($content == 'local') {
+		if ($content == Community::LOCAL) {
 			$tags = Tag::getLocalTrendingHashtags($period, 20);
 		} else {
 			$tags = Tag::getGlobalTrendingHashtags($period, 20);

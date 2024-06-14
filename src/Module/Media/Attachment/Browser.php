@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -75,7 +75,7 @@ class Browser extends BaseModule
 			'$folders'  => false,
 			'$files'    => $fileArray,
 			'$cancel'   => $this->t('Cancel'),
-			'$nickname' => $this->app->getLoggedInUserNickname(),
+			'$nickname' => $this->session->getLocalUserNickname(),
 			'$upload'   => $this->t('Upload'),
 		]);
 

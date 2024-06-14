@@ -25,6 +25,7 @@ Fields
 | post-reason       | Reason why the post arrived at the user                                           | tinyint unsigned   | NO   |     | 0                   |                |
 | vid               | Id of the verb table entry that contains the activity verbs                       | smallint unsigned  | YES  |     | NULL                |                |
 | private           | 0=public, 1=private, 2=unlisted                                                   | tinyint unsigned   | NO   |     | 0                   |                |
+| restrictions      | Bit array of post restrictions (1 = Reply, 2 = Like, 4 = Announce)                | tinyint unsigned   | YES  |     | NULL                |                |
 | global            |                                                                                   | boolean            | NO   |     | 0                   |                |
 | visible           |                                                                                   | boolean            | NO   |     | 0                   |                |
 | deleted           | item has been marked for deletion                                                 | boolean            | NO   |     | 0                   |                |
@@ -58,7 +59,8 @@ Indexes
 | event-id             | event-id                |
 | psid                 | psid                    |
 | author-id_uid        | author-id, uid          |
-| author-id_received   | author-id, received     |
+| author-id_created    | author-id, created      |
+| owner-id_created     | owner-id, created       |
 | parent-uri-id_uid    | parent-uri-id, uid      |
 | uid_wall_received    | uid, wall, received     |
 | uid_contactid        | uid, contact-id         |

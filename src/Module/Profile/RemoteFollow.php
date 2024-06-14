@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -118,7 +118,7 @@ class RemoteFollow extends BaseModule
 
 	protected function content(array $request = []): string
 	{
-		$this->page['aside'] = Widget\VCard::getHTML($this->owner);
+		$this->page['aside'] = Widget\VCard::getHTML($this->owner, false, true);
 
 		$target_addr = $this->owner['addr'];
 		$target_url  = $this->owner['url'];

@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -26,6 +26,7 @@ use Friendica\Core\Search;
 use Friendica\DI;
 use Friendica\Model\Contact;
 use Friendica\Network\HTTPClient\Client\HttpClientAccept;
+use Friendica\Network\HTTPClient\Client\HttpClientRequest;
 
 class PullDirectory
 {
@@ -49,7 +50,7 @@ class PullDirectory
 
 		Logger::info('Synchronization started.', ['now' => $now, 'directory' => $directory]);
 
-		$result = DI::httpClient()->fetch($directory . '/sync/pull/since/' . $now, HttpClientAccept::JSON);
+		$result = DI::httpClient()->fetch($directory . '/sync/pull/since/' . $now, HttpClientAccept::JSON, 0, '', HttpClientRequest::CONTACTDISCOVER);
 		if (empty($result)) {
 			Logger::info('Directory server return empty result.', ['directory' => $directory]);
 			return;

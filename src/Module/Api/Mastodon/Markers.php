@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -21,9 +21,7 @@
 
 namespace Friendica\Module\Api\Mastodon;
 
-use Friendica\Core\System;
 use Friendica\Database\DBA;
-use Friendica\DI;
 use Friendica\Module\BaseApi;
 use Friendica\Util\DateTimeFormat;
 
@@ -34,7 +32,7 @@ class Markers extends BaseApi
 {
 	protected function post(array $request = [])
 	{
-		self::checkAllowedScope(self::SCOPE_WRITE);
+		$this->checkAllowedScope(self::SCOPE_WRITE);
 		$uid         = self::getCurrentUserID();
 		$application = self::getCurrentApplication();
 
@@ -48,7 +46,7 @@ class Markers extends BaseApi
 		}
 
 		if (empty($timeline) || empty($last_read_id) || empty($application['id'])) {
-			DI::mstdnError()->UnprocessableEntity();
+			$this->logAndJsonError(422, $this->errorFactory->UnprocessableEntity());
 		}
 
 		$condition = ['application-id' => $application['id'], 'uid' => $uid, 'timeline' => $timeline];
@@ -69,22 +67,22 @@ class Markers extends BaseApi
 	 */
 	protected function rawContent(array $request = [])
 	{
-		self::checkAllowedScope(self::SCOPE_READ);
+		$this->checkAllowedScope(self::SCOPE_READ);
 		$uid         = self::getCurrentUserID();
 		$application = self::getCurrentApplication();
 
 		$this->jsonExit($this->fetchTimelines($application['id'], $uid));
 	}
 
-	private function fetchTimelines(int $application_id, int $uid)
+	private function fetchTimelines(int $application_id, int $uid): \stdClass
 	{
-		$values = [];
+		$values = new \stdClass();
 		$markers = DBA::select('application-marker', [], ['application-id' => $application_id, 'uid' => $uid]);
 		while ($marker = DBA::fetch($markers)) {
-			$values[$marker['timeline']] = [
+			$values->{$marker['timeline']} = [
 				'last_read_id' => $marker['last_read_id'],
 				'version'      => $marker['version'],
-				'updated_at'   => $marker['updated_at']
+				'updated_at'   => DateTimeFormat::utc($marker['updated_at'], DateTimeFormat::JSON)
 			];
 		}
 		return $values;

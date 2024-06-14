@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -22,14 +22,11 @@
 namespace Friendica\Module\Calendar\Event;
 
 use Friendica\App;
-use Friendica\Content\Feature;
 use Friendica\Core\L10n;
 use Friendica\Core\Session\Capability\IHandleUserSessions;
-use Friendica\Core\System;
 use Friendica\Model\Event;
 use Friendica\Model\Item;
 use Friendica\Model\Post;
-use Friendica\Model\User;
 use Friendica\Module\Response;
 use Friendica\Network\HTTPException;
 use Friendica\Util\DateTimeFormat;
@@ -46,17 +43,16 @@ class Get extends \Friendica\BaseModule
 	/** @var IHandleUserSessions */
 	protected $session;
 
-	public function __construct(App $app, L10n $l10n, App\BaseURL $baseUrl, App\Arguments $args, LoggerInterface $logger, Profiler $profiler, Response $response, IHandleUserSessions $session, array $server, array $parameters = [])
+	public function __construct(L10n $l10n, App\BaseURL $baseUrl, App\Arguments $args, LoggerInterface $logger, Profiler $profiler, Response $response, IHandleUserSessions $session, array $server, array $parameters = [])
 	{
 		parent::__construct($l10n, $baseUrl, $args, $logger, $profiler, $response, $server, $parameters);
 
 		$this->session = $session;
-		$this->app     = $app;
 	}
 
 	protected function rawContent(array $request = [])
 	{
-		$nickname = $this->parameters['nickname'] ?? $this->app->getLoggedInUserNickname();
+		$nickname = $this->parameters['nickname'] ?? $this->session->getLocalUserNickname();
 		if (!$nickname) {
 			throw new HTTPException\UnauthorizedException();
 		}

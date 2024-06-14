@@ -228,6 +228,7 @@ Called after the language detection. This can be used for alternative language d
 - **text**: The text that is analyzed.
 - **detected**: (input/output) Array of language codes detected in the related text. The array key is the language code, the array value the probability.
 - **uri-id**: The Uri-Id of the item.
+- **author-id**: The id of the author contact.
 
 ### addon_settings
 Called when generating the HTML for the addon settings page.
@@ -848,10 +849,6 @@ Here is a complete list of all hook callbacks with file locations (as of 24-Sep-
     Hook::callAll('authenticate', $addon_auth);
     Hook::callAll('register_account', $uid);
     Hook::callAll('remove_user', $user);
-
-### src/Module/Notifications/Ping.php
-
-    Hook::callAll('network_ping', $arr);
 
 ### src/Module/PermissionTooltip.php
 

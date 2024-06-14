@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -300,11 +300,6 @@ return [
 		'instanceOf' => Network\HTTPClient\Factory\HttpClient::class,
 		'call'       => [
 			['createClient', [], Dice::CHAIN_CALL],
-		],
-	],
-	Factory\Api\Mastodon\Error::class => [
-		'constructParams' => [
-			$_SERVER
 		],
 	],
 	ParsedLogIterator::class => [

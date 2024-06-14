@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -384,12 +384,10 @@ class Installer
 
 		$help = '';
 		$status = true;
-		if (function_exists('apache_get_modules')) {
-			if (!in_array('mod_rewrite', apache_get_modules())) {
-				$help = DI::l10n()->t('Error: Apache webserver mod-rewrite module is required but not installed.');
-				$status = false;
-				$returnVal = false;
-			}
+		if (function_exists('apache_get_modules') && !in_array('mod_rewrite', apache_get_modules())) {
+			$help = DI::l10n()->t('Error: Apache webserver mod-rewrite module is required but not installed.');
+			$status = false;
+			$returnVal = false;
 		}
 		$this->addCheck(DI::l10n()->t('Apache mod_rewrite module'), $status, true, $help);
 
@@ -399,14 +397,21 @@ class Installer
 			$status = false;
 			$help = DI::l10n()->t('Error: PDO or MySQLi PHP module required but not installed.');
 			$returnVal = false;
-		} else {
-			if (!function_exists('mysqli_connect') && class_exists('pdo') && !in_array('mysql', \PDO::getAvailableDrivers())) {
-				$status = false;
-				$help = DI::l10n()->t('Error: The MySQL driver for PDO is not installed.');
-				$returnVal = false;
-			}
+		} elseif (!function_exists('mysqli_connect') && class_exists('pdo') && !in_array('mysql', \PDO::getAvailableDrivers())) {
+			$status = false;
+			$help = DI::l10n()->t('Error: The MySQL driver for PDO is not installed.');
+			$returnVal = false;
 		}
 		$this->addCheck(DI::l10n()->t('PDO or MySQLi PHP module'), $status, true, $help);
+
+		$help   = '';
+		$status = true;
+		if (!class_exists('IntlChar')) {
+			$status    = false;
+			$help      = DI::l10n()->t('Error: The IntlChar module is not installed.');
+			$returnVal = false;
+		}
+		$this->addCheck(DI::l10n()->t('IntlChar PHP module'), $status, true, $help);
 
 		// check for XML DOM Documents being able to be generated
 		$help = '';
@@ -486,6 +491,13 @@ class Installer
 		$status = $this->checkFunction('gmp_strval',
 			DI::l10n()->t('GNU Multiple Precision PHP module'),
 			DI::l10n()->t('Error: GNU Multiple Precision PHP module required but not installed.'),
+			true
+		);
+		$returnVal = $returnVal ? $status : false;
+
+		$status = $this->checkFunction('idn_to_ascii',
+			DI::l10n()->t('IDN Functions PHP module'),
+			DI::l10n()->t('Error: IDN Functions PHP module required but not installed.'),
 			true
 		);
 		$returnVal = $returnVal ? $status : false;
@@ -627,23 +639,10 @@ class Installer
 	 */
 	public function checkImagick()
 	{
-		$imagick = false;
-		$gif = false;
-
-		if (class_exists('Imagick')) {
-			$imagick = true;
-			$supported = Images::supportedTypes();
-			if (array_key_exists('image/gif', $supported)) {
-				$gif = true;
-			}
-		}
-		if (!$imagick) {
-			$this->addCheck(DI::l10n()->t('ImageMagick PHP extension is not installed'), $imagick, false, "");
+		if (!class_exists('Imagick')) {
+			$this->addCheck(DI::l10n()->t('ImageMagick PHP extension is not installed'), false, false, "");
 		} else {
-			$this->addCheck(DI::l10n()->t('ImageMagick PHP extension is installed'), $imagick, false, "");
-			if ($imagick) {
-				$this->addCheck(DI::l10n()->t('ImageMagick supports GIF'), $gif, false, "");
-			}
+			$this->addCheck(DI::l10n()->t('ImageMagick PHP extension is installed'), true, false, "");
 		}
 
 		// Imagick is not required

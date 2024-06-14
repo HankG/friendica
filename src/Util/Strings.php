@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -23,7 +23,6 @@ namespace Friendica\Util;
 
 use Friendica\Content\ContactSelector;
 use Friendica\Core\Logger;
-use Friendica\Core\System;
 use ParagonIE\ConstantTime\Base64;
 
 /**
@@ -499,7 +498,8 @@ class Strings
 
 		$blocks = [];
 
-		$return = preg_replace_callback($regex,
+		$return = preg_replace_callback(
+			$regex,
 			function ($matches) use ($executionId, &$blocks) {
 				$return = '«block-' . $executionId . '-' . count($blocks) . '»';
 
@@ -511,13 +511,14 @@ class Strings
 		);
 
 		if (is_null($return)) {
-			Logger::notice('Received null value from preg_replace_callback', ['text' => $text, 'regex' => $regex, 'blocks' => $blocks, 'executionId' => $executionId, 'callstack' => System::callstack(10)]);
+			Logger::notice('Received null value from preg_replace_callback', ['text' => $text, 'regex' => $regex, 'blocks' => $blocks, 'executionId' => $executionId]);
 		}
 
 		$text = $callback($return ?? $text) ?? '';
 
 		// Restore code blocks
-		$text = preg_replace_callback('/«block-' . $executionId . '-([0-9]+)»/iU',
+		$text = preg_replace_callback(
+			'/«block-' . $executionId . '-([0-9]+)»/iU',
 			function ($matches) use ($blocks) {
 				$return = $matches[0];
 				if (isset($blocks[intval($matches[1])])) {
@@ -546,10 +547,10 @@ class Strings
 			return $shorthand;
 		}
 
-		$last      = strtolower($shorthand[strlen($shorthand)-1]);
+		$last      = strtolower($shorthand[strlen($shorthand) - 1]);
 		$shorthand = substr($shorthand, 0, -1);
 
-		switch($last) {
+		switch ($last) {
 			case 'g':
 				$shorthand *= 1024;
 			case 'm':
@@ -570,6 +571,10 @@ class Strings
 	public static function getStyledURL(string $url): string
 	{
 		$parts = parse_url($url);
+		if (empty($parts['scheme'])) {
+			return $url;
+		}
+
 		$scheme = [$parts['scheme'] . '://www.', $parts['scheme'] . '://'];
 		$styled_url = str_replace($scheme, '', $url);
 
@@ -578,5 +583,37 @@ class Strings
 		}
 
 		return $styled_url;
+	}
+
+	/**
+	 * Sort a comma separated list of hashtags, convert them to lowercase and remove duplicates
+	 *
+	 * @param string $tag_list
+	 * @return string
+	 */
+	public static function cleanTags(string $tag_list): string
+	{
+		$tags = [];
+
+		$tagitems = explode(',', str_replace([' ', ';', '#'], ',', mb_strtolower($tag_list)));
+		foreach ($tagitems as $tag) {
+			if (!empty($tag)) {
+				$tags[] = preg_replace('#\s#u', '', $tag);
+			}
+		}
+		$tags = array_unique($tags);
+		asort($tags);
+		return implode(',', $tags);
+	}
+
+	/**
+	 * Get a tag array out of a comma separated list of tags
+	 *
+	 * @param string $tag_list
+	 * @return array
+	 */
+	public static function getTagArrayByString(string $tag_list): array
+	{
+		return explode(',', self::cleanTags($tag_list));
 	}
 }

@@ -50,7 +50,7 @@
 						 style="cursor:pointer;"
 						 title="{{$l10n.Click_to_view_details}}">
 							<td>{{$row->date}}</td>
-							<td>{{$row->level}}</td>
+							<td class="loglevel-{{$row->level|lower}}">{{$row->level}}</td>
 							<td>{{$row->context}}</td>
 							<td>{{$row->message}}</td>
 						</tr>

@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -40,6 +40,7 @@
  * If you need to run a script before the database update, name the function "pre_update_4712()"
  */
 
+use Friendica\Contact\LocalRelationship\Entity\LocalRelationship;
 use Friendica\Core\Config\ValueObject\Cache;
 use Friendica\Core\Logger;
 use Friendica\Core\Protocol;
@@ -63,6 +64,7 @@ use Friendica\Protocol\Activity;
 use Friendica\Protocol\Delivery;
 use Friendica\Security\PermissionSet\Repository\PermissionSet;
 use Friendica\Util\DateTimeFormat;
+use Friendica\Worker\UpdateContact;
 
 // Post-update script of PR 5751
 function update_1298()
@@ -1132,7 +1134,7 @@ function update_1481()
 
 function update_1491()
 {
-	DBA::update('contact', ['remote_self' => Contact::MIRROR_OWN_POST], ['remote_self' => Contact::MIRROR_FORWARDED]);
+	DBA::update('contact', ['remote_self' => LocalRelationship::MIRROR_OWN_POST], ['remote_self' => 1]);
 	return Update::SUCCESS;
 }
 
@@ -1387,6 +1389,92 @@ function update_1531()
 		Post\Engagement::storeFromItem($post);
 	}
 	DBA::close($threads);
+
+	return Update::SUCCESS;
+}
+
+function update_1535()
+{
+	if (DI::config()->get('system', 'compute_group_counts')) {
+		DI::config()->set('system', 'compute_circle_counts', true);
+	}
+	DI::config()->delete('system', 'compute_group_counts');
+	
+	return Update::SUCCESS;
+}
+
+function update_1539()
+{
+	$users = DBA::select('user', ['uid'], ['account-type' => User::ACCOUNT_TYPE_COMMUNITY]);
+	while ($user = DBA::fetch($users)) {
+		User::setCommunityUserSettings($user['uid']);
+	}
+	DBA::close($users);
+
+	return Update::SUCCESS;
+}
+
+function pre_update_1550()
+{
+	if (DBStructure::existsTable('post-engagement') && DBStructure::existsColumn('post-engagement', ['language'])) {
+		DBA::e("ALTER TABLE `post-engagement` DROP `language`");
+	}
+	if (DBStructure::existsTable('post-searchindex') && DBStructure::existsColumn('post-searchindex', ['network'])) {
+		DBA::e("ALTER TABLE `post-searchindex` DROP `network`, DROP `private`");
+	}
+	return Update::SUCCESS;
+}
+
+function update_1552()
+{
+	DBA::e("UPDATE `post-content` INNER JOIN `post-tag` ON `post-tag`.`uri-id` = `post-content`.`uri-id` INNER JOIN `tag` ON `tag`.`id` = `post-tag`.`tid` SET `sensitive` = ? WHERE `name` = ?", true, 'nsfw');
+
+	return Update::SUCCESS;
+}
+
+function update_1554()
+{
+	DBA::e("UPDATE `post-engagement` INNER JOIN `post` ON `post`.`uri-id` = `post-engagement`.`uri-id` SET `post-engagement`.`network` = `post`.`network`");
+
+	return Update::SUCCESS;
+}
+
+function update_1556()
+{
+	$users = DBA::select('user', ['uid'], ['verified' => true, 'blocked' => false, 'account_removed' => false, 'account_expired' => false]);
+	while ($user = DBA::fetch($users)) {
+		Worker::add(Worker::PRIORITY_LOW, 'ProfileUpdate', $user['uid']);
+	}
+	DBA::close($users);
+
+	return Update::SUCCESS;
+}
+
+function update_1557()
+{
+	$contacts = DBA::select('account-view', ['id'], ['platform' => 'friendica', 'contact-type' => Contact::TYPE_RELAY]);
+	while ($contact = DBA::fetch($contacts)) {
+		UpdateContact::add(Worker::PRIORITY_LOW, $contact['id']);
+	}
+	DBA::close($contacts);
+	return Update::SUCCESS;
+}
+
+function update_1560()
+{
+	if (!DBA::e("INSERT IGNORE INTO `post-origin`(`id`, `uri-id`, `uid`, `parent-uri-id`, `thr-parent-id`, `created`, `received`, `gravity`, `vid`, `private`, `wall`)
+		SELECT `id`, `uri-id`, `uid`, `parent-uri-id`, `thr-parent-id`, `created`, `received`, `gravity`, `vid`, `private`, `wall` FROM `post-user` WHERE `post-user`.`origin` AND `post-user`.`uid` != ?", 0)) {
+		return Update::FAILED;
+	}
+}
+
+function update_1564()
+{
+	$users = DBA::select('user', ['uid'], ['blocked' => true]);
+	while ($user = DBA::fetch($users)) {
+		User::block($user['uid']);
+	}
+	DBA::close($users);
 
 	return Update::SUCCESS;
 }

@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -25,8 +25,8 @@ use Friendica\Core\Hook;
 use Friendica\Core\Protocol;
 use Friendica\Database\DBA;
 use Friendica\DI;
-use Friendica\Util\Network;
 use Friendica\Util\Strings;
+use GuzzleHttp\Psr7\Uri;
 
 /**
  * ContactSelector class
@@ -102,7 +102,7 @@ class ContactSelector
 			// Create the server url out of the profile url
 			$parts = parse_url($profile);
 			unset($parts['path']);
-			$server_url = Strings::normaliseLink(Network::unparseURL($parts));
+			$server_url = Strings::normaliseLink((string)Uri::fromParts((array)$parts));
 		}
 
 		self::$server_url[$profile] = $server_url;
@@ -222,7 +222,7 @@ class ContactSelector
 			'pleroma' => 'pleroma', 'red' => 'hubzilla', 'redmatrix' => 'hubzilla',
 			'socialhome' => 'social-home', 'wordpress' => 'wordpress', 'lemmy' => 'users',
 			'plume' => 'plume', 'funkwhale' => 'funkwhale', 'nextcloud' => 'nextcloud', 'drupal' => 'drupal',
-			'firefish' => 'fire', 'calckey' => 'calculator', 'kbin' => 'check'];
+			'firefish' => 'fire', 'calckey' => 'calculator', 'kbin' => 'check', 'threads' => 'instagram'];
 
 		$search  = array_keys($nets);
 		$replace = array_values($nets);

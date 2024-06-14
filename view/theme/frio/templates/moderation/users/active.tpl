@@ -1,5 +1,5 @@
-<script type="text/javascript" src="view/theme/frio/js/mod_admin.js?v={{$smarty.const.FRIENDICA_VERSION}}"></script>
-<link rel="stylesheet" href="view/theme/frio/css/mod_admin.css?v={{$smarty.const.FRIENDICA_VERSION}}" type="text/css" media="screen"/>
+<script type="text/javascript" src="view/theme/frio/js/mod_admin.js?v={{$VERSION}}"></script>
+<link rel="stylesheet" href="view/theme/frio/css/mod_admin.css?v={{$VERSION}}" type="text/css" media="screen"/>
 
 <div id="admin-users" class="adminpage generic-page-wrapper">
 	<h1>{{$title}} - {{$page}} ({{$count}})</h1>
@@ -76,6 +76,7 @@
 							{{if $u.page_flags_raw==3}}fa-heart{{/if}}		{{* PAGE_FREELOVE *}}
 							{{if $u.page_flags_raw==4}}fa-rss{{/if}}		{{* PAGE_BLOG *}}
 							{{if $u.page_flags_raw==5}}fa-user-secret{{/if}}	{{* PAGE_PRVGROUP *}}
+							{{if $u.page_flags_raw==6}}fa-users{{/if}}		{{* PAGE_COMM_MAN *}}
 							" title="{{$u.page_flags}}">
 						</i>
 						{{if $u.page_flags_raw==0 && $u.account_type_raw > 0}}

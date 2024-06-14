@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -33,7 +33,6 @@ use Friendica\Module\Response;
 use Friendica\Module\Special\HTTPException as ModuleHTTPException;
 use Friendica\Network\HTTPException;
 use Friendica\Util\Profiler;
-use Friendica\Util\XML;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Log\LoggerInterface;
 
@@ -357,7 +356,7 @@ abstract class BaseModule implements ICanHandleRequests
 	 */
 	public static function getFormSecurityToken(string $typename = ''): string
 	{
-		$user      = User::getById(DI::app()->getLoggedInUserId(), ['guid', 'prvkey']);
+		$user      = User::getById(DI::userSession()->getLocalUserId(), ['guid', 'prvkey']);
 		$timestamp = time();
 		$sec_hash  = hash('whirlpool', ($user['guid'] ?? '') . ($user['prvkey'] ?? '') . session_id() . $timestamp . $typename);
 
@@ -391,7 +390,7 @@ abstract class BaseModule implements ICanHandleRequests
 
 		$max_livetime = 10800; // 3 hours
 
-		$user = User::getById(DI::app()->getLoggedInUserId(), ['guid', 'prvkey']);
+		$user = User::getById(DI::userSession()->getLocalUserId(), ['guid', 'prvkey']);
 
 		$x = explode('.', $hash);
 		if (time() > (intval($x[0]) + $max_livetime)) {
@@ -411,7 +410,7 @@ abstract class BaseModule implements ICanHandleRequests
 	public static function checkFormSecurityTokenRedirectOnError(string $err_redirect, string $typename = '', string $formname = 'form_security_token')
 	{
 		if (!self::checkFormSecurityToken($typename, $formname)) {
-			Logger::notice('checkFormSecurityToken failed: user ' . DI::app()->getLoggedInUserNickname() . ' - form element ' . $typename);
+			Logger::notice('checkFormSecurityToken failed: user ' . DI::userSession()->getLocalUserNickname() . ' - form element ' . $typename);
 			Logger::debug('checkFormSecurityToken failed', ['request' => $_REQUEST]);
 			DI::sysmsg()->addNotice(self::getFormSecurityStandardErrorMessage());
 			DI::baseUrl()->redirect($err_redirect);
@@ -421,7 +420,7 @@ abstract class BaseModule implements ICanHandleRequests
 	public static function checkFormSecurityTokenForbiddenOnError(string $typename = '', string $formname = 'form_security_token')
 	{
 		if (!self::checkFormSecurityToken($typename, $formname)) {
-			Logger::notice('checkFormSecurityToken failed: user ' . DI::app()->getLoggedInUserNickname() . ' - form element ' . $typename);
+			Logger::notice('checkFormSecurityToken failed: user ' . DI::userSession()->getLocalUserNickname() . ' - form element ' . $typename);
 			Logger::debug('checkFormSecurityToken failed', ['request' => $_REQUEST]);
 
 			throw new \Friendica\Network\HTTPException\ForbiddenException();
@@ -494,7 +493,7 @@ abstract class BaseModule implements ICanHandleRequests
 	public function httpError(int $httpCode, string $message = '', $content = '')
 	{
 		if ($httpCode >= 400) {
-			$this->logger->debug('Exit with error', ['code' => $httpCode, 'message' => $message, 'callstack' => System::callstack(20), 'method' => $this->args->getMethod(), 'agent' => $this->server['HTTP_USER_AGENT'] ?? '']);
+			$this->logger->debug('Exit with error', ['code' => $httpCode, 'message' => $message, 'method' => $this->args->getMethod(), 'agent' => $this->server['HTTP_USER_AGENT'] ?? '']);
 		}
 
 		$this->response->setStatus($httpCode, $message);
@@ -529,7 +528,7 @@ abstract class BaseModule implements ICanHandleRequests
 	public function jsonError(int $httpCode, $content, string $content_type = 'application/json')
 	{
 		if ($httpCode >= 400) {
-			$this->logger->debug('Exit with error', ['code' => $httpCode, 'content_type' => $content_type, 'callstack' => System::callstack(20), 'method' => $this->args->getMethod(), 'agent' => $this->server['HTTP_USER_AGENT'] ?? '']);
+			$this->logger->debug('Exit with error', ['code' => $httpCode, 'content_type' => $content_type, 'method' => $this->args->getMethod(), 'agent' => $this->server['HTTP_USER_AGENT'] ?? '']);
 		}
 
 		$this->response->setStatus($httpCode);

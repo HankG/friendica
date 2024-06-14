@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -293,7 +293,7 @@ class Create extends BaseModule
 			'$ignore'   => ['contact_action', $this->t('Ignore contact'), self::CONTACT_ACTION_IGNORE, $this->t("Their posts won't appear in your Network page anymore, but their replies can appear in forum threads. They still can follow you.")],
 			'$block'    => ['contact_action', $this->t('Block contact'), self::CONTACT_ACTION_BLOCK, $this->t("Their posts won't appear in your Network page anymore, but their replies can appear in forum threads, with their content collapsed by default. They cannot follow you but still can have access to your public posts by other means.")],
 
-			'$display_forward' => !Network::isLocalLink($contact['url']),
+			'$display_forward' => !$this->baseUrl->isLocalUrl($contact['url']),
 			'$forward'         => ['report_forward', $this->t('Forward report'), self::CONTACT_ACTION_BLOCK, $this->t('Would you ike to forward this report to the remote server?')],
 
 			'$summary' => $this->getAside($request),

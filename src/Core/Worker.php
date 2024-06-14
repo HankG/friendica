@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -21,6 +21,7 @@
 
 namespace Friendica\Core;
 
+use Friendica\Core\Cache\Enum\Duration;
 use Friendica\Core\Worker\Entity\Process;
 use Friendica\Database\DBA;
 use Friendica\DI;
@@ -54,7 +55,8 @@ class Worker
 	const FAST_COMMANDS = ['APDelivery', 'Delivery'];
 
 	const LOCK_PROCESS = 'worker_process';
-	const LOCK_WORKER = 'worker';
+	const LOCK_WORKER  = 'worker';
+	const LAST_CHECK   = 'worker::check';
 
 	private static $up_start;
 	private static $db_duration = 0;
@@ -832,6 +834,17 @@ class Worker
 				} else {
 					self::spawnWorker();
 				}
+			} elseif (($active > $queues) && ($active < $maxqueues) && ($load < $maxsysload)) {
+				$max_idletime = DI::config()->get('system', 'worker_max_idletime');
+				$last_check   = DI::cache()->get(self::LAST_CHECK);
+				$last_date    = $last_check ? date('c', $last_check) : '';
+				if (($max_idletime > 0) && (time() > $last_check + $max_idletime) && !DBA::exists('workerqueue', ["`done` AND `executed` > ?", DateTimeFormat::utc('now - ' . $max_idletime . ' second')])) {
+					DI::cache()->set(self::LAST_CHECK, time(), Duration::HOUR);
+					Logger::info('The last worker execution had been too long ago.', ['last' => $last_check, 'last-check' => $last_date, 'seconds' => $max_idletime, 'load' => $load, 'max_load' => $maxsysload, 'active_worker' => $active, 'max_worker' => $maxqueues]);
+					return false;
+				} elseif ($max_idletime > 0) {
+					Logger::debug('Maximum idletime not reached.', ['last' => $last_check, 'last-check' => $last_date, 'seconds' => $max_idletime, 'load' => $load, 'max_load' => $maxsysload, 'active_worker' => $active, 'max_worker' => $maxqueues]);
+				}	
 			}
 		}
 
@@ -1276,7 +1289,7 @@ class Worker
 		$added = 0;
 
 		if (!is_int($priority) || !in_array($priority, self::PRIORITIES)) {
-			Logger::warning('Invalid priority', ['priority' => $priority, 'command' => $command, 'callstack' => System::callstack(20)]);
+			Logger::warning('Invalid priority', ['priority' => $priority, 'command' => $command]);
 			$priority = self::PRIORITY_MEDIUM;
 		}
 
@@ -1379,10 +1392,11 @@ class Worker
 	/**
 	 * Defers the current worker entry
 	 *
+	 * @param int $worker_defer_limit Maximum defer limit 
 	 * @return boolean had the entry been deferred?
 	 * @throws \Exception
 	 */
-	public static function defer(): bool
+	public static function defer(int $worker_defer_limit = 0): bool
 	{
 		$queue = DI::app()->getQueue();
 
@@ -1394,6 +1408,10 @@ class Worker
 		$priority = $queue['priority'];
 
 		$max_level = DI::config()->get('system', 'worker_defer_limit');
+
+		if ($worker_defer_limit) {
+			$max_level = min($worker_defer_limit, $max_level);
+		}
 
 		$new_retrial = self::getNextRetrial($queue, $max_level);
 

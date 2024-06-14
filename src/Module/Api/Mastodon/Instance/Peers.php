@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -22,12 +22,11 @@
 namespace Friendica\Module\Api\Mastodon\Instance;
 
 use Friendica\Core\Protocol;
-use Friendica\Core\System;
 use Friendica\Database\DBA;
 use Friendica\Model\GServer;
 use Friendica\Module\BaseApi;
 use Friendica\Network\HTTPException;
-use Friendica\Util\Network;
+use GuzzleHttp\Psr7\Uri;
 
 /**
  * Undocumented API endpoint that is implemented by both Mastodon and Pleroma
@@ -48,7 +47,7 @@ class Peers extends BaseApi
 		while ($instance = DBA::fetch($instances)) {
 			$urldata = parse_url($instance['url']);
 			unset($urldata['scheme']);
-			$return[] = ltrim(Network::unparseURL($urldata), '/');
+			$return[] = ltrim((string)Uri::fromParts((array)$urldata), '/');
 		}
 		DBA::close($instances);
 

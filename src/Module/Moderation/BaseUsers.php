@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -119,6 +119,7 @@ abstract class BaseUsers extends BaseModeration
 				User::PAGE_FLAGS_NORMAL    => $this->t('Normal Account Page'),
 				User::PAGE_FLAGS_SOAPBOX   => $this->t('Soapbox Page'),
 				User::PAGE_FLAGS_COMMUNITY => $this->t('Public Group'),
+				User::PAGE_FLAGS_COMM_MAN  => $this->t('Public Group - Restricted'),
 				User::PAGE_FLAGS_FREELOVE  => $this->t('Automatic Friend Page'),
 				User::PAGE_FLAGS_PRVGROUP  => $this->t('Private Group')
 			];

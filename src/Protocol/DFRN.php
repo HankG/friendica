@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -44,6 +44,7 @@ use Friendica\Model\Post;
 use Friendica\Model\Profile;
 use Friendica\Model\Tag;
 use Friendica\Model\User;
+use Friendica\Network\HTTPClient\Client\HttpClientRequest;
 use Friendica\Network\HTTPException;
 use Friendica\Network\Probe;
 use Friendica\Util\Crypto;
@@ -304,10 +305,8 @@ class DFRN
 		$profilephotos = Photo::selectToArray(['resource-id', 'scale', 'type'], ['profile' => true, 'uid' => $uid], ['order' => ['scale']]);
 
 		$photos = [];
-		$ext = Images::supportedTypes();
-
 		foreach ($profilephotos as $p) {
-			$photos[$p['scale']] = DI::baseUrl() . '/photo/' . $p['resource-id'] . '-' . $p['scale'] . '.' . $ext[$p['type']];
+			$photos[$p['scale']] = DI::baseUrl() . '/photo/' . $p['resource-id'] . '-' . $p['scale'] . Images::getExtensionByMimeType($p['type']);
 		}
 
 		$doc = new DOMDocument('1.0', 'utf-8');
@@ -394,7 +393,7 @@ class DFRN
 		}
 
 		// For backward compatibility we keep this element
-		if ($owner['page-flags'] == User::PAGE_FLAGS_COMMUNITY) {
+		if (in_array($owner['page-flags'], [User::PAGE_FLAGS_COMMUNITY, User::PAGE_FLAGS_COMM_MAN])) {
 			XML::addElement($doc, $root, 'dfrn:community', 1);
 		}
 
@@ -1011,8 +1010,8 @@ class DFRN
 
 		$content_type = ($public_batch ? 'application/magic-envelope+xml' : 'application/json');
 
-		$postResult = DI::httpClient()->post($dest_url, $envelope, ['Content-Type' => $content_type]);
-		$xml = $postResult->getBody();
+		$postResult = DI::httpClient()->post($dest_url, $envelope, ['Content-Type' => $content_type], 0, HttpClientRequest::DFRN);
+		$xml = $postResult->getBodyString();
 
 		$curl_stat = $postResult->getReturnCode();
 		if (!empty($contact['gsid']) && ($postResult->isTimeout() || empty($curl_stat))) {

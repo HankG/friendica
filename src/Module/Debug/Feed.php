@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -30,6 +30,7 @@ use Friendica\Model;
 use Friendica\Module\Response;
 use Friendica\Network\HTTPClient\Capability\ICanSendHttpRequests;
 use Friendica\Network\HTTPClient\Client\HttpClientAccept;
+use Friendica\Network\HTTPClient\Client\HttpClientRequest;
 use Friendica\Protocol;
 use Friendica\Util\Profiler;
 use Psr\Log\LoggerInterface;
@@ -62,7 +63,7 @@ class Feed extends BaseModule
 
 			$contact = Model\Contact::getByURLForUser($url, DI::userSession()->getLocalUserId(), null);
 
-			$xml = $this->httpClient->fetch($contact['poll'], HttpClientAccept::FEED_XML);
+			$xml = $this->httpClient->fetch($contact['poll'], HttpClientAccept::FEED_XML, 0, '', HttpClientRequest::FEEDFETCHER);
 
 			$import_result = Protocol\Feed::import($xml);
 

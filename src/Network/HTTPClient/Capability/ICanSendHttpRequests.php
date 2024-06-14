@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -39,10 +39,11 @@ interface ICanSendHttpRequests
 	 * @param string $accept_content  supply Accept: header with 'accept_content' as the value
 	 * @param int    $timeout         Timeout in seconds, default system config value or 60 seconds
 	 * @param string $cookiejar       Path to cookie jar file
+	 * @param string $request         Request Type
 	 *
 	 * @return string The fetched content
 	 */
-	public function fetch(string $url, string $accept_content = HttpClientAccept::DEFAULT, int $timeout = 0, string $cookiejar = ''): string;
+	public function fetch(string $url, string $accept_content = HttpClientAccept::DEFAULT, int $timeout = 0, string $cookiejar = '', string $request = ''): string;
 
 	/**
 	 * Fetches the whole response of an URL.
@@ -54,10 +55,11 @@ interface ICanSendHttpRequests
 	 * @param string $accept_content  supply Accept: header with 'accept_content' as the value
 	 * @param int    $timeout         Timeout in seconds, default system config value or 60 seconds
 	 * @param string $cookiejar       Path to cookie jar file
+	 * @param string $request         Request Type
 	 *
 	 * @return ICanHandleHttpResponses With all relevant information, 'body' contains the actual fetched content.
 	 */
-	public function fetchFull(string $url, string $accept_content = HttpClientAccept::DEFAULT, int $timeout = 0, string $cookiejar = ''): ICanHandleHttpResponses;
+	public function fetchFull(string $url, string $accept_content = HttpClientAccept::DEFAULT, int $timeout = 0, string $cookiejar = '', string $request = ''): ICanHandleHttpResponses;
 
 	/**
 	 * Send a GET to a URL.
@@ -95,10 +97,11 @@ interface ICanSendHttpRequests
 	 * @param mixed  $params         POST variables (if an array is passed, it will automatically set as formular parameters)
 	 * @param array  $headers        HTTP headers
 	 * @param int    $timeout        The timeout in seconds, default system config value or 60 seconds
+	 * @param string $request        The type of the request. This is set in the user agent string
 	 *
 	 * @return ICanHandleHttpResponses The content
 	 */
-	public function post(string $url, $params, array $headers = [], int $timeout = 0): ICanHandleHttpResponses;
+	public function post(string $url, $params, array $headers = [], int $timeout = 0, string $request = ''): ICanHandleHttpResponses;
 
 	/**
 	 * Sends an HTTP request to a given url

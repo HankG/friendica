@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -40,7 +40,7 @@ use Friendica\Util\Strings;
  * This script can be included even when the app is in maintenance mode which requires us to avoid any config call
  */
 
-function vier_init(App $a)
+function vier_init()
 {
 	Renderer::setActiveTemplateEngine('smarty3');
 
@@ -49,7 +49,7 @@ function vier_init(App $a)
 	if (
 		DI::mode()->has(App\Mode::MAINTENANCEDISABLED)
 		&& (
-			$args->get(0) === 'profile' && $args->get(1) === ($a->getLoggedInUserNickname() ?? '')
+			$args->get(0) === 'profile' && $args->get(1) === (DI::userSession()->getLocalUserNickname() ?? '')
 			|| $args->get(0) === 'network' && DI::userSession()->getLocalUserId()
 		)
 	) {
@@ -208,7 +208,7 @@ function vier_community_info()
 
 	//Community_Pages at right_aside
 	if ($show_pages && DI::userSession()->getLocalUserId()) {
-		$aside['$page'] = GroupManager::widget('network/group', DI::userSession()->getLocalUserId());;
+		$aside['$page'] = GroupManager::widget(DI::userSession()->getLocalUserId());
 	}
 	// END Community Page
 
@@ -337,23 +337,21 @@ function vier_community_info()
 }
 
 /**
- * @param int|null $uid
  * @return null
  * @see \Friendica\Core\Theme::getBackgroundColor()
  * @TODO Implement this function
  */
-function vier_get_background_color(int $uid = null)
+function vier_get_background_color()
 {
 	return null;
 }
 
 /**
- * @param int|null $uid
  * @return null
  * @see \Friendica\Core\Theme::getThemeColor()
  * @TODO Implement this function
  */
-function vier_get_theme_color(int $uid = null)
+function vier_get_theme_color()
 {
 	return null;
 }

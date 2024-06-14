@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -21,7 +21,6 @@
 
 namespace Friendica\Module;
 
-use Friendica\BaseModule;
 use Friendica\Contact\Header;
 use Friendica\Core\Logger;
 use Friendica\Core\Protocol;
@@ -30,7 +29,6 @@ use Friendica\DI;
 use Friendica\Model\Contact;
 use Friendica\Model\Photo as MPhoto;
 use Friendica\Model\Post;
-use Friendica\Model\Profile;
 use Friendica\Core\Storage\Type\ExternalResource;
 use Friendica\Core\Storage\Type\SystemResource;
 use Friendica\Core\System;
@@ -38,11 +36,12 @@ use Friendica\Core\Worker;
 use Friendica\Model\User;
 use Friendica\Network\HTTPClient\Client\HttpClientAccept;
 use Friendica\Network\HTTPClient\Client\HttpClientOptions;
+use Friendica\Network\HTTPClient\Client\HttpClientRequest;
 use Friendica\Network\HTTPException;
 use Friendica\Network\HTTPException\NotModifiedException;
 use Friendica\Object\Image;
+use Friendica\Security\OpenWebAuth;
 use Friendica\Util\Images;
-use Friendica\Util\Network;
 use Friendica\Util\ParseUrl;
 use Friendica\Util\Proxy;
 use Friendica\Worker\UpdateContact;
@@ -77,7 +76,7 @@ class Photo extends BaseApi
 			throw new NotModifiedException();
 		}
 
-		Profile::addVisitorCookieForHTTPSigner($this->server);
+		OpenWebAuth::addVisitorCookieForHTTPSigner($this->server);
 
 		$customsize = 0;
 		$square_resize = true;
@@ -100,7 +99,6 @@ class Photo extends BaseApi
 				$id = $account['id'];
 			}
 
-			// Contact Id Fallback, to remove after version 2021.12
 			if (isset($this->parameters['contact_id'])) {
 				$id = intval($this->parameters['contact_id']);
 			}
@@ -115,12 +113,6 @@ class Photo extends BaseApi
 				$id = $user['uid'];
 			}
 
-			// User Id Fallback, to remove after version 2021.12
-			if (!empty($this->parameters['uid_ext'])) {
-				$id = intval(pathinfo($this->parameters['uid_ext'], PATHINFO_FILENAME));
-			}
-
-			// Please refactor this for the love of everything that's good
 			if (isset($this->parameters['id'])) {
 				$id = $this->parameters['id'];
 			}
@@ -147,7 +139,7 @@ class Photo extends BaseApi
 					case 'scaled_full':
 						$scale = 1;
 						break;
-					}
+				}
 			}
 
 			$photo = MPhoto::getPhoto($photoid, $scale, self::getCurrentUserID());
@@ -166,13 +158,17 @@ class Photo extends BaseApi
 
 		$stamp = microtime(true);
 
-		$imgdata = MPhoto::getImageDataForPhoto($photo);
+		if (empty($request['blur']) || empty($photo['blurhash'])) {
+			$imgdata  = MPhoto::getImageDataForPhoto($photo);
+			$mimetype = $photo['type'];
+		}
 		if (empty($imgdata) && empty($photo['blurhash'])) {
 			throw new HTTPException\NotFoundException();
 		} elseif (empty($imgdata) && !empty($photo['blurhash'])) {
-			$image = New Image('', 'image/png');
+			$image = new Image('', image_type_to_mime_type(IMAGETYPE_WEBP));
 			$image->getFromBlurHash($photo['blurhash'], $photo['width'], $photo['height']);
-			$imgdata = $image->asString();
+			$imgdata  = $image->asString();
+			$mimetype = $image->getType();
 		}
 
 		// The mimetype for an external or system resource can only be known reliably after it had been fetched
@@ -197,20 +193,23 @@ class Photo extends BaseApi
 		}
 
 		if (!empty($request['static'])) {
-			$img = new Image($imgdata, $photo['type']);
+			$img = new Image($imgdata, $photo['type'], $photo['filename']);
 			$img->toStatic();
-			$imgdata = $img->asString();
+			$imgdata  = $img->asString();
+			$mimetype = $img->getType();
 		}
 
-		// if customsize is set and image is not a gif, resize it
-		if ($photo['type'] !== 'image/gif' && $customsize > 0 && $customsize <= Proxy::PIXEL_THUMB && $square_resize) {
-			$img = new Image($imgdata, $photo['type']);
+		// if customsize is set and image resizing is supported for this image, resize it
+		if (Images::canResize($photo['type']) && $customsize > 0 && $customsize <= Proxy::PIXEL_THUMB && $square_resize) {
+			$img = new Image($imgdata, $photo['type'], $photo['filename']);
 			$img->scaleToSquare($customsize);
-			$imgdata = $img->asString();
-		} elseif ($photo['type'] !== 'image/gif' && $customsize > 0) {
-			$img = new Image($imgdata, $photo['type']);
+			$imgdata  = $img->asString();
+			$mimetype = $img->getType();
+		} elseif (Images::canResize($photo['type']) && $customsize > 0) {
+			$img = new Image($imgdata, $photo['type'], $photo['filename']);
 			$img->scaleDown($customsize);
-			$imgdata = $img->asString();
+			$imgdata  = $img->asString();
+			$mimetype = $img->getType();
 		}
 
 		if (function_exists('header_remove')) {
@@ -218,7 +217,7 @@ class Photo extends BaseApi
 			header_remove('pragma');
 		}
 
-		header('Content-type: ' . $photo['type']);
+		header('Content-type: ' . $mimetype);
 
 		$stamp = microtime(true);
 		if (!$cacheable) {
@@ -243,10 +242,12 @@ class Photo extends BaseApi
 		$rest = $total - ($fetch + $data + $checksum + $output);
 
 		if (!is_null($scale) && ($scale < 4)) {
-			Logger::debug('Performance:', ['scale' => $scale, 'resource' => $photo['resource-id'],
+			Logger::debug('Performance:', [
+				'scale' => $scale, 'resource' => $photo['resource-id'],
 				'total' => number_format($total, 3), 'fetch' => number_format($fetch, 3),
 				'data' => number_format($data, 3), 'checksum' => number_format($checksum, 3),
-				'output' => number_format($output, 3), 'rest' => number_format($rest, 3)]);
+				'output' => number_format($output, 3), 'rest' => number_format($rest, 3)
+			]);
 		}
 
 		System::exit();
@@ -262,7 +263,7 @@ class Photo extends BaseApi
 	 */
 	private static function getPhotoById(int $id, string $type, int $customsize)
 	{
-		switch($type) {
+		switch ($type) {
 			case 'preview':
 				$media = DBA::selectFirst('post-media', ['preview', 'url', 'preview-height', 'preview-width', 'height', 'width', 'mimetype', 'type', 'uri-id', 'blurhash'], ['id' => $id]);
 				if (empty($media)) {
@@ -282,7 +283,7 @@ class Photo extends BaseApi
 					return false;
 				}
 
-				if (Network::isLocalLink($url) && preg_match('|.*?/photo/(.*[a-fA-F0-9])\-(.*[0-9])\..*[\w]|', $url, $matches)) {
+				if (DI::baseUrl()->isLocalUrl($url) && preg_match('|.*?/photo/(.*[a-fA-F0-9])\-(.*[0-9])\..*[\w]|', $url, $matches)) {
 					return MPhoto::getPhoto($matches[1], $matches[2], self::getCurrentUserID());
 				}
 
@@ -293,7 +294,7 @@ class Photo extends BaseApi
 					return false;
 				}
 
-				if (Network::isLocalLink($media['url']) && preg_match('|.*?/photo/(.*[a-fA-F0-9])\-(.*[0-9])\..*[\w]|', $media['url'], $matches)) {
+				if (DI::baseUrl()->isLocalUrl($media['url']) && preg_match('|.*?/photo/(.*[a-fA-F0-9])\-(.*[0-9])\..*[\w]|', $media['url'], $matches)) {
 					return MPhoto::getPhoto($matches[1], $matches[2], self::getCurrentUserID());
 				}
 
@@ -313,7 +314,7 @@ class Photo extends BaseApi
 				}
 
 				// For local users directly use the photo record that is marked as the profile
-				if (Network::isLocalLink($contact['url'])) {
+				if (DI::baseUrl()->isLocalUrl($contact['url'])) {
 					$contact = Contact::selectFirst($fields, ['nurl' => $contact['nurl'], 'self' => true]);
 					if (!empty($contact)) {
 						if ($customsize <= Proxy::PIXEL_MICRO) {
@@ -352,7 +353,7 @@ class Photo extends BaseApi
 				}
 
 				// If it is a local link, we save resources by just redirecting to it.
-				if (!empty($url) && Network::isLocalLink($url)) {
+				if (!empty($url) && DI::baseUrl()->isLocalUrl($url)) {
 					System::externalRedirect($url);
 				}
 
@@ -366,7 +367,7 @@ class Photo extends BaseApi
 						$update = in_array($contact['network'], Protocol::FEDERATED) && !$contact['failed']
 							&& ((time() - strtotime($contact['updated']) > 86400));
 						if ($update) {
-							$curlResult = DI::httpClient()->head($url, [HttpClientOptions::ACCEPT_CONTENT => HttpClientAccept::IMAGE]);
+							$curlResult = DI::httpClient()->head($url, [HttpClientOptions::ACCEPT_CONTENT => HttpClientAccept::IMAGE, HttpClientOptions::REQUEST => HttpClientRequest::CONTENTTYPE]);
 							$update = !$curlResult->isSuccess() && ($curlResult->getReturnCode() == 404);
 							Logger::debug('Got return code for avatar', ['return code' => $curlResult->getReturnCode(), 'cid' => $id, 'url' => $contact['url'], 'avatar' => $url]);
 						}
@@ -384,12 +385,13 @@ class Photo extends BaseApi
 					if (!empty($mimetext) && ($mime[0] != 'image') && ($mimetext != 'application/octet-stream')) {
 						Logger::info('Unexpected Content-Type', ['mime' => $mimetext, 'url' => $url]);
 						$mimetext = '';
-					} if (!empty($mimetext)) {
+					}
+					if (!empty($mimetext)) {
 						Logger::debug('Expected Content-Type', ['mime' => $mimetext, 'url' => $url]);
 					}
 				}
 				if (empty($mimetext) && !empty($contact['blurhash'])) {
-					$image = New Image('', 'image/png');
+					$image = new Image('', image_type_to_mime_type(IMAGETYPE_WEBP));
 					$image->getFromBlurHash($contact['blurhash'], $customsize, $customsize);
 					return MPhoto::createPhotoForImageData($image->asString());
 				} elseif (empty($mimetext)) {
@@ -400,7 +402,7 @@ class Photo extends BaseApi
 					} else {
 						$url = Contact::getDefaultAvatar($contact ?: [], Proxy::SIZE_SMALL);
 					}
-					if (Network::isLocalLink($url)) {
+					if (DI::baseUrl()->isLocalUrl($url)) {
 						System::externalRedirect($url);
 					}
 				}
@@ -412,7 +414,7 @@ class Photo extends BaseApi
 					return false;
 				}
 
-				if (Network::isLocalLink($contact['url'])) {
+				if (DI::baseUrl()->isLocalUrl($contact['url'])) {
 					$header_uid = User::getIdForURL($contact['url']);
 					if (empty($header_uid)) {
 						throw new HTTPException\NotFoundException();
@@ -420,14 +422,14 @@ class Photo extends BaseApi
 					return self::getBannerForUser($header_uid);
 				}
 
-				If (($contact['uid'] != 0) && empty($contact['header'])) {
+				if (($contact['uid'] != 0) && empty($contact['header'])) {
 					$contact = Contact::getByURL($contact['url'], false, $fields);
 				}
 				if (!empty($contact['header'])) {
 					$url = $contact['header'];
 				} else {
 					$url = Contact::getDefaultHeader($contact);
-					if (Network::isLocalLink($url)) {
+					if (DI::baseUrl()->isLocalUrl($url)) {
 						System::externalRedirect($url);
 					}
 				}
@@ -450,7 +452,7 @@ class Photo extends BaseApi
 		if (empty($photo)) {
 			$contact = DBA::selectFirst('contact', [], ['uid' => $id, 'self' => true]) ?: [];
 
-			switch($type) {
+			switch ($type) {
 				case 'profile':
 				case 'custom':
 					$default = Contact::getDefaultAvatar($contact, Proxy::SIZE_SMALL);
@@ -463,7 +465,7 @@ class Photo extends BaseApi
 					$default = Contact::getDefaultAvatar($contact, Proxy::SIZE_THUMB);
 			}
 
-			if (Network::isLocalLink($default)) {
+			if (DI::baseUrl()->isLocalUrl($default)) {
 				System::externalRedirect($default);
 			}
 

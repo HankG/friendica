@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -24,7 +24,6 @@ namespace Friendica\Module;
 use Friendica\App;
 use Friendica\BaseModule;
 use Friendica\Capabilities\ICanCreateResponses;
-use Friendica\Core\Addon;
 use Friendica\Core\Config\Capability\IManageConfigValues;
 use Friendica\Core\L10n;
 use Friendica\Model\Nodeinfo;
@@ -65,7 +64,7 @@ class NodeInfo110 extends BaseModule
 			],
 			'services'          => Nodeinfo::getServices(),
 			'usage'             => Nodeinfo::getUsage(),
-			'openRegistrations' => intval($this->config->get('config', 'register_policy')) !== Register::CLOSED,
+			'openRegistrations' => Register::getPolicy() !== Register::CLOSED,
 			'metadata'          => [
 				'nodeName' => $this->config->get('config', 'sitename'),
 			],

@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -32,6 +32,8 @@ use Friendica\Module\Response;
 use Friendica\Navigation\SystemMessages;
 use Friendica\Network\HTTPClient\Capability\ICanSendHttpRequests;
 use Friendica\Network\HTTPClient\Client\HttpClientAccept;
+use Friendica\Network\HTTPClient\Client\HttpClientOptions;
+use Friendica\Network\HTTPClient\Client\HttpClientRequest;
 use Friendica\Protocol\ActivityPub;
 use Friendica\Util\Profiler;
 use Psr\Log\LoggerInterface;
@@ -89,14 +91,14 @@ class Subscribe extends \Friendica\BaseModule
 				$api = $contact['baseurl'] . '/api/';
 
 				// Fetching friends
-				$curlResult = $this->httpClient->get($api . 'statuses/friends.json?screen_name=' . $contact['nick'], HttpClientAccept::JSON);
+				$curlResult = $this->httpClient->get($api . 'statuses/friends.json?screen_name=' . $contact['nick'], HttpClientAccept::JSON, [HttpClientOptions::REQUEST => HttpClientRequest::OSTATUS]);
 
 				if (!$curlResult->isSuccess()) {
 					$this->pConfig->delete($uid, 'ostatus', 'legacy_contact');
 					return $o . $this->t('Couldn\'t fetch friends for contact.');
 				}
 
-				$friends = $curlResult->getBody();
+				$friends = $curlResult->getBodyString();
 				if (empty($friends)) {
 					$this->pConfig->delete($uid, 'ostatus', 'legacy_contact');
 					return $o . $this->t('Couldn\'t fetch following contacts.');

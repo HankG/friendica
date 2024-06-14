@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -32,7 +32,7 @@ use Friendica\Model\Contact;
 use Friendica\Model\Circle;
 use Friendica\Model\Item;
 use Friendica\Model\Post;
-use Friendica\Model\Profile;
+use Friendica\Security\OpenWebAuth;
 use Friendica\Util\DateTimeFormat;
 use Friendica\Util\Temporal;
 
@@ -67,7 +67,7 @@ class Widget
 
 		if (DI::config()->get('system', 'invitation_only')) {
 			$x = intval(DI::pConfig()->get(DI::userSession()->getLocalUserId(), 'system', 'invites_remaining'));
-			if ($x || DI::app()->isSiteAdmin()) {
+			if ($x || DI::userSession()->isSiteAdmin()) {
 				DI::page()['aside'] .= '<div class="side-link widget" id="side-invite-remain">'
 					. DI::l10n()->tt('%d invitation available', '%d invitations available', $x)
 					. '</div>';
@@ -85,7 +85,7 @@ class Widget
 		$nv['random'] = DI::l10n()->t('Random Profile');
 		$nv['inv'] = DI::l10n()->t('Invite Friends');
 		$nv['directory'] = DI::l10n()->t('Global Directory');
-		$nv['global_dir'] = Profile::zrl($global_dir, true);
+		$nv['global_dir'] = OpenWebAuth::getZrlUrl($global_dir, true);
 		$nv['local_directory'] = DI::l10n()->t('Local Directory');
 
 		$aside = [];
@@ -103,6 +103,7 @@ class Widget
 	{
 		// Always hide content from these networks
 		$networks = [Protocol::PHANTOM, Protocol::FACEBOOK, Protocol::APPNET, Protocol::TWITTER, Protocol::ZOT];
+		Addon::loadAddons();
 
 		if (!Addon::isEnabled("discourse")) {
 			$networks[] = Protocol::DISCOURSE;
@@ -335,7 +336,7 @@ class Widget
 	 */
 	public static function categories(int $uid, string $baseurl, string $selected = ''): string
 	{
-		if (!Feature::isEnabled($uid, 'categories')) {
+		if (!Feature::isEnabled($uid, Feature::CATEGORIES)) {
 			return '';
 		}
 
@@ -427,7 +428,7 @@ class Widget
 			return '';
 		}
 
-		if (Feature::isEnabled($uid, 'tagadelic')) {
+		if (Feature::isEnabled($uid, Feature::TAGCLOUD)) {
 			$owner_id = Contact::getPublicIdByUserId($uid);
 
 			if (!$owner_id) {
@@ -535,6 +536,7 @@ class Widget
 			['ref' => 'organisation', 'name' => DI::l10n()->t('Organisations')],
 			['ref' => 'news', 'name' => DI::l10n()->t('News')],
 			['ref' => 'community', 'name' => DI::l10n()->t('Groups')],
+			['ref' => 'relay', 'name' => DI::l10n()->t('Relays')],
 		];
 
 		return self::filter(
@@ -560,12 +562,30 @@ class Widget
 	{
 		$channels = [];
 
-		foreach (DI::TimelineFactory()->getChannelsForUser($uid) as $channel) {
-			$channels[] = ['ref' => $channel->code, 'name' => $channel->label];
+		$enabled = DI::pConfig()->get($uid, 'system', 'enabled_timelines', []);
+
+		foreach (DI::NetworkFactory()->getTimelines('') as $channel) {
+			if (empty($enabled) || in_array($channel->code, $enabled)) {
+				$channels[] = ['ref' => $channel->code, 'name' => $channel->label];
+			}
 		}
 
-		foreach (DI::TimelineFactory()->getCommunities(true) as $community) {
-			$channels[] = ['ref' => $community->code, 'name' => $community->label];
+		foreach (DI::ChannelFactory()->getTimelines($uid) as $channel) {
+			if (empty($enabled) || in_array($channel->code, $enabled)) {
+				$channels[] = ['ref' => $channel->code, 'name' => $channel->label];
+			}
+		}
+
+		foreach (DI::userDefinedChannel()->selectByUid($uid) as $channel) {
+			if (empty($enabled) || in_array($channel->code, $enabled)) {
+				$channels[] = ['ref' => $channel->code, 'name' => $channel->label];
+			}
+		}
+
+		foreach (DI::CommunityFactory()->getTimelines(true) as $community) {
+			if (empty($enabled) || in_array($community->code, $enabled)) {
+				$channels[] = ['ref' => $community->code, 'name' => $community->label];
+			}
 		}
 
 		return self::filter(

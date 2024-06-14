@@ -15,8 +15,13 @@
 <div id="account-type-sub-3" class="pageflags">
 	<h5>{{$community}}</h5>
 	{{include file="field_radio.tpl" field=$page_community}}
+	{{include file="field_radio.tpl" field=$page_community_manually}}
 	{{include file="field_radio.tpl" field=$page_prvgroup}}
 </div>
+
+{{if $account_relay}}
+	{{include file="field_radio.tpl" field=$account_relay}}
+{{/if}}
 
 <script language="javascript" type="text/javascript">
 	// This js part changes the state of page-flags radio buttons according

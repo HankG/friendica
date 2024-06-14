@@ -260,15 +260,9 @@ $(function() {
 			document.title = originalTitle;
 		}
 
-		['net', 'home', 'intro', 'mail', 'events', 'birthdays', 'notification'].forEach(function(type) {
+		['home', 'intro', 'mail', 'events', 'birthdays', 'notification'].forEach(function(type) {
 			var number = data[type];
-			if (number == 0) {
-				number = '';
-				$('#' + type + '-update').removeClass('show');
-			} else {
-				$('#' + type + '-update').addClass('show');
-			}
-			$('#' + type + '-update').text(number);
+			updateCounter(type, number);
 		});
 
 		var intro = data['intro'];
@@ -379,7 +373,7 @@ $(function() {
 	// Allow folks to stop the ajax page updates with the pause/break key
 	$(document).keydown(function(event) {
 		// Pause/Break or Ctrl + Space
-		if (event.which === 19 || (!event.shiftKey && !event.altKey && event.ctrlKey && event.which === 32)) {
+		if (event.which === 19 || (!event.metaKey && !event.shiftKey && !event.altKey && event.ctrlKey && event.which === 32)) {
 			event.preventDefault();
 			if (stopped === false) {
 				stopped = true;
@@ -505,6 +499,14 @@ function NavUpdate() {
 						liveUpdate(src);
 					}
 				});
+
+				if (!$('#live-network').length) {
+					var update_url = 'ping_network?ping=1';
+					$.get(update_url, function(net) {
+						updateCounter('net', net);
+					});			
+				}
+
 				if ($('#live-photos').length) {
 					if (liking) {
 						liking = 0;
@@ -586,7 +588,7 @@ function liveUpdate(src) {
 
 	var udargs = ((netargs.length) ? '/' + netargs : '');
 
-	var update_url = 'update_' + src + udargs + '&p=' + profile_uid + '&force=' + (force ? 1 : 0) + '&item=' + update_item;
+	var update_url = src + udargs + '&p=' + profile_uid + '&force=' + (force ? 1 : 0) + '&item=' + update_item;
 
 	if (force_update) {
 		force_update = false;
@@ -622,7 +624,7 @@ function liveUpdate(src) {
 		update_url += '&first_uriid=' + match[0].innerHTML;
 	}
 
-	$.get(update_url, function(data) {
+	$.get('update_' + update_url, function(data) {
 		in_progress = false;
 		update_item = 0;
 
@@ -639,6 +641,31 @@ function liveUpdate(src) {
 			$(window).scrollTop($(window).scrollTop() + $("section").height() - orgHeight);
 		});
 	});
+
+	if (src == 'network') {
+		$.get('ping_' + update_url, function(net) {
+			updateCounter('net', net);
+		});
+	}
+}
+
+function updateCounter(type, counter) {
+	if (counter < 0) {
+		return;
+	}
+
+	if (counter == 0) {
+		counter = '';
+		$('#' + type + '-update').removeClass('show');
+	} else {
+		$('#' + type + '-update').addClass('show');
+	}
+	$('#' + type + '-update').text(counter);
+}
+
+function updateItem(itemNo) {
+	force_update = true;
+	update_item = itemNo;
 }
 
 function imgbright(node) {
@@ -768,6 +795,18 @@ function getPosition(e) {
 		}
 	}
 	return cursor;
+}
+
+function displaySearchText(id) {
+	$.get('item/' + id + '/searchtext', function(data) {
+		alert(data);
+	});
+}
+
+function displayLanguage(id) {
+	$.get('item/' + id + '/language', function(data) {
+		alert(data);
+	});
 }
 
 var lockvisible = false;

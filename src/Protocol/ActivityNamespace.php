@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -105,6 +105,39 @@ final class ActivityNamespace
 	 */
 	const OSTATUSSUB      = 'http://ostatus.org/schema/1.0/subscribe';
 	/**
+	 * Webfinger avatar
+	 *
+	 * @see https://webfinger.net/rel/#avatar
+	 * @var string
+	 */
+	const WEBFINGERAVATAR = 'http://webfinger.net/rel/avatar';
+	/**
+	 * Webfinger profile
+	 *
+	 * @see https://webfinger.net/rel/#profile-page
+	 * @var string
+	 */
+	const WEBFINGERPROFILE = 'http://webfinger.net/rel/profile-page';
+	/**
+	 * HCard
+	 *
+	 * @see http://microformats.org/wiki/hcard
+	 * @var string
+	 */
+	const HCARD           = 'http://microformats.org/profile/hcard';
+	/**
+	 * Base url of the Diaspora installation
+	 *
+	 * @var string
+	 */
+	const DIASPORA_SEED   = 'http://joindiaspora.com/seed_location';
+	/**
+	 * Diaspora Guid
+	 *
+	 * @var string
+	 */
+	const DIASPORA_GUID   = 'http://joindiaspora.com/guid';
+	/**
 	 * GeoRSS was designed as a lightweight, community driven way to extend existing feeds with geographic information.
 	 *
 	 * @see http://www.georss.org/
@@ -120,6 +153,12 @@ final class ActivityNamespace
 	 * @var string
 	 */
 	const POCO            = 'http://portablecontacts.net/spec/1.0';
+	/**
+	 * OpenWebAuth is used by Friendica and Hubzilla to authenticate at remote systems
+	 *
+	 * @var string
+	 */
+	const OPENWEBAUTH     = 'http://purl.org/openwebauth/v1';
 	/**
 	 * @var string
 	 */

@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -37,6 +37,7 @@ use Friendica\Module\Contact as ModuleContact;
 use Friendica\Module\Response;
 use Friendica\Navigation\SystemMessages;
 use Friendica\Network\HTTPClient\Capability\ICanSendHttpRequests;
+use Friendica\Network\HTTPClient\Client\HttpClientRequest;
 use Friendica\Network\HTTPException\InternalServerErrorException;
 use Friendica\Util\Profiler;
 use Psr\Log\LoggerInterface;
@@ -122,17 +123,17 @@ class MatchInterests extends BaseModule
 				continue;
 			}
 
-			$result = $this->httpClient->post($server . '/search/user/tags', $searchParameters);
+			$result = $this->httpClient->post($server . '/search/user/tags', $searchParameters, [], 0, HttpClientRequest::CONTACTDISCOVER);
 			if (!$result->isSuccess()) {
 				// try legacy endpoint
-				$result = $this->httpClient->post($server . '/msearch', $searchParameters);
+				$result = $this->httpClient->post($server . '/msearch', $searchParameters, [], 0, HttpClientRequest::CONTACTDISCOVER);
 				if (!$result->isSuccess()) {
 					$this->logger->notice('Search-Endpoint not available for server.', ['server' => $server]);
 					continue;
 				}
 			}
 
-			$entries = $this->parseContacts(json_decode($result->getBody()), $entries, $limit);
+			$entries = $this->parseContacts(json_decode($result->getBodyString()), $entries, $limit);
 		}
 
 		if (empty($entries)) {

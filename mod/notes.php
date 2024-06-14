@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -46,7 +46,7 @@ function notes_content(App $a, bool $update = false)
 		return;
 	}
 
-	$o = BaseProfile::getTabsHTML('notes', true, $a->getLoggedInUserNickname(), false);
+	$o = BaseProfile::getTabsHTML('notes', true, DI::userSession()->getLocalUserNickname(), false);
 
 	if (!$update) {
 		$o .= '<h3>' . DI::l10n()->t('Personal Notes') . '</h3>';

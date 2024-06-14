@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -27,10 +27,9 @@ use Friendica\BaseDataTransferObject;
 use Friendica\Contact\Header;
 use Friendica\Core\Config\Capability\IManageConfigValues;
 use Friendica\Database\Database;
-use Friendica\DI;
 use Friendica\Model\User;
 use Friendica\Module\Register;
-use Friendica\Network\HTTPException;
+use Friendica\Object\Api\Mastodon\InstanceV2\Configuration;
 
 /**
  * Class Instance
@@ -67,23 +66,16 @@ class Instance extends BaseDataTransferObject
 	protected $approval_required;
 	/** @var bool */
 	protected $invites_enabled;
+	/** @var Configuration  */
+	protected $configuration;
 	/** @var Account|null */
 	protected $contact_account = null;
 	/** @var array */
 	protected $rules = [];
 
-	/**
-	 * @param IManageConfigValues $config
-	 * @param BaseURL             $baseUrl
-	 * @param Database            $database
-	 * @param array               $rules
-	 * @throws HTTPException\InternalServerErrorException
-	 * @throws HTTPException\NotFoundException
-	 * @throws \ImagickException
-	 */
-	public function __construct(IManageConfigValues $config, BaseURL $baseUrl, Database $database, array $rules = [])
+	public function __construct(IManageConfigValues $config, BaseURL $baseUrl, Database $database, Configuration $configuration, ?Account $contact_account, array $rules)
 	{
-		$register_policy = intval($config->get('config', 'register_policy'));
+		$register_policy = Register::getPolicy();
 
 		$this->uri               = $baseUrl->getHost();
 		$this->title             = $config->get('config', 'sitename');
@@ -95,16 +87,11 @@ class Instance extends BaseDataTransferObject
 		$this->thumbnail         = $baseUrl . (new Header($config))->getMastodonBannerPath();
 		$this->languages         = [$config->get('system', 'language')];
 		$this->max_toot_chars    = (int)$config->get('config', 'api_import_size', $config->get('config', 'max_import_size'));
-		$this->registrations     = ($register_policy != Register::CLOSED);
-		$this->approval_required = ($register_policy == Register::APPROVE);
+		$this->registrations     = ($register_policy !== Register::CLOSED);
+		$this->approval_required = ($register_policy === Register::APPROVE);
 		$this->invites_enabled   = false;
-		$this->contact_account   = [];
+		$this->configuration     = $configuration;
+		$this->contact_account   = $contact_account ?? [];
 		$this->rules             = $rules;
-
-		$administrator = User::getFirstAdmin(['nickname']);
-		if ($administrator) {
-			$adminContact = $database->selectFirst('contact', ['uri-id'], ['nick' => $administrator['nickname'], 'self' => true]);
-			$this->contact_account = DI::mstdnAccount()->createFromUriId($adminContact['uri-id']);
-		}
 	}
 }

@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -58,7 +58,7 @@ class Schedule extends BaseProfile
 
 		$a = DI::app();
 
-		$o = self::getTabsHTML('schedule', true, $a->getLoggedInUserNickname(), false);
+		$o = self::getTabsHTML('schedule', true, DI::userSession()->getLocalUserNickname(), false);
 
 		$schedule = [];
 		$delayed = DBA::select('delayed-post', [], ['uid' => DI::userSession()->getLocalUserId()]);

@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -27,6 +27,7 @@ use Friendica\Core\L10n;
 use Friendica\Core\PConfig\Capability\IManagePersonalConfigValues;
 use Friendica\Core\Protocol;
 use Friendica\Core\Renderer;
+use Friendica\Core\Session\Model\UserSession;
 use Friendica\Core\System;
 use Friendica\Core\Worker;
 use Friendica\Database\Database;
@@ -48,9 +49,6 @@ class Import extends \Friendica\BaseModule
 {
 	const IMPORT_DEBUG = false;
 
-	/** @var App */
-	private $app;
-
 	/** @var IManageConfigValues */
 	private $config;
 
@@ -66,21 +64,24 @@ class Import extends \Friendica\BaseModule
 	/** @var PermissionSet */
 	private $permissionSet;
 
-	public function __construct(PermissionSet $permissionSet, IManagePersonalConfigValues $pconfig, Database $database, SystemMessages $systemMessages, IManageConfigValues $config, App $app, L10n $l10n, App\BaseURL $baseUrl, App\Arguments $args, LoggerInterface $logger, Profiler $profiler, Response $response, array $server, array $parameters = [])
+	/** @var UserSession */
+	private $session;
+
+	public function __construct(UserSession $session, PermissionSet $permissionSet, IManagePersonalConfigValues $pconfig, Database $database, SystemMessages $systemMessages, IManageConfigValues $config, L10n $l10n, App\BaseURL $baseUrl, App\Arguments $args, LoggerInterface $logger, Profiler $profiler, Response $response, array $server, array $parameters = [])
 	{
 		parent::__construct($l10n, $baseUrl, $args, $logger, $profiler, $response, $server, $parameters);
 
-		$this->app            = $app;
 		$this->config         = $config;
 		$this->pconfig        = $pconfig;
 		$this->systemMessages = $systemMessages;
 		$this->database       = $database;
 		$this->permissionSet  = $permissionSet;
+		$this->session        = $session;
 	}
 
 	protected function post(array $request = [])
 	{
-		if ($this->config->get('config', 'register_policy') != \Friendica\Module\Register::OPEN && !$this->app->isSiteAdmin()) {
+		if (\Friendica\Module\Register::getPolicy() !== \Friendica\Module\Register::OPEN && !$this->session->isSiteAdmin()) {
 			throw new HttpException\ForbiddenException($this->t('Permission denied.'));
 		}
 
@@ -99,7 +100,7 @@ class Import extends \Friendica\BaseModule
 
 	protected function content(array $request = []): string
 	{
-		if (($this->config->get('config', 'register_policy') != \Friendica\Module\Register::OPEN) && !$this->app->isSiteAdmin()) {
+		if ((\Friendica\Module\Register::getPolicy() !== \Friendica\Module\Register::OPEN) && !$this->session->isSiteAdmin()) {
 			$this->systemMessages->addNotice($this->t('User imports on closed servers can only be done by an administrator.'));
 		}
 
@@ -392,7 +393,7 @@ class Import extends \Friendica\BaseModule
 			$photo['data'] = hex2bin($photo['data']);
 
 			$r = Photo::store(
-				new Image($photo['data'], $photo['type']),
+				new Image($photo['data'], $photo['type'], $photo['filename']),
 				$photo['uid'], $photo['contact-id'], //0
 				$photo['resource-id'], $photo['filename'], $photo['album'], $photo['scale'], $photo['profile'], //1
 				$photo['allow_cid'], $photo['allow_gid'], $photo['deny_cid'], $photo['deny_gid']

@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -67,7 +67,7 @@ class DirectMessageTest extends FixtureTest
 			->toArray();
 
 		self::assertEquals('item_title', $directMessage['title']);
-		self::assertEquals('<strong>item_body</strong>', $directMessage['text']);
+		self::assertEquals('<b>item_body</b>', $directMessage['text']);
 	}
 
 	/**

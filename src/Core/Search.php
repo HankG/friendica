@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -24,6 +24,8 @@ namespace Friendica\Core;
 use Friendica\DI;
 use Friendica\Model\Contact;
 use Friendica\Network\HTTPClient\Client\HttpClientAccept;
+use Friendica\Network\HTTPClient\Client\HttpClientOptions;
+use Friendica\Network\HTTPClient\Client\HttpClientRequest;
 use Friendica\Network\HTTPException;
 use Friendica\Object\Search\ContactResult;
 use Friendica\Object\Search\ResultList;
@@ -125,7 +127,7 @@ class Search
 			$searchUrl .= '&page=' . $page;
 		}
 
-		$resultJson = DI::httpClient()->fetch($searchUrl, HttpClientAccept::JSON);
+		$resultJson = DI::httpClient()->fetch($searchUrl, HttpClientAccept::JSON, 0, '', HttpClientRequest::CONTACTDISCOVER);
 
 		$results = json_decode($resultJson, true);
 
@@ -232,9 +234,9 @@ class Search
 			$return = Contact::searchByName($search, $mode, true);
 		} else {
 			$p = $page > 1 ? 'p=' . $page : '';
-			$curlResult = DI::httpClient()->get(self::getGlobalDirectory() . '/search/people?' . $p . '&q=' . urlencode($search), HttpClientAccept::JSON);
+			$curlResult = DI::httpClient()->get(self::getGlobalDirectory() . '/search/people?' . $p . '&q=' . urlencode($search), HttpClientAccept::JSON, [HttpClientOptions::REQUEST => HttpClientRequest::CONTACTDISCOVER]);
 			if ($curlResult->isSuccess()) {
-				$searchResult = json_decode($curlResult->getBody(), true);
+				$searchResult = json_decode($curlResult->getBodyString(), true);
 				if (!empty($searchResult['profiles'])) {
 					// Converting Directory Search results into contact-looking records
 					$return = array_map(function ($result) {
@@ -245,6 +247,7 @@ class Search
 							'Group'        => Contact::TYPE_COMMUNITY,
 							'Organization' => Contact::TYPE_ORGANISATION,
 							'News'         => Contact::TYPE_NEWS,
+							'Relay'        => Contact::TYPE_RELAY,
 						];
 
 						return [

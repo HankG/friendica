@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -62,11 +62,11 @@ class NotificationTest extends ApiTest
 		$assertXml = <<<XML
 <?xml version="1.0"?>
 <notes>
-  <note date="$date" date_rel="$dateRel" id="1" iid="4" link="http://localhost/display/1" msg="A test reply from an item" msg_cache="A test reply from an item" msg_html="A test reply from an item" msg_plain="A test reply from an item" name="Friend contact" name_cache="Friend contact" otype="item" parent="" photo="http://localhost/" seen="false" timestamp="1577880722" type="8" uid="42" url="http://localhost/profile/friendcontact" verb="http://activitystrea.ms/schema/1.0/post"/>
+  <note date="$date" date_rel="$dateRel" id="1" iid="4" link="https://friendica.local/display/1" msg="A test reply from an item" msg_cache="A test reply from an item" msg_html="A test reply from an item" msg_plain="A test reply from an item" name="Friend contact" name_cache="Friend contact" otype="item" parent="" photo="https://friendica.local/" seen="false" timestamp="1577880722" type="8" uid="42" url="https://friendica.local/profile/friendcontact" verb="http://activitystrea.ms/schema/1.0/post"/>
 </notes>
 XML;
 
-		$response = (new Notification(DI::app(), DI::l10n(), DI::baseUrl(), DI::args(), DI::logger(), DI::profiler(), DI::apiResponse(), [], ['extension' => 'xml']))
+		$response = (new Notification(DI::mstdnError(), DI::app(), DI::l10n(), DI::baseUrl(), DI::args(), DI::logger(), DI::profiler(), DI::apiResponse(), [], ['extension' => 'xml']))
 			->run($this->httpExceptionMock);
 
 		self::assertXmlStringEqualsXmlString($assertXml, (string)$response->getBody());
@@ -78,7 +78,7 @@ XML;
 
 	public function testWithJsonResult()
 	{
-		$response = (new Notification(DI::app(), DI::l10n(), DI::baseUrl(), DI::args(), DI::logger(), DI::profiler(), DI::apiResponse(), [], ['extension' => 'json']))
+		$response = (new Notification(DI::mstdnError(), DI::app(), DI::l10n(), DI::baseUrl(), DI::args(), DI::logger(), DI::profiler(), DI::apiResponse(), [], ['extension' => 'json']))
 			->run($this->httpExceptionMock);
 
 		$json = $this->toJson($response);

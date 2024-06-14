@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -37,7 +37,7 @@ class HCard extends BaseModule
 	{
 		if (DI::userSession()->getLocalUserId() && ($this->parameters['action'] ?? '') === 'view') {
 			// A logged in user views a profile of a user
-			$nickname = DI::app()->getLoggedInUserNickname();
+			$nickname = DI::userSession()->getLocalUserNickname();
 		} elseif (empty($this->parameters['action'])) {
 			// Show the profile hCard
 			$nickname = $this->parameters['profile'];
@@ -53,7 +53,7 @@ class HCard extends BaseModule
 
 		$page = DI::page();
 
-		if (!empty($profile['page-flags']) && ($profile['page-flags'] == User::PAGE_FLAGS_COMMUNITY)) {
+		if (!empty($profile['page-flags']) && in_array($profile['page-flags'], [User::PAGE_FLAGS_COMMUNITY, User::PAGE_FLAGS_COMM_MAN])) {
 			$page['htmlhead'] .= '<meta name="friendica.community" content="true" />';
 		}
 		if (!empty($profile['openidserver'])) {

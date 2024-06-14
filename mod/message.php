@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -19,7 +19,6 @@
  *
  */
 
-use Friendica\App;
 use Friendica\Content\Nav;
 use Friendica\Content\Pager;
 use Friendica\Content\Text\BBCode;
@@ -34,7 +33,7 @@ use Friendica\Util\DateTimeFormat;
 use Friendica\Util\Strings;
 use Friendica\Util\Temporal;
 
-function message_init(App $a)
+function message_init()
 {
 	$tabs = '';
 
@@ -61,7 +60,7 @@ function message_init(App $a)
 	]);
 }
 
-function message_post(App $a)
+function message_post()
 {
 	if (!DI::userSession()->getLocalUserId()) {
 		DI::sysmsg()->addNotice(DI::l10n()->t('Permission denied.'));
@@ -104,7 +103,7 @@ function message_post(App $a)
 	}
 }
 
-function message_content(App $a)
+function message_content()
 {
 	$o = '';
 	Nav::setSelected('messages');
@@ -114,7 +113,7 @@ function message_content(App $a)
 		return Login::form();
 	}
 
-	$myprofile = DI::baseUrl() . '/profile/' . $a->getLoggedInUserNickname();
+	$myprofile = DI::baseUrl() . '/profile/' . DI::userSession()->getLocalUserNickname();
 
 	$tpl = Renderer::getMarkupTemplate('mail_head.tpl');
 	if (DI::args()->getArgc() > 1 && DI::args()->getArgv()[1] == 'new') {
@@ -177,7 +176,7 @@ function message_content(App $a)
 
 		$tpl = Renderer::getMarkupTemplate('msg-header.tpl');
 		DI::page()['htmlhead'] .= Renderer::replaceMacros($tpl, [
-			'$nickname' => $a->getLoggedInUserNickname(),
+			'$nickname' => DI::userSession()->getLocalUserNickname(),
 			'$linkurl' => DI::l10n()->t('Please enter a link URL:')
 		]);
 
@@ -282,7 +281,7 @@ function message_content(App $a)
 
 		$tpl = Renderer::getMarkupTemplate('msg-header.tpl');
 		DI::page()['htmlhead'] .= Renderer::replaceMacros($tpl, [
-			'$nickname' => $a->getLoggedInUserNickname(),
+			'$nickname' => DI::userSession()->getLocalUserNickname(),
 			'$linkurl' => DI::l10n()->t('Please enter a link URL:')
 		]);
 
@@ -415,12 +414,10 @@ function get_messages(int $uid, int $start, int $limit): array
 
 function render_messages(array $msg, string $t): string
 {
-	$a = DI::app();
-
 	$tpl = Renderer::getMarkupTemplate($t);
 	$rslt = '';
 
-	$myprofile = DI::baseUrl() . '/profile/' . $a->getLoggedInUserNickname();
+	$myprofile = DI::baseUrl() . '/profile/' . DI::userSession()->getLocalUserNickname();
 
 	foreach ($msg as $rr) {
 		if ($rr['unknown']) {

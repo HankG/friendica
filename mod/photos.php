@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2023, the Friendica project
+ * @copyright Copyright (C) 2010-2024, the Friendica project
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -19,11 +19,9 @@
  *
  */
 
-use Friendica\App;
 use Friendica\Content\Nav;
 use Friendica\Content\Pager;
 use Friendica\Content\Text\BBCode;
-use Friendica\Content\Widget;
 use Friendica\Core\ACL;
 use Friendica\Core\Addon;
 use Friendica\Core\Hook;
@@ -44,6 +42,7 @@ use Friendica\Module\BaseProfile;
 use Friendica\Network\HTTPException;
 use Friendica\Network\Probe;
 use Friendica\Protocol\Activity;
+use Friendica\Protocol\ActivityNamespace;
 use Friendica\Security\Security;
 use Friendica\Util\Crypto;
 use Friendica\Util\DateTimeFormat;
@@ -53,7 +52,7 @@ use Friendica\Util\Strings;
 use Friendica\Util\Temporal;
 use Friendica\Util\XML;
 
-function photos_init(App $a)
+function photos_init()
 {
 	if (DI::config()->get('system', 'block_public') && !DI::userSession()->isAuthenticated()) {
 		return;
@@ -66,8 +65,6 @@ function photos_init(App $a)
 		if (!isset($owner['account_removed']) || $owner['account_removed']) {
 			throw new HTTPException\NotFoundException(DI::l10n()->t('User not found.'));
 		}
-
-		$is_owner = (DI::userSession()->getLocalUserId() && (DI::userSession()->getLocalUserId() == $owner['uid']));
 
 		$albums = Photo::getAlbums($owner['uid']);
 
@@ -125,20 +122,18 @@ function photos_init(App $a)
 	return;
 }
 
-function photos_post(App $a)
+function photos_post()
 {
 	$user = User::getByNickname(DI::args()->getArgv()[1]);
 	if (!DBA::isResult($user)) {
 		throw new HTTPException\NotFoundException(DI::l10n()->t('User not found.'));
 	}
 
-	$phototypes = Images::supportedTypes();
-
 	$can_post  = false;
 	$visitor   = 0;
 
 	$page_owner_uid = intval($user['uid']);
-	$community_page = $user['page-flags'] == User::PAGE_FLAGS_COMMUNITY;
+	$community_page = in_array($user['page-flags'], [User::PAGE_FLAGS_COMMUNITY, User::PAGE_FLAGS_COMM_MAN]);
 
 	if (DI::userSession()->getLocalUserId() && (DI::userSession()->getLocalUserId() == $page_owner_uid)) {
 		$can_post = true;
@@ -202,7 +197,7 @@ function photos_post(App $a)
 			// Update the photo albums cache
 			Photo::clearAlbumCache($page_owner_uid);
 
-			DI::baseUrl()->redirect('photos/' . $a->getLoggedInUserNickname() . '/album/' . bin2hex($newalbum));
+			DI::baseUrl()->redirect('photos/' . DI::userSession()->getLocalUserNickname() . '/album/' . bin2hex($newalbum));
 			return; // NOTREACHED
 		}
 
@@ -215,14 +210,14 @@ function photos_post(App $a)
 			// get the list of photos we are about to delete
 			if ($visitor) {
 				$r = DBA::toArray(DBA::p(
-					"SELECT distinct(`resource-id`) as `rid` FROM `photo` WHERE `contact-id` = ? AND `uid` = ? AND `album` = ?",
+					"SELECT distinct(`resource-id`) AS `rid` FROM `photo` WHERE `contact-id` = ? AND `uid` = ? AND `album` = ?",
 					$visitor,
 					$page_owner_uid,
 					$album
 				));
 			} else {
 				$r = DBA::toArray(DBA::p(
-					"SELECT distinct(`resource-id`) as `rid` FROM `photo` WHERE `uid` = ? AND `album` = ?",
+					"SELECT distinct(`resource-id`) AS `rid` FROM `photo` WHERE `uid` = ? AND `album` = ?",
 					DI::userSession()->getLocalUserId(),
 					$album
 				));
@@ -312,16 +307,16 @@ function photos_post(App $a)
 
 					Photo::update(['height' => $height, 'width' => $width], ['resource-id' => $resource_id, 'uid' => $page_owner_uid, 'scale' => 0], $image);
 
-					if ($width > 640 || $height > 640) {
-						$image->scaleDown(640);
+					if ($width > \Friendica\Util\Proxy::PIXEL_MEDIUM || $height > \Friendica\Util\Proxy::PIXEL_MEDIUM) {
+						$image->scaleDown(\Friendica\Util\Proxy::PIXEL_MEDIUM);
 						$width  = $image->getWidth();
 						$height = $image->getHeight();
 
 						Photo::update(['height' => $height, 'width' => $width], ['resource-id' => $resource_id, 'uid' => $page_owner_uid, 'scale' => 1], $image);
 					}
 
-					if ($width > 320 || $height > 320) {
-						$image->scaleDown(320);
+					if ($width > \Friendica\Util\Proxy::PIXEL_SMALL || $height > \Friendica\Util\Proxy::PIXEL_SMALL) {
+						$image->scaleDown(\Friendica\Util\Proxy::PIXEL_SMALL);
 						$width  = $image->getWidth();
 						$height = $image->getHeight();
 
@@ -337,7 +332,7 @@ function photos_post(App $a)
 
 		if (DBA::isResult($photos)) {
 			$photo = $photos[0];
-			$ext = $phototypes[$photo['type']];
+			$ext = Images::getExtensionByMimeType($photo['type']);
 			Photo::update(
 				['desc' => $desc, 'album' => $albname, 'allow_cid' => $str_contact_allow, 'allow_gid' => $str_circle_allow, 'deny_cid' => $str_contact_deny, 'deny_gid' => $str_circle_deny],
 				['resource-id' => $resource_id, 'uid' => $page_owner_uid]
@@ -414,7 +409,7 @@ function photos_post(App $a)
 
 							if (count($links)) {
 								foreach ($links as $link) {
-									if ($link['@attributes']['rel'] === 'http://webfinger.net/rel/profile-page') {
+									if ($link['@attributes']['rel'] === ActivityNamespace::WEBFINGERPROFILE) {
 										$profile = $link['@attributes']['href'];
 									}
 
@@ -561,7 +556,7 @@ function photos_post(App $a)
 	}
 }
 
-function photos_content(App $a)
+function photos_content()
 {
 	// URLs:
 	// photos/name/upload
@@ -589,8 +584,6 @@ function photos_content(App $a)
 	}
 
 	$profile = Profile::getByUID($user['uid']);
-
-	$phototypes = Images::supportedTypes();
 
 	$_SESSION['photo_return'] = DI::args()->getCommand();
 
@@ -622,7 +615,7 @@ function photos_content(App $a)
 
 	$owner_uid = $user['uid'];
 
-	$community_page = (($user['page-flags'] == User::PAGE_FLAGS_COMMUNITY) ? true : false);
+	$community_page = in_array($user['page-flags'], [User::PAGE_FLAGS_COMMUNITY, User::PAGE_FLAGS_COMM_MAN]);
 
 	if (DI::userSession()->getLocalUserId() && (DI::userSession()->getLocalUserId() == $owner_uid)) {
 		$can_post = true;
@@ -676,18 +669,14 @@ function photos_content(App $a)
 
 		$selname = (!is_null($datum) && Strings::isHex($datum)) ? hex2bin($datum) : '';
 
-		$albumselect = '';
+		$albumselect = ['' => '<current year>'];
 
-		$albumselect .= '<option value="" ' . (!$selname ? ' selected="selected" ' : '') . '>&lt;current year&gt;</option>';
-		$albums = Photo::getAlbums($owner_uid);
-		if (!empty($albums)) {
-			foreach ($albums as $album) {
-				if ($album['album'] === '') {
-					continue;
-				}
-				$selected = (($selname === $album['album']) ? ' selected="selected" ' : '');
-				$albumselect .= '<option value="' . $album['album'] . '"' . $selected . '>' . $album['album'] . '</option>';
+		foreach (Photo::getAlbums($owner_uid) as $album) {
+			if ($album['album'] === '') {
+				continue;
 			}
+
+			$albumselect[$album['album']] = $album['album'];
 		}
 
 		$uploader = '';
@@ -722,7 +711,7 @@ function photos_content(App $a)
 
 		$tpl = Renderer::getMarkupTemplate('photos_upload.tpl');
 
-		$aclselect_e = ($visitor ? '' : ACL::getFullSelectorHTML(DI::page(), $a->getLoggedInUserId()));
+		$aclselect_e = ($visitor ? '' : ACL::getFullSelectorHTML(DI::page(), DI::userSession()->getLocalUserId()));
 
 		$o .= Renderer::replaceMacros($tpl, [
 			'$pagename' => DI::l10n()->t('Upload Photos'),
@@ -733,9 +722,10 @@ function photos_content(App $a)
 			'$existalbumtext' => DI::l10n()->t('or select existing album:'),
 			'$nosharetext' => DI::l10n()->t('Do not show a status post for this upload'),
 			'$albumselect' => $albumselect,
+			'$selname' => $selname,
 			'$permissions' => DI::l10n()->t('Permissions'),
 			'$aclselect' => $aclselect_e,
-			'$lockstate' => ACL::getLockstateForUserId($a->getLoggedInUserId()) ? 'lock' : 'unlock',
+			'$lockstate' => ACL::getLockstateForUserId(DI::userSession()->getLocalUserId()) ? 'lock' : 'unlock',
 			'$alt_uploader' => $ret['addon_text'],
 			'$default_upload_box' => ($ret['default_upload'] ? $default_upload_box : ''),
 			'$default_upload_submit' => ($ret['default_upload'] ? $default_upload_submit : ''),
@@ -762,7 +752,7 @@ function photos_content(App $a)
 
 		$total = 0;
 		$r = DBA::toArray(DBA::p(
-			"SELECT `resource-id`, max(`scale`) AS `scale` FROM `photo` WHERE `uid` = ? AND `album` = ?
+			"SELECT `resource-id`, MAX(`scale`) AS `scale` FROM `photo` WHERE `uid` = ? AND `album` = ?
 			AND `scale` <= 4 $sql_extra GROUP BY `resource-id`",
 			$owner_uid,
 			$album
@@ -782,9 +772,9 @@ function photos_content(App $a)
 		}
 
 		$r = DBA::toArray(DBA::p(
-			"SELECT `resource-id`, ANY_VALUE(`id`) AS `id`, ANY_VALUE(`filename`) AS `filename`,
-			ANY_VALUE(`type`) AS `type`, max(`scale`) AS `scale`, ANY_VALUE(`desc`) as `desc`,
-			ANY_VALUE(`created`) as `created`
+			"SELECT `resource-id`, MIN(`id`) AS `id`, MIN(`filename`) AS `filename`,
+			MIN(`type`) AS `type`, MAX(`scale`) AS `scale`, MIN(`desc`) AS `desc`,
+			MIN(`created`) AS `created`
 			FROM `photo` WHERE `uid` = ? AND `album` = ?
 			AND `scale` <= 4 $sql_extra GROUP BY `resource-id` ORDER BY `created` $order LIMIT ? , ?",
 			intval($owner_uid),
@@ -844,7 +834,7 @@ function photos_content(App $a)
 			foreach ($r as $rr) {
 				$twist = !$twist;
 
-				$ext = $phototypes[$rr['type']];
+				$ext = Images::getExtensionByMimeType($rr['type']);
 
 				$imgalt_e = $rr['filename'];
 				$desc_e = $rr['desc'];
@@ -855,7 +845,7 @@ function photos_content(App $a)
 					'link'  => 'photos/' . $user['nickname'] . '/image/' . $rr['resource-id']
 						. ($order_field === 'created' ? '?order=created' : ''),
 					'title' => DI::l10n()->t('View Photo'),
-					'src'   => 'photo/' . $rr['resource-id'] . '-' . $rr['scale'] . '.' . $ext,
+					'src'   => 'photo/' . $rr['resource-id'] . '-' . $rr['scale'] . $ext,
 					'alt'   => $imgalt_e,
 					'desc'  => $desc_e,
 					'ext'   => $ext,
@@ -1013,9 +1003,9 @@ function photos_content(App $a)
 		}
 
 		$photo = [
-			'href'     => 'photo/' . $hires['resource-id'] . '-' . $hires['scale'] . '.' . $phototypes[$hires['type']],
+			'href'     => 'photo/' . $hires['resource-id'] . '-' . $hires['scale'] . Images::getExtensionByMimeType($hires['type']),
 			'title'    => DI::l10n()->t('View Full Size'),
-			'src'      => 'photo/' . $lores['resource-id'] . '-' . $lores['scale'] . '.' . $phototypes[$lores['type']] . '?_u=' . DateTimeFormat::utcNow('ymdhis'),
+			'src'      => 'photo/' . $lores['resource-id'] . '-' . $lores['scale'] . Images::getExtensionByMimeType($lores['type']) . '?_u=' . DateTimeFormat::utcNow('ymdhis'),
 			'height'   => $hires['height'],
 			'width'    => $hires['width'],
 			'album'    => $hires['album'],
@@ -1043,7 +1033,7 @@ function photos_content(App $a)
 			$pager = new Pager(DI::l10n(), DI::args()->getQueryString());
 
 			$params = ['order' => ['id'], 'limit' => [$pager->getStart(), $pager->getItemsPerPage()]];
-			$items = Post::toArray(Post::selectForUser($link_item['uid'], Item::ITEM_FIELDLIST, $condition, $params));
+			$items = Post::toArray(Post::selectForUser($link_item['uid'], array_merge(Item::ITEM_FIELDLIST, ['author-alias']), $condition, $params));
 
 			if (DI::userSession()->getLocalUserId() == $link_item['uid']) {
 				Item::update(['unseen' => false], ['parent' => $link_item['parent']]);
@@ -1081,7 +1071,7 @@ function photos_content(App $a)
 
 			$album_e = $ph[0]['album'];
 			$caption_e = $ph[0]['desc'];
-			$aclselect_e = ACL::getFullSelectorHTML(DI::page(), $a->getLoggedInUserId(), false, ACL::getDefaultUserPermissions($ph[0]));
+			$aclselect_e = ACL::getFullSelectorHTML(DI::page(), DI::userSession()->getLocalUserId(), false, ACL::getDefaultUserPermissions($ph[0]));
 
 			$edit = Renderer::replaceMacros($edit_tpl, [
 				'$id' => $ph[0]['id'],
@@ -1167,11 +1157,11 @@ function photos_content(App $a)
 				}
 
 				if (!empty($conv_responses['like'][$link_item['uri']])) {
-					$like = DI::conversation()->formatActivity($conv_responses['like'][$link_item['uri']]['links'], 'like', $link_item['id']);
+					$like = DI::conversation()->formatActivity($conv_responses['like'][$link_item['uri']]['links'], 'like', $link_item['id'], '', []);
 				}
 
 				if (!empty($conv_responses['dislike'][$link_item['uri']])) {
-					$dislike = DI::conversation()->formatActivity($conv_responses['dislike'][$link_item['uri']]['links'], 'dislike', $link_item['id']);
+					$dislike = DI::conversation()->formatActivity($conv_responses['dislike'][$link_item['uri']]['links'], 'dislike', $link_item['id'], '', []);
 				}
 
 				if (($can_post || Security::canWriteToUserWall($owner_uid))) {
