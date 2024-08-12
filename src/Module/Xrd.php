@@ -26,6 +26,7 @@ use Friendica\Core\System;
 use Friendica\DI;
 use Friendica\Model\Photo;
 use Friendica\Model\User;
+use Friendica\Network\HTTPException\BadRequestException;
 use Friendica\Network\HTTPException\NotFoundException;
 use Friendica\Protocol\ActivityNamespace;
 use Friendica\Protocol\Salmon;
@@ -43,7 +44,7 @@ class Xrd extends BaseModule
 		// @TODO: Replace with parameter from router
 		if (DI::args()->getArgv()[0] == 'xrd') {
 			if (empty($_GET['uri'])) {
-				return;
+				throw new BadRequestException();
 			}
 
 			$uri = urldecode(trim($_GET['uri']));
@@ -54,7 +55,7 @@ class Xrd extends BaseModule
 			}
 		} else {
 			if (empty($_GET['resource'])) {
-				return;
+				throw new BadRequestException();
 			}
 
 			$uri = urldecode(trim($_GET['resource']));
@@ -68,13 +69,15 @@ class Xrd extends BaseModule
 		if (substr($uri, 0, 4) === 'http') {
 			$name = ltrim(basename($uri), '~');
 			$host = parse_url($uri, PHP_URL_HOST);
-		} else {
+		} else if (preg_match('/^[[:alpha:]][[:alnum:]+-.]+:/', $uri)) {
 			$local = str_replace('acct:', '', $uri);
 			if (substr($local, 0, 2) == '//') {
 				$local = substr($local, 2);
 			}
 
 			list($name, $host) = explode('@', $local);
+		} else {
+			throw new BadRequestException();
 		}
 
 		if (!empty($host) && $host !== DI::baseUrl()->getHost()) {

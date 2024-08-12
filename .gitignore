@@ -35,6 +35,7 @@ robots.txt
 
 #Ignore config files from VSCode
 /.vscode/
+!/.vscode/launch.json
 
 #ignore smarty cache
 /view/smarty3/compiled/
