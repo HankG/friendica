@@ -1,23 +1,9 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Test\src\Module\Api\Twitter\DirectMessages;
 
@@ -25,10 +11,17 @@ use Friendica\App\Router;
 use Friendica\Database\DBA;
 use Friendica\DI;
 use Friendica\Module\Api\Twitter\DirectMessages\Destroy;
-use Friendica\Test\src\Module\Api\ApiTest;
+use Friendica\Test\ApiTestCase;
 
-class DestroyTest extends ApiTest
+class DestroyTest extends ApiTestCase
 {
+	protected function setUp(): void
+	{
+		parent::setUp();
+
+		$this->useHttpMethod(Router::POST);
+	}
+
 	/**
 	 * Test the api_direct_messages_destroy() function.
 	 *
@@ -37,7 +30,8 @@ class DestroyTest extends ApiTest
 	public function testApiDirectMessagesDestroy()
 	{
 		$this->expectException(\Friendica\Network\HTTPException\BadRequestException::class);
-		(new Destroy(DI::dba(), DI::mstdnError(), DI::app(), DI::l10n(), DI::baseUrl(), DI::args(), DI::logger(), DI::profiler(), DI::apiResponse(), [], ['extension' => 'json']))
+
+		(new Destroy(DI::dba(), DI::mstdnError(), DI::appHelper(), DI::l10n(), DI::baseUrl(), DI::args(), DI::logger(), DI::profiler(), DI::apiResponse(), [], ['extension' => 'json']))
 			->run($this->httpExceptionMock);
 	}
 
@@ -48,7 +42,7 @@ class DestroyTest extends ApiTest
 	 */
 	public function testApiDirectMessagesDestroyWithVerbose()
 	{
-		$response = (new Destroy(DI::dba(), DI::mstdnError(), DI::app(), DI::l10n(), DI::baseUrl(), DI::args(), DI::logger(), DI::profiler(), DI::apiResponse(), [], ['extension' => 'json']))
+		$response = (new Destroy(DI::dba(), DI::mstdnError(), DI::appHelper(), DI::l10n(), DI::baseUrl(), DI::args(), DI::logger(), DI::profiler(), DI::apiResponse(), [], ['extension' => 'json']))
 			->run($this->httpExceptionMock, [
 				'friendica_verbose' => true,
 			]);
@@ -84,7 +78,7 @@ class DestroyTest extends ApiTest
 	public function testApiDirectMessagesDestroyWithId()
 	{
 		$this->expectException(\Friendica\Network\HTTPException\BadRequestException::class);
-		(new Destroy(DI::dba(), DI::mstdnError(), DI::app(), DI::l10n(), DI::baseUrl(), DI::args(), DI::logger(), DI::profiler(), DI::apiResponse(), [], ['extension' => 'json']))
+		(new Destroy(DI::dba(), DI::mstdnError(), DI::appHelper(), DI::l10n(), DI::baseUrl(), DI::args(), DI::logger(), DI::profiler(), DI::apiResponse(), [], ['extension' => 'json']))
 			->run($this->httpExceptionMock, [
 				'id' => 1
 			]);
@@ -97,7 +91,7 @@ class DestroyTest extends ApiTest
 	 */
 	public function testApiDirectMessagesDestroyWithIdAndVerbose()
 	{
-		$response = (new Destroy(DI::dba(), DI::mstdnError(), DI::app(), DI::l10n(), DI::baseUrl(), DI::args(), DI::logger(), DI::profiler(), DI::apiResponse(), [], ['extension' => 'json']))
+		$response = (new Destroy(DI::dba(), DI::mstdnError(), DI::appHelper(), DI::l10n(), DI::baseUrl(), DI::args(), DI::logger(), DI::profiler(), DI::apiResponse(), [], ['extension' => 'json']))
 			->run($this->httpExceptionMock, [
 				'id'                  => 1,
 				'friendica_parenturi' => 'parent_uri',
@@ -121,7 +115,7 @@ class DestroyTest extends ApiTest
 		$ids = DBA::selectToArray('mail', ['id']);
 		$id  = $ids[0]['id'];
 
-		$response = (new Destroy(DI::dba(), DI::mstdnError(), DI::app(), DI::l10n(), DI::baseUrl(), DI::args(), DI::logger(), DI::profiler(), DI::apiResponse(), [], ['extension' => 'json']))
+		$response = (new Destroy(DI::dba(), DI::mstdnError(), DI::appHelper(), DI::l10n(), DI::baseUrl(), DI::args(), DI::logger(), DI::profiler(), DI::apiResponse(), [], ['extension' => 'json']))
 			->run($this->httpExceptionMock, [
 				'id'                => $id,
 				'friendica_verbose' => true,

@@ -1,23 +1,9 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Contact\LocalRelationship\Entity;
 
@@ -39,7 +25,6 @@ use Friendica\Model\Contact;
  * @property-read int    $remoteSelf
  * @property-read int    $fetchFurtherInformation
  * @property-read string $ffiKeywordDenylist
- * @property-read bool   $subhub
  * @property-read string $hubVerify
  * @property-read string $protocol
  * @property-read int    $rating
@@ -83,8 +68,6 @@ class LocalRelationship extends \Friendica\BaseEntity
 	protected $fetchFurtherInformation;
 	/** @var string */
 	protected $ffiKeywordDenylist;
-	/** @var bool */
-	protected $subhub;
 	/** @var string */
 	protected $hubVerify;
 	/** @var string */
@@ -94,7 +77,7 @@ class LocalRelationship extends \Friendica\BaseEntity
 	/** @var int */
 	protected $priority;
 
-	public function __construct(int $userId, int $contactId, bool $blocked = false, bool $ignored = false, bool $collapsed = false, bool $hidden = false, bool $pending = false, int $rel = Contact::NOTHING, string $info = '', bool $notifyNewPosts = false, int $remoteSelf = self::MIRROR_DEACTIVATED, int $fetchFurtherInformation = self::FFI_NONE, string $ffiKeywordDenylist = '', bool $subhub = false, string $hubVerify = '', string $protocol = Protocol::PHANTOM, ?int $rating = null, ?int $priority = null)
+	public function __construct(int $userId, int $contactId, bool $blocked = false, bool $ignored = false, bool $collapsed = false, bool $hidden = false, bool $pending = false, int $rel = Contact::NOTHING, string $info = '', bool $notifyNewPosts = false, int $remoteSelf = self::MIRROR_DEACTIVATED, int $fetchFurtherInformation = self::FFI_NONE, string $ffiKeywordDenylist = '', string $hubVerify = '', string $protocol = Protocol::PHANTOM, ?int $rating = null, ?int $priority = null)
 	{
 		$this->userId                  = $userId;
 		$this->contactId               = $contactId;
@@ -109,7 +92,6 @@ class LocalRelationship extends \Friendica\BaseEntity
 		$this->remoteSelf              = $remoteSelf;
 		$this->fetchFurtherInformation = $fetchFurtherInformation;
 		$this->ffiKeywordDenylist      = $ffiKeywordDenylist;
-		$this->subhub                  = $subhub;
 		$this->hubVerify               = $hubVerify;
 		$this->protocol                = $protocol;
 		$this->rating                  = $rating;

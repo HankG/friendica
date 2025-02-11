@@ -1,29 +1,14 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Module;
 
 use Friendica\BaseModule;
 use Friendica\Content\Pager;
-use Friendica\Core\Logger;
 use Friendica\Core\Renderer;
 use Friendica\Core\Search;
 use Friendica\DI;
@@ -62,13 +47,13 @@ class BaseSearch extends BaseModule
 			return '';
 		}
 
-		$header = '';
+		$header  = '';
 		$results = new ResultList();
 
 		if (strpos($search, '@') === 0) {
-			$search  = trim(substr($search, 1));
-			$type    = Search::TYPE_PEOPLE;
-			$header  = DI::l10n()->t('People Search - %s', $search);
+			$search = trim(substr($search, 1));
+			$type   = Search::TYPE_PEOPLE;
+			$header = DI::l10n()->t('People Search - %s', $search);
 		} elseif (strpos($search, '!') === 0) {
 			$search = trim(substr($search, 1));
 			$type   = Search::TYPE_GROUP;
@@ -78,11 +63,19 @@ class BaseSearch extends BaseModule
 		$search = Network::convertToIdn($search);
 
 		if (DI::mode()->isMobile()) {
-			$itemsPerPage = DI::pConfig()->get(DI::userSession()->getLocalUserId(), 'system', 'itemspage_mobile_network',
-				DI::config()->get('system', 'itemspage_network_mobile'));
+			$itemsPerPage = DI::pConfig()->get(
+				DI::userSession()->getLocalUserId(),
+				'system',
+				'itemspage_mobile_network',
+				DI::config()->get('system', 'itemspage_network_mobile')
+			);
 		} else {
-			$itemsPerPage = DI::pConfig()->get(DI::userSession()->getLocalUserId(), 'system', 'itemspage_network',
-				DI::config()->get('system', 'itemspage_network'));
+			$itemsPerPage = DI::pConfig()->get(
+				DI::userSession()->getLocalUserId(),
+				'system',
+				'itemspage_network',
+				DI::config()->get('system', 'itemspage_network')
+			);
 		}
 
 		$pager = new Pager(DI::l10n(), DI::args()->getQueryString(), $itemsPerPage);
@@ -146,7 +139,8 @@ class BaseSearch extends BaseModule
 			'$filtered' => $filtered ? DI::l10n()->tt(
 				'%d result was filtered out because your node blocks the domain it is registered on. You can review the list of domains your node is currently blocking in the <a href="/friendica">About page</a>.',
 				'%d results were filtered out because your node blocks the domain they are registered on. You can review the list of domains your node is currently blocking in the <a href="/friendica">About page</a>.',
-				$filtered) : '',
+				$filtered
+			) : '',
 			'$contacts' => $entries,
 			'$paginate' => $pager->renderFull($results->getTotal()),
 		]);

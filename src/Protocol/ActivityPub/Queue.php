@@ -1,27 +1,12 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Protocol\ActivityPub;
 
-use Friendica\Core\Logger;
 use Friendica\Core\Worker;
 use Friendica\Database\Database;
 use Friendica\Database\DBA;
@@ -64,8 +49,10 @@ class Queue
 		}
 
 		if (!empty($activity['context'])) {
-			$fields['conversation'] = $activity['context'];
-		} elseif (!empty($activity['conversation'])) {
+			$fields['context'] = $activity['context'];
+		}
+
+		if (!empty($activity['conversation'])) {
 			$fields['conversation'] = $activity['conversation'];
 		}
 
@@ -141,7 +128,7 @@ class Queue
 			return;
 		}
 
-		Logger::debug('Delete inbox-entry', ['id' => $entry['id']]);
+		DI::logger()->debug('Delete inbox-entry', ['id' => $entry['id']]);
 
 		DBA::delete('inbox-entry', ['id' => $entry['id']]);
 
@@ -187,10 +174,11 @@ class Queue
 	 *
 	 * @param integer $id
 	 * @param bool    $fetch_parents
+	 * @param array   $parent
 	 *
 	 * @return bool
 	 */
-	public static function process(int $id, bool $fetch_parents = true): bool
+	public static function process(int $id, bool $fetch_parents = true, array $parent = []): bool
 	{
 		$entry = DBA::selectFirst('inbox-entry', [], ['id' => $id]);
 		if (empty($entry)) {
@@ -198,23 +186,23 @@ class Queue
 		}
 
 		if (!self::isProcessable($id)) {
-			Logger::debug('Other queue entries need to be processed first.', ['id' => $id]);
+			DI::logger()->debug('Other queue entries need to be processed first.', ['id' => $id]);
 			return false;
 		}
 
 		if (!empty($entry['wid'])) {
-			$worker = DI::app()->getQueue();
-			$wid = $worker['id'] ?? 0;
+			$worker = DI::appHelper()->getQueue();
+			$wid    = $worker['id'] ?? 0;
 			if ($entry['wid'] != $wid) {
 				$workerqueue = DBA::selectFirst('workerqueue', ['pid'], ['id' => $entry['wid'], 'done' => false]);
 				if (!empty($workerqueue['pid']) && posix_kill($workerqueue['pid'], 0)) {
-					Logger::notice('Entry is already processed via another process.', ['current' => $wid, 'processor' => $entry['wid']]);
+					DI::logger()->notice('Entry is already processed via another process.', ['current' => $wid, 'processor' => $entry['wid']]);
 					return false;
 				}
 			}
 		}
 
-		Logger::debug('Processing queue entry', ['id' => $entry['id'], 'type' => $entry['type'], 'object-type' => $entry['object-type'], 'uri' => $entry['object-id'], 'in-reply-to' => $entry['in-reply-to-id']]);
+		DI::logger()->debug('Processing queue entry', ['id' => $entry['id'], 'type' => $entry['type'], 'object-type' => $entry['object-type'], 'uri' => $entry['object-id'], 'in-reply-to' => $entry['in-reply-to-id']]);
 
 		$activity = json_decode($entry['activity'], true);
 		$type     = $entry['type'];
@@ -223,6 +211,14 @@ class Queue
 		$activity['entry-id']        = $entry['id'];
 		$activity['worker-id']       = $entry['wid'];
 		$activity['recursion-depth'] = 0;
+
+		if (!empty($parent['children'])) {
+			$activity['children'] = array_merge($activity['children'] ?? [], $parent['children']);
+		}
+
+		if (!empty($parent['callstack'])) {
+			$activity['callstack'] = array_merge($activity['callstack'] ?? [], $parent['callstack']);
+		}
 
 		if (empty($activity['thread-children-type'])) {
 			$activity['thread-children-type'] = $type;
@@ -250,15 +246,34 @@ class Queue
 	 */
 	public static function processAll()
 	{
-		$entries = DBA::select('inbox-entry', ['id', 'type', 'object-type', 'object-id', 'in-reply-to-id'], ["`trust` AND `wid` IS NULL"], ['order' => ['id' => true]]);
+		$expired_days = max(1, DI::config()->get('system', 'queue_expired_days'));
+		$max_retrial  = max(3, DI::config()->get('system', 'queue_retrial'));
+
+		$entries = DBA::select('inbox-entry', ['id', 'type', 'object-type', 'object-id', 'in-reply-to-id', 'received', 'trust', 'retrial'], ["`wid` IS NULL"], ['order' => ['retrial', 'id' => true]]);
 		while ($entry = DBA::fetch($entries)) {
-			if (!self::isProcessable($entry['id'])) {
+			// We delete all entries that aren't associated with a worker entry after a given amount of days or retrials
+			if (($entry['retrial'] > $max_retrial) || ($entry['received'] < DateTimeFormat::utc('now - ' . $expired_days . ' days'))) {
+				self::deleteById($entry['id']);
+			}
+			if (!$entry['trust'] || !self::isProcessable($entry['id'])) {
 				continue;
 			}
-			Logger::debug('Process leftover entry', $entry);
+			DI::logger()->debug('Process leftover entry', $entry);
 			self::process($entry['id'], false);
 		}
 		DBA::close($entries);
+
+		// Optimizing this table only last seconds
+		if (DI::config()->get('system', 'optimize_tables')) {
+			DI::logger()->info('Optimize start');
+			DBA::optimizeTable('inbox-entry');
+			DI::logger()->info('Optimize end');
+		}
+	}
+
+	private static function retrial(int $id)
+	{
+		DBA::update('inbox-entry', ["`retrial` = `retrial` + 1"], ['id' => $id]);
 	}
 
 	public static function isProcessable(int $id): bool
@@ -277,31 +292,46 @@ class Queue
 			return true;
 		}
 
+		if (!empty($entry['context'])) {
+			if (DBA::exists('post-thread', ['context-id' => ItemURI::getIdByURI($entry['context'], false)])) {
+				// We have got the context in the system, so the post can be processed
+				return true;
+			}
+		}
+
 		if (!empty($entry['conversation'])) {
-			$conv_id = ItemURI::getIdByURI($entry['conversation'], false);
-			if (DBA::exists('post-thread', ['conversation-id' => $conv_id])) {
+			if (DBA::exists('post-thread', ['conversation-id' => ItemURI::getIdByURI($entry['conversation'], false)])) {
 				// We have got the conversation in the system, so the post can be processed
 				return true;
 			}
 		}
 
 		if (!empty($entry['object-id']) && !empty($entry['in-reply-to-id']) && ($entry['object-id'] != $entry['in-reply-to-id'])) {
-		 	if (DBA::exists('inbox-entry', ['object-id' => $entry['in-reply-to-id']])) {
+			if (DBA::exists('inbox-entry', ['object-id' => $entry['in-reply-to-id']])) {
 				// This entry belongs to some other entry that should be processed first
+				self::retrial($id);
 				return false;
 			}
-			if (!Post::exists(['uri' => $entry['in-reply-to-id']])) {
+			if (!Processor::alreadyKnown($entry['in-reply-to-id'], '')) {
 				// This entry belongs to some other entry that need to be fetched first
 				if (Fetch::hasWorker($entry['in-reply-to-id'])) {
-					Logger::debug('Fetching of the activity is already queued', ['id' => $entry['activity-id'], 'reply-to-id' => $entry['in-reply-to-id']]);
+					DI::logger()->debug('Fetching of the activity is already queued', ['id' => $entry['activity-id'], 'reply-to-id' => $entry['in-reply-to-id']]);
+					self::retrial($id);
 					return false;
 				}
 				Fetch::add($entry['in-reply-to-id']);
 				$activity = json_decode($entry['activity'], true);
+				if (in_array($entry['in-reply-to-id'], $activity['children'] ?? [])) {
+					DI::logger()->notice('reply-to-id is already in the list of children', ['id' => $entry['in-reply-to-id'], 'children' => $activity['children'], 'depth' => count($activity['children'])]);
+					self::retrial($id);
+					return false;
+				}
 				$activity['recursion-depth'] = 0;
-				$wid = Worker::add(Worker::PRIORITY_HIGH, 'FetchMissingActivity', $entry['in-reply-to-id'], $activity, '', Receiver::COMPLETION_ASYNC);
+				$activity['callstack']       = Processor::addToCallstack($activity['callstack'] ?? []);
+				$wid                         = Worker::add(Worker::PRIORITY_HIGH, 'FetchMissingActivity', $entry['in-reply-to-id'], $activity, '', Receiver::COMPLETION_ASYNC);
 				Fetch::setWorkerId($entry['in-reply-to-id'], $wid);
-				Logger::debug('Fetch missing activity', ['wid' => $wid, 'id' => $entry['activity-id'], 'reply-to-id' => $entry['in-reply-to-id']]);
+				DI::logger()->debug('Fetch missing activity', ['wid' => $wid, 'id' => $entry['activity-id'], 'reply-to-id' => $entry['in-reply-to-id']]);
+				self::retrial($id);
 				return false;
 			}
 		}
@@ -310,41 +340,19 @@ class Queue
 	}
 
 	/**
-	 * Clear old activities
-	 *
-	 * @return void
-	 */
-	public static function clear()
-	{
-		// We delete all entries that aren't associated with a worker entry after seven days.
-		// The other entries are deleted when the worker deferred for too long.
-		$entries = DBA::select('inbox-entry', ['id'], ["`wid` IS NULL AND `received` < ?", DateTimeFormat::utc('now - 7 days')]);
-		while ($entry = DBA::fetch($entries)) {
-			self::deleteById($entry['id']);
-		}
-		DBA::close($entries);
-
-		// Optimizing this table only last seconds
-		if (DI::config()->get('system', 'optimize_tables')) {
-			Logger::info('Optimize start');
-			DBA::optimizeTable('inbox-entry');
-			Logger::info('Optimize end');
-		}
-	}
-
-	/**
 	 * Process all activities that are children of a given post url
 	 *
 	 * @param string $uri
+	 * @param array  $parent
 	 * @return int
 	 */
-	public static function processReplyByUri(string $uri): int
+	public static function processReplyByUri(string $uri, array $parent = []): int
 	{
-		$count = 0;
+		$count   = 0;
 		$entries = DBA::select('inbox-entry', ['id'], ["`in-reply-to-id` = ? AND `object-id` != ?", $uri, $uri]);
 		while ($entry = DBA::fetch($entries)) {
 			$count += 1;
-			self::process($entry['id'], false);
+			self::process($entry['id'], false, $parent);
 		}
 		DBA::close($entries);
 		return $count;
@@ -405,7 +413,7 @@ class Queue
 	{
 		$entries = DBA::select('inbox-entry', ['id'], ["NOT `trust` AND `wid` IS NULL"], ['order' => ['id' => true]]);
 		while ($entry = DBA::fetch($entries)) {
-			$data = self::reprepareActivityById($entry['id'], false);
+			$data = self::reprepareActivityById($entry['id']);
 			if ($data['trust']) {
 				DBA::update('inbox-entry', ['trust' => true], ['id' => $entry['id']]);
 			}

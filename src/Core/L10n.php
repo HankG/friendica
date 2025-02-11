@@ -1,23 +1,9 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Core;
 
@@ -359,10 +345,6 @@ class L10n
 
 	/**
 	 * Provide a fallback which will not collide with a function defined in any language file
-	 *
-	 * @param int $n
-	 *
-	 * @return bool
 	 */
 	private function stringPluralSelectDefault(float $n): bool
 	{
@@ -440,7 +422,7 @@ class L10n
 		$iso639 = new \Matriphe\ISO639\ISO639;
 
 		// In ISO 639-2 undetermined languages have got the code "und".
-		// There is no official code for ISO 639-1, but "un" is not assigned to any language.   
+		// There is no official code for ISO 639-1, but "un" is not assigned to any language.
 		$languages = [self::UNDETERMINED_LANGUAGE => $this->t('Undetermined')];
 
 		foreach ($this->getDetectableLanguages() as $code) {

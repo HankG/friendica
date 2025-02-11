@@ -1,27 +1,14 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Module\Conversation;
 
-use Friendica\App;
+use Friendica\App\Arguments;
+use Friendica\App\BaseURL;
 use Friendica\App\Mode;
 use Friendica\BaseModule;
 use Friendica\Content\Conversation\Collection\Timelines;
@@ -45,6 +32,8 @@ use Friendica\Model\Post;
 use Friendica\Model\Post\Engagement;
 use Friendica\Model\Post\SearchIndex;
 use Friendica\Module\Response;
+use Friendica\Network\HTTPException\BadRequestException;
+use Friendica\Network\HTTPException\ForbiddenException;
 use Friendica\Protocol\Activity;
 use Friendica\Util\DateTimeFormat;
 use Friendica\Util\Profiler;
@@ -81,7 +70,7 @@ class Timeline extends BaseModule
 	/** @var string */
 	protected $network;
 
-	/** @var App\Mode $mode */
+	/** @var Mode $mode */
 	protected $mode;
 	/** @var IHandleUserSessions */
 	protected $session;
@@ -96,7 +85,7 @@ class Timeline extends BaseModule
 	/** @var UserDefinedChannel */
 	protected $channelRepository;
 
-	public function __construct(UserDefinedChannel $channel, Mode $mode, IHandleUserSessions $session, Database $database, IManagePersonalConfigValues $pConfig, IManageConfigValues $config, ICanCache $cache, L10n $l10n, App\BaseURL $baseUrl, App\Arguments $args, LoggerInterface $logger, Profiler $profiler, Response $response, array $server = [], array $parameters = [])
+	public function __construct(UserDefinedChannel $channel, Mode $mode, IHandleUserSessions $session, Database $database, IManagePersonalConfigValues $pConfig, IManageConfigValues $config, ICanCache $cache, L10n $l10n, BaseURL $baseUrl, Arguments $args, LoggerInterface $logger, Profiler $profiler, Response $response, array $server = [], array $parameters = [])
 	{
 		parent::__construct($l10n, $baseUrl, $args, $logger, $profiler, $response, $server, $parameters);
 
@@ -112,8 +101,8 @@ class Timeline extends BaseModule
 	/**
 	 * Computes module parameters from the request and local configuration
 	 *
-	 * @throws HTTPException\BadRequestException
-	 * @throws HTTPException\ForbiddenException
+	 * @throws BadRequestException
+	 * @throws ForbiddenException
 	 */
 	protected function parseRequest(array $request)
 	{
@@ -161,20 +150,20 @@ class Timeline extends BaseModule
 	{
 		switch ($this->order) {
 			case 'received':
-				$this->maxId = $request['last_received'] ?? $this->maxId;
+				$this->maxId = $request['last_received']  ?? $this->maxId;
 				$this->minId = $request['first_received'] ?? $this->minId;
 				break;
 			case 'created':
-				$this->maxId = $request['last_created'] ?? $this->maxId;
+				$this->maxId = $request['last_created']  ?? $this->maxId;
 				$this->minId = $request['first_created'] ?? $this->minId;
 				break;
 			case 'uri-id':
-				$this->maxId = $request['last_uriid'] ?? $this->maxId;
+				$this->maxId = $request['last_uriid']  ?? $this->maxId;
 				$this->minId = $request['first_uriid'] ?? $this->minId;
 				break;
 			default:
 				$this->order = 'commented';
-				$this->maxId = $request['last_commented'] ?? $this->maxId;
+				$this->maxId = $request['last_commented']  ?? $this->maxId;
 				$this->minId = $request['first_commented'] ?? $this->minId;
 		}
 	}
@@ -267,8 +256,8 @@ class Timeline extends BaseModule
 
 			while (count($selected_items) < $total && ++$count < 50 && count($items) > 0) {
 				$maxposts = round((count($items) / $total) * $maxpostperauthor);
-				$minId = $items[array_key_first($items)][$this->order];
-				$maxId = $items[array_key_last($items)][$this->order];
+				$minId    = $items[array_key_first($items)][$this->order];
+				$maxId    = $items[array_key_last($items)][$this->order];
 
 				foreach ($items as $item) {
 					if (!in_array($item['owner-id'], $reduced)) {
@@ -322,6 +311,8 @@ class Timeline extends BaseModule
 	{
 		$table = 'post-engagement';
 
+		$condition = [];
+
 		if ($this->selectedTab == ChannelEntity::WHATSHOT) {
 			if (!is_null($this->accountType)) {
 				$condition = ["(`comments` > ? OR `activities` > ?) AND `contact-type` = ?", $this->getMedianComments($uid, 4), $this->getMedianActivities($uid, 4), $this->accountType];
@@ -345,11 +336,11 @@ class Timeline extends BaseModule
 				"`owner-id` IN (SELECT `cid` FROM `contact-relation` WHERE `relation-cid` = ? AND NOT `follows`) AND
 				(`owner-id` IN (SELECT `cid` FROM `contact-relation` WHERE `relation-cid` = ? AND NOT `follows` AND `relation-thread-score` > ?) OR
 				`owner-id` IN (SELECT `cid` FROM `contact-relation` WHERE `cid` = ? AND `relation-thread-score` > ?) OR
-				((`comments` >= ? OR `activities` >= ?) AND 
-				(`owner-id` IN (SELECT `cid` FROM `contact-relation` WHERE `cid` = ? AND `relation-thread-score` > ?)) OR 
+				((`comments` >= ? OR `activities` >= ?) AND
+				(`owner-id` IN (SELECT `cid` FROM `contact-relation` WHERE `cid` = ? AND `relation-thread-score` > ?)) OR
 				(`owner-id` IN (SELECT `cid` FROM `contact-relation` WHERE `relation-cid` = ? AND `relation-thread-score` > ?))))",
 				$cid, $cid, $this->getMedianRelationThreadScore($cid, 4), $cid, $this->getMedianRelationThreadScore($cid, 4),
-				$this->getMedianComments($uid, 4), $this->getMedianActivities($uid, 4), $cid, 0, $cid, 0 
+				$this->getMedianComments($uid, 4), $this->getMedianActivities($uid, 4), $cid, 0, $cid, 0
 			];
 
 		} elseif ($this->selectedTab == ChannelEntity::FOLLOWERS) {
@@ -382,9 +373,9 @@ class Timeline extends BaseModule
 		} elseif (is_numeric($this->selectedTab) && !empty($channel = $this->channelRepository->selectById($this->selectedTab, $uid))) {
 			$condition = $this->getUserChannelConditions($channel, $uid);
 			if (in_array($channel->circle, [-3, -4, -5])) {
-				$table = SearchIndex::getSearchView();
-				$condition = DBA::mergeConditions($condition, ['uid' => $uid]);
-				$orders = ['-3' => 'created', '-4' => 'received', '-5' => 'commented'];
+				$table       = SearchIndex::getSearchView();
+				$condition   = DBA::mergeConditions($condition, ['uid' => $uid]);
+				$orders      = ['-3' => 'created', '-4' => 'received', '-5' => 'commented'];
 				$this->order = $orders[$channel->circle];
 			}
 		}
@@ -430,10 +421,10 @@ class Timeline extends BaseModule
 			}
 		}
 
-		$items = [];
-		$fields = ['uri-id', 'owner-id', 'comments', 'activities'];
+		$items    = [];
+		$fields   = ['uri-id', 'owner-id', 'comments', 'activities'];
 		$fields[] = $this->order;
-		$result = $this->database->select($table, $fields, $condition, $params);
+		$result   = $this->database->select($table, $fields, $condition, $params);
 		if ($this->database->errorNo()) {
 			throw new \Exception($this->database->errorMessage(), $this->database->errorNo());
 		}
@@ -504,7 +495,7 @@ class Timeline extends BaseModule
 				$placeholders = substr(str_repeat("?, ", count($search)), 0, -2);
 				$condition    = DBA::mergeConditions($condition, array_merge(["`uri-id` IN (SELECT `uri-id` FROM `post-tag` INNER JOIN `tag` ON `tag`.`id` = `post-tag`.`tid` WHERE `post-tag`.`type` = 1 AND `name` IN (" . $placeholders . "))"], $search));
 			}
-	
+
 			if (!empty($channel->excludeTags)) {
 				$search       = explode(',', mb_strtolower($channel->excludeTags));
 				$placeholders = substr(str_repeat("?, ", count($search)), 0, -2);
@@ -514,7 +505,7 @@ class Timeline extends BaseModule
 			if (!empty($channel->mediaType)) {
 				$condition = DBA::mergeConditions($condition, ["`media-type` & ?", $channel->mediaType]);
 			}
-	
+
 			// For "addLanguageCondition" to work, the condition must not be empty
 			$condition = $this->addLanguageCondition($uid, $condition ?: ["true"], $channel->languages);
 		}
@@ -698,57 +689,64 @@ class Timeline extends BaseModule
 	protected function getCommunityItems()
 	{
 		$items = $this->selectItems();
+		$key   = '';
 
+		$maxpostperauthor = 0;
 		if ($this->selectedTab == Community::LOCAL) {
 			$maxpostperauthor = (int)$this->config->get('system', 'max_author_posts_community_page');
-			$key = 'author-id';
+			$key              = 'author-id';
 		} elseif ($this->selectedTab == Community::GLOBAL) {
 			$maxpostperauthor = (int)$this->config->get('system', 'max_server_posts_community_page');
-			$key = 'author-gsid';
-		} else {
-			$maxpostperauthor = 0;
+			$key              = 'author-gsid';
 		}
-		if ($maxpostperauthor != 0) {
-			$count          = 1;
-			$author_posts   = [];
-			$selected_items = [];
 
-			while (count($selected_items) < $this->itemsPerPage && ++$count < 50 && count($items) > 0) {
-				$maxposts = round((count($items) / $this->itemsPerPage) * $maxpostperauthor);
-				$minId = $items[array_key_first($items)]['received'];
-				$maxId = $items[array_key_last($items)]['received'];
+		if ($maxpostperauthor === 0) {
+			$this->setItemsSeenByCondition([
+				'unseen'        => true,
+				'uid'           => $this->session->getLocalUserId(),
+				'parent-uri-id' => array_column($items, 'uri-id')
+			]);
 
-				foreach ($items as $item) {
-					$author_posts[$item[$key]][$item['uri-id']] = $item['received'];
+			return $items;
+		}
+
+		$count          = 1;
+		$author_posts   = [];
+		$selected_items = [];
+
+		while (count($selected_items) < $this->itemsPerPage && ++$count < 50 && count($items) > 0) {
+			$maxposts = round((count($items) / $this->itemsPerPage) * $maxpostperauthor);
+			$minId    = $items[array_key_first($items)]['received'];
+			$maxId    = $items[array_key_last($items)]['received'];
+
+			foreach ($items as $item) {
+				$author_posts[$item[$key]][$item['uri-id']] = $item['received'];
+			}
+			foreach ($author_posts as $posts) {
+				if (count($posts) <= $maxposts) {
+					continue;
 				}
-				foreach ($author_posts as $posts) {
-					if (count($posts) <= $maxposts) {
-						continue;
-					}
-					asort($posts);
-					while (count($posts) > $maxposts) {
-						$uri_id = array_key_first($posts);
-						unset($posts[$uri_id]);
-						unset($items[$uri_id]);
-					}
-				}
-				$selected_items = array_merge($selected_items, $items);
-
-				// If we're looking at a "previous page", the lookup continues forward in time because the list is
-				// sorted in chronologically decreasing order
-				if (!empty($this->minId)) {
-					$this->minId = $minId;
-				} else {
-					// In any other case, the lookup continues backwards in time
-					$this->maxId = $maxId;
-				}
-
-				if (count($selected_items) < $this->itemsPerPage) {
-					$items = $this->selectItems();
+				asort($posts);
+				while (count($posts) > $maxposts) {
+					$uri_id = array_key_first($posts);
+					unset($posts[$uri_id]);
+					unset($items[$uri_id]);
 				}
 			}
-		} else {
-			$selected_items = $items;
+			$selected_items = array_merge($selected_items, $items);
+
+			// If we're looking at a "previous page", the lookup continues forward in time because the list is
+			// sorted in chronologically decreasing order
+			if (!empty($this->minId)) {
+				$this->minId = $minId;
+			} else {
+				// In any other case, the lookup continues backwards in time
+				$this->maxId = $maxId;
+			}
+
+			if (count($selected_items) < $this->itemsPerPage) {
+				$items = $this->selectItems();
+			}
 		}
 
 		$condition = ['unseen' => true, 'uid' => $this->session->getLocalUserId(), 'parent-uri-id' => array_column($selected_items, 'uri-id')];
@@ -804,7 +802,7 @@ class Timeline extends BaseModule
 		}
 
 		$items = [];
-		if ($this->selectedTab ==  Community::LOCAL) {
+		if ($this->selectedTab == Community::LOCAL) {
 			$result = Post::selectOriginThread(['uri-id', 'received', 'author-id', 'author-gsid'], $condition, $params);
 		} else {
 			$result = Post::selectThreadForUser($this->session->getLocalUserId() ?: 0, ['uri-id', 'received', 'author-id', 'author-gsid'], $condition, $params);
@@ -822,7 +820,7 @@ class Timeline extends BaseModule
 		}
 
 		$uriids = array_keys($items);
-		
+
 		foreach (Post\Counts::get(['parent-uri-id' => $uriids, 'verb' => Activity::POST]) as $count) {
 			$items[$count['parent-uri-id']]['comments'] += $count['count'];
 		}

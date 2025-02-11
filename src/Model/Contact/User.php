@@ -1,34 +1,20 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Model\Contact;
 
 use Exception;
-use Friendica\Core\Logger;
-use Friendica\Core\Protocol;
+use Friendica\Core\Worker;
 use Friendica\Database\Database;
 use Friendica\Database\DBA;
 use Friendica\DI;
 use Friendica\Model\Contact;
 use Friendica\Model\ItemURI;
+use Friendica\Network\HTTPException\InternalServerErrorException;
 use PDOException;
 
 /**
@@ -54,7 +40,7 @@ class User
 		}
 
 		if (empty($contact['uri-id']) && empty($contact['url'])) {
-			Logger::info('Missing contact details', ['contact' => $contact]);
+			DI::logger()->info('Missing contact details', ['contact' => $contact]);
 			return false;
 		}
 
@@ -66,18 +52,18 @@ class User
 		if (!empty($contact['uri-id']) && DBA::isResult($pcontact)) {
 			$pcid = $pcontact['id'];
 		} elseif (empty($contact['url']) || !($pcid = Contact::getIdForURL($contact['url'], 0, false))) {
-			Logger::info('Public contact for user not found', ['uri-id' => $contact['uri-id'], 'uid' => $contact['uid']]);
+			DI::logger()->info('Public contact for user not found', ['uri-id' => $contact['uri-id'], 'uid' => $contact['uid']]);
 			return false;
 		}
 
-		$fields = self::preparedFields($contact);
-		$fields['cid'] = $pcid;
-		$fields['uid'] = $contact['uid'];
+		$fields           = self::preparedFields($contact);
+		$fields['cid']    = $pcid;
+		$fields['uid']    = $contact['uid'];
 		$fields['uri-id'] = $contact['uri-id'];
 
 		$ret = DBA::insert('user-contact', $fields, Database::INSERT_UPDATE);
 
-		Logger::info('Inserted user contact', ['uid' => $contact['uid'], 'cid' => $pcid, 'uri-id' => $contact['uri-id'], 'ret' => $ret]);
+		DI::logger()->info('Inserted user contact', ['uid' => $contact['uid'], 'cid' => $pcid, 'uri-id' => $contact['uri-id'], 'ret' => $ret]);
 
 		return $ret;
 	}
@@ -103,8 +89,8 @@ class User
 					continue;
 				}
 				$update_fields['cid'] = $contact['pid'];
-				$ret = DBA::update('user-contact', $update_fields, ['uri-id' => $contact['uri-id'], 'uid' => $contact['uid']], true);
-				Logger::info('Updated user contact', ['uid' => $contact['uid'], 'id' => $contact['pid'], 'uri-id' => $contact['uri-id'], 'ret' => $ret]);
+				$ret                  = DBA::update('user-contact', $update_fields, ['uri-id' => $contact['uri-id'], 'uid' => $contact['uid']], true);
+				DI::logger()->info('Updated user contact', ['uid' => $contact['uid'], 'id' => $contact['pid'], 'uri-id' => $contact['uri-id'], 'ret' => $ret]);
 			}
 
 			DBA::close($contacts);
@@ -139,13 +125,14 @@ class User
 	/**
 	 * Block contact id for user id
 	 *
-	 * @param int     $cid     Either public contact id or user's contact id
-	 * @param int     $uid     User ID
-	 * @param boolean $blocked Is the contact blocked or unblocked?
+	 * @param int     $cid      Either public contact id or user's contact id
+	 * @param int     $uid      User ID
+	 * @param boolean $blocked  Is the contact blocked or unblocked?
+	 * @param boolean $only_set Only set the block flag, don't execute any block transmission
 	 * @return void
-	 * @throws \Exception
+	 * @throws Exception
 	 */
-	public static function setBlocked(int $cid, int $uid, bool $blocked)
+	public static function setBlocked(int $cid, int $uid, bool $blocked, bool $only_set = false)
 	{
 		$cdata = Contact::getPublicAndUserContactID($cid, $uid);
 		if (empty($cdata)) {
@@ -153,14 +140,25 @@ class User
 		}
 
 		$contact = Contact::getById($cdata['public']);
-		if ($blocked) {
-			Protocol::block($contact, $uid);
-		} else {
-			Protocol::unblock($contact, $uid);
+
+		if (!$only_set) {
+			if ($blocked) {
+				Worker::add(Worker::PRIORITY_HIGH, 'Contact\Block', $cid, $uid);
+			} else {
+				Worker::add(Worker::PRIORITY_HIGH, 'Contact\Unblock', $cid, $uid);
+			}
 		}
 
 		if ($cdata['user'] != 0) {
 			DBA::update('contact', ['blocked' => $blocked], ['id' => $cdata['user'], 'pending' => false]);
+
+			if ($blocked) {
+				$contact = Contact::getById($cdata['user']);
+				if (!empty($contact)) {
+					// Mastodon-expected behavior: relationship is severed on block
+					Contact::terminateFriendship($contact);
+				}
+			}
 		}
 
 		DBA::update('user-contact', ['blocked' => $blocked], ['cid' => $cdata['public'], 'uid' => $uid], true);
@@ -173,7 +171,7 @@ class User
 	 * @param int $uid User ID
 	 *
 	 * @return boolean is the contact id blocked for the given user?
-	 * @throws \Exception
+	 * @throws Exception
 	 */
 	public static function isBlocked(int $cid, int $uid): bool
 	{
@@ -214,7 +212,7 @@ class User
 	 * @param int     $uid     User ID
 	 * @param boolean $ignored Is the contact ignored or unignored?
 	 * @return void
-	 * @throws \Exception
+	 * @throws Exception
 	 */
 	public static function setIgnored(int $cid, int $uid, bool $ignored)
 	{
@@ -236,7 +234,7 @@ class User
 	 * @param int $cid Either public contact id or user's contact id
 	 * @param int $uid User ID
 	 * @return boolean is the contact id ignored for the given user?
-	 * @throws \Exception
+	 * @throws Exception
 	 */
 	public static function isIgnored(int $cid, int $uid): bool
 	{
@@ -277,16 +275,16 @@ class User
 	 * @param int     $uid       User ID
 	 * @param boolean $collapsed are the contact's posts collapsed or uncollapsed?
 	 * @return void
-	 * @throws \Exception
+	 * @throws Exception
 	 */
 	public static function setCollapsed(int $cid, int $uid, bool $collapsed)
 	{
-		$cdata = Contact::getPublicAndUserContactID($cid, $uid);
-		if (empty($cdata)) {
+		$pcid = Contact::getPublicContactId($cid, $uid);
+		if (!$pcid) {
 			return;
 		}
 
-		DBA::update('user-contact', ['collapsed' => $collapsed], ['cid' => $cdata['public'], 'uid' => $uid], true);
+		DBA::update('user-contact', ['collapsed' => $collapsed], ['cid' => $pcid, 'uid' => $uid], true);
 	}
 
 	/**
@@ -295,26 +293,18 @@ class User
 	 * @param int $cid Either public contact id or user's contact id
 	 * @param int $uid User ID
 	 * @return boolean is the contact id blocked for the given user?
-	 * @throws HTTPException\InternalServerErrorException
+	 * @throws InternalServerErrorException
 	 * @throws \ImagickException
 	 */
 	public static function isCollapsed(int $cid, int $uid): bool
 	{
-		$cdata = Contact::getPublicAndUserContactID($cid, $uid);
-		if (empty($cdata)) {
+		$pcid = Contact::getPublicContactId($cid, $uid);
+		if (!$pcid) {
 			return false;
 		}
 
-		$collapsed = false;
-
-		if (!empty($cdata['public'])) {
-			$public_contact = DBA::selectFirst('user-contact', ['collapsed'], ['cid' => $cdata['public'], 'uid' => $uid]);
-			if (DBA::isResult($public_contact)) {
-				$collapsed = (bool) $public_contact['collapsed'];
-			}
-		}
-
-		return $collapsed;
+		$public_contact = DBA::selectFirst('user-contact', ['collapsed'], ['cid' => $pcid, 'uid' => $uid]);
+		return $public_contact['collapsed'] ?? false;
 	}
 
 	/**
@@ -324,16 +314,16 @@ class User
 	 * @param int $uid       User ID
 	 * @param int $frequency Type of post frequency in channels
 	 * @return void
-	 * @throws \Exception
+	 * @throws Exception
 	 */
 	public static function setChannelFrequency(int $cid, int $uid, int $frequency)
 	{
-		$cdata = Contact::getPublicAndUserContactID($cid, $uid);
-		if (empty($cdata)) {
+		$pcid = Contact::getPublicContactId($cid, $uid);
+		if (!$pcid) {
 			return;
 		}
 
-		DBA::update('user-contact', ['channel-frequency' => $frequency], ['cid' => $cdata['public'], 'uid' => $uid], true);
+		DBA::update('user-contact', ['channel-frequency' => $frequency], ['cid' => $pcid, 'uid' => $uid], true);
 	}
 
 	/**
@@ -342,45 +332,37 @@ class User
 	 * @param int $cid Either public contact id or user's contact id
 	 * @param int $uid User ID
 	 * @return int Type of post frequency in channels
-	 * @throws HTTPException\InternalServerErrorException
+	 * @throws InternalServerErrorException
 	 * @throws \ImagickException
 	 */
 	public static function getChannelFrequency(int $cid, int $uid): int
 	{
-		$cdata = Contact::getPublicAndUserContactID($cid, $uid);
-		if (empty($cdata)) {
+		$pcid = Contact::getPublicContactId($cid, $uid);
+		if (!$pcid) {
 			return false;
 		}
 
-		$frequency = self::FREQUENCY_DEFAULT;
-
-		if (!empty($cdata['public'])) {
-			$public_contact = DBA::selectFirst('user-contact', ['channel-frequency'], ['cid' => $cdata['public'], 'uid' => $uid]);
-			if (DBA::isResult($public_contact)) {
-				$frequency = $public_contact['channel-frequency'] ?? self::FREQUENCY_DEFAULT;
-			}
-		}
-
-		return $frequency;
+		$public_contact = DBA::selectFirst('user-contact', ['channel-frequency'], ['cid' => $pcid, 'uid' => $uid]);
+		return $public_contact['channel-frequency'] ?? self::FREQUENCY_DEFAULT;
 	}
 
 	/**
 	 * Set the channel only value for contact id and user id
 	 *
-	 * @param int $cid           Either public contact id or user's contact id
-	 * @param int $uid           User ID
-	 * @param int $isChannelOnly Is channel only
+	 * @param int  $cid           Either public contact id or user's contact id
+	 * @param int  $uid           User ID
+	 * @param bool $isChannelOnly Is channel only
 	 * @return void
-	 * @throws \Exception
+	 * @throws Exception
 	 */
 	public static function setChannelOnly(int $cid, int $uid, bool $isChannelOnly)
 	{
-		$cdata = Contact::getPublicAndUserContactID($cid, $uid);
-		if (empty($cdata)) {
+		$pcid = Contact::getPublicContactId($cid, $uid);
+		if (!$pcid) {
 			return;
 		}
 
-		DBA::update('user-contact', ['channel-only' => $isChannelOnly], ['cid' => $cdata['public'], 'uid' => $uid], true);
+		DBA::update('user-contact', ['channel-only' => $isChannelOnly], ['cid' => $pcid, 'uid' => $uid], true);
 	}
 
 	/**
@@ -389,26 +371,18 @@ class User
 	 * @param int $cid Either public contact id or user's contact id
 	 * @param int $uid User ID
 	 * @return bool Contact is channel only
-	 * @throws HTTPException\InternalServerErrorException
+	 * @throws InternalServerErrorException
 	 * @throws \ImagickException
 	 */
 	public static function getChannelOnly(int $cid, int $uid): bool
 	{
-		$cdata = Contact::getPublicAndUserContactID($cid, $uid);
-		if (empty($cdata)) {
+		$pcid = Contact::getPublicContactId($cid, $uid);
+		if (!$pcid) {
 			return false;
 		}
 
-		$isChannelOnly = false;
-
-		if (!empty($cdata['public'])) {
-			$public_contact = DBA::selectFirst('user-contact', ['channel-only'], ['cid' => $cdata['public'], 'uid' => $uid]);
-			if (DBA::isResult($public_contact)) {
-				$isChannelOnly = $public_contact['channel-only'] ?? false;
-			}
-		}
-
-		return $isChannelOnly;
+		$public_contact = DBA::selectFirst('user-contact', ['channel-only'], ['cid' => $pcid, 'uid' => $uid]);
+		return $public_contact['channel-only'] ?? false;
 	}
 
 	/**
@@ -418,16 +392,16 @@ class User
 	 * @param int     $uid     User ID
 	 * @param boolean $blocked Is the user blocked or unblocked by the contact?
 	 * @return void
-	 * @throws \Exception
+	 * @throws Exception
 	 */
 	public static function setIsBlocked(int $cid, int $uid, bool $blocked)
 	{
-		$cdata = Contact::getPublicAndUserContactID($cid, $uid);
-		if (empty($cdata)) {
+		$pcid = Contact::getPublicContactId($cid, $uid);
+		if (!$pcid) {
 			return;
 		}
 
-		DBA::update('user-contact', ['is-blocked' => $blocked], ['cid' => $cdata['public'], 'uid' => $uid], true);
+		DBA::update('user-contact', ['is-blocked' => $blocked], ['cid' => $pcid, 'uid' => $uid], true);
 	}
 
 	/**
@@ -436,22 +410,16 @@ class User
 	 * @param int $cid Either public contact id or user's contact id
 	 * @param int $uid User ID
 	 * @return boolean Is the user blocked or unblocked by the contact?
-	 * @throws \Exception
+	 * @throws Exception
 	 */
 	public static function isIsBlocked(int $cid, int $uid): bool
 	{
-		$cdata = Contact::getPublicAndUserContactID($cid, $uid);
-		if (empty($cdata)) {
+		$pcid = Contact::getPublicContactId($cid, $uid);
+		if (!$pcid) {
 			return false;
 		}
 
-		if (!empty($cdata['public'])) {
-			$public_contact = DBA::selectFirst('user-contact', ['is-blocked'], ['cid' => $cdata['public'], 'uid' => $uid]);
-			if (DBA::isResult($public_contact)) {
-				return $public_contact['is-blocked'];
-			}
-		}
-
-		return false;
+		$public_contact = DBA::selectFirst('user-contact', ['is-blocked'], ['cid' => $pcid, 'uid' => $uid]);
+		return $public_contact['is-blocked'] ?? false;
 	}
 }

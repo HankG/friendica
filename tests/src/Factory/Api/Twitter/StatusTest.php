@@ -1,26 +1,13 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Test\src\Factory\Api\Twitter;
 
+use Friendica\Core\Renderer;
 use Friendica\DI;
 use Friendica\Factory\Api\Friendica\Activities;
 use Friendica\Factory\Api\Twitter\Attachment;
@@ -29,10 +16,10 @@ use Friendica\Factory\Api\Twitter\Media;
 use Friendica\Factory\Api\Twitter\Mention;
 use Friendica\Factory\Api\Twitter\Status;
 use Friendica\Factory\Api\Twitter\Url;
-use Friendica\Test\FixtureTest;
-use Friendica\Test\src\Module\Api\ApiTest;
+use Friendica\Test\ApiTestCase;
+use Friendica\Test\FixtureTestCase;
 
-class StatusTest extends FixtureTest
+class StatusTest extends FixtureTestCase
 {
 	protected $statusFactory;
 
@@ -60,7 +47,7 @@ class StatusTest extends FixtureTest
 	public function testApiConvertItem()
 	{
 		$status = $this->statusFactory
-			->createFromItemId(13, ApiTest::SELF_USER['id'])
+			->createFromItemId(13, ApiTestCase::SELF_USER['id'])
 			->toArray();
 
 		self::assertStringStartsWith('item_title', $status['text']);
@@ -121,7 +108,7 @@ class StatusTest extends FixtureTest
 	public function testApiGetEntitiesWithIncludeEntities()
 	{
 		$status = $this->statusFactory
-			->createFromItemId(13, ApiTest::SELF_USER['id'], true)
+			->createFromItemId(13, ApiTestCase::SELF_USER['id'], true)
 			->toArray();
 
 		self::assertIsArray($status['entities']);
@@ -137,10 +124,13 @@ class StatusTest extends FixtureTest
 	 */
 	public function testApiFormatItems()
 	{
+		// @todo: This call is needed for this test
+		Renderer::registerTemplateEngine('Friendica\Render\FriendicaSmartyEngine');
+
 		$posts = DI::dba()->selectToArray('post-view', ['uri-id']);
 		foreach ($posts as $item) {
 			$status = $this->statusFactory
-				->createFromUriId($item['uri-id'], ApiTest::SELF_USER['id'])
+				->createFromUriId($item['uri-id'], ApiTestCase::SELF_USER['id'])
 				->toArray();
 
 			self::assertIsInt($status['id']);

@@ -1,36 +1,18 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Contact;
 
-use Friendica\Core\Logger;
 use Friendica\DI;
-use Friendica\Model\Item;
 use Friendica\Network\HTTPClient\Client\HttpClientAccept;
 use Friendica\Network\HTTPClient\Client\HttpClientOptions;
 use Friendica\Object\Image;
 use Friendica\Util\DateTimeFormat;
 use Friendica\Util\HTTPSignature;
-use Friendica\Util\Images;
-use Friendica\Util\Network;
 use Friendica\Util\Proxy;
 
 /**
@@ -64,49 +46,49 @@ class Avatar
 
 		if (($avatar != $contact['avatar']) || $force) {
 			self::deleteCache($contact);
-			Logger::debug('Avatar file name changed', ['new' => $avatar, 'old' => $contact['avatar']]);
+			DI::logger()->debug('Avatar file name changed', ['new' => $avatar, 'old' => $contact['avatar']]);
 		} elseif (self::isCacheFile($contact['photo']) && self::isCacheFile($contact['thumb']) && self::isCacheFile($contact['micro'])) {
 			$fields['photo'] = $contact['photo'];
 			$fields['thumb'] = $contact['thumb'];
 			$fields['micro'] = $contact['micro'];
-			Logger::debug('Using existing cache files', ['uri-id' => $contact['uri-id'], 'fields' => $fields]);
+			DI::logger()->debug('Using existing cache files', ['uri-id' => $contact['uri-id'], 'fields' => $fields]);
 			return $fields;
 		}
 
 		try {
 			$fetchResult = HTTPSignature::fetchRaw($avatar, 0, [HttpClientOptions::ACCEPT_CONTENT => [HttpClientAccept::IMAGE]]);
 		} catch (\Exception $exception) {
-			Logger::notice('Avatar is invalid', ['avatar' => $avatar, 'exception' => $exception]);
+			DI::logger()->notice('Avatar is invalid', ['avatar' => $avatar, 'exception' => $exception]);
 			return $fields;
 		}
 
 		if (!$fetchResult->isSuccess()) {
-			Logger::debug('Fetching was unsuccessful', ['avatar' => $avatar]);
+			DI::logger()->debug('Fetching was unsuccessful', ['avatar' => $avatar]);
 			return $fields;
 		}
 
 		$img_str = $fetchResult->getBodyString();
 		if (empty($img_str)) {
-			Logger::debug('Avatar is invalid', ['avatar' => $avatar]);
+			DI::logger()->debug('Avatar is invalid', ['avatar' => $avatar]);
 			return $fields;
 		}
 
 		$image = new Image($img_str, $fetchResult->getContentType(), $avatar);
 		if (!$image->isValid()) {
-			Logger::debug('Avatar picture is invalid', ['avatar' => $avatar]);
+			DI::logger()->debug('Avatar picture is invalid', ['avatar' => $avatar]);
 			return $fields;
 		}
 
-		$filename  = self::getFilename($contact['url'], $avatar);
+		$filename  = self::getFilename($contact['url']);
 		$timestamp = time();
 
-		$fields['blurhash'] = $image->getBlurHash();
+		$fields['blurhash'] = $image->getBlurHash($img_str);
 
 		$fields['photo'] = self::storeAvatarCache($image, $filename, Proxy::PIXEL_SMALL, $timestamp);
 		$fields['thumb'] = self::storeAvatarCache($image, $filename, Proxy::PIXEL_THUMB, $timestamp);
 		$fields['micro'] = self::storeAvatarCache($image, $filename, Proxy::PIXEL_MICRO, $timestamp);
 
-		Logger::debug('Storing new avatar cache', ['uri-id' => $contact['uri-id'], 'fields' => $fields]);
+		DI::logger()->debug('Storing new avatar cache', ['uri-id' => $contact['uri-id'], 'fields' => $fields]);
 
 		return $fields;
 	}
@@ -125,7 +107,7 @@ class Avatar
 			return $fields;
 		}
 
-		$filename  = self::getFilename($contact['url'], $contact['avatar']);
+		$filename  = self::getFilename($contact['url']);
 		$timestamp = time();
 
 		$fields['photo'] = self::storeAvatarCache($image, $filename, Proxy::PIXEL_SMALL, $timestamp);
@@ -135,12 +117,10 @@ class Avatar
 		return $fields;
 	}
 
-	private static function getFilename(string $url, string $host): string
+	private static function getFilename(string $url): string
 	{
-		$guid = Item::guidFromUri($url, $host);
-
-		return substr($guid, 0, 2) . '/' . substr($guid, 3, 2) . '/' . substr($guid, 5, 3) . '/' .
-			substr($guid, 9, 2) .'/' . substr($guid, 11, 2) . '/' . substr($guid, 13, 4). '/' . substr($guid, 18) . '-';
+		$guid = hash('ripemd128', $url);
+		return substr($guid, 0, 3) . '/' . substr($guid, 4) . '-';
 	}
 
 	private static function storeAvatarCache(Image $image, string $filename, int $size, int $timestamp): string
@@ -174,36 +154,36 @@ class Avatar
 
 			if (!file_exists($dirpath)) {
 				if (!@mkdir($dirpath, $dir_perm) && !file_exists($dirpath)) {
-					Logger::warning('Directory could not be created', ['directory' => $dirpath]);
+					DI::logger()->warning('Directory could not be created', ['directory' => $dirpath]);
 				}
 			} elseif ((($old_perm = fileperms($dirpath) & 0777) != $dir_perm) && !chmod($dirpath, $dir_perm)) {
-				Logger::warning('Directory permissions could not be changed', ['directory' => $dirpath, 'old' => $old_perm, 'new' => $dir_perm]);
+				DI::logger()->warning('Directory permissions could not be changed', ['directory' => $dirpath, 'old' => $old_perm, 'new' => $dir_perm]);
 			}
 
 			if ((($old_group = filegroup($dirpath)) != $group) && !chgrp($dirpath, $group)) {
-				Logger::warning('Directory group could not be changed', ['directory' => $dirpath, 'old' => $old_group, 'new' => $group]);
+				DI::logger()->warning('Directory group could not be changed', ['directory' => $dirpath, 'old' => $old_group, 'new' => $group]);
 			}
 		}
 
 		if (!file_put_contents($filepath, $image->asString())) {
-			Logger::warning('File could not be created', ['file' => $filepath]);
+			DI::logger()->warning('File could not be created', ['file' => $filepath]);
 		}
 
 		$old_perm  = fileperms($filepath) & 0666;
 		$old_group = filegroup($filepath);
 
 		if (($old_perm != $file_perm) && !chmod($filepath, $file_perm)) {
-			Logger::warning('File permissions could not be changed', ['file' => $filepath, 'old' => $old_perm, 'new' => $file_perm]);
+			DI::logger()->warning('File permissions could not be changed', ['file' => $filepath, 'old' => $old_perm, 'new' => $file_perm]);
 		}
 
 		if (($old_group != $group) && !chgrp($filepath, $group)) {
-			Logger::warning('File group could not be changed', ['file' => $filepath, 'old' => $old_group, 'new' => $group]);
+			DI::logger()->warning('File group could not be changed', ['file' => $filepath, 'old' => $old_group, 'new' => $group]);
 		}
 
 		DI::profiler()->stopRecording();
 
 		if (!file_exists($filepath)) {
-			Logger::warning('Avatar cache file could not be stored', ['file' => $filepath]);
+			DI::logger()->warning('Avatar cache file could not be stored', ['file' => $filepath]);
 			return '';
 		}
 
@@ -235,7 +215,7 @@ class Avatar
 		}
 
 		$avatarpath = parse_url(self::baseUrl(), PHP_URL_PATH);
-		$pos = strpos($parts['path'], $avatarpath);
+		$pos        = strpos($parts['path'], $avatarpath);
 		if ($pos !== 0) {
 			return '';
 		}
@@ -254,9 +234,6 @@ class Avatar
 
 	/**
 	 * Delete locally cached avatar pictures of a contact
-	 *
-	 * @param string $avatar
-	 * @return bool
 	 */
 	public static function deleteCache(array $contact): bool
 	{
@@ -279,7 +256,7 @@ class Avatar
 		$localFile = self::getCacheFile($avatar);
 		if (!empty($localFile)) {
 			@unlink($localFile);
-			Logger::debug('Unlink avatar', ['avatar' => $avatar]);
+			DI::logger()->debug('Unlink avatar', ['avatar' => $avatar, 'local' => $localFile]);
 		}
 	}
 
@@ -299,11 +276,11 @@ class Avatar
 		if (!file_exists($basepath)) {
 			// We only automatically create the folder when it is in the web root
 			if (strpos($basepath, DI::basePath()) !== 0) {
-				Logger::warning('Base directory does not exist', ['directory' => $basepath]);
+				DI::logger()->warning('Base directory does not exist', ['directory' => $basepath]);
 				return '';
 			}
 			if (!mkdir($basepath, 0775)) {
-				Logger::warning('Base directory could not be created', ['directory' => $basepath]);
+				DI::logger()->warning('Base directory could not be created', ['directory' => $basepath]);
 				return '';
 			}
 		}
@@ -316,7 +293,7 @@ class Avatar
 	 *
 	 * @return string
 	 */
-	private static function baseUrl(): string
+	public static function baseUrl(): string
 	{
 		$baseurl = DI::config()->get('system', 'avatar_cache_url');
 		if (!empty($baseurl)) {

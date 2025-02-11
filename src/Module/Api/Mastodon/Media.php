@@ -1,32 +1,19 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Module\Api\Mastodon;
 
-use Friendica\Core\Logger;
-use Friendica\Core\System;
 use Friendica\DI;
+use Friendica\Model\Attach;
+use Friendica\Model\Contact;
 use Friendica\Model\Photo;
 use Friendica\Model\Post;
 use Friendica\Module\BaseApi;
+use Friendica\Util\Strings;
 
 /**
  * @see https://docs.joinmastodon.org/methods/statuses/media/
@@ -39,26 +26,52 @@ class Media extends BaseApi
 		$uid = self::getCurrentUserID();
 
 		$request = $this->getRequest([
-			'file'        => [], // The file to be attached, using multipart form data.
+			'file'        => $_FILES['file'] ?? [], // The file to be attached, using multipart form data.
 			'thumbnail'   => [], // The custom thumbnail of the media to be attached, using multipart form data.
 			'description' => '', // A plain-text description of the media, for accessibility purposes.
 			'focus'       => '', // Two floating points (x,y), comma-delimited ranging from -1.0 to 1.0
 		], $request);
 
-		Logger::info('Photo post', ['request' => $request, 'files' => $_FILES]);
+		$this->logger->info('Photo post', ['request' => $request, 'files' => $_FILES]);
 
-		if (empty($_FILES['file'])) {
+		if (empty($request['file'])) {
+			$this->logger->notice('Upload is invalid', ['request' => $request]);
 			$this->logAndJsonError(422, $this->errorFactory->UnprocessableEntity());
 		}
 
-		$media = Photo::upload($uid, $_FILES['file'], '', null, null, '', '', $request['description']);
-		if (empty($media)) {
+		$type = Post\Media::getType($request['file']['type']);
+
+		if (in_array($type, [Post\Media::IMAGE, Post\Media::UNKNOWN, Post\Media::APPLICATION])) {
+			$media = Photo::upload($uid, $request['file'], '', null, null, '', '', $request['description']);
+			if (!empty($media)) {
+				$this->logger->info('Uploaded photo', ['media' => $media]);
+				$this->jsonExit(DI::mstdnAttachment()->createFromPhoto($media['id']));
+			} elseif ($type == Post\Media::IMAGE) {
+				$this->jsonExit(DI::mstdnAttachment()->createFromPhoto($media['id']));
+			}
+		}
+
+		$tempFileName = $request['file']['tmp_name'];
+		$fileName     = basename($request['file']['name']);
+		$fileSize     = intval($request['file']['size']);
+		$maxFileSize  = Strings::getBytesFromShorthand(DI::config()->get('system', 'maxfilesize'));
+
+		if ($fileSize <= 0) {
+			$this->logger->notice('Filesize is invalid', ['size' => $fileSize, 'request' => $request]);
+			@unlink($tempFileName);
 			$this->logAndJsonError(422, $this->errorFactory->UnprocessableEntity());
 		}
 
-		Logger::info('Uploaded photo', ['media' => $media]);
+		if ($maxFileSize && $fileSize > $maxFileSize) {
+			$this->logger->notice('Filesize is too large', ['size' => $fileSize, 'max' => $maxFileSize, 'request' => $request]);
+			@unlink($tempFileName);
+			$this->logAndJsonError(422, $this->errorFactory->UnprocessableEntity());
+		}
 
-		$this->jsonExit(DI::mstdnAttachment()->createFromPhoto($media['id']));
+		$id = Attach::storeFile($tempFileName, self::getCurrentUserID(), $fileName, $request['file']['type'], '<' . Contact::getPublicIdByUserId(self::getCurrentUserID()) . '>');
+		@unlink($tempFileName);
+		$this->logger->info('Uploaded media', ['id' => $id]);
+		$this->jsonExit(DI::mstdnAttachment()->createFromAttach($id));
 	}
 
 	public function put(array $request = [])
@@ -75,6 +88,10 @@ class Media extends BaseApi
 
 		if (empty($this->parameters['id'])) {
 			$this->logAndJsonError(422, $this->errorFactory->UnprocessableEntity());
+		}
+
+		if (DI::mstdnAttachment()->isAttach($this->parameters['id']) && Attach::exists(['id' => substr($this->parameters['id'], 7)])) {
+			$this->jsonExit(DI::mstdnAttachment()->createFromAttach(substr($this->parameters['id'], 7)));
 		}
 
 		$photo = Photo::selectFirst(['resource-id'], ['id' => $this->parameters['id'], 'uid' => $uid]);
@@ -98,7 +115,7 @@ class Media extends BaseApi
 	/**
 	 * @throws \Friendica\Network\HTTPException\InternalServerErrorException
 	 */
-	protected function rawContent(array $request = [])
+	protected function get(array $request = [])
 	{
 		$this->checkAllowedScope(self::SCOPE_READ);
 		$uid = self::getCurrentUserID();
@@ -108,10 +125,15 @@ class Media extends BaseApi
 		}
 
 		$id = $this->parameters['id'];
-		if (!Photo::exists(['id' => $id, 'uid' => $uid])) {
-			$this->logAndJsonError(404, $this->errorFactory->RecordNotFound());
+
+		if (Photo::exists(['id' => $id, 'uid' => $uid])) {
+			$this->jsonExit(DI::mstdnAttachment()->createFromPhoto($id));
 		}
 
-		$this->jsonExit(DI::mstdnAttachment()->createFromPhoto($id));
+		if (DI::mstdnAttachment()->isAttach($id) && Attach::exists(['id' => substr($id, 7)])) {
+			$this->jsonExit(DI::mstdnAttachment()->createFromAttach(substr($id, 7)));
+		}
+
+		$this->logAndJsonError(404, $this->errorFactory->RecordNotFound());
 	}
 }

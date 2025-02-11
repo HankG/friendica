@@ -1,23 +1,9 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Model\Post;
 
@@ -96,18 +82,18 @@ class Counts
 	{
 		$counts = [];
 
-		$activity_emoji = [
-			Activity::LIKE        => '👍',
-			Activity::DISLIKE     => '👎',
-			Activity::ATTEND      => '✔️',
-			Activity::ATTENDMAYBE => '❓',
-			Activity::ATTENDNO    => '❌',
-			Activity::ANNOUNCE    => '♻',
-			Activity::VIEW        => '📺',
-			Activity::READ        => '📖',
+		$activity_verbs = [
+			Activity::LIKE,
+			Activity::DISLIKE,
+			Activity::ATTEND,
+			Activity::ATTENDMAYBE,
+			Activity::ATTENDNO,
+			Activity::ANNOUNCE,
+			Activity::VIEW,
+			Activity::READ,
 		];
 
-		$verbs = array_merge(array_keys($activity_emoji), [Activity::EMOJIREACT, Activity::POST]);
+		$verbs = array_merge($activity_verbs, [Activity::EMOJIREACT, Activity::POST]);
 
 		$condition  = DBA::mergeConditions($condition, ['verb' => $verbs]);
 		$countquery = DBA::select('post-counts-view', [], $condition);
@@ -115,8 +101,8 @@ class Counts
 			if (!empty($count['reaction'])) {
 				$count['verb'] = Activity::EMOJIREACT;
 				$count['vid']  = Verb::getID($count['verb']);
-			} elseif (!empty($activity_emoji[$count['verb']])) {
-				$count['reaction'] = $activity_emoji[$count['verb']];
+			} elseif (in_array($count['verb'], $activity_verbs)) {
+				$count['reaction'] = $count['verb'];
 			}
 			$counts[] = $count;
 		}

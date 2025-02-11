@@ -1,3 +1,9 @@
+{{*
+  * Copyright (C) 2010-2024, the Friendica project
+  * SPDX-FileCopyrightText: 2010-2024 the Friendica project
+  *
+  * SPDX-License-Identifier: AGPL-3.0-or-later
+  *}}
 	<div class="section-subtitle-wrapper panel-heading" role="tab" id="{{$addon}}-settings-title">
 		<h2>
 			<button class="btn-link accordion-toggle{{if !$open}} collapsed{{/if}}" data-toggle="collapse" data-parent="#settings-addons" href="#{{$addon}}-settings-content" aria-expanded="false" aria-controls="{{$addon}}-settings-content">

@@ -1,36 +1,29 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Module\Admin\Addons;
 
-use Friendica\Core\Addon;
 use Friendica\Core\Renderer;
 use Friendica\DI;
 use Friendica\Module\BaseAdmin;
 
 class Index extends BaseAdmin
 {
+	protected function post(array $request = [])
+	{
+		// @todo check if POST is really used here
+		$this->content($request);
+	}
+
 	protected function content(array $request = []): string
 	{
 		parent::content();
+
+		$addonHelper = DI::addonHelper();
 
 		// reload active themes
 		if (!empty($_GET['action'])) {
@@ -38,16 +31,17 @@ class Index extends BaseAdmin
 
 			switch ($_GET['action']) {
 				case 'reload':
-					Addon::reload();
+					$addonHelper->reloadAddons();
 					DI::sysmsg()->addInfo(DI::l10n()->t('Addons reloaded'));
 					break;
 
-				case 'toggle' :
+				case 'toggle':
 					$addon = $_GET['addon'] ?? '';
-					if (Addon::isEnabled($addon)) {
-						Addon::uninstall($addon);
+
+					if ($addonHelper->isAddonEnabled($addon)) {
+						$addonHelper->uninstallAddon($addon);
 						DI::sysmsg()->addInfo(DI::l10n()->t('Addon %s disabled.', $addon));
-					} elseif (Addon::install($addon)) {
+					} elseif ($addonHelper->installAddon($addon)) {
 						DI::sysmsg()->addInfo(DI::l10n()->t('Addon %s enabled.', $addon));
 					} else {
 						DI::sysmsg()->addNotice(DI::l10n()->t('Addon %s failed to install.', $addon));
@@ -60,18 +54,34 @@ class Index extends BaseAdmin
 			DI::baseUrl()->redirect('admin/addons');
 		}
 
-		$addons = Addon::getAvailableList();
+		$addons = [];
+
+		foreach ($addonHelper->getAvailableAddons() as $addonId) {
+			$addonInfo = $addonHelper->getAddonInfo($addonId);
+
+			$info = [
+				'name'        => $addonInfo->getName(),
+				'description' => $addonInfo->getDescription(),
+				'version'     => $addonInfo->getVersion(),
+			];
+
+			$addons[] = [
+				$addonId,
+				($addonHelper->isAddonEnabled($addonId) ? 'on' : 'off'),
+				$info,
+			];
+		}
 
 		$t = Renderer::getMarkupTemplate('admin/addons/index.tpl');
 		return Renderer::replaceMacros($t, [
-			'$title' => DI::l10n()->t('Administration'),
-			'$page' => DI::l10n()->t('Addons'),
-			'$submit' => DI::l10n()->t('Save Settings'),
-			'$reload' => DI::l10n()->t('Reload active addons'),
-			'$function' => 'addons',
-			'$addons' => $addons,
-			'$pcount' => count($addons),
-			'$noplugshint' => DI::l10n()->t('There are currently no addons available on your node. You can find the official addon repository at %1$s and might find other interesting addons in the open addon registry at %2$s', 'https://github.com/friendica/friendica-addons', 'http://addons.friendi.ca'),
+			'$title'               => DI::l10n()->t('Administration'),
+			'$page'                => DI::l10n()->t('Addons'),
+			'$submit'              => DI::l10n()->t('Save Settings'),
+			'$reload'              => DI::l10n()->t('Reload active addons'),
+			'$function'            => 'addons',
+			'$addons'              => $addons,
+			'$pcount'              => count($addons),
+			'$noplugshint'         => DI::l10n()->t('There are currently no addons available on your node. You can find the official addon repository at %1$s.', 'https://git.friendi.ca/friendica/friendica-addons'),
 			'$form_security_token' => self::getFormSecurityToken('admin_addons'),
 		]);
 	}

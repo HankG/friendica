@@ -1,28 +1,13 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Protocol\ActivityPub;
 
 use Friendica\Content\Text\Markdown;
-use Friendica\Core\Logger;
 use Friendica\Core\Protocol;
 use Friendica\Database\DBA;
 use Friendica\DI;
@@ -53,24 +38,24 @@ class ClientToServer
 	{
 		$ldactivity = JsonLD::compact($activity);
 		if (empty($ldactivity)) {
-			Logger::notice('Invalid activity', ['activity' => $activity, 'uid' => $uid]);
+			DI::logger()->notice('Invalid activity', ['activity' => $activity, 'uid' => $uid]);
 			return [];
 		}
 
 		$type = JsonLD::fetchElement($ldactivity, '@type');
 		if (!$type) {
-			Logger::notice('Empty type', ['activity' => $ldactivity, 'uid' => $uid]);
+			DI::logger()->notice('Empty type', ['activity' => $ldactivity, 'uid' => $uid]);
 			return [];
 		}
 
 		$object_id   = JsonLD::fetchElement($ldactivity, 'as:object', '@id') ?? '';
 		$object_type = Receiver::fetchObjectType($ldactivity, $object_id, $uid);
 		if (!$object_type && !$object_id) {
-			Logger::notice('Empty object type or id', ['activity' => $ldactivity, 'uid' => $uid]);
+			DI::logger()->notice('Empty object type or id', ['activity' => $ldactivity, 'uid' => $uid]);
 			return [];
 		}
 
-		Logger::debug('Processing activity', ['type' => $type, 'object_type' => $object_type, 'object_id' => $object_id, 'activity' => $ldactivity]);
+		DI::logger()->debug('Processing activity', ['type' => $type, 'object_type' => $object_type, 'object_id' => $object_id, 'activity' => $ldactivity]);
 		return self::routeActivities($type, $object_type, $object_id, $uid, $application, $ldactivity);
 	}
 
@@ -119,7 +104,7 @@ class ClientToServer
 	{
 		$object_data = self::processObject($ldactivity['as:object']);
 		$item        = ClientToServer::processContent($object_data, $application, $uid);
-		Logger::debug('Got data', ['item' => $item, 'object' => $object_data]);
+		DI::logger()->debug('Got data', ['item' => $item, 'object' => $object_data]);
 
 		$id = Item::insert($item, true);
 		if (!empty($id)) {
@@ -145,18 +130,18 @@ class ClientToServer
 		$id            = Item::fetchByLink($object_id, $uid, ActivityPub\Receiver::COMPLETION_ASYNC);
 		$original_post = Post::selectFirst(['uri-id'], ['uid' => $uid, 'origin' => true, 'id' => $id]);
 		if (empty($original_post)) {
-			Logger::debug('Item not found or does not belong to the user', ['id' => $id, 'uid' => $uid, 'object_id' => $object_id, 'activity' => $ldactivity]);
+			DI::logger()->debug('Item not found or does not belong to the user', ['id' => $id, 'uid' => $uid, 'object_id' => $object_id, 'activity' => $ldactivity]);
 			return [];
 		}
 
 		$object_data = self::processObject($ldactivity['as:object']);
 		$item        = ClientToServer::processContent($object_data, $application, $uid);
 		if (empty($item['title']) && empty($item['body'])) {
-			Logger::debug('Empty body and title', ['id' => $id, 'uid' => $uid, 'object_id' => $object_id, 'activity' => $ldactivity]);
+			DI::logger()->debug('Empty body and title', ['id' => $id, 'uid' => $uid, 'object_id' => $object_id, 'activity' => $ldactivity]);
 			return [];
 		}
 		$post = ['title' => $item['title'], 'body' => $item['body']];
-		Logger::debug('Got data', ['id' => $id, 'uid' => $uid, 'item' => $post]);
+		DI::logger()->debug('Got data', ['id' => $id, 'uid' => $uid, 'item' => $post]);
 		Item::update($post, ['id' => $id]);
 		Item::updateDisplayCache($original_post['uri-id']);
 
@@ -265,7 +250,7 @@ class ClientToServer
 		$item['uid']        = $uid;
 		$item['verb']       = Activity::POST;
 		$item['contact-id'] = $owner['id'];
-		$item['author-id']  = $item['owner-id']  = Contact::getPublicIdByUserId($uid);
+		$item['author-id']  = $item['owner-id'] = Contact::getPublicIdByUserId($uid);
 		$item['title']      = $object_data['name'];
 		$item['body']       = Markdown::toBBCode($object_data['content'] ?? '');
 		$item['app']        = $application['name'] ?? 'API';
@@ -321,7 +306,6 @@ class ClientToServer
 	 * @param integer $page      Page number
 	 * @param integer $max_id    Maximum ID
 	 * @param string  $requester URL of requesting account
-	 * @param boolean $nocache   Wether to bypass caching
 	 * @return array of posts
 	 * @throws \Friendica\Network\HTTPException\InternalServerErrorException
 	 * @throws \ImagickException
@@ -337,9 +321,11 @@ class ClientToServer
 			$requester_id = Contact::getIdForURL($requester, $owner['uid']);
 			if (!empty($requester_id)) {
 				$permissionSets = DI::permissionSet()->selectByContactId($requester_id, $owner['uid']);
-				if (!empty($permissionSets)) {
-					$condition = ['psid' => array_merge($permissionSets->column('id'),
-						[DI::permissionSet()->selectPublicForUser($owner['uid'])])];
+				if (count($permissionSets) > 0) {
+					$condition = ['psid' => array_merge(
+						$permissionSets->column('id'),
+						[DI::permissionSet()->selectPublicForUser($owner['uid'])]
+					)];
 				}
 			}
 		}

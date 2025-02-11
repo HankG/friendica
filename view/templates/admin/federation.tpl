@@ -1,4 +1,10 @@
-<script src="{{$baseurl}}/view/asset/Chart-js/dist/Chart.min.js?v={{$VERSION}}"></script>
+{{*
+  * Copyright (C) 2010-2024, the Friendica project
+  * SPDX-FileCopyrightText: 2010-2024 the Friendica project
+  *
+  * SPDX-License-Identifier: AGPL-3.0-or-later
+  *}}
+<script src="{{$baseurl}}/view/asset/chart.js/dist/Chart.min.js?v={{$VERSION}}"></script>
 <div id="adminpage">
 	<h1>{{$title}} - {{$page}}</h1>
 
@@ -51,17 +57,18 @@
 		}
 	});
 	</script>
-
+	<hr>
 	<table id="federation-stats">
 	{{foreach $counts as $c}}
 		{{if $c[0]['total'] > 0}}
 		<tr>
+			<th>{{if $c[0]['svg']}}<img class="network-svg" src="{{$c[0]['svg']}}" loading="lazy" aria-hidden="true"/>{{/if}}</th>
 			<th>{{$c[0]['platform']}}</th>
 			<th><strong>{{$c[0]['total']}}</strong></th>
 			<td>{{$c[0]['network']}}</td>
 		</tr>
 		<tr>
-			<td colspan="3" class="federation-summary">
+			<td colspan="4" class="federation-summary">
 				<ul>
 					{{if $c[0]['total']}}<li>{{$c[0]['totallbl']}}</li>{{/if}}
 					{{if $c[0]['month']}}<li>{{$c[0]['monthlbl']}}</li>{{/if}}
@@ -74,7 +81,7 @@
 			</td>
 		</tr>
 		<tr>
-			<td colspan="3" class="federation-data">
+			<td colspan="4" class="federation-data">
 				<canvas id="{{$c[2]}}Chart" class="federation-network-graph" width="240" height="240"></canvas>
 				<script>
 					var {{$c[2]}}data = {

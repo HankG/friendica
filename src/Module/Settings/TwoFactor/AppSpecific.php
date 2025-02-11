@@ -1,23 +1,9 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Module\Settings\TwoFactor;
 
@@ -52,7 +38,7 @@ class AppSpecific extends BaseSettings
 	{
 		parent::__construct($session, $page, $l10n, $baseUrl, $args, $logger, $profiler, $response, $server, $parameters);
 
-		$this->pConfig = $pConfig;
+		$this->pConfig        = $pConfig;
 		$this->systemMessages = $systemMessages;
 
 		if (!$this->session->getLocalUserId()) {
@@ -95,7 +81,7 @@ class AppSpecific extends BaseSettings
 					}
 
 					break;
-				case 'revoke_all' :
+				case 'revoke_all':
 					AppSpecificPassword::deleteAllForUser($this->session->getLocalUserId());
 					$this->systemMessages->addInfo($this->t('App-specific passwords successfully revoked.'));
 					$this->baseUrl->redirect('settings/2fa/app_specific?t=' . self::getFormSecurityToken('settings_2fa_password'));
@@ -128,22 +114,22 @@ class AppSpecific extends BaseSettings
 			'$form_security_token'     => self::getFormSecurityToken('settings_2fa_app_specific'),
 			'$password_security_token' => self::getFormSecurityToken('settings_2fa_password'),
 
-			'$title'                  => $this->t('Two-factor app-specific passwords'),
-			'$help_label'             => $this->t('Help'),
-			'$message'                => $this->t('<p>App-specific passwords are randomly generated passwords used instead your regular password to authenticate your account on third-party applications that don\'t support two-factor authentication.</p>'),
-			'$generated_message'      => $this->t('Make sure to copy your new app-specific password now. You won’t be able to see it again!'),
+			'$title'                           => $this->t('Two-factor app-specific passwords'),
+			'$help_label'                      => $this->t('Help'),
+			'$message'                         => $this->t('<p>App-specific passwords are randomly generated passwords used instead your regular password to authenticate your account on third-party applications that don\'t support two-factor authentication.</p>'),
+			'$generated_message'               => $this->t('Make sure to copy your new app-specific password now. You won’t be able to see it again!'),
 			'$generated_app_specific_password' => $this->appSpecificPassword,
 
-			'$description_label'      => $this->t('Description'),
-			'$last_used_label'        => $this->t('Last Used'),
-			'$revoke_label'           => $this->t('Revoke'),
-			'$revoke_all_label'       => $this->t('Revoke All'),
+			'$description_label' => $this->t('Description'),
+			'$last_used_label'   => $this->t('Last Used'),
+			'$revoke_label'      => $this->t('Revoke'),
+			'$revoke_all_label'  => $this->t('Revoke All'),
 
-			'$app_specific_passwords' => $appSpecificPasswords,
-			'$generate_message'       => $this->t('When you generate a new app-specific password, you must use it right away, it will be shown to you once after you generate it.'),
-			'$generate_title'         => $this->t('Generate new app-specific password'),
+			'$app_specific_passwords'        => $appSpecificPasswords,
+			'$generate_message'              => $this->t('When you generate a new app-specific password, you must use it right away, it will be shown to you once after you generate it.'),
+			'$generate_title'                => $this->t('Generate new app-specific password'),
 			'$description_placeholder_label' => $this->t('Friendiqa on my Fairphone 2...'),
-			'$generate_label' => $this->t('Generate'),
+			'$generate_label'                => $this->t('Generate'),
 		]);
 	}
 }

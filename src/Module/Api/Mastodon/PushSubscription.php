@@ -1,27 +1,15 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Module\Api\Mastodon;
 
-use Friendica\App;
+use Friendica\App\Arguments;
+use Friendica\App\BaseURL;
+use Friendica\AppHelper;
 use Friendica\Core\L10n;
 use Friendica\Factory\Api\Mastodon\Error;
 use Friendica\Factory\Api\Mastodon\Subscription as SubscriptionFactory;
@@ -40,9 +28,9 @@ class PushSubscription extends BaseApi
 	/** @var SubscriptionFactory */
 	protected $subscriptionFac;
 
-	public function __construct(\Friendica\Factory\Api\Mastodon\Error $errorFactory, App $app, L10n $l10n, App\BaseURL $baseUrl, App\Arguments $args, LoggerInterface $logger, Profiler $profiler, ApiResponse $response, SubscriptionFactory $subscriptionFac, array $server, array $parameters = [])
+	public function __construct(Error $errorFactory, AppHelper $appHelper, L10n $l10n, BaseURL $baseUrl, Arguments $args, LoggerInterface $logger, Profiler $profiler, ApiResponse $response, SubscriptionFactory $subscriptionFac, array $server, array $parameters = [])
 	{
-		parent::__construct($errorFactory, $app, $l10n, $baseUrl, $args, $logger, $profiler, $response, $server, $parameters);
+		parent::__construct($errorFactory, $appHelper, $l10n, $baseUrl, $args, $logger, $profiler, $response, $server, $parameters);
 
 		$this->subscriptionFac = $subscriptionFac;
 	}
@@ -61,9 +49,9 @@ class PushSubscription extends BaseApi
 		$subscription = [
 			'application-id'                => $application['id'],
 			'uid'                           => $uid,
-			'endpoint'                      => $request['subscription']['endpoint'] ?? '',
+			'endpoint'                      => $request['subscription']['endpoint']       ?? '',
 			'pubkey'                        => $request['subscription']['keys']['p256dh'] ?? '',
-			'secret'                        => $request['subscription']['keys']['auth'] ?? '',
+			'secret'                        => $request['subscription']['keys']['auth']   ?? '',
 			Notification::TYPE_FOLLOW       => filter_var($request['data']['alerts'][Notification::TYPE_FOLLOW] ?? false, FILTER_VALIDATE_BOOLEAN),
 			Notification::TYPE_LIKE         => filter_var($request['data']['alerts'][Notification::TYPE_LIKE] ?? false, FILTER_VALIDATE_BOOLEAN),
 			Notification::TYPE_RESHARE      => filter_var($request['data']['alerts'][Notification::TYPE_RESHARE] ?? false, FILTER_VALIDATE_BOOLEAN),
@@ -78,7 +66,7 @@ class PushSubscription extends BaseApi
 		$this->logger->info('Subscription stored', ['ret' => $ret, 'subscription' => $subscription]);
 
 		$subscriptionObj = $this->subscriptionFac->createForApplicationIdAndUserId($application['id'], $uid);
-		$this->response->addJsonContent($subscriptionObj->toArray());
+		$this->jsonExit($subscriptionObj->toArray());
 	}
 
 	public function put(array $request = []): void
@@ -98,13 +86,13 @@ class PushSubscription extends BaseApi
 		}
 
 		$fields = [
-			Notification::TYPE_FOLLOW       => $request['data']['alerts'][Notification::TYPE_FOLLOW] ?? false,
-			Notification::TYPE_LIKE         => $request['data']['alerts'][Notification::TYPE_LIKE] ?? false,
-			Notification::TYPE_RESHARE      => $request['data']['alerts'][Notification::TYPE_RESHARE] ?? false,
-			Notification::TYPE_MENTION      => $request['data']['alerts'][Notification::TYPE_MENTION] ?? false,
-			Notification::TYPE_POLL         => $request['data']['alerts'][Notification::TYPE_POLL] ?? false,
-			Notification::TYPE_INTRODUCTION => $request['data']['alerts'][Notification::TYPE_INTRODUCTION] ?? false,
-			Notification::TYPE_POST         => $request['data']['alerts'][Notification::TYPE_POST] ?? false,
+			Notification::TYPE_FOLLOW       => $this->setBoolean($request['data']['alerts'][Notification::TYPE_FOLLOW] ?? false),
+			Notification::TYPE_LIKE         => $this->setBoolean($request['data']['alerts'][Notification::TYPE_LIKE] ?? false),
+			Notification::TYPE_RESHARE      => $this->setBoolean($request['data']['alerts'][Notification::TYPE_RESHARE] ?? false),
+			Notification::TYPE_MENTION      => $this->setBoolean($request['data']['alerts'][Notification::TYPE_MENTION] ?? false),
+			Notification::TYPE_POLL         => $this->setBoolean($request['data']['alerts'][Notification::TYPE_POLL] ?? false),
+			Notification::TYPE_INTRODUCTION => $this->setBoolean($request['data']['alerts'][Notification::TYPE_INTRODUCTION] ?? false),
+			Notification::TYPE_POST         => $this->setBoolean($request['data']['alerts'][Notification::TYPE_POST] ?? false),
 		];
 
 		$ret = Subscription::update($application['id'], $uid, $fields);
@@ -117,7 +105,15 @@ class PushSubscription extends BaseApi
 		]);
 
 		$subscriptionObj = $this->subscriptionFac->createForApplicationIdAndUserId($application['id'], $uid);
-		$this->response->addJsonContent($subscriptionObj->toArray());
+		$this->jsonExit($subscriptionObj->toArray());
+	}
+
+	private function setBoolean($input): bool
+	{
+		if (is_bool($input)) {
+			return $input;
+		}
+		return strtolower($input) == 'true';
 	}
 
 	protected function delete(array $request = []): void
@@ -134,10 +130,10 @@ class PushSubscription extends BaseApi
 			'uid'            => $uid,
 		]);
 
-		$this->response->addJsonContent([]);
+		$this->jsonExit([]);
 	}
 
-	protected function rawContent(array $request = []): void
+	protected function get(array $request = []): void
 	{
 		$this->checkAllowedScope(self::SCOPE_PUSH);
 		$uid         = self::getCurrentUserID();

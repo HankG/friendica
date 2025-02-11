@@ -1,29 +1,15 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Contact\FriendSuggest\Repository;
 
 use Friendica\BaseRepository;
 use Friendica\Contact\FriendSuggest\Collection;
-use Friendica\Contact\FriendSuggest\Entity;
+use Friendica\Contact\FriendSuggest\Entity\FriendSuggest as FriendSuggestEntity;
 use Friendica\Contact\FriendSuggest\Exception\FriendSuggestNotFoundException;
 use Friendica\Contact\FriendSuggest\Exception\FriendSuggestPersistenceException;
 use Friendica\Contact\FriendSuggest\Factory;
@@ -44,7 +30,7 @@ class FriendSuggest extends BaseRepository
 		parent::__construct($database, $logger, $factory);
 	}
 
-	private function convertToTableRow(Entity\FriendSuggest $fsuggest): array
+	private function convertToTableRow(FriendSuggestEntity $fsuggest): array
 	{
 		return [
 			'uid'     => $fsuggest->uid,
@@ -59,14 +45,9 @@ class FriendSuggest extends BaseRepository
 	}
 
 	/**
-	 * @param array $condition
-	 * @param array $params
-	 *
-	 * @return Entity\FriendSuggest
-	 *
 	 * @throws NotFoundException The underlying exception if there's no FriendSuggest with the given conditions
 	 */
-	private function selectOne(array $condition, array $params = []): Entity\FriendSuggest
+	private function selectOne(array $condition, array $params = []): FriendSuggestEntity
 	{
 		return parent::_selectOne($condition, $params);
 	}
@@ -85,13 +66,9 @@ class FriendSuggest extends BaseRepository
 	}
 
 	/**
-	 * @param int $id
-	 *
-	 * @return Entity\FriendSuggest
-	 *
 	 * @throws FriendSuggestNotFoundException in case there's no suggestion for this id
 	 */
-	public function selectOneById(int $id): Entity\FriendSuggest
+	public function selectOneById(int $id): FriendSuggestEntity
 	{
 		try {
 			return $this->selectOne(['id' => $id]);
@@ -117,13 +94,9 @@ class FriendSuggest extends BaseRepository
 	}
 
 	/**
-	 * @param Entity\FriendSuggest $fsuggest
-	 *
-	 * @return Entity\FriendSuggest
-	 *
 	 * @throws FriendSuggestNotFoundException in case the underlying storage cannot save the suggestion
 	 */
-	public function save(Entity\FriendSuggest $fsuggest): Entity\FriendSuggest
+	public function save(FriendSuggestEntity $fsuggest): FriendSuggestEntity
 	{
 		try {
 			$fields = $this->convertToTableRow($fsuggest);

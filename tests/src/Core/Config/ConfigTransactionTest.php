@@ -1,41 +1,22 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Test\src\Core\Config;
 
 use Friendica\Core\Config\Capability\ISetConfigValuesTransactionally;
 use Friendica\Core\Config\Model\DatabaseConfig;
-use Friendica\Core\Config\Model\ReadOnlyFileConfig;
 use Friendica\Core\Config\Model\ConfigTransaction;
 use Friendica\Core\Config\Util\ConfigFileManager;
 use Friendica\Core\Config\ValueObject\Cache;
 use Friendica\Database\Database;
-use Friendica\Test\DatabaseTest;
-use Friendica\Test\FixtureTest;
-use Friendica\Test\MockedTest;
-use Friendica\Test\Util\Database\StaticDatabase;
-use Friendica\Test\Util\VFSTrait;
+use Friendica\Test\FixtureTestCase;
 use Mockery\Exception\InvalidCountException;
 
-class ConfigTransactionTest extends FixtureTest
+class ConfigTransactionTest extends FixtureTestCase
 {
 	/** @var ConfigFileManager */
 	protected $configFileManager;
@@ -44,7 +25,12 @@ class ConfigTransactionTest extends FixtureTest
 	{
 		parent::setUp();
 
-		$this->configFileManager = new ConfigFileManager($this->root->url(), $this->root->url() . '/config/', $this->root->url() . '/static/');
+		$this->configFileManager = new ConfigFileManager(
+			$this->root->url(),
+			$this->root->url() . '/addon',
+			$this->root->url() . '/config',
+			$this->root->url() . '/static'
+		);
 	}
 
 	public function dataTests(): array
@@ -110,7 +96,7 @@ class ConfigTransactionTest extends FixtureTest
 	{
 		$this->configFileManager = \Mockery::spy(ConfigFileManager::class);
 
-		$config = new DatabaseConfig($this->dice->create(Database::class), new Cache());
+		$config            = new DatabaseConfig($this->dice->create(Database::class), new Cache());
 		$configTransaction = new ConfigTransaction($config);
 
 		// commit empty transaction

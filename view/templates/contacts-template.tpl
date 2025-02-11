@@ -1,3 +1,9 @@
+{{*
+  * Copyright (C) 2010-2024, the Friendica project
+  * SPDX-FileCopyrightText: 2010-2024 the Friendica project
+  *
+  * SPDX-License-Identifier: AGPL-3.0-or-later
+  *}}
 
 <h2>{{$header}}{{if $total}} ({{$total}}){{/if}}</h2>
 
@@ -15,7 +21,8 @@
 {{$tabs nofilter}}
 
 <form action="{{$baseurl}}/contact/batch/" method="POST">
-	<input type="hidden" name="redirect_url" value="{{$cmd}}" />
+  <input type="hidden" name="command" value="{{$cmd}}" />
+  <input type="hidden" name="parameter" value="{{$parameter}}" />
 	<input type="hidden" name="form_security_token" value="{{$form_security_token}}" />
 {{foreach $contacts as $contact}}
 	{{include file="contact/entry.tpl"}}

@@ -1,17 +1,22 @@
 // @license magnet:?xt=urn:btih:d3d9a9a6595521f9666a5e94cc830dab83b65699&dn=expat.txt Expat
-/*
- Rangy Text Inputs, a cross-browser textarea and text input library plug-in for jQuery.
 
- Part of Rangy, a cross-browser JavaScript range and selection library
- http://code.google.com/p/rangy/
+// Copyright 2010, Tim Down
+// SPDX-FileCopyrightText: 2010 Tim Down
+//
+// SPDX-License-Identifier: MIT
+//
+// Rangy Text Inputs, a cross-browser textarea and text input library plug-in for jQuery.
+//
+// Part of Rangy, a cross-browser JavaScript range and selection library
+// http://code.google.com/p/rangy/
+//
+// Depends on jQuery 1.0 or later.
+//
+// Copyright 2010, Tim Down
+// Licensed under the MIT license.
+// Version: 0.1.205
+// Build date: 5 November 2010
 
- Depends on jQuery 1.0 or later.
-
- Copyright 2010, Tim Down
- Licensed under the MIT license.
- Version: 0.1.205
- Build date: 5 November 2010
-*/
 (function(n){function o(e,g){var a=typeof e[g];return a==="function"||!!(a=="object"&&e[g])||a=="unknown"}function p(e,g,a){if(g<0)g+=e.value.length;if(typeof a=="undefined")a=g;if(a<0)a+=e.value.length;return{start:g,end:a}}function k(){return typeof document.body=="object"&&document.body?document.body:document.getElementsByTagName("body")[0]}var i,h,q,l,r,s,t,u,m;n(document).ready(function(){function e(a,b){return function(){var c=this.jquery?this[0]:this,d=c.nodeName.toLowerCase();if(c.nodeType==
 1&&(d=="textarea"||d=="input"&&c.type=="text")){c=[c].concat(Array.prototype.slice.call(arguments));c=a.apply(this,c);if(!b)return c}if(b)return this}}var g=document.createElement("textarea");k().appendChild(g);if(typeof g.selectionStart!="undefined"&&typeof g.selectionEnd!="undefined"){i=function(a){return{start:a.selectionStart,end:a.selectionEnd,length:a.selectionEnd-a.selectionStart,text:a.value.slice(a.selectionStart,a.selectionEnd)}};h=function(a,b,c){b=p(a,b,c);a.selectionStart=b.start;a.selectionEnd=
 b.end};m=function(a,b){if(b)a.selectionEnd=a.selectionStart;else a.selectionStart=a.selectionEnd}}else if(o(g,"createTextRange")&&typeof document.selection=="object"&&document.selection&&o(document.selection,"createRange")){i=function(a){var b=0,c=0,d,f,j;if((j=document.selection.createRange())&&j.parentElement()==a){f=a.value.length;d=a.value.replace(/\r\n/g,"\n");c=a.createTextRange();c.moveToBookmark(j.getBookmark());j=a.createTextRange();j.collapse(false);if(c.compareEndPoints("StartToEnd",j)>

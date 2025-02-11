@@ -1,29 +1,14 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Content\Widget;
 
 use Friendica\Content\ContactSelector;
 use Friendica\Content\Text\BBCode;
-use Friendica\Core\Logger;
 use Friendica\Core\Protocol;
 use Friendica\Core\Renderer;
 use Friendica\DI;
@@ -40,7 +25,6 @@ class VCard
 	/**
 	 * Get HTML for vcard block
 	 *
-	 * @template widget/vcard.tpl
 	 * @param array $contact
 	 * @param bool  $hide_mention
 	 * @param bool  $hide_follow
@@ -49,17 +33,17 @@ class VCard
 	public static function getHTML(array $contact, bool $hide_mention = false, bool $hide_follow = false): string
 	{
 		if (!isset($contact['network']) || !isset($contact['id'])) {
-			Logger::warning('Incomplete contact', ['contact' => $contact ?? []]);
+			DI::logger()->warning('Incomplete contact', ['contact' => $contact]);
 		}
 
 		$contact_url = Contact::getProfileLink($contact);
 
 		if ($contact['network'] != '') {
-			$network_link   = Strings::formatNetworkName($contact['network'], $contact_url);
-			$network_avatar = ContactSelector::networkToIcon($contact['network'], $contact_url);
+			$network_link = Strings::formatNetworkName($contact['network'], $contact_url);
+			$network_svg  = ContactSelector::networkToSVG($contact['network'], $contact['gsid'], '', DI::userSession()->getLocalUserId());
 		} else {
-			$network_link   = '';
-			$network_avatar = '';
+			$network_link = '';
+			$network_svg  = '';
 		}
 
 		$follow_link      = '';
@@ -69,9 +53,14 @@ class VCard
 		$mention_link     = '';
 		$showgroup_link   = '';
 
-		$photo   = Contact::getPhoto($contact);
+		$photo = Contact::getPhoto($contact);
 
 		if (DI::userSession()->getLocalUserId()) {
+			if (Contact\User::isIsBlocked($contact['id'], DI::userSession()->getLocalUserId())) {
+				$hide_follow  = true;
+				$hide_mention = true;
+			}
+
 			if ($contact['uid']) {
 				$id      = $contact['id'];
 				$rel     = $contact['rel'];
@@ -79,8 +68,8 @@ class VCard
 			} else {
 				$pcontact = Contact::selectFirst([], ['uid' => DI::userSession()->getLocalUserId(), 'uri-id' => $contact['uri-id'], 'deleted' => false]);
 
-				$id      = $pcontact['id'] ?? 0;
-				$rel     = $pcontact['rel'] ?? Contact::NOTHING;
+				$id      = $pcontact['id']      ?? $contact['id'];
+				$rel     = $pcontact['rel']     ?? Contact::NOTHING;
 				$pending = $pcontact['pending'] ?? false;
 
 				if (!empty($pcontact) && in_array($pcontact['network'], [Protocol::MAIL, Protocol::FEED])) {
@@ -92,7 +81,7 @@ class VCard
 				if (in_array($rel, [Contact::SHARING, Contact::FRIEND])) {
 					$unfollow_link = 'contact/unfollow?url=' . urlencode($contact_url) . '&auto=1';
 				} elseif (!$pending) {
-					$follow_link = 'contact/follow?url=' . urlencode($contact_url) . '&auto=1';
+					$follow_link = 'contact/follow?binurl=' . bin2hex($contact_url) . '&auto=1';
 				}
 			}
 
@@ -102,8 +91,8 @@ class VCard
 
 			if ($contact['contact-type'] == Contact::TYPE_COMMUNITY) {
 				if (!$hide_mention) {
-					$mention_label  = DI::l10n()->t('Post to group');
-					$mention_link   = 'compose/0?body=!' . $contact['addr'];
+					$mention_label = DI::l10n()->t('Post to group');
+					$mention_link  = 'compose/0?body=!' . $contact['addr'];
 				}
 				$showgroup_link = 'contact/' . $id . '/conversations';
 			} elseif (!$hide_mention) {
@@ -121,7 +110,7 @@ class VCard
 			'$matrix'           => DI::l10n()->t('Matrix:'),
 			'$location'         => DI::l10n()->t('Location:'),
 			'$network_link'     => $network_link,
-			'$network_avatar'   => $network_avatar,
+			'$network_svg'      => $network_svg,
 			'$network'          => DI::l10n()->t('Network:'),
 			'$account_type'     => Contact::getAccountType($contact['contact-type']),
 			'$follow'           => DI::l10n()->t('Follow'),

@@ -1,28 +1,13 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Util;
 
 use Friendica\Core\Hook;
-use Friendica\Core\Logger;
 use Friendica\DI;
 use Friendica\Model\Photo;
 use Friendica\Network\HTTPClient\Client\HttpClientAccept;
@@ -117,7 +102,7 @@ class Images
 			}
 		}
 
-		Logger::debug('Undetected mimetype', ['mimetype' => $mimetype]);
+		DI::logger()->debug('Undetected mimetype', ['mimetype' => $mimetype]);
 		return 0;
 	}
 
@@ -130,7 +115,7 @@ class Images
 	public static function getExtensionByImageType(int $type): string
 	{
 		if (empty($type)) {
-			Logger::debug('Invalid image type', ['type' => $type]);
+			DI::logger()->debug('Invalid image type', ['type' => $type]);
 			return '';
 		}
 
@@ -203,9 +188,9 @@ class Images
 	 * Fetch image mimetype from the image data or guessing from the file name
 	 *
 	 * @param string $image_data Image data
-	 * @param string $filename   File name (for guessing the type via the extension)
-	 * @param string $default    Default MIME type
+	 *
 	 * @return string MIME type
+	 *
 	 * @throws \Exception
 	 */
 	public static function getMimeTypeByData(string $image_data): string
@@ -215,7 +200,7 @@ class Images
 			return $image['mime'];
 		}
 
-		Logger::debug('Undetected mime type', ['image' => $image, 'size' => strlen($image_data)]);
+		DI::logger()->debug('Undetected mime type', ['image' => $image, 'size' => strlen($image_data)]);
 
 		return '';
 	}
@@ -298,7 +283,7 @@ class Images
 			}
 		}
 
-		Logger::debug('Unhandled extension', ['filename' => $filename, 'extension' => $ext]);
+		DI::logger()->debug('Unhandled extension', ['filename' => $filename, 'extension' => $ext]);
 		return '';
 	}
 
@@ -322,13 +307,13 @@ class Images
 
 		$data = DI::cache()->get($cacheKey);
 
-		if (empty($data) || !is_array($data)) {
+		if (!is_array($data)) {
 			$data = self::getInfoFromURL($url, $ocr);
 
 			DI::cache()->set($cacheKey, $data);
 		}
 
-		return $data ?? [];
+		return $data;
 	}
 
 	/**
@@ -359,7 +344,7 @@ class Images
 			try {
 				$img_str = DI::httpClient()->fetch($url, HttpClientAccept::IMAGE, 4, '', HttpClientRequest::MEDIAVERIFIER);
 			} catch (\Exception $exception) {
-				Logger::notice('Image is invalid', ['url' => $url, 'exception' => $exception]);
+				DI::logger()->notice('Image is invalid', ['url' => $url, 'exception' => $exception]);
 				return [];
 			}
 		}
@@ -380,11 +365,11 @@ class Images
 			return [];
 		}
 
-		$image = new Image($img_str, '', $url);
+		$image = new Image($img_str, '', $url, false);
 
 		if ($image->isValid()) {
-			$data['blurhash'] = $image->getBlurHash();
-			
+			$data['blurhash'] = $image->getBlurHash($img_str);
+
 			if ($ocr) {
 				$media = ['img_str' => $img_str];
 				Hook::callAll('ocr-detection', $media);
@@ -418,19 +403,19 @@ class Images
 			// constrain the width - let the height float.
 
 			if ((($height * 9) / 16) > $width) {
-				$dest_width = $max;
+				$dest_width  = $max;
 				$dest_height = intval(ceil(($height * $max) / $width));
 			} elseif ($width > $height) {
 				// else constrain both dimensions
-				$dest_width = $max;
+				$dest_width  = $max;
 				$dest_height = intval(ceil(($height * $max) / $width));
 			} else {
-				$dest_width = intval(ceil(($width * $max) / $height));
+				$dest_width  = intval(ceil(($width * $max) / $height));
 				$dest_height = $max;
 			}
 		} else {
 			if ($width > $max) {
-				$dest_width = $max;
+				$dest_width  = $max;
 				$dest_height = intval(ceil(($height * $max) / $width));
 			} else {
 				if ($height > $max) {
@@ -438,14 +423,14 @@ class Images
 					// but width is OK - don't do anything
 
 					if ((($height * 9) / 16) > $width) {
-						$dest_width = $width;
+						$dest_width  = $width;
 						$dest_height = $height;
 					} else {
-						$dest_width = intval(ceil(($width * $max) / $height));
+						$dest_width  = intval(ceil(($width * $max) / $height));
 						$dest_height = $max;
 					}
 				} else {
-					$dest_width = $width;
+					$dest_width  = $width;
 					$dest_height = $height;
 				}
 			}
@@ -468,7 +453,7 @@ class Images
 	{
 		return self::getBBCodeByUrl(
 			DI::baseUrl() . '/photos/' . $nickname . '/image/' . $resource_id,
-			DI::baseUrl() . '/photo/' . $resource_id . '-' . $preview. $ext,
+			DI::baseUrl() . '/photo/' . $resource_id . '-' . $preview . $ext,
 			$description
 		);
 	}

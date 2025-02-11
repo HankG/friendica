@@ -1,23 +1,9 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Module\Contact;
 
@@ -123,10 +109,20 @@ class MatchInterests extends BaseModule
 				continue;
 			}
 
-			$result = $this->httpClient->post($server . '/search/user/tags', $searchParameters, [], 0, HttpClientRequest::CONTACTDISCOVER);
+			try {
+				$result = $this->httpClient->post($server . '/search/user/tags', $searchParameters, [], 0, HttpClientRequest::CONTACTDISCOVER);
+			} catch (\Throwable $th) {
+				$this->logger->notice('Got exception', ['code' => $th->getCode(), 'message' => $th->getMessage()]);
+				continue;
+			}
 			if (!$result->isSuccess()) {
 				// try legacy endpoint
-				$result = $this->httpClient->post($server . '/msearch', $searchParameters, [], 0, HttpClientRequest::CONTACTDISCOVER);
+				try {
+					$result = $this->httpClient->post($server . '/msearch', $searchParameters, [], 0, HttpClientRequest::CONTACTDISCOVER);
+				} catch (\Throwable $th) {
+					$this->logger->notice('Got exception', ['code' => $th->getCode(), 'message' => $th->getMessage()]);
+					continue;
+				}
 				if (!$result->isSuccess()) {
 					$this->logger->notice('Search-Endpoint not available for server.', ['server' => $server]);
 					continue;

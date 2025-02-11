@@ -1,21 +1,9 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
+
+/* Copyright (C) 2010-2024, the Friendica project
+ * SPDX-FileCopyrightText: 2010-2024 the Friendica project
  *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: AGPL-3.0-or-later
  *
  * See update_profile.php for documentation
  */
@@ -86,10 +74,10 @@ class Community extends Timeline
 
 		$t = Renderer::getMarkupTemplate("community.tpl");
 		$o = Renderer::replaceMacros($t, [
-			'$content' => '',
-			'$header' => '',
+			'$content'                    => '',
+			'$header'                     => '',
 			'$show_global_community_hint' => ($this->selectedTab == CommunityEntity::GLOBAL) && $this->config->get('system', 'show_global_community_hint'),
-			'$global_community_hint' => $this->l10n->t("This community stream shows all public posts received by this node. They may not reflect the opinions of this node’s users.")
+			'$global_community_hint'      => $this->l10n->t("This community stream shows all public posts received by this node. They may not reflect the opinions of this node’s users.")
 		]);
 
 		if ($this->pConfig->get($this->session->getLocalUserId(), 'system', 'infinite_scroll')) {
@@ -100,7 +88,7 @@ class Community extends Timeline
 		if (!$this->raw) {
 			$tabs    = $this->getTabArray($this->community->getTimelines($this->session->isAuthenticated()), 'community');
 			$tab_tpl = Renderer::getMarkupTemplate('common_tabs.tpl');
-			$o .= Renderer::replaceMacros($tab_tpl, ['$tabs' => $tabs]);
+			$o .= Renderer::replaceMacros($tab_tpl, ['$tabs' => $tabs, '$more' => $this->l10n->t('More')]);
 
 			Nav::setSelected('community');
 
@@ -197,7 +185,7 @@ class Community extends Timeline
 			}
 		}
 
-		$this->maxId = $request['last_received'] ?? $this->maxId;
+		$this->maxId = $request['last_received']  ?? $this->maxId;
 		$this->minId = $request['first_received'] ?? $this->minId;
 	}
 }

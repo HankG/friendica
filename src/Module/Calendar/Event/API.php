@@ -1,32 +1,19 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Module\Calendar\Event;
 
-use Friendica\App;
+use Friendica\App\Arguments;
+use Friendica\App\BaseURL;
+use Friendica\AppHelper;
 use Friendica\BaseModule;
 use Friendica\Core\L10n;
 use Friendica\Core\Protocol;
 use Friendica\Core\Session\Capability\IHandleUserSessions;
-use Friendica\Core\System;
 use Friendica\Core\Worker;
 use Friendica\Database\DBA;
 use Friendica\Model\Contact;
@@ -75,14 +62,14 @@ class API extends BaseModule
 	/** @var string */
 	protected $timezone;
 
-	public function __construct(L10n $l10n, App\BaseURL $baseUrl, App\Arguments $args, LoggerInterface $logger, Profiler $profiler, Response $response, IHandleUserSessions $session, SystemMessages $sysMessages, ACLFormatter $aclFormatter, App $app, array $server, array $parameters = [])
+	public function __construct(L10n $l10n, BaseURL $baseUrl, Arguments $args, LoggerInterface $logger, Profiler $profiler, Response $response, IHandleUserSessions $session, SystemMessages $sysMessages, ACLFormatter $aclFormatter, AppHelper $appHelper, array $server, array $parameters = [])
 	{
 		parent::__construct($l10n, $baseUrl, $args, $logger, $profiler, $response, $server, $parameters);
 
 		$this->session      = $session;
 		$this->sysMessages  = $sysMessages;
 		$this->aclFormatter = $aclFormatter;
-		$this->timezone     = $app->getTimeZone();
+		$this->timezone     = $appHelper->getTimeZone();
 
 		if (!$this->session->getLocalUserId()) {
 			throw new UnauthorizedException($this->t('Permission denied.'));
@@ -153,9 +140,9 @@ class API extends BaseModule
 		$share     = intval($request['share'] ?? 0);
 		$isPreview = intval($request['preview'] ?? 0);
 
-		$start = DateTimeFormat::convert($strStartDateTime ?? DBA::NULL_DATETIME, 'UTC', $this->timezone);
+		$start = DateTimeFormat::convert($strStartDateTime, 'UTC', $this->timezone);
 		if (!$noFinish) {
-			$finish = DateTimeFormat::convert($strFinishDateTime ?? DBA::NULL_DATETIME, 'UTC', $this->timezone);
+			$finish = DateTimeFormat::convert($strFinishDateTime, 'UTC', $this->timezone);
 		} else {
 			$finish = DBA::NULL_DATETIME;
 		}

@@ -1,3 +1,9 @@
+{{*
+  * Copyright (C) 2010-2024, the Friendica project
+  * SPDX-FileCopyrightText: 2010-2024 the Friendica project
+  *
+  * SPDX-License-Identifier: AGPL-3.0-or-later
+  *}}
 {{* This content will be added to the html page <head> *}}
 
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
@@ -106,7 +112,7 @@
 	<script type="text/javascript" src="view/asset/dompurify/dist/purify.min.js?v={{$VERSION}}">
 	</script>
 	<script type="text/javascript">
-		const updateInterval = {{$update_interval}};
+		const updateContent = {{$update_content}};
 		const localUser = {{if $local_user}}{{$local_user}}{{else}}false{{/if}};
 	</script>
 	<script type="text/javascript" src="view/js/main.js?v={{$VERSION}}"></script>

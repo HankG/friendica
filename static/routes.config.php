@@ -1,21 +1,9 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
+
+/* Copyright (C) 2010-2024, the Friendica project
+ * SPDX-FileCopyrightText: 2010-2024 the Friendica project
  *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: AGPL-3.0-or-later
  *
  * Configuration for the default routes in Friendica
  *
@@ -47,7 +35,7 @@ $apiRoutes = [
 	'/account' => [
 		'/verify_credentials[.{extension:json|xml|rss|atom}]'      => [Module\Api\Twitter\Account\VerifyCredentials::class,  [R::GET         ]],
 		'/rate_limit_status[.{extension:json|xml|rss|atom}]'       => [Module\Api\Twitter\Account\RateLimitStatus::class,    [R::GET         ]],
-		'/update_profile[.{extension:json|xml|rss|atom}]'          => [Module\Api\Twitter\Account\UpdateProfile ::class,     [        R::POST]],
+		'/update_profile[.{extension:json|xml|rss|atom}]'          => [Module\Api\Twitter\Account\UpdateProfile::class,      [        R::POST]],
 		'/update_profile_image[.{extension:json|xml|rss|atom}]'    => [Module\Api\Twitter\Account\UpdateProfileImage::class, [        R::POST]],
 	],
 
@@ -261,7 +249,7 @@ return [
 			'/lists/{id:\d+}'                    => [Module\Api\Mastodon\Lists::class,                    [R::GET, R::PUT, R::DELETE]],
 			'/lists/{id:\d+}/accounts'           => [Module\Api\Mastodon\Lists\Accounts::class,           [R::GET, R::POST, R::DELETE]],
 			'/markers'                           => [Module\Api\Mastodon\Markers::class,                  [R::GET, R::POST]],
-			'/media/{id:\d+}'                    => [Module\Api\Mastodon\Media::class,                    [R::GET, R::PUT ]],
+			'/media/{id}'                        => [Module\Api\Mastodon\Media::class,                    [R::GET, R::PUT ]],
 			'/mutes'                             => [Module\Api\Mastodon\Mutes::class,                    [R::GET         ]],
 			'/notifications'                     => [Module\Api\Mastodon\Notifications::class,            [R::GET         ]],
 			'/notifications/{id:\d+}'            => [Module\Api\Mastodon\Notifications::class,            [R::GET         ]],
@@ -424,7 +412,7 @@ return [
 	'/credits'                  => [Module\Credits::class,          [R::GET]],
 	'/delegation'               => [Module\User\Delegation::class,  [R::GET, R::POST]],
 	'/dfrn_notify[/{nickname}]' => [Module\DFRN\Notify::class,      [        R::POST]],
-	'/dfrn_poll/{nickname}'     => [Module\DFRN\Poll::class,        [R::GET]],
+	'/dfrn_poll/{nickname}'     => [Module\Feed::class,            [R::GET]],
 	'/dirfind'                  => [Module\Search\Directory::class, [R::GET]],
 	'/directory'                => [Module\Directory::class,        [R::GET]],
 
@@ -446,7 +434,7 @@ return [
 	'/filed'                => [Module\Search\Filed::class,          [R::GET]],
 	'/filer[/{id:\d+}]'     => [Module\Filer\SaveTag::class,         [R::GET]],
 	'/filerm/{id:\d+}'      => [Module\Filer\RemoveTag::class,       [R::GET, R::POST]],
-	'/follow_confirm'       => [Module\FollowConfirm::class,         [R::GET, R::POST]],
+	'/follow_confirm'       => [Module\FollowConfirm::class,         [R::POST]],
 	'/followers/{nickname}' => [Module\ActivityPub\Followers::class, [R::GET]],
 	'/following/{nickname}' => [Module\ActivityPub\Following::class, [R::GET]],
 	'/friendica[/{format:json}]' => [Module\Friendica::class,        [R::GET]],
@@ -491,7 +479,8 @@ return [
 	'/logout'             => [Module\Security\Logout::class, [R::GET, R::POST]],
 	'/magic'              => [Module\Magic::class,           [R::GET]],
 	'/manifest'           => [Module\Manifest::class,        [R::GET]],
-	'/friendica.webmanifest'  => [Module\Manifest::class,    [R::GET]],
+	'/manifest.json'      => [Module\Manifest::class,        [R::GET]],
+	'/friendica.webmanifest' => [Module\Manifest::class,     [R::GET]],
 
 	'/media' => [
 		'/attachment/browser'      => [Module\Media\Attachment\Browser::class, [R::GET]],
@@ -521,10 +510,12 @@ return [
 		'/users/deleted'                  => [Module\Moderation\Users\Deleted::class, [R::GET         ]],
 		'/users/create'                   => [Module\Moderation\Users\Create::class,  [R::GET, R::POST]],
 	],
-	'/modexp/{nick}'      => [Module\PublicRSAKey::class,    [R::GET]],
 	'/newmember'          => [Module\Welcome::class,         [R::GET]],
 	'/nodeinfo/1.0'       => [Module\NodeInfo110::class,     [R::GET]],
 	'/nodeinfo/2.0'       => [Module\NodeInfo120::class,     [R::GET]],
+	'/nodeinfo/2.0.json'  => [Module\NodeInfo120::class,     [R::GET]],
+	'/nodeinfo/2.1'       => [Module\NodeInfo121::class,     [R::GET]],
+	'/nodeinfo/2.2'       => [Module\NodeInfo122::class,     [R::GET]],
 	'/nocircle'           => [Module\Circle::class,          [R::GET]],
 
 	'/noscrape' => [
@@ -595,14 +586,8 @@ return [
 	'/u/{nickname}'       => $profileRoutes,
 	'/~{nickname}'        => $profileRoutes,
 
-	// OStatus stack modules
-	'/ostatus/repair'                => [Module\OStatus\Repair::class,           [R::GET         ]],
 	'/ostatus/subscribe'             => [Module\OStatus\Subscribe::class,        [R::GET         ]],
 	'/poco'                          => [Module\User\PortableContacts::class,    [R::GET         ]],
-	'/pubsub'                        => [Module\OStatus\PubSub::class,           [R::GET, R::POST]],
-	'/pubsub/{nickname}[/{cid:\d+}]' => [Module\OStatus\PubSub::class,           [R::GET, R::POST]],
-	'/pubsubhubbub[/{nickname}]'     => [Module\OStatus\PubSubHubBub::class,     [        R::POST]],
-	'/salmon[/{nickname}]'           => [Module\OStatus\Salmon::class,           [        R::POST]],
 
 	'/search' => [
 		'[/]'                  => [Module\Search\Index::class, [R::GET         ]],
@@ -616,6 +601,8 @@ return [
 		'/{type:public}'       => [Module\Diaspora\Receive::class, [        R::POST]],
 		'/{type:users}/{guid}' => [Module\Diaspora\Receive::class, [        R::POST]],
 	],
+
+	'/remote_follow/{nickname}' => [Module\Profile\RemoteFollow::class,  [R::GET, R::POST]],
 
 	'/security' => [
 		'/password_too_long' => [Module\Security\PasswordTooLong::class, [R::GET, R::POST]],
@@ -637,6 +624,7 @@ return [
 		'/delegation[/{action}/{user_id}]' => [Module\Settings\Delegation::class,       [R::GET, R::POST]],
 		'/display'                         => [Module\Settings\Display::class,          [R::GET, R::POST]],
 		'/features'                        => [Module\Settings\Features::class,         [R::GET, R::POST]],
+		'/importcontacts'                  => [Module\Settings\ContactImport::class,    [R::GET, R::POST]],
 		'/oauth'                           => [Module\Settings\OAuth::class,            [R::GET, R::POST]],
 		'/profile' => [
 			'[/]'                  => [Module\Settings\Profile\Index::class,       [R::GET, R::POST]],
@@ -653,6 +641,8 @@ return [
 			'/trusted'      => [Module\Settings\TwoFactor\Trusted::class,     [R::GET, R::POST]],
 		],
 	],
+
+	'/stats' => [Module\Stats::class, [R::GET]],
 
 	'/network' => [
 		'[/{content}]'                => [Module\Conversation\Network::class, [R::GET]],

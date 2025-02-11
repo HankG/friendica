@@ -1,3 +1,9 @@
+{{*
+  * Copyright (C) 2010-2024, the Friendica project
+  * SPDX-FileCopyrightText: 2010-2024 the Friendica project
+  *
+  * SPDX-License-Identifier: AGPL-3.0-or-later
+  *}}
 <div class="generic-page-wrapper">
 	<h1>{{$title}} <a href="help/Two-Factor-Authentication" title="{{$help_label}}" class="btn btn-default btn-sm"><i aria-hidden="true" class="fa fa-question fa-2x"></i></a></h1>
 	<div>{{$message nofilter}}</div>
@@ -22,15 +28,15 @@
 
 		{{include file="field_password.tpl" field=$password}}
 
-{{if !$has_secret}}
-		<p><button type="submit" name="action" id="confirm-submit-button" class="btn btn-primary confirm-button" value="enable">{{$enable_label}}</button></p>
-{{else}}
-		<p><button type="submit" name="action" id="confirm-submit-button" class="btn btn-primary confirm-button" value="disable">{{$disable_label}}</button></p>
-{{/if}}
 {{if $has_secret && $verified}}
 		<p><button type="submit" name="action" id="confirm-submit-button" class="btn btn-primary confirm-button" value="recovery">{{$recovery_codes_label}}</button></p>
 		<p><button type="submit" name="action" id="confirm-submit-button" class="btn btn-primary confirm-button" value="app_specific">{{$app_specific_passwords_label}}</button></p>
 		<p><button type="submit" name="action" id="confirm-submit-button" class="btn btn-primary confirm-button" value="trusted">{{$trusted_browsers_label}}</button></p>
+{{/if}}
+{{if !$has_secret}}
+		<p><button type="submit" name="action" id="confirm-submit-button" class="btn btn-primary confirm-button" value="enable">{{$enable_label}}</button></p>
+{{else}}
+		<p><button type="submit" name="action" id="confirm-submit-button" class="btn btn-primary confirm-button" value="disable">{{$disable_label}}</button></p>
 {{/if}}
 {{if $has_secret && !$verified}}
 		<p><button type="submit" name="action" id="confirm-submit-button" class="btn btn-primary confirm-button" value="configure">{{$configure_label}}</button></p>

@@ -1,27 +1,13 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Util;
 
-use Friendica\Core\Logger;
+use Friendica\DI;
 use Friendica\Model\APContact;
 
 /**
@@ -69,7 +55,7 @@ class LDSignature
 		$dhash = self::hash(self::signableData($data));
 
 		$x = Crypto::rsaVerify($ohash . $dhash, base64_decode($data['signature']['signatureValue']), $pubkey);
-		Logger::info('LD-verify', ['verified' => (int)$x, 'actor' => $profile['url']]);
+		DI::logger()->info('LD-verify', ['verified' => (int)$x, 'actor' => $profile['url']]);
 
 		if (empty($x)) {
 			return false;
@@ -88,14 +74,14 @@ class LDSignature
 	public static function sign(array $data, array $owner): array
 	{
 		$options = [
-			'type' => 'RsaSignature2017',
-			'nonce' => Strings::getRandomHex(64),
+			'type'    => 'RsaSignature2017',
+			'nonce'   => Strings::getRandomHex(64),
 			'creator' => $owner['url'] . '#main-key',
 			'created' => DateTimeFormat::utcNow(DateTimeFormat::ATOM),
 		];
 
-		$ohash = self::hash(self::signableOptions($options));
-		$dhash = self::hash(self::signableData($data));
+		$ohash                     = self::hash(self::signableOptions($options));
+		$dhash                     = self::hash(self::signableData($data));
 		$options['signatureValue'] = base64_encode(Crypto::rsaSign($ohash . $dhash, $owner['uprvkey']));
 
 		return array_merge($data, ['signature' => $options]);
@@ -133,7 +119,7 @@ class LDSignature
 	/**
 	 * Hashes normalized object
 	 *
-	 * @param ??? $obj
+	 * @param array $obj
 	 * @return string SHA256 hash
 	 */
 	private static function hash($obj): string

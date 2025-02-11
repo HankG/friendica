@@ -1,30 +1,17 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Module\Api\Twitter\Friendships;
 
 use Exception;
-use Friendica\App;
+use Friendica\App\Arguments;
+use Friendica\App\BaseURL;
+use Friendica\AppHelper;
 use Friendica\Core\L10n;
-use Friendica\Core\Logger;
 use Friendica\Factory\Api\Twitter\User as TwitterUser;
 use Friendica\Model\Contact;
 use Friendica\Model\User;
@@ -45,9 +32,9 @@ class Destroy extends ContactEndpoint
 	/** @var TwitterUser */
 	private $twitterUser;
 
-	public function __construct(\Friendica\Factory\Api\Mastodon\Error $errorFactory, App $app, L10n $l10n, App\BaseURL $baseUrl, App\Arguments $args, LoggerInterface $logger, Profiler $profiler, ApiResponse $response, TwitterUser $twitterUser, array $server, array $parameters = [])
+	public function __construct(\Friendica\Factory\Api\Mastodon\Error $errorFactory, AppHelper $appHelper, L10n $l10n, BaseURL $baseUrl, Arguments $args, LoggerInterface $logger, Profiler $profiler, ApiResponse $response, TwitterUser $twitterUser, array $server, array $parameters = [])
 	{
-		parent::__construct($errorFactory, $app, $l10n, $baseUrl, $args, $logger, $profiler, $response, $server, $parameters);
+		parent::__construct($errorFactory, $appHelper, $l10n, $baseUrl, $args, $logger, $profiler, $response, $server, $parameters);
 
 		$this->twitterUser = $twitterUser;
 	}
@@ -59,31 +46,31 @@ class Destroy extends ContactEndpoint
 
 		$owner = User::getOwnerDataById($uid);
 		if (!$owner) {
-			Logger::notice(BaseApi::LOG_PREFIX . 'No owner {uid} found', ['module' => 'api', 'action' => 'friendships_destroy', 'uid' => $uid]);
+			$this->logger->notice(BaseApi::LOG_PREFIX . 'No owner {uid} found', ['module' => 'api', 'action' => 'friendships_destroy', 'uid' => $uid]);
 			throw new HTTPException\NotFoundException('Error Processing Request');
 		}
 
 		$contact_id = BaseApi::getContactIDForSearchterm($this->getRequestValue($request, 'screen_name', ''), $this->getRequestValue($request, 'profileurl', ''), $this->getRequestValue($request, 'user_id', 0), 0);
 
 		if (empty($contact_id)) {
-			Logger::notice(BaseApi::LOG_PREFIX . 'No user_id specified', ['module' => 'api', 'action' => 'friendships_destroy']);
+			$this->logger->notice(BaseApi::LOG_PREFIX . 'No user_id specified', ['module' => 'api', 'action' => 'friendships_destroy']);
 			throw new HTTPException\BadRequestException('no user_id specified');
 		}
 
 		// Get Contact by given id
-		$cdata = Contact::getPublicAndUserContactID($contact_id, $uid);
-		if (!empty($cdata['user'])) {
-			Logger::notice(BaseApi::LOG_PREFIX . 'Not following contact', ['module' => 'api', 'action' => 'friendships_destroy']);
+		$ucid = Contact::getUserContactId($contact_id, $uid);
+		if (!$ucid) {
+			$this->logger->notice(BaseApi::LOG_PREFIX . 'Not following contact', ['module' => 'api', 'action' => 'friendships_destroy']);
 			throw new HTTPException\NotFoundException('Not following Contact');
 		}
 
-		$contact = Contact::getById($cdata['user']);
+		$contact = Contact::getById($ucid);
 		$user    = $this->twitterUser->createFromContactId($contact_id, $uid, true)->toArray();
 
 		try {
 			Contact::unfollow($contact);
 		} catch (Exception $e) {
-			Logger::error(BaseApi::LOG_PREFIX . $e->getMessage(), ['contact' => $contact]);
+			$this->logger->error(BaseApi::LOG_PREFIX . $e->getMessage(), ['contact' => $contact]);
 			throw new HTTPException\InternalServerErrorException('Unable to unfollow this contact, please contact your administrator');
 		}
 

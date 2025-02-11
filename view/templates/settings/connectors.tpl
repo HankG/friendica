@@ -1,3 +1,9 @@
+{{*
+  * Copyright (C) 2010-2024, the Friendica project
+  * SPDX-FileCopyrightText: 2010-2024 the Friendica project
+  *
+  * SPDX-License-Identifier: AGPL-3.0-or-later
+  *}}
 <h1>{{$title}}</h1>
 
 <div class="connector_statusmsg">{{$diasp_enabled}}</div>
@@ -19,9 +25,6 @@
 		{{include file="field_checkbox.tpl" field=$api_spoiler_title}}
 		{{include file="field_checkbox.tpl" field=$api_auto_attach}}
 		{{include file="field_select.tpl" field=$article_mode}}
-		{{include file="field_input.tpl" field=$legacy_contact}}
-
-		<p><a href="{{$repair_ostatus_url}}">{{$repair_ostatus_text}}</a></p>
 
 		<div class="settings-submit-wrapper">
 			<input type="submit" id="general-submit" name="general-submit" class="settings-submit" value="{{$submit}}"/>

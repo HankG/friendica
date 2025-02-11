@@ -1,23 +1,9 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Module\Moderation\Users;
 
@@ -62,38 +48,8 @@ class Active extends BaseUsers
 	{
 		parent::content();
 
-		$action = $this->parameters['action'] ?? '';
-		$uid    = $this->parameters['uid']    ?? 0;
+		$this->processGetActions();
 
-		if ($uid) {
-			$user = User::getById($uid, ['username', 'blocked']);
-			if (!$user) {
-				$this->systemMessages->addNotice($this->t('User not found'));
-				$this->baseUrl->redirect('moderation/users');
-			}
-		}
-
-		switch ($action) {
-			case 'delete':
-				if ($this->session->getLocalUserId() != $uid) {
-					self::checkFormSecurityTokenRedirectOnError('moderation/users/active', 'moderation_users_active', 't');
-					// delete user
-					User::remove($uid);
-
-					$this->systemMessages->addNotice($this->t('User "%s" deleted', $user['username']));
-				} else {
-					$this->systemMessages->addNotice($this->t('You can\'t remove yourself'));
-				}
-
-				$this->baseUrl->redirect('moderation/users/active');
-				break;
-			case 'block':
-				self::checkFormSecurityTokenRedirectOnError('moderation/users/active', 'moderation_users_active', 't');
-				User::block($uid);
-				$this->systemMessages->addNotice($this->t('User "%s" blocked', $user['username']));
-				$this->baseUrl->redirect('moderation/users/active');
-				break;
-		}
 		$pager = new Pager($this->l10n, $this->args->getQueryString(), 100);
 
 		$valid_orders = [
@@ -156,5 +112,50 @@ class Active extends BaseUsers
 			'$count' => $count,
 			'$pager' => $pager->renderFull($count),
 		]);
+	}
+
+	/**
+	 * @return void
+	 * @throws \Friendica\Network\HTTPException\FoundException
+	 * @throws \Friendica\Network\HTTPException\InternalServerErrorException
+	 * @throws \Friendica\Network\HTTPException\MovedPermanentlyException
+	 * @throws \Friendica\Network\HTTPException\NotFoundException
+	 * @throws \Friendica\Network\HTTPException\TemporaryRedirectException
+	 */
+	private function processGetActions(): void
+	{
+		$action = (string) ($this->parameters['action'] ?? '');
+		$uid    = (int) ($this->parameters['uid'] ?? 0);
+
+		if ($uid === 0) {
+			return;
+		}
+
+		$user = User::getById($uid, ['username']);
+		if (!$user) {
+			$this->systemMessages->addNotice($this->t('User not found'));
+			$this->baseUrl->redirect('moderation/users');
+		}
+
+		switch ($action) {
+			case 'delete':
+				if ($this->session->getLocalUserId() != $uid) {
+					self::checkFormSecurityTokenRedirectOnError('moderation/users/active', 'moderation_users_active', 't');
+					// delete user
+					User::remove($uid);
+
+					$this->systemMessages->addNotice($this->t('User "%s" deleted', $user['username']));
+				} else {
+					$this->systemMessages->addNotice($this->t('You can\'t remove yourself'));
+				}
+
+				$this->baseUrl->redirect('moderation/users/active');
+				// no break
+			case 'block':
+				self::checkFormSecurityTokenRedirectOnError('moderation/users/active', 'moderation_users_active', 't');
+				User::block($uid);
+				$this->systemMessages->addNotice($this->t('User "%s" blocked', $user['username']));
+				$this->baseUrl->redirect('moderation/users/active');
+		}
 	}
 }

@@ -1,23 +1,9 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Network\HTTPClient\Client;
 
@@ -28,6 +14,9 @@ class HttpClientAccept
 {
 	/** @var string Default value for "Accept" header */
 	public const DEFAULT = '*/*';
+
+	/** @var string Accept all types with a preferences of ActivityStream content */
+	public const AS_DEFAULT = 'application/activity+json,application/ld+json; profile="https://www.w3.org/ns/activitystreams",*/*;q=0.9';
 
 	public const ATOM_XML  = 'application/atom+xml,text/xml;q=0.9,*/*;q=0.8';
 	public const FEED_XML  = 'application/atom+xml,application/rss+xml;q=0.9,application/rdf+xml;q=0.8,text/xml;q=0.7,*/*;q=0.6';

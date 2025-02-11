@@ -1,4 +1,10 @@
-<div id="peoplefind-sidebar" class="widget">
+{{*
+  * Copyright (C) 2010-2024, the Friendica project
+  * SPDX-FileCopyrightText: 2010-2024 the Friendica project
+  *
+  * SPDX-License-Identifier: AGPL-3.0-or-later
+  *}}
+<nav id="peoplefind-sidebar" class="widget">
 	<h3>{{$nv.findpeople}}</h3>
 
 	<form action="dirfind" method="get">
@@ -18,7 +24,7 @@
 	<div class="side-link" id="side-suggest-link"><a href="contact/suggestions" class="side-link-link">{{$nv.suggest}}</a></div>
 	<div class="side-link" id="side-random-profile-link"><a href="randprof" class="side-link-link" target="extlink">{{$nv.random}}</a></div>
 
-	{{if $nv.inv}} 
-	<div class="side-link" id="side-invite-link"><button type="button" class="btn-link side-link-link" onclick="addToModal('invite'); return false;">{{$nv.inv}}</button></div>
+	{{if $nv.inv}}
+		<div class="side-link" id="side-invite-link"><button type="button" class="btn-link side-link-link" onclick="addToModal('invite'); return false;">{{$nv.inv}}</button></div>
 	{{/if}}
-</div>
+</nav>

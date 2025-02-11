@@ -1,28 +1,13 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Worker;
 
 use Friendica\Core\Cache\Enum\Duration;
-use Friendica\Core\Logger;
 use Friendica\Core\Search;
 use Friendica\DI;
 use Friendica\Model\Contact;
@@ -35,7 +20,7 @@ class SearchDirectory
 	public static function execute($search)
 	{
 		if (!DI::config()->get('system', 'poco_local_search')) {
-			Logger::info('Local search is not enabled');
+			DI::logger()->info('Local search is not enabled');
 			return;
 		}
 
@@ -43,7 +28,7 @@ class SearchDirectory
 		if (!is_null($data)) {
 			// Only search for the same item every 24 hours
 			if (time() < $data + (60 * 60 * 24)) {
-				Logger::info('Already searched this in the last 24 hours', ['search' => $search]);
+				DI::logger()->info('Already searched this in the last 24 hours', ['search' => $search]);
 				return;
 			}
 		}

@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+# SPDX-FileCopyrightText: 2010-2024 the Friendica project
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """
 This script will collect the contributors to friendica and its translations from
   * the git log of the friendica core and addons repositories

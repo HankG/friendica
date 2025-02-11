@@ -1,33 +1,19 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Test\src\Factory\Api\Twitter;
 
 use Friendica\DI;
 use Friendica\Factory\Api\Twitter\User;
 use Friendica\Network\HTTPException\NotFoundException;
-use Friendica\Test\FixtureTest;
-use Friendica\Test\src\Module\Api\ApiTest;
+use Friendica\Test\ApiTestCase;
+use Friendica\Test\FixtureTestCase;
 
-class UserTest extends FixtureTest
+class UserTest extends FixtureTestCase
 {
 	/**
 	 * Assert that an user array contains expected keys.
@@ -36,11 +22,11 @@ class UserTest extends FixtureTest
 	 */
 	protected function assertSelfUser(array $user)
 	{
-		self::assertEquals(ApiTest::SELF_USER['id'], $user['uid']);
-		self::assertEquals(ApiTest::SELF_USER['id'], $user['cid']);
+		self::assertEquals(ApiTestCase::SELF_USER['id'], $user['uid']);
+		self::assertEquals(ApiTestCase::SELF_USER['id'], $user['cid']);
 		self::assertEquals('DFRN', $user['location']);
-		self::assertEquals(ApiTest::SELF_USER['name'], $user['name']);
-		self::assertEquals(ApiTest::SELF_USER['nick'], $user['screen_name']);
+		self::assertEquals(ApiTestCase::SELF_USER['name'], $user['name']);
+		self::assertEquals(ApiTestCase::SELF_USER['nick'], $user['screen_name']);
 		self::assertTrue($user['verified']);
 	}
 
@@ -52,7 +38,7 @@ class UserTest extends FixtureTest
 	public function testApiGetUser()
 	{
 		$user = (new User(DI::logger(), DI::twitterStatus()))
-			->createFromUserId(ApiTest::SELF_USER['id'])
+			->createFromUserId(ApiTestCase::SELF_USER['id'])
 			->toArray();
 
 		$this->assertSelfUser($user);
@@ -68,7 +54,7 @@ class UserTest extends FixtureTest
 		$this->markTestIncomplete('Needs missing fields for profile colors at API User object first.');
 
 		/*
-		DI::pConfig()->set(ApiTest::SELF_USER['id'], 'frio', 'schema', 'red');
+		DI::pConfig()->set(ApiTestCase::SELF_USER['id'], 'frio', 'schema', 'red');
 
 		$userFactory = new User(DI::logger(), DI::twitterStatus());
 		$user        = $userFactory->createFromUserId(42);
@@ -90,7 +76,7 @@ class UserTest extends FixtureTest
 		$this->markTestIncomplete('Needs missing fields for profile colors at API User object first.');
 
 		/*
-		DI::pConfig()->set(ApiTest::SELF_USER['id'], 'frio', 'schema', '---');
+		DI::pConfig()->set(ApiTestCase::SELF_USER['id'], 'frio', 'schema', '---');
 
 		$userFactory = new User(DI::logger(), DI::twitterStatus());
 		$user        = $userFactory->createFromUserId(42);
@@ -112,10 +98,10 @@ class UserTest extends FixtureTest
 		$this->markTestIncomplete('Needs missing fields for profile colors at API User object first.');
 
 		/*
-		DI::pConfig()->set(ApiTest::SELF_USER['id'], 'frio', 'schema', '---');
-		DI::pConfig()->set(ApiTest::SELF_USER['id'], 'frio', 'nav_bg', '#123456');
-		DI::pConfig()->set(ApiTest::SELF_USER['id'], 'frio', 'link_color', '#123456');
-		DI::pConfig()->set(ApiTest::SELF_USER['id'], 'frio', 'background_color', '#123456');
+		DI::pConfig()->set(ApiTestCase::SELF_USER['id'], 'frio', 'schema', '---');
+		DI::pConfig()->set(ApiTestCase::SELF_USER['id'], 'frio', 'nav_bg', '#123456');
+		DI::pConfig()->set(ApiTestCase::SELF_USER['id'], 'frio', 'link_color', '#123456');
+		DI::pConfig()->set(ApiTestCase::SELF_USER['id'], 'frio', 'background_color', '#123456');
 
 		$userFactory = new User(DI::logger(), DI::twitterStatus());
 		$user        = $userFactory->createFromUserId(42);

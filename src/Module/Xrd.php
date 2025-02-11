@@ -1,35 +1,20 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Module;
 
 use Friendica\BaseModule;
-use Friendica\Core\System;
 use Friendica\DI;
 use Friendica\Model\Photo;
 use Friendica\Model\User;
 use Friendica\Network\HTTPException\BadRequestException;
 use Friendica\Network\HTTPException\NotFoundException;
 use Friendica\Protocol\ActivityNamespace;
-use Friendica\Protocol\Salmon;
+use Friendica\Util\Network;
 use Friendica\Util\XML;
 
 /**
@@ -48,25 +33,17 @@ class Xrd extends BaseModule
 			}
 
 			$uri = urldecode(trim($_GET['uri']));
-			if (strpos($_SERVER['HTTP_ACCEPT'] ?? '', 'application/jrd+json') !== false)  {
-				$mode = Response::TYPE_JSON;
-			} else {
-				$mode = Response::TYPE_XML;
-			}
+			$mode = self::getAcceptedContentType($_SERVER['HTTP_ACCEPT'] ?? '', Response::TYPE_XML);
 		} else {
 			if (empty($_GET['resource'])) {
 				throw new BadRequestException();
 			}
 
 			$uri = urldecode(trim($_GET['resource']));
-			if (strpos($_SERVER['HTTP_ACCEPT'] ?? '', 'application/xrd+xml') !== false)  {
-				$mode = Response::TYPE_XML;
-			} else {
-				$mode = Response::TYPE_JSON;
-			}
+			$mode = self::getAcceptedContentType($_SERVER['HTTP_ACCEPT'] ?? '', Response::TYPE_JSON);
 		}
 
-		if (substr($uri, 0, 4) === 'http') {
+		if (Network::isValidHttpUrl($uri)) {
 			$name = ltrim(basename($uri), '~');
 			$host = parse_url($uri, PHP_URL_HOST);
 		} else if (preg_match('/^[[:alpha:]][[:alnum:]+-.]+:/', $uri)) {
@@ -81,11 +58,13 @@ class Xrd extends BaseModule
 		}
 
 		if (!empty($host) && $host !== DI::baseUrl()->getHost()) {
-			DI::logger()->notice('Invalid host name for xrd query',['host' => $host, 'uri' => $uri]);
+			DI::logger()->notice('Invalid host name for xrd query', ['host' => $host, 'uri' => $uri]);
 			throw new NotFoundException('Invalid host name for xrd query: ' . $host);
 		}
 
 		header('Vary: Accept', false);
+
+		$alias = '';
 
 		if ($name == User::getActorName()) {
 			$owner = User::getSystemAccount();
@@ -116,6 +95,36 @@ class Xrd extends BaseModule
 		}
 	}
 
+	/**
+	 * Detect the accepted content type.
+	 * @todo Handle priorities (see "application/xrd+xml,text/xml;q=0.9")
+	 *
+	 * @param string $accept
+	 * @param string $default
+	 * @return string
+	 */
+	private function getAcceptedContentType(string $accept, string $default): string
+	{
+		$parts = [];
+		foreach (explode(',', $accept) as $part) {
+			$parts[] = current(explode(';', $part));
+		}
+
+		if ($parts === []) {
+			return $default;
+		} elseif (in_array('application/jrd+json', $parts) && !in_array('application/xrd+xml', $parts)) {
+			return Response::TYPE_JSON;
+		} elseif (!in_array('application/jrd+json', $parts) && in_array('application/xrd+xml', $parts)) {
+			return Response::TYPE_XML;
+		} elseif (in_array('application/json', $parts) && !in_array('text/xml', $parts)) {
+			return Response::TYPE_JSON;
+		} elseif (!in_array('application/json', $parts) && in_array('text/xml', $parts)) {
+			return Response::TYPE_XML;
+		} else {
+			return $default;
+		}
+	}
+
 	private function printSystemJSON(array $owner)
 	{
 		$baseURL = (string)$this->baseUrl;
@@ -123,6 +132,11 @@ class Xrd extends BaseModule
 			'subject' => 'acct:' . $owner['addr'],
 			'aliases' => [$owner['url']],
 			'links'   => [
+				[
+					'rel'  => ActivityNamespace::FEED,
+					'type' => 'application/atom+xml',
+					'href' => $owner['poll'] ?? $baseURL,
+				],
 				[
 					'rel'  => ActivityNamespace::WEBFINGERPROFILE,
 					'type' => 'text/html',
@@ -134,19 +148,6 @@ class Xrd extends BaseModule
 					'href' => $owner['url'],
 				],
 				[
-					'rel'      => ActivityNamespace::OSTATUSSUB,
-					'template' => $baseURL . '/contact/follow?url={uri}',
-				],
-				[
-					'rel'  => ActivityNamespace::FEED,
-					'type' => 'application/atom+xml',
-					'href' => $owner['poll'] ?? $baseURL,
-				],
-				[
-					'rel'  => 'salmon',
-					'href' => $baseURL . '/salmon/' . $owner['nickname'],
-				],
-				[
 					'rel'  => ActivityNamespace::HCARD,
 					'type' => 'text/html',
 					'href' => $baseURL . '/hcard/' . $owner['nickname'],
@@ -155,6 +156,14 @@ class Xrd extends BaseModule
 					'rel'  => ActivityNamespace::DIASPORA_SEED,
 					'type' => 'text/html',
 					'href' => $baseURL,
+				],
+				[
+					'rel'  => 'salmon',
+					'href' => $baseURL . '/receive/users/' . $owner['guid'],
+				],
+				[
+					'rel'      => ActivityNamespace::OSTATUSSUB,
+					'template' => $baseURL . '/contact/follow?url={uri}',
 				],
 			]
 		];
@@ -209,23 +218,11 @@ class Xrd extends BaseModule
 				],
 				[
 					'rel'  => 'salmon',
-					'href' => $baseURL . '/salmon/' . $owner['nickname'],
-				],
-				[
-					'rel'  => 'http://salmon-protocol.org/ns/salmon-replies',
-					'href' => $baseURL . '/salmon/' . $owner['nickname'],
-				],
-				[
-					'rel'  => 'http://salmon-protocol.org/ns/salmon-mention',
-					'href' => $baseURL . '/salmon/' . $owner['nickname'] . '/mention',
+					'href' => $baseURL . '/receive/users/' . $owner['guid'],
 				],
 				[
 					'rel'      => ActivityNamespace::OSTATUSSUB,
 					'template' => $baseURL . '/contact/follow?url={uri}',
-				],
-				[
-					'rel'  => 'magic-public-key',
-					'href' => 'data:application/magic-public-key,' . Salmon::salmonKey($owner['spubkey']),
 				],
 				[
 					'rel'  => ActivityNamespace::OPENWEBAUTH,
@@ -253,13 +250,13 @@ class Xrd extends BaseModule
 				'2:Alias' => $alias,
 				'1:link' => [
 					'@attributes' => [
-						'rel'  => 'http://purl.org/macgirvin/dfrn/1.0',
+						'rel'  => ActivityNamespace::DFRN,
 						'href' => $owner['url']
 					]
 				],
 				'2:link' => [
 					'@attributes' => [
-						'rel'  => 'http://schemas.google.com/g/2010#updates-from',
+						'rel'  => ActivityNamespace::FEED,
 						'type' => 'application/atom+xml',
 						'href' => $owner['poll']
 					]
@@ -273,56 +270,45 @@ class Xrd extends BaseModule
 				],
 				'4:link' => [
 					'@attributes' => [
+						'rel'  => 'self',
+						'type' => 'application/activity+json',
+						'href' => $owner['url']
+					]
+				],
+				'5:link' => [
+					'@attributes' => [
 						'rel'  => ActivityNamespace::HCARD,
 						'type' => 'text/html',
 						'href' => $baseURL . '/hcard/' . $owner['nickname']
 					]
 				],
-				'5:link' => [
+				'6:link' => [
 					'@attributes' => [
 						'rel'  => ActivityNamespace::WEBFINGERAVATAR,
 						'type' => $avatar['type'],
 						'href' => User::getAvatarUrl($owner)
 					]
 				],
-				'6:link' => [
+				'7:link' => [
 					'@attributes' => [
 						'rel'  => ActivityNamespace::DIASPORA_SEED,
 						'type' => 'text/html',
 						'href' => $baseURL
 					]
 				],
-				'7:link' => [
-					'@attributes' => [
-						'rel'  => 'salmon',
-						'href' => $baseURL . '/salmon/' . $owner['nickname']
-					]
-				],
 				'8:link' => [
 					'@attributes' => [
-						'rel'  => 'http://salmon-protocol.org/ns/salmon-replies',
-						'href' => $baseURL . '/salmon/' . $owner['nickname']
+						'rel'  => 'salmon',
+						'href' => $baseURL . '/receive/users/' . $owner['guid']
 					]
 				],
 				'9:link' => [
-					'@attributes' => [
-						'rel'  => 'http://salmon-protocol.org/ns/salmon-mention',
-						'href' => $baseURL . '/salmon/' . $owner['nickname'] . '/mention'
-					]
-				],
-				'10:link' => [
 					'@attributes' => [
 						'rel'      => ActivityNamespace::OSTATUSSUB,
 						'template' => $baseURL . '/contact/follow?url={uri}'
 					]
 				],
-				'11:link' => [
-					'@attributes' => [
-						'rel'  => 'magic-public-key',
-						'href' => 'data:application/magic-public-key,' . Salmon::salmonKey($owner['spubkey'])
-					]
-				],
-				'12:link' => [
+				'10:link' => [
 					'@attributes' => [
 						'rel'  => ActivityNamespace::OPENWEBAUTH,
 						'type' => 'application/x-zot+json',

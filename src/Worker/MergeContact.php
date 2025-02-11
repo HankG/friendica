@@ -1,29 +1,15 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Worker;
 
-use Friendica\Core\Logger;
 use Friendica\Database\DBA;
 use Friendica\Database\DBStructure;
+use Friendica\DI;
 use Friendica\Model\Contact;
 
 class MergeContact
@@ -42,7 +28,7 @@ class MergeContact
 			return;
 		}
 
-		Logger::info('Handling duplicate', ['search' => $old_cid, 'replace' => $new_cid]);
+		DI::logger()->info('Handling duplicate', ['search' => $old_cid, 'replace' => $new_cid]);
 
 		foreach (['item', 'thread', 'post-user', 'post-thread-user'] as $table) {
 			if (DBStructure::existsTable($table)) {
@@ -85,7 +71,7 @@ class MergeContact
 	 */
 	private static function mergePersonalContacts(int $first, int $duplicate)
 	{
-		$fields = ['self', 'remote_self', 'rel', 'prvkey', 'subhub', 'hub-verify', 'priority', 'writable', 'archive', 'pending',
+		$fields = ['self', 'remote_self', 'rel', 'prvkey', 'hub-verify', 'priority', 'writable', 'archive', 'pending',
 			'rating', 'notify_new_posts', 'fetch_further_information', 'ffi_keyword_denylist', 'block_reason'];
 		$c1 = Contact::getById($first, $fields);
 		$c2 = Contact::getById($duplicate, $fields);
@@ -101,7 +87,7 @@ class MergeContact
 			$ctarget[$field] = $c1[$field] ?: $c2[$field];
 		}
 
-		foreach (['remote_self', 'subhub', 'writable', 'notify_new_posts'] as $field) {
+		foreach (['remote_self', 'writable', 'notify_new_posts'] as $field) {
 			$ctarget[$field] = $c1[$field] || $c2[$field];
 		}
 

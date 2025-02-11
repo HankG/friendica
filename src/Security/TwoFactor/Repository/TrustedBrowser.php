@@ -1,30 +1,18 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Security\TwoFactor\Repository;
 
-use Friendica\Security\TwoFactor;
 use Friendica\Database\Database;
 use Friendica\Security\TwoFactor\Exception\TrustedBrowserNotFoundException;
 use Friendica\Security\TwoFactor\Exception\TrustedBrowserPersistenceException;
+use Friendica\Security\TwoFactor\Collection\TrustedBrowsers as TrustedBrowsersCollection;
+use Friendica\Security\TwoFactor\Factory\TrustedBrowser as TrustedBrowserFactory;
+use Friendica\Security\TwoFactor\Model\TrustedBrowser as TrustedBrowserModel;
 use Psr\Log\LoggerInterface;
 
 class TrustedBrowser
@@ -35,27 +23,27 @@ class TrustedBrowser
 	/** @var LoggerInterface  */
 	protected $logger;
 
-	/** @var TwoFactor\Factory\TrustedBrowser  */
+	/** @var TrustedBrowserFactory  */
 	protected $factory;
 
 	protected static $table_name = '2fa_trusted_browser';
 
-	public function __construct(Database $database, LoggerInterface $logger, TwoFactor\Factory\TrustedBrowser $factory = null)
+	public function __construct(Database $database, LoggerInterface $logger, TrustedBrowserFactory $factory = null)
 	{
 		$this->db      = $database;
 		$this->logger  = $logger;
-		$this->factory = $factory ?? new TwoFactor\Factory\TrustedBrowser($logger);
+		$this->factory = $factory ?? new TrustedBrowserFactory($logger);
 	}
 
 	/**
 	 * @param string $cookie_hash
 	 *
-	 * @return TwoFactor\Model\TrustedBrowser|null
+	 * @return TrustedBrowserModel
 	 *
 	 * @throws TrustedBrowserPersistenceException
 	 * @throws TrustedBrowserNotFoundException
 	 */
-	public function selectOneByHash(string $cookie_hash): TwoFactor\Model\TrustedBrowser
+	public function selectOneByHash(string $cookie_hash): TrustedBrowserModel
 	{
 		try {
 			$fields = $this->db->selectFirst(self::$table_name, [], ['cookie_hash' => $cookie_hash]);
@@ -70,13 +58,9 @@ class TrustedBrowser
 	}
 
 	/**
-	 * @param int $uid
-	 *
-	 * @return TwoFactor\Collection\TrustedBrowsers
-	 *
 	 * @throws TrustedBrowserPersistenceException
 	 */
-	public function selectAllByUid(int $uid): TwoFactor\Collection\TrustedBrowsers
+	public function selectAllByUid(int $uid): TrustedBrowsersCollection
 	{
 		try {
 			$rows = $this->db->selectToArray(self::$table_name, [], ['uid' => $uid]);
@@ -85,7 +69,7 @@ class TrustedBrowser
 			foreach ($rows as $fields) {
 				$trustedBrowsers[] = $this->factory->createFromTableRow($fields);
 			}
-			return new TwoFactor\Collection\TrustedBrowsers($trustedBrowsers);
+			return new TrustedBrowsersCollection($trustedBrowsers);
 
 		} catch (\Exception $exception) {
 			throw new TrustedBrowserPersistenceException(sprintf('selection for uid \'%s\' wasn\'t successful.', $uid));
@@ -93,13 +77,9 @@ class TrustedBrowser
 	}
 
 	/**
-	 * @param TwoFactor\Model\TrustedBrowser $trustedBrowser
-	 *
-	 * @return bool
-	 *
 	 * @throws TrustedBrowserPersistenceException
 	 */
-	public function save(TwoFactor\Model\TrustedBrowser $trustedBrowser): bool
+	public function save(TrustedBrowserModel $trustedBrowser): bool
 	{
 		try {
 			return $this->db->insert(self::$table_name, $trustedBrowser->toArray(), $this->db::INSERT_UPDATE);
@@ -109,13 +89,9 @@ class TrustedBrowser
 	}
 
 	/**
-	 * @param TwoFactor\Model\TrustedBrowser $trustedBrowser
-	 *
-	 * @return bool
-	 *
 	 * @throws TrustedBrowserPersistenceException
 	 */
-	public function remove(TwoFactor\Model\TrustedBrowser $trustedBrowser): bool
+	public function remove(TrustedBrowserModel $trustedBrowser): bool
 	{
 		try {
 			return $this->db->delete(self::$table_name, ['cookie_hash' => $trustedBrowser->cookie_hash]);
@@ -125,11 +101,6 @@ class TrustedBrowser
 	}
 
 	/**
-	 * @param int    $local_user
-	 * @param string $cookie_hash
-	 *
-	 * @return bool
-	 *
 	 * @throws TrustedBrowserPersistenceException
 	 */
 	public function removeForUser(int $local_user, string $cookie_hash): bool
@@ -141,11 +112,6 @@ class TrustedBrowser
 		}
 	}
 
-	/**
-	 * @param int $local_user
-	 *
-	 * @return bool
-	 */
 	public function removeAllForUser(int $local_user): bool
 	{
 		try {

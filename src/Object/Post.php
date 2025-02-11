@@ -1,23 +1,9 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Object;
 
@@ -25,11 +11,11 @@ use Friendica\Content\ContactSelector;
 use Friendica\Content\Feature;
 use Friendica\Core\Addon;
 use Friendica\Core\Hook;
-use Friendica\Core\Logger;
 use Friendica\Core\Protocol;
 use Friendica\Core\Renderer;
 use Friendica\DI;
 use Friendica\Model\Contact;
+use Friendica\Model\Conversation;
 use Friendica\Model\Item;
 use Friendica\Model\Post as PostModel;
 use Friendica\Model\Tag;
@@ -47,31 +33,31 @@ use InvalidArgumentException;
  */
 class Post
 {
-	private $data = [];
-	private $template = null;
+	private $data                = [];
+	private $template            = null;
 	private $available_templates = [
-		'wall' => 'wall_thread.tpl',
+		'wall'      => 'wall_thread.tpl',
 		'wall2wall' => 'wallwall_thread.tpl'
 	];
 	private $comment_box_template = 'comment_item.tpl';
-	private $toplevel = false;
-	private $writable = false;
+	private $toplevel             = false;
+	private $writable             = false;
 	/**
 	 * @var Post[]
 	 */
 	private $children = [];
-	private $parent = null;
+	private $parent   = null;
 
 	/**
 	 * @var Thread
 	 */
-	private $thread = null;
+	private $thread       = null;
 	private $redirect_url = null;
-	private $owner_url = '';
-	private $owner_name = '';
+	private $owner_url    = '';
+	private $owner_name   = '';
 	private $wall_to_wall = false;
-	private $threaded = false;
-	private $visiting = false;
+	private $threaded     = false;
+	private $visiting     = false;
 
 	/**
 	 * Constructor
@@ -90,7 +76,7 @@ class Post
 		}
 
 		$this->writable = $this->getDataValue('writable') || $this->getDataValue('self');
-		$author = [
+		$author         = [
 			'uid'     => 0,
 			'id'      => $this->getDataValue('author-id'),
 			'network' => $this->getDataValue('author-network'),
@@ -112,13 +98,13 @@ class Post
 					continue;
 				}
 
-				// You can always comment on Diaspora and OStatus items
-				if (in_array($item['network'], [Protocol::OSTATUS, Protocol::DIASPORA]) && (DI::userSession()->getLocalUserId() == $item['uid'])) {
+				// You can always comment on Diaspora items
+				if (in_array($item['network'], [Protocol::DIASPORA]) && (DI::userSession()->getLocalUserId() == $item['uid'])) {
 					$item['writable'] = true;
 				}
 
 				$item['pagedrop'] = $data['pagedrop'];
-				$child = new Post($item);
+				$child            = new Post($item);
 				$this->addChild($child);
 			}
 		}
@@ -167,7 +153,7 @@ class Post
 	 */
 	public function getTemplateData(array $conv_responses, string $formSecurityToken, int $thread_level = 1, array $thread_parent = [])
 	{
-		$item = $this->getData();
+		$item   = $this->getData();
 		$edited = false;
 
 		/*
@@ -191,23 +177,23 @@ class Post
 			'share'    => null,
 			'announce' => null,
 		];
-		$dropping = false;
-		$pinned = '';
-		$pin = false;
-		$star = false;
-		$ignore_thread = false;
-		$ispinned = 'unpinned';
-		$isstarred = 'unstarred';
-		$indent = '';
-		$shiny = '';
-		$osparkle = '';
+		$dropping       = false;
+		$pinned         = '';
+		$pin            = false;
+		$star           = false;
+		$ignore_thread  = false;
+		$ispinned       = 'unpinned';
+		$isstarred      = 'unstarred';
+		$indent         = '';
+		$shiny          = '';
+		$osparkle       = '';
 		$total_children = $item['counts'] ?? $this->countDescendants();
 
 		$conv = $this->getThread();
 
 		$privacy   = $this->fetchPrivacy($item);
 		$lock      = ($item['private'] == Item::PRIVATE) ? $privacy : false;
-		$connector = !in_array($item['network'], Protocol::NATIVE_SUPPORT) ? DI::l10n()->t('Connector Message') : false;
+		$connector = !in_array($item['network'], Protocol::NATIVE_SUPPORT) && ($item['protocol'] != Conversation::PARCEL_JETSTREAM) ? DI::l10n()->t('Connector Message') : false;
 
 		$shareable    = in_array($conv->getProfileOwner(), [0, DI::userSession()->getLocalUserId()]) && $item['private'] != Item::PRIVATE;
 		$announceable = $shareable && in_array($item['network'], [Protocol::ACTIVITYPUB, Protocol::DFRN, Protocol::DIASPORA, Protocol::TWITTER, Protocol::TUMBLR, Protocol::BLUESKY]);
@@ -271,8 +257,8 @@ class Post
 			$drop = [
 				'dropping' => $dropping,
 				'pagedrop' => $item['pagedrop'],
-				'select' => DI::l10n()->t('Select'),
-				'label' => $origin ? DI::l10n()->t('Delete globally') : DI::l10n()->t('Remove locally'),
+				'select'   => DI::l10n()->t('Select'),
+				'label'    => $origin ? DI::l10n()->t('Delete globally') : DI::l10n()->t('Remove locally'),
 			];
 		}
 
@@ -336,7 +322,7 @@ class Post
 		$response_verbs = ['like', 'dislike', 'announce', 'comment'];
 
 		$isevent = false;
-		$attend = [];
+		$attend  = [];
 		if ($item['object-type'] === Activity\ObjectType::EVENT) {
 			$response_verbs[] = 'attendyes';
 			$response_verbs[] = 'attendno';
@@ -344,7 +330,7 @@ class Post
 
 			if ($conv->isWritable()) {
 				$isevent = true;
-				$attend = [DI::l10n()->t('I will attend'), DI::l10n()->t('I will not attend'), DI::l10n()->t('I might attend')];
+				$attend  = [DI::l10n()->t('I will attend'), DI::l10n()->t('I will not attend'), DI::l10n()->t('I might attend')];
 			}
 		}
 
@@ -421,7 +407,7 @@ class Post
 							'toggle'    => DI::l10n()->t('Toggle pin status'),
 							'classdo'   => $item['featured'] ? 'hidden' : '',
 							'classundo' => $item['featured'] ? '' : 'hidden',
-							'pinned'   => DI::l10n()->t('Pinned'),
+							'pinned'    => DI::l10n()->t('Pinned'),
 						];
 					}
 
@@ -444,7 +430,7 @@ class Post
 				$buttons['share'] = [DI::l10n()->t('Quote share this'), DI::l10n()->t('Quote Share')];
 			}
 			if ($announceable) {
-				$buttons['announce'] = [DI::l10n()->t('Reshare this'), DI::l10n()->t('Reshare')];
+				$buttons['announce']   = [DI::l10n()->t('Reshare this'), DI::l10n()->t('Reshare')];
 				$buttons['unannounce'] = [DI::l10n()->t('Cancel your Reshare'), DI::l10n()->t('Unshare')];
 			}
 		}
@@ -477,7 +463,7 @@ class Post
 			}
 
 			$isevent = false;
-			$tagger = '';
+			$tagger  = '';
 		}
 
 		if ($buttons['like'] && in_array($item['network'], [Protocol::FEED, Protocol::MAIL])) {
@@ -486,7 +472,7 @@ class Post
 
 		$tags = Tag::populateFromItem($item);
 
-		$ago = Temporal::getRelativeDate($item['created']);
+		$ago          = Temporal::getRelativeDate($item['created']);
 		$ago_received = Temporal::getRelativeDate($item['received']);
 		if (DI::config()->get('system', 'show_received') && (abs(strtotime($item['created']) - strtotime($item['received'])) > DI::config()->get('system', 'show_received_seconds')) && ($ago != $ago_received)) {
 			$ago = DI::l10n()->t('%s (Received %s)', $ago, $ago_received);
@@ -500,7 +486,7 @@ class Post
 			];
 
 			// Ensure to either display the remote comment or the local activities
-			$buttons = [];
+			$buttons      = [];
 			$comment_html = '';
 		} else {
 			$remote_comment = '';
@@ -512,8 +498,10 @@ class Post
 		}
 
 		$languages = [];
+		$language  = '';
 		if (!empty($item['language'])) {
 			$languages = DI::l10n()->t('Languages');
+			$language  = array_key_first(json_decode($item['language'], true));
 		}
 
 		if (in_array($item['private'], [Item::PUBLIC, Item::UNLISTED]) && in_array($item['network'], Protocol::FEDERATED)) {
@@ -527,109 +515,111 @@ class Post
 		$parent_unknown  = $parent_username ? '' : DI::l10n()->t('Unknown parent');
 
 		$tmp_item = [
-			'parentguid'      => $parent_guid,
-			'inreplyto'       => DI::l10n()->t('in reply to %s', $parent_username),
-			'isunknown'       => $parent_unknown,
-			'isunknown_label' => DI::l10n()->t('Parent is probably private or not federated.'),
-			'template'        => $this->getTemplate(),
-			'type'            => implode('', array_slice(explode('/', $item['verb']), -1)),
+			'parentguid'             => $parent_guid,
+			'inreplyto'              => DI::l10n()->t('in reply to %s', $parent_username),
+			'isunknown'              => $parent_unknown,
+			'isunknown_label'        => DI::l10n()->t('Parent is probably private or not federated.'),
+			'template'               => $this->getTemplate(),
+			'type'                   => implode('', array_slice(explode('/', $item['verb']), -1)),
 			'comment_firstcollapsed' => false,
-			'comment_lastcollapsed' => false,
-			'suppress_tags'   => DI::config()->get('system', 'suppress_tags'),
-			'tags'            => $tags['tags'],
-			'hashtags'        => $tags['hashtags'],
-			'mentions'        => $tags['mentions'],
-			'implicit_mentions' => $tags['implicit_mentions'],
-			'txt_cats'        => DI::l10n()->t('Categories:'),
-			'txt_folders'     => DI::l10n()->t('Filed under:'),
-			'has_cats'        => ((count($categories)) ? 'true' : ''),
-			'has_folders'     => ((count($folders)) ? 'true' : ''),
-			'categories'      => $categories,
-			'folders'         => $folders,
-			'body_html'       => $body_html,
-			'text'            => strip_tags($body_html),
-			'id'              => $this->getId(),
-			'guid'            => urlencode($item['guid']),
-			'isevent'         => $isevent,
-			'attend'          => $attend,
-			'linktitle'       => DI::l10n()->t('View %s\'s profile @ %s', $profile_name, $item['author-link']),
-			'olinktitle'      => DI::l10n()->t('View %s\'s profile @ %s', $this->getOwnerName(), $item['owner-link']),
-			'to'              => DI::l10n()->t('to'),
-			'via'             => DI::l10n()->t('via'),
-			'wall'            => DI::l10n()->t('Wall-to-Wall'),
-			'vwall'           => DI::l10n()->t('via Wall-To-Wall:'),
-			'profile_url'     => $profile_link,
-			'name'            => $profile_name,
-			'item_photo_menu_html' => DI::contentItem()->photoMenu($item, $formSecurityToken),
-			'thumb'           => DI::baseUrl()->remove(DI::contentItem()->getAuthorAvatar($item)),
-			'osparkle'        => $osparkle,
-			'sparkle'         => $sparkle,
-			'title'           => $item['title'],
-			'summary'         => $item['content-warning'],
-			'localtime'       => DateTimeFormat::local($item['created'], 'r'),
-			'ago'             => $item['app'] ? DI::l10n()->t('%s from %s', $ago, $item['app']) : $ago,
-			'app'             => $item['app'],
-			'created'         => $ago,
-			'lock'            => $lock,
-			'private'         => $item['private'],
-			'privacy'         => $privacy,
-			'connector'       => $connector,
-			'location_html'   => $location_html,
-			'indent'          => $indent,
-			'shiny'           => $shiny,
-			'owner_self'      => $item['author-link'] == DI::session()->get('my_url'),
-			'owner_url'       => $this->getOwnerUrl(),
-			'owner_photo'     => DI::baseUrl()->remove(DI::contentItem()->getOwnerAvatar($item)),
-			'owner_name'      => $this->getOwnerName(),
-			'plink'           => Item::getPlink($item),
-			'browsershare'    => $browsershare,
-			'edpost'          => $edpost,
-			'ispinned'        => $ispinned,
-			'pin'             => $pin,
-			'pinned'          => $pinned,
-			'isstarred'       => $isstarred,
-			'star'            => $star,
-			'ignore'          => $ignore_thread,
-			'tagger'          => $tagger,
-			'filer'           => $filer,
-			'language'        => $languages,
-			'searchtext'      => DI::l10n()->t('Search Text'),
-			'drop'            => $drop,
-			'block'           => $block,
-			'ignore_author'   => $ignore,
-			'collapse'        => $collapse,
-			'report'          => $report,
-			'ignore_server'   => $ignoreServer,
-			'vote'            => $buttons,
-			'like_html'       => $responses['like']['output'],
-			'dislike_html'    => $responses['dislike']['output'],
-			'hide_dislike'    => $hide_dislike,
-			'emojis'          => $emojis,
-			'quoteshares'     => $this->getQuoteShares($item['quoteshares']),
-			'reactions'       => $reactions,
-			'responses'       => $responses,
-			'legacy_activities' => DI::config()->get('system', 'legacy_activities'),
-			'switchcomment'   => DI::l10n()->t('Comment'),
-			'reply_label'     => DI::l10n()->t('Reply to %s', $profile_name),
-			'comment_html'    => $comment_html,
-			'remote_comment'  => $remote_comment,
-			'menu'            => DI::l10n()->t('More'),
-			'previewing'      => $conv->isPreview() ? ' preview ' : '',
-			'wait'            => DI::l10n()->t('Please wait'),
-			'thread_level'    => $thread_level,
-			'edited'          => $edited,
-			'author_gsid'     => $item['author-gsid'],
-			'network'         => $item['network'],
-			'network_name'    => ContactSelector::networkToName($item['author-network'], $item['author-link'], $item['network'], $item['author-gsid']),
-			'network_icon'    => ContactSelector::networkToIcon($item['network'], $item['author-link'], $item['author-gsid']),
-			'received'        => $item['received'],
-			'commented'       => $item['commented'],
-			'created_date'    => $item['created'],
-			'uriid'           => $item['uri-id'],
-			'return'          => (DI::args()->getCommand()) ? bin2hex(DI::args()->getCommand()) : '',
-			'direction'       => $direction,
-			'reshared'        => $item['reshared'] ?? '',
-			'delivery'        => [
+			'comment_lastcollapsed'  => false,
+			'suppress_tags'          => DI::config()->get('system', 'suppress_tags'),
+			'tags'                   => $tags['tags'],
+			'hashtags'               => $tags['hashtags'],
+			'mentions'               => $tags['mentions'],
+			'implicit_mentions'      => $tags['implicit_mentions'],
+			'txt_cats'               => DI::l10n()->t('Categories:'),
+			'txt_folders'            => DI::l10n()->t('Filed under:'),
+			'has_cats'               => ((count($categories)) ? 'true' : ''),
+			'has_folders'            => ((count($folders)) ? 'true' : ''),
+			'categories'             => $categories,
+			'folders'                => $folders,
+			'body_html'              => $body_html,
+			'text'                   => strip_tags($body_html),
+			'id'                     => $this->getId(),
+			'guid'                   => urlencode($item['guid']),
+			'isevent'                => $isevent,
+			'attend'                 => $attend,
+			'linktitle'              => DI::l10n()->t('View %s\'s profile @ %s', $profile_name, $item['author-link']),
+			'olinktitle'             => DI::l10n()->t('View %s\'s profile @ %s', $this->getOwnerName(), $item['owner-link']),
+			'to'                     => DI::l10n()->t('to'),
+			'via'                    => DI::l10n()->t('via'),
+			'wall'                   => DI::l10n()->t('Wall-to-Wall'),
+			'vwall'                  => DI::l10n()->t('via Wall-To-Wall:'),
+			'profile_url'            => $profile_link,
+			'name'                   => $profile_name,
+			'item_photo_menu_html'   => DI::contentItem()->photoMenu($item, $formSecurityToken),
+			'thumb'                  => DI::baseUrl()->remove(DI::contentItem()->getAuthorAvatar($item)),
+			'osparkle'               => $osparkle,
+			'sparkle'                => $sparkle,
+			'title'                  => $item['title'],
+			'summary'                => $item['content-warning'],
+			'localtime'              => DateTimeFormat::local($item['created'], 'r'),
+			'utc'                    => DateTimeFormat::utc($item['created']),
+			'ago'                    => $item['app'] ? DI::l10n()->t('%s from %s', $ago, $item['app']) : $ago,
+			'app'                    => $item['app'],
+			'created'                => $ago,
+			'lock'                   => $lock,
+			'private'                => $item['private'],
+			'privacy'                => $privacy,
+			'connector'              => $connector,
+			'location_html'          => $location_html,
+			'indent'                 => $indent,
+			'shiny'                  => $shiny,
+			'owner_self'             => $item['author-link'] == DI::session()->get('my_url'),
+			'owner_url'              => $this->getOwnerUrl(),
+			'owner_photo'            => DI::baseUrl()->remove(DI::contentItem()->getOwnerAvatar($item)),
+			'owner_name'             => $this->getOwnerName(),
+			'plink'                  => Item::getPlink($item),
+			'browsershare'           => $browsershare,
+			'edpost'                 => $edpost,
+			'ispinned'               => $ispinned,
+			'pin'                    => $pin,
+			'pinned'                 => $pinned,
+			'isstarred'              => $isstarred,
+			'star'                   => $star,
+			'ignore'                 => $ignore_thread,
+			'tagger'                 => $tagger,
+			'filer'                  => $filer,
+			'language'               => $languages,
+			'lang'                   => $language,
+			'searchtext'             => DI::l10n()->t('Search Text'),
+			'drop'                   => $drop,
+			'block'                  => $block,
+			'ignore_author'          => $ignore,
+			'collapse'               => $collapse,
+			'report'                 => $report,
+			'ignore_server'          => $ignoreServer,
+			'vote'                   => $buttons,
+			'like_html'              => $responses['like']['output'],
+			'dislike_html'           => $responses['dislike']['output'],
+			'hide_dislike'           => $hide_dislike,
+			'emojis'                 => $emojis,
+			'quoteshares'            => $this->getQuoteShares($item['quoteshares']),
+			'reactions'              => $reactions,
+			'responses'              => $responses,
+			'legacy_activities'      => DI::config()->get('system', 'legacy_activities'),
+			'switchcomment'          => DI::l10n()->t('Comment'),
+			'reply_label'            => DI::l10n()->t('Reply to %s', $profile_name),
+			'comment_html'           => $comment_html,
+			'remote_comment'         => $remote_comment,
+			'menu'                   => DI::l10n()->t('More'),
+			'previewing'             => $conv->isPreview() ? ' preview ' : '',
+			'wait'                   => DI::l10n()->t('Please wait'),
+			'thread_level'           => $thread_level,
+			'edited'                 => $edited,
+			'author_gsid'            => $item['author-gsid'],
+			'network'                => $item['network'],
+			'network_name'           => ContactSelector::networkToName($item['author-network'], $item['network'], $item['author-gsid']),
+			'network_svg'            => ContactSelector::networkToSVG($item['network'], $item['author-gsid'], '', DI::userSession()->getLocalUserId()),
+			'received'               => $item['received'],
+			'commented'              => $item['commented'],
+			'created_date'           => $item['created'],
+			'uriid'                  => $item['uri-id'],
+			'return'                 => (DI::args()->getCommand()) ? bin2hex(DI::args()->getCommand()) : '',
+			'direction'              => $direction,
+			'reshared'               => $item['reshared'] ?? '',
+			'delivery'               => [
 				'queue_count'       => $item['delivery_queue_count'],
 				'queue_done'        => $item['delivery_queue_done'] + $item['delivery_queue_failed'], /// @todo Possibly display it separately in the future
 				'notifier_pending'  => DI::l10n()->t('Notifier task is pending'),
@@ -646,21 +636,21 @@ class Post
 		$result = $arr['output'];
 
 		$result['children'] = [];
-		$children = $this->getChildren();
-		$nb_children = count($children);
+		$children           = $this->getChildren();
+		$nb_children        = count($children);
 		if ($nb_children > 0) {
 			$thread_parent[$item['uri-id']] = ['guid' => $item['guid'], 'name' => $item['author-name']];
 			foreach ($children as $child) {
 				$thread_parent[$child->getDataValue('uri-id')] = ['guid' => $child->getDataValue('guid'), 'name' => $child->getDataValue('author-name')];
-				$result['children'][] = $child->getTemplateData($conv_responses, $formSecurityToken, $thread_level + 1, $thread_parent);
+				$result['children'][]                          = $child->getTemplateData($conv_responses, $formSecurityToken, $thread_level + 1, $thread_parent);
 			}
 
 			// Collapse
 			if (($nb_children > 2) || ($thread_level > 1)) {
 				$result['children'][0]['comment_firstcollapsed'] = true;
-				$result['children'][0]['num_comments'] = DI::l10n()->tt('%d comment', '%d comments', $total_children);
-				$result['children'][0]['show_text'] = DI::l10n()->t('Show more');
-				$result['children'][0]['hide_text'] = DI::l10n()->t('Show fewer');
+				$result['children'][0]['num_comments']           = DI::l10n()->tt('%d comment', '%d comments', $total_children);
+				$result['children'][0]['show_text']              = DI::l10n()->t('Show more');
+				$result['children'][0]['hide_text']              = DI::l10n()->t('Show fewer');
 				if ($thread_level > 1) {
 					$result['children'][$nb_children - 1]['comment_lastcollapsed'] = true;
 				} else {
@@ -740,7 +730,7 @@ class Post
 					$title = DI::l10n()->t('Commented by: %s', $actors);
 					$icon  = ['fa' => 'fa-commenting', 'icon' => 'icon-commenting'];
 					break;
-	
+
 				default:
 					$title = DI::l10n()->t('Reacted with %s by: %s', $element['emoji'], $actors);
 					$icon  = [];
@@ -795,10 +785,10 @@ class Post
 	public function addChild(Post $item)
 	{
 		if (!$item->getId()) {
-			Logger::error('Post object has no id', ['post' => $item]);
+			DI::logger()->error('Post object has no id', ['post' => $item]);
 			return false;
 		} elseif ($this->getChild($item->getId())) {
-			Logger::warning('Post object already exists', ['post' => $item]);
+			DI::logger()->warning('Post object already exists', ['post' => $item]);
 			return false;
 		}
 
@@ -806,13 +796,13 @@ class Post
 		 * Only add what will be displayed
 		 */
 		if ($item->getDataValue('network') === Protocol::MAIL && DI::userSession()->getLocalUserId() != $item->getDataValue('uid')) {
-			Logger::warning('Post object does not belong to local user', ['post' => $item, 'local_user' => DI::userSession()->getLocalUserId()]);
+			DI::logger()->warning('Post object does not belong to local user', ['post' => $item, 'local_user' => DI::userSession()->getLocalUserId()]);
 			return false;
 		} elseif (
 			DI::activity()->match($item->getDataValue('verb'), Activity::LIKE) ||
 			DI::activity()->match($item->getDataValue('verb'), Activity::DISLIKE)
 		) {
-			Logger::warning('Post objects is a like/dislike', ['post' => $item]);
+			DI::logger()->warning('Post objects is a like/dislike', ['post' => $item]);
 			return false;
 		}
 
@@ -897,7 +887,7 @@ class Post
 			}
 		}
 
-		Logger::info('[WARN] Item::removeChild : Item is not a child (' . $id . ').');
+		DI::logger()->info('[WARN] Item::removeChild : Item is not a child (' . $id . ').');
 		return false;
 	}
 
@@ -960,7 +950,7 @@ class Post
 	public function getDataValue(string $name)
 	{
 		if (!isset($this->data[$name])) {
-			// Logger::info('[ERROR] Item::getDataValue : Item has no value name "'. $name .'".');
+			// DI::logger()->info('[ERROR] Item::getDataValue : Item has no value name "'. $name .'".');
 			return false;
 		}
 
@@ -1036,7 +1026,7 @@ class Post
 	private function countDescendants(): int
 	{
 		$children = $this->getChildren();
-		$total = count($children);
+		$total    = count($children);
 		if ($total > 0) {
 			foreach ($children as $child) {
 				$total += $child->countDescendants();
@@ -1069,7 +1059,7 @@ class Post
 		}
 
 		$owner = User::getOwnerDataById(DI::userSession()->getLocalUserId());
-		$item = $this->getData();
+		$item  = $this->getData();
 
 		if (!empty($item['content-warning']) && Feature::isEnabled(DI::userSession()->getLocalUserId(), Feature::ADD_ABSTRACT)) {
 			$text = '[abstract=' . Protocol::ACTIVITYPUB . ']' . $item['content-warning'] . "[/abstract]\n";
@@ -1116,7 +1106,7 @@ class Post
 	private function getCommentBox(string $indent)
 	{
 		$comment_box = '';
-		$conv = $this->getThread();
+		$conv        = $this->getThread();
 
 		if ($conv->isWritable() && $this->isWritable()) {
 			/*
@@ -1125,12 +1115,12 @@ class Post
 			 */
 			$qcomment = null;
 			if (Addon::isEnabled('qcomment')) {
-				$words = DI::pConfig()->get(DI::userSession()->getLocalUserId(), 'qcomment', 'words');
+				$words    = DI::pConfig()->get(DI::userSession()->getLocalUserId(), 'qcomment', 'words');
 				$qcomment = $words ? explode("\n", $words) : [];
 			}
 
 			// Fetch the user id from the parent when the owner user is empty
-			$uid = $conv->getProfileOwner();
+			$uid        = $conv->getProfileOwner();
 			$parent_uid = $this->getDataValue('uid');
 
 			$owner = User::getOwnerDataById(DI::userSession()->getLocalUserId());
@@ -1141,7 +1131,7 @@ class Post
 				$uid = $parent_uid;
 			}
 
-			$template = Renderer::getMarkupTemplate($this->getCommentBoxTemplate());
+			$template    = Renderer::getMarkupTemplate($this->getCommentBoxTemplate());
 			$comment_box = Renderer::replaceMacros($template, [
 				'$return_path' => DI::args()->getQueryString(),
 				'$threaded'    => $this->isThreaded(),
@@ -1194,8 +1184,7 @@ class Post
 	 */
 	protected function checkWallToWall()
 	{
-		$a = DI::app();
-		$conv = $this->getThread();
+		$conv               = $this->getThread();
 		$this->wall_to_wall = false;
 
 		if ($this->isToplevel()) {
@@ -1215,7 +1204,7 @@ class Post
 						 * well that it's the same Bob Smith.
 						 * But it could be somebody else with the same name. It just isn't highly likely.
 						 */
-						$this->owner_name = $this->getDataValue('owner-name');
+						$this->owner_name   = $this->getDataValue('owner-name');
 						$this->wall_to_wall = true;
 
 						$owner = [
@@ -1233,7 +1222,7 @@ class Post
 
 		if (!$this->wall_to_wall) {
 			$this->setTemplate('wall');
-			$this->owner_url = '';
+			$this->owner_url  = '';
 			$this->owner_name = '';
 		}
 	}

@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 // @license magnet:?xt=urn:btih:0b31508aeb0634b347b8270c7bee4d411b5d4109&dn=agpl-3.0.txt AGPLv3-or-later
 /**
  * Contains functions for bootstrap modal handling.
@@ -266,11 +270,15 @@ function editpost(url) {
 
 			// To make dropzone fileupload work on editing a comment, we need to
 			// attach a new dropzone to modal
-			dzFactory.setupDropzone('#jot-text-wrap', 'profile-jot-text');
+			if ($('#jot-text-wrap').length > 0) {
+				dzFactory.setupDropzone('#jot-text-wrap', 'profile-jot-text');
+			}
 
 			modal.show();
 			$("#jot-popup").show();
-			linkPreview = $("#profile-jot-text").linkPreview();
+			if ($("#profile-jot-text").length > 0) {
+				linkPreview = $("#profile-jot-text").linkPreview();
+			}
 		}
 	});
 }

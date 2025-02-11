@@ -1,3 +1,9 @@
+{{*
+  * Copyright (C) 2010-2024, the Friendica project
+  * SPDX-FileCopyrightText: 2010-2024 the Friendica project
+  *
+  * SPDX-License-Identifier: AGPL-3.0-or-later
+  *}}
 
 <div class="vevent event-card">
 	<div class="vevent-header">
@@ -22,7 +28,7 @@
 							{{if $finish}} - <span class="event-end dtend" title="{{$dtend_title}}">{{if $same_date}}{{$end_time}}{{else}}{{$end_short}}{{/if}}</span>{{/if}}
 						</span>
 						{{if $location.name}}
-						<span role="presentation" aria-hidden="true"> · </span>
+						<span aria-hidden="true"> · </span>
 						<span class="event-location event-card-location">{{$location.name}}</span>
 						{{/if}}
 					</div>

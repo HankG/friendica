@@ -1,30 +1,15 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Model\Post;
 
 use BadMethodCallException;
 use Exception;
 use Friendica\Core\Hook;
-use Friendica\Core\Logger;
 use Friendica\Database\Database;
 use Friendica\Database\DBA;
 use Friendica\DI;
@@ -109,15 +94,13 @@ class UserNotification
 	 * Delete a row from the post-user-notification table
 	 *
 	 * @param array $conditions  Field condition(s)
-	 * @param array $options     - cascade: If true we delete records in other tables that depend on the one we're deleting through
-	 *                           relations (default: true)
 	 *
 	 * @return boolean was the deletion successful?
 	 * @throws Exception
 	 */
-	public static function delete(array $conditions, array $options = []): bool
+	public static function delete(array $conditions): bool
 	{
-		return DBA::delete('post-user-notification', $conditions, $options);
+		return DBA::delete('post-user-notification', $conditions);
 	}
 
 	/**
@@ -135,7 +118,7 @@ class UserNotification
 		$fields = ['id', 'uri-id', 'parent-uri-id', 'uid', 'body', 'parent', 'gravity', 'vid', 'gravity',
 			'contact-id', 'author-id', 'author-gsid', 'owner-id', 'owner-gsid', 'causer-id', 'causer-gsid',
 			'private', 'thr-parent', 'thr-parent-id', 'parent-uri-id', 'parent-uri', 'verb'];
-		$item   = Post::selectFirst($fields, ['uri-id' => $uri_id, 'uid' => $uid, 'origin' => false]);
+		$item = Post::selectFirst($fields, ['uri-id' => $uri_id, 'uid' => $uid, 'origin' => false]);
 		if (!DBA::isResult($item)) {
 			return;
 		}
@@ -190,14 +173,14 @@ class UserNotification
 				continue;
 			}
 			if (Contact\User::isBlocked($author_id, $uid) || Contact\User::isIgnored($author_id, $uid) || Contact\User::isCollapsed($author_id, $uid)) {
-				Logger::debug('Author is blocked/ignored/collapsed by user', ['uid' => $uid, 'author' => $author_id, 'uri-id' => $item['uri-id']]);
+				DI::logger()->debug('Author is blocked/ignored/collapsed by user', ['uid' => $uid, 'author' => $author_id, 'uri-id' => $item['uri-id']]);
 				return;
 			}
 		}
 
 		foreach (array_unique([$parent['author-gsid'], $parent['owner-gsid'], $parent['causer-gsid'], $item['author-gsid'], $item['owner-gsid'], $item['causer-gsid']]) as $gsid) {
 			if ($gsid && DI::userGServer()->isIgnoredByUser($uid, $gsid)) {
-				Logger::debug('Server is ignored by user', ['uid' => $uid, 'gsid' => $gsid, 'uri-id' => $item['uri-id']]);
+				DI::logger()->debug('Server is ignored by user', ['uid' => $uid, 'gsid' => $gsid, 'uri-id' => $item['uri-id']]);
 				return;
 			}
 		}
@@ -329,7 +312,7 @@ class UserNotification
 			return;
 		}
 
-		Logger::info('Set notification', ['uri-id' => $item['uri-id'], 'uid' => $uid, 'notification-type' => $notification_type]);
+		DI::logger()->info('Set notification', ['uri-id' => $item['uri-id'], 'uid' => $uid, 'notification-type' => $notification_type]);
 
 		$fields = ['notification-type' => $notification_type];
 		Post\User::update($item['uri-id'], $uid, $fields);

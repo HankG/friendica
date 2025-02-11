@@ -1,23 +1,9 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Module;
 
@@ -44,7 +30,6 @@ class Invite extends BaseModule
 
 		self::checkFormSecurityTokenRedirectOnError('/', 'send_invite');
 
-		$app = DI::app();
 		$config = DI::config();
 
 		$max_invites = intval($config->get('system', 'max_invites'));
@@ -131,7 +116,6 @@ class Invite extends BaseModule
 			throw new HTTPException\ForbiddenException(DI::l10n()->t('Permission denied.'));
 		}
 
-		$app = DI::app();
 		$config = DI::config();
 
 		$inviteOnly = false;
@@ -156,7 +140,7 @@ class Invite extends BaseModule
 			if (Register::getPolicy() === Register::CLOSED) {
 				return DI::l10n()->t('Our apologies. This system is not currently configured to connect with other public sites or invite members.');
 			} else {
-				$linkTxt = DI::l10n()->t('To accept this invitation, please visit and register at %s.', DI::baseUrl() . '/register' 
+				$linkTxt = DI::l10n()->t('To accept this invitation, please visit and register at %s.', DI::baseUrl() . '/register'
 					. "\r\n" . "\r\n" . DI::l10n()->t('Friendica sites all inter-connect to create a huge privacy-enhanced social web that is owned and controlled by its members. They can also connect with many traditional social networks.'));
 			}
 		}

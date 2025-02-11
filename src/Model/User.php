@@ -1,23 +1,9 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Model;
 
@@ -29,7 +15,6 @@ use Friendica\App;
 use Friendica\Content\Pager;
 use Friendica\Core\Hook;
 use Friendica\Core\L10n;
-use Friendica\Core\Logger;
 use Friendica\Core\Protocol;
 use Friendica\Core\Search;
 use Friendica\Core\System;
@@ -99,12 +84,12 @@ class User
 	 *      This will only be assigned to contacts, not to user accounts
 	 * @{
 	 */
-	const ACCOUNT_TYPE_PERSON =       0;
+	const ACCOUNT_TYPE_PERSON       = 0;
 	const ACCOUNT_TYPE_ORGANISATION = 1;
-	const ACCOUNT_TYPE_NEWS =         2;
-	const ACCOUNT_TYPE_COMMUNITY =    3;
-	const ACCOUNT_TYPE_RELAY =        4;
-	const ACCOUNT_TYPE_DELETED =    127;
+	const ACCOUNT_TYPE_NEWS         = 2;
+	const ACCOUNT_TYPE_COMMUNITY    = 3;
+	const ACCOUNT_TYPE_RELAY        = 4;
+	const ACCOUNT_TYPE_DELETED      = 127;
 	/**
 	 * @}
 	 */
@@ -165,44 +150,42 @@ class User
 			}
 		}
 
-		$system['name'] = App::PLATFORM . " '" . App::CODENAME . "' " . App::VERSION . '-' . DB_UPDATE_VERSION;
-		$system['sprvkey'] = $system['uprvkey'] = $system['prvkey'];
-		$system['spubkey'] = $system['upubkey'] = $system['pubkey'];
-		$system['nickname'] = $system['nick'];
-		$system['page-flags'] = self::PAGE_FLAGS_SOAPBOX;
+		$system['name']         = App::PLATFORM . " '" . App::CODENAME . "' " . App::VERSION . '-' . DB_UPDATE_VERSION;
+		$system['uprvkey']      = $system['prvkey'];
+		$system['upubkey']      = $system['pubkey'];
+		$system['nickname']     = $system['nick'];
+		$system['page-flags']   = self::PAGE_FLAGS_SOAPBOX;
 		$system['account-type'] = $system['contact-type'];
-		$system['guid'] = '';
-		$system['picdate'] = '';
-		$system['theme'] = '';
-		$system['publish'] = false;
-		$system['net-publish'] = false;
+		$system['guid']         = '';
+		$system['picdate']      = '';
+		$system['theme']        = '';
+		$system['publish']      = false;
+		$system['net-publish']  = false;
 		$system['hide-friends'] = true;
-		$system['hidewall'] = true;
+		$system['hidewall']     = true;
 		$system['prv_keywords'] = '';
 		$system['pub_keywords'] = '';
-		$system['address'] = '';
-		$system['locality'] = '';
-		$system['region'] = '';
-		$system['postal-code'] = '';
+		$system['address']      = '';
+		$system['locality']     = '';
+		$system['region']       = '';
+		$system['postal-code']  = '';
 		$system['country-name'] = '';
-		$system['homepage'] = (string)DI::baseUrl();
-		$system['dob'] = '0000-00-00';
+		$system['homepage']     = (string)DI::baseUrl();
+		$system['dob']          = '0000-00-00';
 
 		// Ensure that the user contains data
 		$user = DBA::selectFirst('user', ['prvkey', 'guid', 'language'], ['uid' => 0]);
 		if (empty($user['prvkey']) || empty($user['guid'])) {
 			$fields = [
-				'username' => $system['name'],
-				'nickname' => $system['nick'],
+				'username'      => $system['name'],
+				'nickname'      => $system['nick'],
 				'register_date' => $system['created'],
-				'pubkey' => $system['pubkey'],
-				'prvkey' => $system['prvkey'],
-				'spubkey' => $system['spubkey'],
-				'sprvkey' => $system['sprvkey'],
-				'guid' => System::createUUID(),
-				'verified' => true,
-				'page-flags' => self::PAGE_FLAGS_SOAPBOX,
-				'account-type' => self::ACCOUNT_TYPE_RELAY,
+				'pubkey'        => $system['pubkey'],
+				'prvkey'        => $system['prvkey'],
+				'guid'          => System::createUUID(),
+				'verified'      => true,
+				'page-flags'    => self::PAGE_FLAGS_SOAPBOX,
+				'account-type'  => self::ACCOUNT_TYPE_RELAY,
 			];
 
 			DBA::update('user', $fields, ['uid' => 0]);
@@ -366,12 +349,12 @@ class User
 		DI::pConfig()->set($uid, 'system', 'unlisted', true);
 
 		$fields = [
-			'allow_cid'  => '',
-			'allow_gid'  => $user['page-flags'] == self::PAGE_FLAGS_PRVGROUP ? '<' . Circle::FOLLOWERS . '>' : '',
-			'deny_cid'   => '',
-			'deny_gid'   => '',
-			'blockwall'  => true,
-			'blocktags'  => true,
+			'allow_cid' => '',
+			'allow_gid' => $user['page-flags'] == self::PAGE_FLAGS_PRVGROUP ? '<' . Circle::FOLLOWERS . '>' : '',
+			'deny_cid'  => '',
+			'deny_gid'  => '',
+			'blockwall' => true,
+			'blocktags' => true,
 		];
 
 		self::update($fields, $uid);
@@ -410,6 +393,29 @@ class User
 		}
 
 		return 0;
+	}
+
+	/**
+	 * Returns the user id of a given contact id
+	 *
+	 * @param int $cid
+	 *
+	 * @return integer user id
+	 * @throws Exception
+	 */
+	public static function getIdForContactId(int $cid): int
+	{
+		$account = Contact::selectFirstAccountUser(['pid', 'self', 'uid'], ['id' => $cid]);
+		if (empty($account['pid'])) {
+			return 0;
+		}
+
+		if ($account['self']) {
+			return $account['uid'];
+		}
+
+		$self = Contact::selectFirstAccountUser(['uid'], ['pid' => $cid, 'self' => true]);
+		return $self['uid'] ?? 0;
 	}
 
 	/**
@@ -484,12 +490,12 @@ class User
 		// Check if the returned data is valid, otherwise fix it. See issue #6122
 
 		// Check for correct url and normalised nurl
-		$url = DI::baseUrl() . '/profile/' . $owner['nickname'];
+		$url    = DI::baseUrl() . '/profile/' . $owner['nickname'];
 		$repair = empty($owner['baseurl']) || empty($owner['network']) || ($owner['url'] != $url) || ($owner['nurl'] != Strings::normaliseLink($owner['url']));
 
 		if (!$repair) {
 			// Check if "addr" is present and correct
-			$addr = $owner['nickname'] . '@' . substr(DI::baseUrl(), strpos(DI::baseUrl(), '://') + 3);
+			$addr   = $owner['nickname'] . '@' . substr(DI::baseUrl(), strpos(DI::baseUrl(), '://') + 3);
 			$repair = ($addr != $owner['addr']) || empty($owner['prvkey']) || empty($owner['pubkey']);
 		}
 
@@ -514,7 +520,6 @@ class User
 	/**
 	 * Get owner data by nick name
 	 *
-	 * @param int $nick
 	 * @return boolean|array
 	 * @throws Exception
 	 */
@@ -623,7 +628,7 @@ class User
 		$users = DBA::select('user', ['uid', 'language'], $condition);
 		while ($user = DBA::fetch($users)) {
 			$uids[] = $user['uid'];
-			$code = DI::l10n()->toISO6391($user['language']);
+			$code   = DI::l10n()->toISO6391($user['language']);
 			if (!in_array($code, $supported)) {
 				continue;
 			}
@@ -639,7 +644,7 @@ class User
 			$values = unserialize($channel['v']);
 			if (!empty($values) && is_array($values)) {
 				foreach ($values as $language) {
-					$language = DI::l10n()->toISO6391($language);
+					$language             = DI::l10n()->toISO6391($language);
 					$languages[$language] = $language;
 				}
 			}
@@ -671,11 +676,12 @@ class User
 	 * @param mixed  $user_info
 	 * @param string $password
 	 * @param bool   $third_party
+	 * @param bool   $with_blocked
 	 * @return int User Id if authentication is successful
 	 * @throws HTTPException\ForbiddenException
 	 * @throws HTTPException\NotFoundException
 	 */
-	public static function getIdFromPasswordAuthentication($user_info, string $password, bool $third_party = false): int
+	public static function getIdFromPasswordAuthentication($user_info, string $password, bool $third_party = false, bool $with_blocked = false): int
 	{
 		// Addons registered with the "authenticate" hook may create the user on the
 		// fly. `getAuthenticationInfo` will fail if the user doesn't exist yet. If
@@ -683,7 +689,7 @@ class User
 		// user in our database, if applicable, before re-throwing the exception if
 		// they fail.
 		try {
-			$user = self::getAuthenticationInfo($user_info);
+			$user = self::getAuthenticationInfo($user_info, $with_blocked);
 		} catch (Exception $e) {
 			$username = (is_string($user_info) ? $user_info : $user_info['nickname'] ?? '');
 
@@ -776,10 +782,11 @@ class User
 	 * - User array with at least the uid and the hashed password
 	 *
 	 * @param mixed $user_info
+	 * @param bool  $with_blocked
 	 * @return array|null Null if not found/determined
 	 * @throws HTTPException\NotFoundException
 	 */
-	public static function getAuthenticationInfo($user_info)
+	public static function getAuthenticationInfo($user_info, bool $with_blocked = false)
 	{
 		$user = null;
 
@@ -798,25 +805,27 @@ class User
 				throw new Exception(DI::l10n()->t('Not enough information to authenticate'));
 			}
 		} elseif (is_int($user_info) || is_string($user_info)) {
+			$fields = ['uid', 'nickname', 'password', 'legacy_password'];
 			if (is_int($user_info)) {
-				$user = DBA::selectFirst(
-					'user',
-					['uid', 'nickname', 'password', 'legacy_password'],
-					[
-						'uid' => $user_info,
-						'blocked' => 0,
-						'account_expired' => 0,
-						'account_removed' => 0,
-						'verified' => 1
-					]
-				);
+				$condition = [
+					'uid'             => $user_info,
+					'account_expired' => false,
+					'account_removed' => false,
+					'verified'        => true
+				];
+				if (!$with_blocked) {
+					$condition = DBA::mergeConditions($condition, ['blocked' => false]);
+				}
+				$user = DBA::selectFirst('user', $fields, $condition);
 			} else {
-				$fields = ['uid', 'nickname', 'password', 'legacy_password'];
 				$condition = [
 					"(`email` = ? OR `username` = ? OR `nickname` = ?)
-					AND `verified` AND NOT `blocked` AND NOT `account_removed` AND NOT `account_expired`",
+					AND `verified` AND NOT `account_removed` AND NOT `account_expired`",
 					$user_info, $user_info, $user_info
 				];
+				if (!$with_blocked) {
+					$condition = DBA::mergeConditions($condition, ['blocked' => false]);
+				}
 				$user = DBA::selectFirst('user', $fields, $condition);
 			}
 
@@ -847,7 +856,7 @@ class User
 			$fields['login_date'] = DateTimeFormat::utcNow();
 		}
 
-		Logger::debug('Set last activity for user', ['uid' => $user['uid'], 'fields' => $fields]);
+		DI::logger()->debug('Set last activity for user', ['uid' => $user['uid'], 'fields' => $fields]);
 		self::update($fields, $user['uid']);
 		// Set the last activity for all identities of the user
 		DBA::update('user', $fields, ['parent-uid' => $user['uid'], 'verified' => true, 'blocked' => false, 'account_removed' => false, 'account_expired' => false]);
@@ -888,10 +897,10 @@ class User
 
 			return $passwordExposedChecker->passwordExposed($password) === PasswordExposed\Enums\PasswordStatus::EXPOSED;
 		} catch (Exception $e) {
-			Logger::error('Password Exposed Exception: ' . $e->getMessage(), [
-				'code' => $e->getCode(),
-				'file' => $e->getFile(),
-				'line' => $e->getLine(),
+			DI::logger()->error('Password Exposed Exception: ' . $e->getMessage(), [
+				'code'  => $e->getCode(),
+				'file'  => $e->getFile(),
+				'line'  => $e->getLine(),
 				'trace' => $e->getTraceAsString()
 			]);
 
@@ -992,9 +1001,9 @@ class User
 	private static function updatePasswordHashed(int $uid, string $password_hashed): bool
 	{
 		$fields = [
-			'password' => $password_hashed,
-			'pwdreset' => null,
-			'pwdreset_time' => null,
+			'password'        => $password_hashed,
+			'pwdreset'        => null,
+			'pwdreset_time'   => null,
 			'legacy_password' => false
 		];
 		return DBA::update('user', $fields, ['uid' => $uid]);
@@ -1100,7 +1109,7 @@ class User
 				break;
 		}
 
-		$updated  =  '';
+		$updated  = '';
 		$mimetype = '';
 
 		$photo = Photo::selectFirst(['type', 'created', 'edited', 'updated'], ["scale" => $scale, 'uid' => $user['uid'], 'profile' => true]);
@@ -1205,13 +1214,14 @@ class User
 					throw new Exception(DI::l10n()->t('Invalid OpenID url'));
 				}
 				$_SESSION['register'] = 1;
-				$_SESSION['openid'] = $openid_url;
+				$_SESSION['openid']   = $openid_url;
 
 				$openid = new LightOpenID(DI::baseUrl()->getHost());
-				$openid->identity = $openid_url;
+				/** @phpstan-ignore-next-line $openid->identity is private, but will be set via magic setter */
+				$openid->identity  = $openid_url;
 				$openid->returnUrl = DI::baseUrl() . '/openid';
-				$openid->required = ['namePerson/friendly', 'contact/email', 'namePerson'];
-				$openid->optional = ['namePerson/first', 'media/image/aspect11', 'media/image/default'];
+				$openid->required  = ['namePerson/friendly', 'contact/email', 'namePerson'];
+				$openid->optional  = ['namePerson/first', 'media/image/aspect11', 'media/image/default'];
 				try {
 					$authurl = $openid->authUrl();
 				} catch (Exception $e) {
@@ -1235,8 +1245,8 @@ class User
 		$username_max_length = max(1, min(64, intval(DI::config()->get('system', 'username_max_length', 48))));
 
 		if ($username_min_length > $username_max_length) {
-			Logger::error(DI::l10n()->t('system.username_min_length (%s) and system.username_max_length (%s) are excluding each other, swapping values.', $username_min_length, $username_max_length));
-			$tmp = $username_min_length;
+			DI::logger()->error(DI::l10n()->t('system.username_min_length (%s) and system.username_max_length (%s) are excluding each other, swapping values.', $username_min_length, $username_max_length));
+			$tmp                 = $username_min_length;
 			$username_min_length = $username_max_length;
 			$username_max_length = $tmp;
 		}
@@ -1293,7 +1303,7 @@ class User
 			throw new Exception(DI::l10n()->t('Nickname is already registered. Please choose another.'));
 		}
 
-		$new_password = strlen($password) ? $password : self::generateNewPassword();
+		$new_password         = strlen($password) ? $password : self::generateNewPassword();
 		$new_password_encoded = self::hashPassword($new_password);
 
 		$return['password'] = $new_password;
@@ -1306,32 +1316,25 @@ class User
 		$prvkey = $keys['prvkey'];
 		$pubkey = $keys['pubkey'];
 
-		// Create another keypair for signing/verifying salmon protocol messages.
-		$sres = Crypto::newKeypair(512);
-		$sprvkey = $sres['prvkey'];
-		$spubkey = $sres['pubkey'];
-
 		$insert_result = DBA::insert('user', [
-			'guid'     => System::createUUID(),
-			'username' => $username,
-			'password' => $new_password_encoded,
-			'email'    => $email,
-			'openid'   => $openid_url,
-			'nickname' => $nickname,
-			'pubkey'   => $pubkey,
-			'prvkey'   => $prvkey,
-			'spubkey'  => $spubkey,
-			'sprvkey'  => $sprvkey,
-			'verified' => $verified,
-			'blocked'  => $blocked,
-			'language' => $language,
-			'timezone' => 'UTC',
-			'register_date' => DateTimeFormat::utcNow(),
+			'guid'             => System::createUUID(),
+			'username'         => $username,
+			'password'         => $new_password_encoded,
+			'email'            => $email,
+			'openid'           => $openid_url,
+			'nickname'         => $nickname,
+			'pubkey'           => $pubkey,
+			'prvkey'           => $prvkey,
+			'verified'         => $verified,
+			'blocked'          => $blocked,
+			'language'         => $language,
+			'timezone'         => 'UTC',
+			'register_date'    => DateTimeFormat::utcNow(),
 			'default-location' => ''
 		]);
 
 		if ($insert_result) {
-			$uid = DBA::lastInsertId();
+			$uid  = DBA::lastInsertId();
 			$user = DBA::selectFirst('user', [], ['uid' => $uid]);
 		} else {
 			throw new Exception(DI::l10n()->t('An error occurred during registration. Please try again.'));
@@ -1351,11 +1354,11 @@ class User
 		}
 
 		$insert_result = DBA::insert('profile', [
-			'uid' => $uid,
-			'name' => $username,
-			'photo' => self::getAvatarUrl($user),
-			'thumb' => self::getAvatarUrl($user, Proxy::SIZE_THUMB),
-			'publish' => $publish,
+			'uid'         => $uid,
+			'name'        => $username,
+			'photo'       => self::getAvatarUrl($user),
+			'thumb'       => self::getAvatarUrl($user, Proxy::SIZE_THUMB),
+			'publish'     => $publish,
 			'net-publish' => $netpublish,
 		]);
 		if (!$insert_result) {
@@ -1402,14 +1405,20 @@ class User
 			$photo_failure = false;
 
 			$filename = basename($photo);
-			$curlResult = DI::httpClient()->get($photo, HttpClientAccept::IMAGE, [HttpClientOptions::REQUEST => HttpClientRequest::CONTENTTYPE]);
-			if ($curlResult->isSuccess()) {
-				Logger::debug('Got picture', ['Content-Type' => $curlResult->getHeader('Content-Type'), 'url' => $photo]);
-				$img_str = $curlResult->getBodyString();
-				$type = $curlResult->getContentType();
-			} else {
+			try {
+				$curlResult = DI::httpClient()->get($photo, HttpClientAccept::IMAGE, [HttpClientOptions::REQUEST => HttpClientRequest::CONTENTTYPE]);
+				if ($curlResult->isSuccess()) {
+					DI::logger()->debug('Got picture', ['Content-Type' => $curlResult->getHeader('Content-Type'), 'url' => $photo]);
+					$img_str = $curlResult->getBodyString();
+					$type    = $curlResult->getContentType();
+				} else {
+					$img_str = '';
+					$type    = '';
+				}
+			} catch (\Throwable $th) {
+				DI::logger()->notice('Got exception', ['code' => $th->getCode(), 'message' => $th->getMessage()]);
 				$img_str = '';
-				$type = '';
+				$type    = '';
 			}
 
 			$image = new Image($img_str, $type, $photo);
@@ -1487,7 +1496,7 @@ class User
 	 * @param bool $block Block state (default is true)
 	 *
 	 * @return bool True, if successfully blocked
-
+	 *
 	 * @throws Exception
 	 */
 	public static function block(int $uid, bool $block = true): bool
@@ -1592,21 +1601,21 @@ class User
 	public static function createMinimal(string $name, string $email, string $nick, string $lang = L10n::DEFAULT, string $avatar = ''): bool
 	{
 		if (empty($name) ||
-		    empty($email) ||
-		    empty($nick)) {
+			empty($email) ||
+			empty($nick)) {
 			throw new HTTPException\InternalServerErrorException('Invalid arguments.');
 		}
 
 		$result = self::create([
 			'username' => $name,
-			'email' => $email,
+			'email'    => $email,
 			'nickname' => $nick,
 			'verified' => 1,
 			'language' => $lang,
-			'photo' => $avatar
+			'photo'    => $avatar
 		]);
 
-		$user = $result['user'];
+		$user     = $result['user'];
 		$preamble = Strings::deindent(DI::l10n()->t('
 		Dear %1$s,
 			the administrator of %2$s has set up an account for you.'));
@@ -1638,7 +1647,7 @@ class User
 		Thank you and welcome to %4$s.'));
 
 		$preamble = sprintf($preamble, $user['username'], DI::config()->get('config', 'sitename'));
-		$body = sprintf($body, DI::baseUrl(), $user['nickname'], $result['password'], DI::config()->get('config', 'sitename'));
+		$body     = sprintf($body, DI::baseUrl(), $user['nickname'], $result['password'], DI::config()->get('config', 'sitename'));
 
 		$email = DI::emailer()
 			->newSystemMail()
@@ -1767,7 +1776,7 @@ class User
 			throw new \InvalidArgumentException('uid needs to be greater than 0');
 		}
 
-		Logger::notice('Removing user', ['user' => $uid]);
+		DI::logger()->notice('Removing user', ['user' => $uid]);
 
 		$user = self::getById($uid);
 		if (!$user) {
@@ -1839,7 +1848,7 @@ class User
 		if (!$user['parent-uid']) {
 			// First add our own entry
 			$identities = [[
-				'uid' => $user['uid'],
+				'uid'      => $user['uid'],
 				'username' => $user['username'],
 				'nickname' => $user['nickname']
 			]];
@@ -1937,17 +1946,20 @@ class User
 			'active_users_weekly'   => 0,
 		];
 
-		$userStmt = DBA::select('owner-view', ['uid', 'last-activity', 'last-item'],
+		$userStmt = DBA::select(
+			'owner-view',
+			['uid', 'last-activity', 'last-item'],
 			["`verified` AND `last-activity` > ? AND NOT `blocked`
 			AND NOT `account_removed` AND NOT `account_expired`",
-			DBA::NULL_DATETIME]);
+				DBA::NULL_DATETIME]
+		);
 		if (!DBA::isResult($userStmt)) {
 			return $statistics;
 		}
 
 		$halfyear = time() - (180 * 24 * 60 * 60);
-		$month = time() - (30 * 24 * 60 * 60);
-		$week = time() - (7 * 24 * 60 * 60);
+		$month    = time() - (30 * 24 * 60 * 60);
+		$week     = time() - (7 * 24 * 60 * 60);
 
 		while ($user = DBA::fetch($userStmt)) {
 			$statistics['total_users']++;
@@ -1985,18 +1997,18 @@ class User
 	 */
 	public static function getList(int $start = 0, int $count = Pager::ITEMS_PER_PAGE, string $type = 'all', string $order = 'name', bool $descending = false)
 	{
-		$param = ['limit' => [$start, $count], 'order' => [$order => $descending]];
+		$param     = ['limit' => [$start, $count], 'order' => [$order => $descending]];
 		$condition = [];
 		switch ($type) {
 			case 'active':
 				$condition['account_removed'] = false;
-				$condition['blocked'] = false;
+				$condition['blocked']         = false;
 				break;
 
 			case 'blocked':
 				$condition['account_removed'] = false;
-				$condition['blocked'] = true;
-				$condition['verified'] = true;
+				$condition['blocked']         = true;
+				$condition['verified']        = true;
 				break;
 
 			case 'removed':
@@ -2076,19 +2088,19 @@ class User
 
 		$register_policy = DI::config()->get('config', 'register_policy');
 		if (!in_array($register_policy, [Module\Register::OPEN, Module\Register::CLOSED])) {
-			Logger::debug('Unsupported register policy.', ['policy' => $register_policy]);
+			DI::logger()->debug('Unsupported register policy.', ['policy' => $register_policy]);
 			return;
 		}
 
 		$users = DBA::count('user', ['blocked' => false, 'account_removed' => false, 'account_expired' => false]);
 		if (($users >= $max_registered_users) && ($register_policy == Module\Register::OPEN)) {
 			DI::config()->set('config', 'register_policy', Module\Register::CLOSED);
-			Logger::notice('Max users reached, registration is closed.', ['users' => $users, 'max' => $max_registered_users]);
+			DI::logger()->notice('Max users reached, registration is closed.', ['users' => $users, 'max' => $max_registered_users]);
 		} elseif (($users < $max_registered_users) && ($register_policy == Module\Register::CLOSED)) {
 			DI::config()->set('config', 'register_policy', Module\Register::OPEN);
-			Logger::notice('Below maximum users, registration is opened.', ['users' => $users, 'max' => $max_registered_users]);
+			DI::logger()->notice('Below maximum users, registration is opened.', ['users' => $users, 'max' => $max_registered_users]);
 		} else {
-			Logger::debug('Unchanged register policy', ['policy' => $register_policy, 'users' => $users, 'max' => $max_registered_users]);
+			DI::logger()->debug('Unchanged register policy', ['policy' => $register_policy, 'users' => $users, 'max' => $max_registered_users]);
 		}
 	}
 }

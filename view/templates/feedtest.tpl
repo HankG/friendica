@@ -1,3 +1,9 @@
+{{*
+  * Copyright (C) 2010-2024, the Friendica project
+  * SPDX-FileCopyrightText: 2010-2024 the Friendica project
+  *
+  * SPDX-License-Identifier: AGPL-3.0-or-later
+  *}}
 <div id="feedtest" class="generic-page-wrapper">
 	<h2>Feed Test</h2>
 	<form action="feedtest" method="get" class="panel panel-default">

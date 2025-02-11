@@ -1,23 +1,9 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Core\PConfig\Repository;
 
@@ -74,7 +60,11 @@ class PConfig
 			} else {
 				$configs = $this->db->select(static::$table_name, ['cat', 'v', 'k'], ['cat' => $cat, 'uid' => $uid]);
 			}
+		} catch (\Exception $exception) {
+			throw new PConfigPersistenceException(sprintf('Cannot load config category "%s" for user %d', $cat, $uid), $exception);
+		}
 
+		try {
 			while ($config = $this->db->fetch($configs)) {
 				$key   = $config['k'];
 				$value = ValueConversion::toConfigValue($config['v']);
@@ -85,10 +75,11 @@ class PConfig
 				}
 			}
 		} catch (\Exception $exception) {
-			throw new PConfigPersistenceException(sprintf('Cannot load config category %s for user %d', $cat, $uid), $exception);
-		} finally {
 			$this->db->close($configs);
+			throw new PConfigPersistenceException(sprintf('Cannot load config category "%s" for user %d', $cat, $uid), $exception);
 		}
+
+		$this->db->close($configs);
 
 		return $return;
 	}

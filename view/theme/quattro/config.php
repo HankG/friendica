@@ -1,29 +1,17 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2024, the Friendica project
+ * Copyright (C) 2010-2024, the Friendica project
+ * SPDX-FileCopyrightText: 2010-2024 the Friendica project
  *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: AGPL-3.0-or-later
  *
  */
 
-use Friendica\App;
+use Friendica\AppHelper;
 use Friendica\Core\Renderer;
 use Friendica\DI;
 
-function theme_content(App $a) {
+function theme_content(AppHelper $appHelper) {
 	if (!DI::userSession()->getLocalUserId()) {
 		return;
 	}
@@ -33,10 +21,10 @@ function theme_content(App $a) {
 	$tfs = DI::pConfig()->get(DI::userSession()->getLocalUserId(),"quattro","tfs");
 	$pfs = DI::pConfig()->get(DI::userSession()->getLocalUserId(),"quattro","pfs");
 
-	return quattro_form($a,$align, $color, $tfs, $pfs);
+	return quattro_form($appHelper,$align, $color, $tfs, $pfs);
 }
 
-function theme_post(App $a) {
+function theme_post(AppHelper $appHelper) {
 	if (!DI::userSession()->getLocalUserId()) {
 		return;
 	}
@@ -49,16 +37,16 @@ function theme_post(App $a) {
 	}
 }
 
-function theme_admin(App $a) {
+function theme_admin(AppHelper $appHelper) {
 	$align = DI::config()->get('quattro', 'align' );
 	$color = DI::config()->get('quattro', 'color' );
 	$tfs = DI::config()->get("quattro","tfs");
 	$pfs = DI::config()->get("quattro","pfs");
 
-	return quattro_form($a,$align, $color, $tfs, $pfs);
+	return quattro_form($appHelper,$align, $color, $tfs, $pfs);
 }
 
-function theme_admin_post(App $a) {
+function theme_admin_post() {
 	if (isset($_POST['quattro-settings-submit'])){
 		DI::config()->set('quattro', 'align', $_POST['quattro_align']);
 		DI::config()->set('quattro', 'color', $_POST['quattro_color']);
@@ -68,7 +56,7 @@ function theme_admin_post(App $a) {
 }
 
 /// @TODO $a is no longer used here
-function quattro_form(App $a, $align, $color, $tfs, $pfs) {
+function quattro_form(AppHelper $appHelper, $align, $color, $tfs, $pfs) {
 	$colors = [
 		"dark"  => "Quattro",
 		"lilac" => "Lilac",

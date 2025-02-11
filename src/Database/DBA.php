@@ -1,26 +1,13 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Database;
 
+use Friendica\Core\Lock\Exception\LockPersistenceException;
 use Friendica\DI;
 use mysqli;
 use mysqli_result;
@@ -246,7 +233,7 @@ class DBA
 	/**
 	 * Returns the number of columns of a statement
 	 *
-	 * @param object Statement object
+	 * @param object $stmt Statement object
 	 * @return int Number of columns
 	 */
 	public static function columnCount($stmt): int
@@ -256,7 +243,7 @@ class DBA
 	/**
 	 * Returns the number of rows of a statement
 	 *
-	 * @param PDOStatement|mysqli_result|mysqli_stmt Statement object
+	 * @param PDOStatement|mysqli_result|mysqli_stmt $stmt Statement object
 	 * @return int Number of rows
 	 */
 	public static function numRows($stmt): int
@@ -377,9 +364,9 @@ class DBA
 	 * @return boolean was the delete successful?
 	 * @throws \Exception
 	 */
-	public static function delete(string $table, array $conditions, array $options = []): bool
+	public static function delete(string $table, array $conditions): bool
 	{
-		return DI::dba()->delete($table, $conditions, $options);
+		return DI::dba()->delete($table, $conditions);
 	}
 
 	/**
@@ -769,7 +756,7 @@ class DBA
 	/**
 	 * Returns the error number of the last query
 	 *
-	 * @return string Error number (0 if no error)
+	 * @return int Error number (0 if no error)
 	 */
 	public static function errorNo(): int
 	{
@@ -821,6 +808,27 @@ class DBA
 	public static function optimizeTable(string $table): bool
 	{
 		return DI::dba()->optimizeTable($table);
+	}
+
+	/**
+	 * Acquire a lock to prevent a table optimization
+	 *
+	 * @return bool
+	 * @throws LockPersistenceException
+	 */
+	public static function acquireOptimizeLock(): bool
+	{
+		return DI::dba()->acquireOptimizeLock();
+	}
+
+	/**
+	 * Release the table optimization lock
+	 * @return bool
+	 * @throws LockPersistenceException
+	 */
+	public static function releaseOptimizeLock(): bool
+	{
+		return DI::dba()->releaseOptimizeLock();
 	}
 
 	/**

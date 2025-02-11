@@ -1,27 +1,17 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Module\Profile;
 
-use Friendica\App;
+use Friendica\App\Arguments;
+use Friendica\App\BaseURL;
+use Friendica\App\Mode;
+use Friendica\App\Page;
+use Friendica\AppHelper;
 use Friendica\Content\Conversation;
 use Friendica\Content\Nav;
 use Friendica\Content\Pager;
@@ -53,9 +43,9 @@ use Psr\Log\LoggerInterface;
 
 class Conversations extends BaseProfile
 {
-	/** @var App */
-	private $app;
-	/** @var App\Page */
+	/** @var AppHelper */
+	private $appHelper;
+	/** @var Page */
 	private $page;
 	/** @var DateTimeFormat */
 	private $dateTimeFormat;
@@ -67,14 +57,14 @@ class Conversations extends BaseProfile
 	private $conversation;
 	/** @var IManagePersonalConfigValues */
 	private $pConfig;
-	/** @var App\Mode */
+	/** @var Mode */
 	private $mode;
 
-	public function __construct(App\Mode $mode, IManagePersonalConfigValues $pConfig, Conversation $conversation, IHandleUserSessions $session, IManageConfigValues $config, DateTimeFormat $dateTimeFormat, App\Page $page, App $app, L10n $l10n, App\BaseURL $baseUrl, App\Arguments $args, LoggerInterface $logger, Profiler $profiler, Response $response, array $server, array $parameters = [])
+	public function __construct(Mode $mode, IManagePersonalConfigValues $pConfig, Conversation $conversation, IHandleUserSessions $session, IManageConfigValues $config, DateTimeFormat $dateTimeFormat, Page $page, AppHelper $appHelper, L10n $l10n, BaseURL $baseUrl, Arguments $args, LoggerInterface $logger, Profiler $profiler, Response $response, array $server, array $parameters = [])
 	{
 		parent::__construct($l10n, $baseUrl, $args, $logger, $profiler, $response, $server, $parameters);
 
-		$this->app            = $app;
+		$this->appHelper      = $appHelper;
 		$this->page           = $page;
 		$this->dateTimeFormat = $dateTimeFormat;
 		$this->config         = $config;
@@ -86,7 +76,7 @@ class Conversations extends BaseProfile
 
 	protected function content(array $request = []): string
 	{
-		$profile = ProfileModel::load($this->app, $this->parameters['nickname'] ?? '');
+		$profile = ProfileModel::load($this->appHelper, $this->parameters['nickname'] ?? '');
 		if (empty($profile)) {
 			throw new HTTPException\NotFoundException($this->t('User not found.'));
 		}
@@ -103,7 +93,6 @@ class Conversations extends BaseProfile
 			$this->page['htmlhead'] .= '<meta content="noindex, noarchive" name="robots" />' . "\n";
 		}
 
-		$this->page['htmlhead'] .= '<link rel="alternate" type="application/atom+xml" href="' . $this->baseUrl . '/dfrn_poll/' . $this->parameters['nickname'] . '" title="DFRN: ' . $this->t('%s\'s timeline', Strings::escapeHtml($profile['name'])) . '"/>' . "\n";
 		$this->page['htmlhead'] .= '<link rel="alternate" type="application/atom+xml" href="' . $this->baseUrl . '/feed/' . $this->parameters['nickname'] . '/" title="' . $this->t('%s\'s posts', Strings::escapeHtml($profile['name'])) . '"/>' . "\n";
 		$this->page['htmlhead'] .= '<link rel="alternate" type="application/atom+xml" href="' . $this->baseUrl . '/feed/' . $this->parameters['nickname'] . '/comments" title="' . $this->t('%s\'s comments', Strings::escapeHtml($profile['name'])) . '"/>' . "\n";
 		$this->page['htmlhead'] .= '<link rel="alternate" type="application/atom+xml" href="' . $this->baseUrl . '/feed/' . $this->parameters['nickname'] . '/activity" title="' . $this->t('%s\'s timeline', Strings::escapeHtml($profile['name'])) . '"/>' . "\n";
@@ -181,11 +170,11 @@ class Conversations extends BaseProfile
 		}
 
 		if (!empty($datequery)) {
-			$condition = DBA::mergeConditions($condition, ["`received` <= ?", DateTimeFormat::convert($datequery, 'UTC', $this->app->getTimeZone())]);
+			$condition = DBA::mergeConditions($condition, ["`received` <= ?", DateTimeFormat::convert($datequery, 'UTC', $this->appHelper->getTimeZone())]);
 		}
 
 		if (!empty($datequery2)) {
-			$condition = DBA::mergeConditions($condition, ["`received` >= ?", DateTimeFormat::convert($datequery2, 'UTC', $this->app->getTimeZone())]);
+			$condition = DBA::mergeConditions($condition, ["`received` >= ?", DateTimeFormat::convert($datequery2, 'UTC', $this->appHelper->getTimeZone())]);
 		}
 
 		// Does the profile page belong to a group?
@@ -240,7 +229,7 @@ class Conversations extends BaseProfile
 			$items  = array_merge($items, $pinned);
 		}
 
-		$o .= $this->conversation->render($items, Conversation::MODE_PROFILE, false, false, 'pinned_received', $profile['uid']);
+		$o .= $this->conversation->render($items, Conversation::MODE_PROFILE, false, false, 'pinned_received', $this->session->getLocalUserId());
 
 		$o .= $pager->renderMinimal(count($items));
 

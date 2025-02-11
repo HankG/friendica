@@ -1,21 +1,9 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
+
+/* Copyright (C) 2010-2024, the Friendica project
+ * SPDX-FileCopyrightText: 2010-2024 the Friendica project
  *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: AGPL-3.0-or-later
  *
  * Main database structure configuration file.
  *
@@ -56,7 +44,7 @@ use Friendica\Database\DBA;
 
 // This file is required several times during the test in DbaDefinition which justifies this condition
 if (!defined('DB_UPDATE_VERSION')) {
-	define('DB_UPDATE_VERSION', 1565);
+	define('DB_UPDATE_VERSION', 1577);
 }
 
 return [
@@ -67,7 +55,7 @@ return [
 			"id" => ["type" => "int unsigned", "not null" => "1", "extra" => "auto_increment", "primary" => "1", "comment" => "sequential ID"],
 			"url" => ["type" => "varbinary(383)", "not null" => "1", "default" => "", "comment" => ""],
 			"nurl" => ["type" => "varbinary(383)", "not null" => "1", "default" => "", "comment" => ""],
-			"version" => ["type" => "varchar(255)", "not null" => "1", "default" => "", "comment" => ""],
+			"version" => ["type" => "varchar(255)", "not null" => "1", "default" => "", "comment" => "The version of this server software."],
 			"site_name" => ["type" => "varchar(255)", "not null" => "1", "default" => "", "comment" => ""],
 			"info" => ["type" => "text", "comment" => ""],
 			"register_policy" => ["type" => "tinyint", "not null" => "1", "default" => "0", "comment" => ""],
@@ -84,7 +72,9 @@ return [
 			"noscrape" => ["type" => "varbinary(383)", "not null" => "1", "default" => "", "comment" => ""],
 			"network" => ["type" => "char(4)", "not null" => "1", "default" => "", "comment" => ""],
 			"protocol" => ["type" => "tinyint unsigned", "comment" => "The protocol of the server"],
-			"platform" => ["type" => "varchar(255)", "not null" => "1", "default" => "", "comment" => ""],
+			"platform" => ["type" => "varchar(255)", "not null" => "1", "default" => "", "comment" => "The canonical name of this server software."],
+			"repository" => ["type" => "varbinary(383)", "comment" => "The url of the source code repository of this server software."],
+			"homepage" => ["type" => "varbinary(383)", "comment" => "The url of the homepage of this server software."],
 			"relay-subscribe" => ["type" => "boolean", "not null" => "1", "default" => "0", "comment" => "Has the server subscribed to the relay system"],
 			"relay-scope" => ["type" => "varchar(10)", "not null" => "1", "default" => "", "comment" => "The scope of messages that the server wants to get"],
 			"detection-method" => ["type" => "tinyint unsigned", "comment" => "Method that had been used to detect that server"],
@@ -125,8 +115,6 @@ return [
 			"theme" => ["type" => "varchar(255)", "not null" => "1", "default" => "", "comment" => "user theme preference"],
 			"pubkey" => ["type" => "text", "comment" => "RSA public key 4096 bit"],
 			"prvkey" => ["type" => "text", "comment" => "RSA private key 4096 bit"],
-			"spubkey" => ["type" => "text", "comment" => ""],
-			"sprvkey" => ["type" => "text", "comment" => ""],
 			"verified" => ["type" => "boolean", "not null" => "1", "default" => "0", "comment" => "user is verified through email"],
 			"blocked" => ["type" => "boolean", "not null" => "1", "default" => "0", "comment" => "1 for user is blocked"],
 			"blockwall" => ["type" => "boolean", "not null" => "1", "default" => "0", "comment" => "Prohibit contacts to post to the profile page of the user"],
@@ -239,7 +227,6 @@ return [
 			"remote_self" => ["type" => "boolean", "not null" => "1", "default" => "0", "comment" => ""],
 			"rel" => ["type" => "tinyint unsigned", "not null" => "1", "default" => "0", "comment" => "The kind of the relation between the user and the contact"],
 			"protocol" => ["type" => "char(4)", "not null" => "1", "default" => "", "comment" => "Protocol of the contact"],
-			"subhub" => ["type" => "boolean", "not null" => "1", "default" => "0", "comment" => ""],
 			"hub-verify" => ["type" => "varbinary(383)", "not null" => "1", "default" => "", "comment" => ""],
 			"rating" => ["type" => "tinyint", "not null" => "1", "default" => "0", "comment" => "Automatically detected feed poll frequency"],
 			"priority" => ["type" => "tinyint unsigned", "not null" => "1", "default" => "0", "comment" => "Feed poll priority"],
@@ -430,6 +417,7 @@ return [
 			"manually-approve" => ["type" => "boolean", "comment" => ""],
 			"discoverable" => ["type" => "boolean", "comment" => "Mastodon extension: true if profile is published in their directory"],
 			"suspended" => ["type" => "boolean", "comment" => "Mastodon extension: true if profile is suspended"],
+			"posting-restricted" => ["type" => "boolean", "comment" => "lemmy:postingRestrictedToMods"],
 			"nick" => ["type" => "varchar(255)", "not null" => "1", "default" => "", "comment" => ""],
 			"name" => ["type" => "varchar(255)", "comment" => ""],
 			"about" => ["type" => "text", "comment" => ""],
@@ -865,6 +853,7 @@ return [
 			"activity-id" => ["type" => "varbinary(383)", "comment" => "id of the incoming activity"],
 			"object-id" => ["type" => "varbinary(383)", "comment" => ""],
 			"in-reply-to-id" => ["type" => "varbinary(383)", "comment" => ""],
+			"context" => ["type" => "varbinary(383)", "comment" => ""],
 			"conversation" => ["type" => "varbinary(383)", "comment" => ""],
 			"type" => ["type" => "varchar(64)", "comment" => "Type of the activity"],
 			"object-type" => ["type" => "varchar(64)", "comment" => "Type of the object activity"],
@@ -875,6 +864,7 @@ return [
 			"push" => ["type" => "boolean", "comment" => "Is the entry pushed or have pulled it?"],
 			"trust" => ["type" => "boolean", "comment" => "Do we trust this entry?"],
 			"wid" => ["type" => "int unsigned", "foreign" => ["workerqueue" => "id"], "comment" => "Workerqueue id"],
+			"retrial" => ["type" => "tinyint unsigned", "default" => "0", "comment" => "Retrial counter"],
 		],
 		"indexes" => [
 			"PRIMARY" => ["id"],
@@ -1219,6 +1209,7 @@ return [
 			"parent-uri-id" => ["type" => "int unsigned", "foreign" => ["item-uri" => "id"], "comment" => "Id of the item-uri table that contains the parent uri"],
 			"thr-parent-id" => ["type" => "int unsigned", "foreign" => ["item-uri" => "id"], "comment" => "Id of the item-uri table that contains the thread parent uri"],
 			"external-id" => ["type" => "int unsigned", "foreign" => ["item-uri" => "id"], "comment" => "Id of the item-uri table entry that contains the external uri"],
+			"replies-id" => ["type" => "int unsigned", "foreign" => ["item-uri" => "id"], "comment" => "Id of the item-uri table entry that contains the endpoint for the replies collection"],
 			"created" => ["type" => "datetime", "not null" => "1", "default" => DBA::NULL_DATETIME, "comment" => "Creation timestamp."],
 			"edited" => ["type" => "datetime", "not null" => "1", "default" => DBA::NULL_DATETIME, "comment" => "Date of last edit (default is created)"],
 			"received" => ["type" => "datetime", "not null" => "1", "default" => DBA::NULL_DATETIME, "comment" => "datetime"],
@@ -1239,6 +1230,7 @@ return [
 			"parent-uri-id" => ["parent-uri-id"],
 			"thr-parent-id" => ["thr-parent-id"],
 			"external-id" => ["external-id"],
+			"replies-id" => ["replies-id"],
 			"owner-id" => ["owner-id"],
 			"author-id" => ["author-id"],
 			"causer-id" => ["causer-id"],
@@ -1358,7 +1350,6 @@ return [
 			"dfrn" => ["type" => "mediumint", "not null" => "1", "default" => "0", "comment" => "Number of successful deliveries via DFRN"],
 			"legacy_dfrn" => ["type" => "mediumint", "not null" => "1", "default" => "0", "comment" => "Number of successful deliveries via legacy DFRN"],
 			"diaspora" => ["type" => "mediumint", "not null" => "1", "default" => "0", "comment" => "Number of successful deliveries via Diaspora"],
-			"ostatus" => ["type" => "mediumint", "not null" => "1", "default" => "0", "comment" => "Number of successful deliveries via OStatus"],
 		],
 		"indexes" => [
 			"PRIMARY" => ["uri-id"],
@@ -1436,6 +1427,7 @@ return [
 			"uri-id" => ["type" => "int unsigned", "not null" => "1", "foreign" => ["item-uri" => "id"], "comment" => "Id of the item-uri table entry that contains the item uri"],
 			"url" => ["type" => "varbinary(1024)", "not null" => "1", "comment" => "Media URL"],
 			"media-uri-id" => ["type" => "int unsigned", "foreign" => ["item-uri" => "id"], "comment" => "Id of the item-uri table entry that contains the activities uri-id"],
+			"attach-id" => ["type" => "int unsigned", "foreign" => ["attach" => "id"], "comment" => "In case of a local attachment, this field is filled with the id in the attach table"],
 			"type" => ["type" => "tinyint unsigned", "not null" => "1", "default" => "0", "comment" => "Media type"],
 			"mimetype" => ["type" => "varchar(60)", "comment" => ""],
 			"height" => ["type" => "smallint unsigned", "comment" => "Height of the media"],
@@ -1459,6 +1451,7 @@ return [
 			"uri-id-url" => ["UNIQUE", "uri-id", "url(512)"],
 			"uri-id-id" => ["uri-id", "id"],
 			"media-uri-id" => ["media-uri-id"],
+			"attach-id" => ["attach-id"],
 		]
 	],
 	"post-origin" => [
@@ -1550,6 +1543,7 @@ return [
 		"comment" => "Thread related data",
 		"fields" => [
 			"uri-id" => ["type" => "int unsigned", "not null" => "1", "primary" => "1", "foreign" => ["item-uri" => "id"], "comment" => "Id of the item-uri table entry that contains the item uri"],
+			"context-id" => ["type" => "int unsigned", "foreign" => ["item-uri" => "id"], "comment" => "Id of the item-uri table entry that contains the endpoint for the context collection"],
 			"conversation-id" => ["type" => "int unsigned", "foreign" => ["item-uri" => "id"], "comment" => "Id of the item-uri table entry that contains the conversation uri"],
 			"owner-id" => ["type" => "int unsigned", "not null" => "1", "default" => "0", "foreign" => ["contact" => "id", "on delete" => "restrict"], "comment" => "Item owner"],
 			"author-id" => ["type" => "int unsigned", "not null" => "1", "default" => "0", "foreign" => ["contact" => "id", "on delete" => "restrict"], "comment" => "Item author"],
@@ -1562,6 +1556,7 @@ return [
 		],
 		"indexes" => [
 			"PRIMARY" => ["uri-id"],
+			"context-id" => ["context-id"],
 			"conversation-id" => ["conversation-id"],
 			"owner-id" => ["owner-id"],
 			"author-id" => ["author-id"],
@@ -1578,6 +1573,7 @@ return [
 			"parent-uri-id" => ["type" => "int unsigned", "foreign" => ["item-uri" => "id"], "comment" => "Id of the item-uri table that contains the parent uri"],
 			"thr-parent-id" => ["type" => "int unsigned", "foreign" => ["item-uri" => "id"], "comment" => "Id of the item-uri table that contains the thread parent uri"],
 			"external-id" => ["type" => "int unsigned", "foreign" => ["item-uri" => "id"], "comment" => "Id of the item-uri table entry that contains the external uri"],
+			"replies-id" => ["type" => "int unsigned", "foreign" => ["item-uri" => "id"], "comment" => "Id of the item-uri table entry that contains the endpoint for the replies collection"],
 			"created" => ["type" => "datetime", "not null" => "1", "default" => DBA::NULL_DATETIME, "comment" => "Creation timestamp."],
 			"edited" => ["type" => "datetime", "not null" => "1", "default" => DBA::NULL_DATETIME, "comment" => "Date of last edit (default is created)"],
 			"received" => ["type" => "datetime", "not null" => "1", "default" => DBA::NULL_DATETIME, "comment" => "datetime"],
@@ -1608,10 +1604,11 @@ return [
 		"indexes" => [
 			"PRIMARY" => ["id"],
 			"uid_uri-id" => ["UNIQUE", "uid", "uri-id"],
-			"uri-id" => ["uri-id"],
+			"uri-id_origin_deleted" => ["uri-id", "origin", "deleted"],
 			"parent-uri-id" => ["parent-uri-id"],
 			"thr-parent-id" => ["thr-parent-id"],
 			"external-id" => ["external-id"],
+			"replies-id" => ["replies-id"],
 			"owner-id" => ["owner-id"],
 			"author-id" => ["author-id"],
 			"causer-id" => ["causer-id"],
@@ -1634,6 +1631,7 @@ return [
 		"comment" => "Thread related data per user",
 		"fields" => [
 			"uri-id" => ["type" => "int unsigned", "not null" => "1", "primary" => "1", "foreign" => ["item-uri" => "id"], "comment" => "Id of the item-uri table entry that contains the item uri"],
+			"context-id" => ["type" => "int unsigned", "foreign" => ["item-uri" => "id"], "comment" => "Id of the item-uri table entry that contains the endpoint for the context collection"],
 			"conversation-id" => ["type" => "int unsigned", "foreign" => ["item-uri" => "id"], "comment" => "Id of the item-uri table entry that contains the conversation uri"],
 			"owner-id" => ["type" => "int unsigned", "not null" => "1", "default" => "0", "foreign" => ["contact" => "id", "on delete" => "restrict"], "comment" => "Item owner"],
 			"author-id" => ["type" => "int unsigned", "not null" => "1", "default" => "0", "foreign" => ["contact" => "id", "on delete" => "restrict"], "comment" => "Item author"],
@@ -1661,6 +1659,7 @@ return [
 		"indexes" => [
 			"PRIMARY" => ["uid", "uri-id"],
 			"uri-id" => ["uri-id"],
+			"context-id" => ["context-id"],
 			"conversation-id" => ["conversation-id"],
 			"owner-id" => ["owner-id"],
 			"author-id" => ["author-id"],
@@ -1676,7 +1675,6 @@ return [
 			"uid_received" => ["uid", "received"],
 			"uid_wall_received" => ["uid", "wall", "received"],
 			"uid_commented" => ["uid", "commented"],
-			"uid_received" => ["uid", "received"],
 			"uid_created" => ["uid", "created"],
 			"uid_starred" => ["uid", "starred"],
 			"uid_mention" => ["uid", "mention"],
@@ -1780,26 +1778,6 @@ return [
 			"uid" => ["uid"],
 			"order" => ["order"],
 			"psid" => ["psid"],
-		]
-	],
-	"push_subscriber" => [
-		"comment" => "Used for OStatus: Contains feed subscribers",
-		"fields" => [
-			"id" => ["type" => "int unsigned", "not null" => "1", "extra" => "auto_increment", "primary" => "1", "comment" => "sequential ID"],
-			"uid" => ["type" => "mediumint unsigned", "not null" => "1", "default" => "0", "foreign" => ["user" => "uid"], "comment" => "User id"],
-			"callback_url" => ["type" => "varbinary(383)", "not null" => "1", "default" => "", "comment" => ""],
-			"topic" => ["type" => "varchar(255)", "not null" => "1", "default" => "", "comment" => ""],
-			"nickname" => ["type" => "varchar(255)", "not null" => "1", "default" => "", "comment" => ""],
-			"push" => ["type" => "tinyint", "not null" => "1", "default" => "0", "comment" => "Retrial counter"],
-			"last_update" => ["type" => "datetime", "not null" => "1", "default" => DBA::NULL_DATETIME, "comment" => "Date of last successful trial"],
-			"next_try" => ["type" => "datetime", "not null" => "1", "default" => DBA::NULL_DATETIME, "comment" => "Next retrial date"],
-			"renewed" => ["type" => "datetime", "not null" => "1", "default" => DBA::NULL_DATETIME, "comment" => "Date of last subscription renewal"],
-			"secret" => ["type" => "varchar(255)", "not null" => "1", "default" => "", "comment" => ""],
-		],
-		"indexes" => [
-			"PRIMARY" => ["id"],
-			"next_try" => ["next_try"],
-			"uid" => ["uid"]
 		]
 	],
 	"register" => [
@@ -1976,7 +1954,6 @@ return [
 			"remote_self" => ["type" => "tinyint unsigned", "comment" => "0 => No mirroring, 1-2 => Mirror as own post, 3 => Mirror as reshare"],
 			"fetch_further_information" => ["type" => "tinyint unsigned", "comment" => "0 => None, 1 => Fetch information, 3 => Fetch keywords, 2 => Fetch both"],
 			"ffi_keyword_denylist" => ["type" => "text", "comment" => ""],
-			"subhub" => ["type" => "boolean", "comment" => ""],
 			"hub-verify" => ["type" => "varbinary(383)", "comment" => ""],
 			"protocol" => ["type" => "char(4)", "comment" => "Protocol of the contact"],
 			"rating" => ["type" => "tinyint", "comment" => "Automatically detected feed poll frequency"],

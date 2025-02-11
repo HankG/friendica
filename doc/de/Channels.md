@@ -84,7 +84,6 @@ Alternativen werden durch "|" dargestellt.
     * network:dspr | network:diaspora - Das Diaspora-Protokoll wird hauptsächlich von Diaspora selbst genutzt. Ein paar andere Systeme unterstützen dieses Protokoll ebenfalls, wie Hubzilla, Socialhome or Ganggo.
     * network:feed - RSS/Atom feeds
     * network:mail - Mails die via IMAP importiert worden sind.
-    * network:stat | network:ostatus - Das OStatus-Protokoll wird hauptsächlich von alten GNU Social-Installationen genutzt.
     * network:dscs | network:discourse - Beiträge, die über den Discourse connector empfangen werden.
     * network:tmbl | network:tumblr - Beiträge, die über den Tumblr connector empfangen werden.
     * network:bsky | network:bluesky - Beiträge, die über den Bluesky connector empfangen werden.

@@ -1,27 +1,12 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Module\OAuth;
 
-use Friendica\Core\Logger;
 use Friendica\DI;
 use Friendica\Module\BaseApi;
 use Friendica\Security\OAuth;
@@ -50,17 +35,18 @@ class Authorize extends BaseApi
 		], $request);
 
 		if ($request['response_type'] != 'code') {
-			Logger::warning('Unsupported or missing response type', ['request' => $_REQUEST]);
+			$this->logger->warning('Unsupported or missing response type', ['request' => $request]);
 			$this->logAndJsonError(422, $this->errorFactory->UnprocessableEntity($this->t('Unsupported or missing response type')));
 		}
 
 		if (empty($request['client_id']) || empty($request['redirect_uri'])) {
-			Logger::warning('Incomplete request data', ['request' => $_REQUEST]);
+			$this->logger->warning('Incomplete request data', ['request' => $request]);
 			$this->logAndJsonError(422, $this->errorFactory->UnprocessableEntity($this->t('Incomplete request data')));
 		}
 
 		$application = OAuth::getApplication($request['client_id'], $request['client_secret'], $request['redirect_uri']);
 		if (empty($application)) {
+			$this->logger->warning('An application could not be fetched.', ['request' => $request]);
 			$this->logAndJsonError(422, $this->errorFactory->UnprocessableEntity());
 		}
 
@@ -68,19 +54,19 @@ class Authorize extends BaseApi
 
 		$redirect_request = $_REQUEST;
 		unset($redirect_request['pagename']);
-		$redirect = 'oauth/authorize?' . http_build_query($redirect_request);
+		$redirect = http_build_query($redirect_request);
 
 		$uid = DI::userSession()->getLocalUserId();
 		if (empty($uid)) {
-			Logger::info('Redirect to login');
-			DI::app()->redirect('login?return_path=' . urlencode($redirect));
+			$this->logger->info('Redirect to login');
+			DI::appHelper()->redirect('login?' . http_build_query(['return_authorize' => $redirect]));
 		} else {
-			Logger::info('Already logged in user', ['uid' => $uid]);
+			$this->logger->info('Already logged in user', ['uid' => $uid]);
 		}
 
 		if (!OAuth::existsTokenForUser($application, $uid) && !DI::session()->get('oauth_acknowledge')) {
-			Logger::info('Redirect to acknowledge');
-			DI::app()->redirect('oauth/acknowledge?' . http_build_query(['return_path' => $redirect, 'application' => $application['name']]));
+			$this->logger->info('Redirect to acknowledge');
+			DI::appHelper()->redirect('oauth/acknowledge?' . http_build_query(['return_authorize' => $redirect, 'application' => $application['name']]));
 		}
 
 		DI::session()->remove('oauth_acknowledge');
@@ -91,7 +77,7 @@ class Authorize extends BaseApi
 		}
 
 		if ($application['redirect_uri'] != 'urn:ietf:wg:oauth:2.0:oob') {
-			DI::app()->redirect($request['redirect_uri'] . (strpos($request['redirect_uri'], '?') ? '&' : '?') . http_build_query(['code' => $token['code'], 'state' => $request['state']]));
+			DI::appHelper()->redirect($request['redirect_uri'] . (strpos($request['redirect_uri'], '?') ? '&' : '?') . http_build_query(['code' => $token['code'], 'state' => $request['state']]));
 		}
 
 		self::$oauth_code = $token['code'];

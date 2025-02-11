@@ -1,3 +1,9 @@
+{{*
+  * Copyright (C) 2010-2024, the Friendica project
+  * SPDX-FileCopyrightText: 2010-2024 the Friendica project
+  *
+  * SPDX-License-Identifier: AGPL-3.0-or-later
+  *}}
 
 <script type="text/javascript" src="{{$baseurl}}/view/js/ajaxupload.js?v={{$VERSION}}"></script>
 <script type="text/javascript" src="{{$baseurl}}/view/js/linkPreview.js?v={{$VERSION}}"></script>
@@ -6,6 +12,7 @@
 <script type="text/javascript">
 	var editor = false;
 	var textlen = 0;
+	var formModified = false;
 
 	function initEditor(callback) {
 		if (editor == false) {
@@ -23,8 +30,9 @@
 			});
 			$(".jothidden").show();
 			$("#profile-jot-text").keyup(function(){
-				var textlen = $(this).val().length;
+				textlen = $(this).val().length;
 				$('#character-counter').text(textlen);
+				formModified = true; // Mark the form as modified when the user types
 			});
 
 			editor = true;
@@ -37,6 +45,21 @@
 	function enableOnUser(){
 		initEditor();
 	}
+
+	// Warn user before leaving the page if the form is modified
+	window.addEventListener('beforeunload', function (e) {
+		if (formModified) {
+			var confirmationMessage = 'There are unsaved changes. Are you sure you want to leave this page?';
+			e.returnValue = confirmationMessage; // Gecko, Trident, Chrome 34+
+			return confirmationMessage; // Gecko, WebKit, Chrome <34
+		}
+	});
+
+	// Reset formModified flag after successful submission
+	function resetFormModifiedFlag() {
+		formModified = false;
+	}
+
 </script>
 
 <script type="text/javascript">
@@ -92,9 +115,10 @@
 				type: 'POST',
 			})
 			.then(function () {
-				// Reset to form for jot reuse in the same page
+				// Reset the form for jot reuse in the same page
 				e.target.reset();
 				$('#jot-modal').modal('hide');
+				resetFormModifiedFlag(); // Reset formModified after successful submission
 			})
 			.always(function() {
 				// Reset the post_id_random to avoid duplicate post errors
@@ -112,7 +136,7 @@
 				}
 
 				NavUpdate();
-			})
+			});
 		});
 
 		$('#wall-image-upload').on('click', function(){
@@ -189,6 +213,7 @@
 		reply = prompt("{{$vidurl}}");
 		if(reply && reply.length) {
 			addeditortext('[video]' + reply + '[/video]');
+			formModified = true; // Mark the form as modified
 		}
 	}
 
@@ -196,6 +221,7 @@
 		reply = prompt("{{$audurl}}");
 		if(reply && reply.length) {
 			addeditortext('[audio]' + reply + '[/audio]');
+			formModified = true; // Mark the form as modified
 		}
 	}
 
@@ -203,6 +229,7 @@
 		reply = prompt("{{$whereareu}}", $('#jot-location').val());
 		if(reply && reply.length) {
 			$('#jot-location').val(reply);
+			formModified = true; // Mark the form as modified
 		}
 	}
 
@@ -213,6 +240,7 @@
 			initEditor(function(){
 				addeditortext(data);
 			});
+			formModified = true; // Mark the form as modified
 		});
 
 		jotShow();
@@ -242,6 +270,7 @@
 				initEditor(function(){
 					addeditortext(data);
 					$('#profile-rotator').hide();
+					formModified = true; // Mark the form as modified
 				});
 			});
 			autosize.update($("#profile-jot-text"));
@@ -261,37 +290,51 @@
 				if(timer) clearTimeout(timer);
 				timer = setTimeout(NavUpdate,3000);
 				liking = 1;
+				formModified = true; // Mark the form as modified
 			}
 		}
 	}
 
 	function itemFiler(id) {
-		var bordercolor = $("input").css("border-color");
+		var modal = $('#modal').modal();
 
-		$.get('filer/', function(data){
-			$.colorbox({html:data});
-			$("#id_term").keypress(function(){
-				$(this).css("border-color",bordercolor);
-			})
-			$("#select_term").change(function(){
-				$("#id_term").css("border-color",bordercolor);
-			})
+		$.get('filer/', function (data) {
+			modal
+				.find('#modal-body')
+				.append(data);
 
-			$("#filer_save").click(function(e){
+			modal
+				.find('#modal-header h4')
+				.append("{{$fileas}}");
+
+			// Ensure focus after the modal is fully visible
+			modal.on('shown.bs.modal', function () {
+				$('#id_term').trigger('focus');
+			});
+
+			$("#filer_save").click(function (e) {
 				e.preventDefault();
-				reply = $("#id_term").val();
-				if(reply && reply.length) {
+				const term = $("#id_term").val();
+				if (term && term.length) {
 					commentBusy = true;
+					formModified = true;
 					$('body').css('cursor', 'wait');
-					$.get('filer/' + id + '?term=' + reply, NavUpdate);
-//					if(timer) clearTimeout(timer);
-//					timer = setTimeout(NavUpdate,3000);
-					liking = 1;
-					force_update = true;
-					$.colorbox.close();
+					$.get('filer/' + id + '?term=' + term)
+						.done(function () {
+							$('#modal-body').empty();
+							$('#modal').modal('hide');
+							resetFormModifiedFlag();
+						})
+						.always(function () {
+							liking = 1;
+							force_update = true;
+							update_item = id;
+							NavUpdate();
+						});
 				} else {
-					$("#id_term").css("border-color","#FF0000");
+					$("#id_term").css("border-color", "#FF0000");
 				}
+
 				return false;
 			});
 		});
@@ -300,6 +343,7 @@
 	function jotClearLocation() {
 		$('#jot-coord').val('');
 		$('#profile-nolocation-wrapper').hide();
+		formModified = true; // Mark the form as modified
 	}
 
 	function addeditortext(data) {
@@ -312,6 +356,7 @@
 		//insert the data as new value
 		textfield.value = currentText + data;
 		autosize.update($("#profile-jot-text"));
+		formModified = true; // Mark the form as modified
 	}
 
 	{{$geotag nofilter}}
@@ -345,3 +390,4 @@
 		toggleJotNav(elemMobile[0]);
 	}
 </script>
+

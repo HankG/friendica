@@ -1,3 +1,9 @@
+{{*
+  * Copyright (C) 2010-2024, the Friendica project
+  * SPDX-FileCopyrightText: 2010-2024 the Friendica project
+  *
+  * SPDX-License-Identifier: AGPL-3.0-or-later
+  *}}
 <div class="generic-page-wrapper">
 	{{$tabs nofilter}}
 	{{include file="section_title.tpl" title=$title pullright=1}}
@@ -21,16 +27,16 @@
 						<i class="fa fa-angle-down" aria-hidden="true"></i> {{$view}}
 					</button>
 					<ul class="dropdown-menu pull-right" role="menu" aria-labelledby="event-calendar-views">
-						<li role="presentation">
+						<li>
 							<button role="menuitem" type="button" class="btn-link" onclick="changeView('changeView', 'month');$('#events-calendar').fullCalendar('option', {contentHeight: '', aspectRatio: 1});">{{$month}}</button>
 						</li>
-						<li role="presentation">
+						<li>
 							<button role="menuitem" type="button" class="btn-link" onclick="changeView('changeView', 'agendaWeek');$('#events-calendar').fullCalendar('option', 'contentHeight', 'auto');">{{$week}}</button>
 						</li>
-						<li role="presentation">
+						<li>
 							<button role="menuitem" type="button" class="btn-link" onclick="changeView('changeView', 'agendaDay');$('#events-calendar').fullCalendar('option', 'contentHeight', 'auto');">{{$day}}</button>
 						</li>
-						<li role="presentation">
+						<li>
 							<button role="menuitem" type="button" class="btn-link" onclick="changeView('changeView', 'listMonth');$('#events-calendar').fullCalendar('option', 'contentHeight', 'auto');">{{$list}}</button>
 						</li>
 					</ul>
@@ -40,8 +46,8 @@
 
 		{{* The buttons to change the month/weeks/days *}}
 		<div id="fc-fc-header-left" class="btn-group">
-			<button class="btn btn-eventnav" onclick="changeView('prev', false);" title="{{$previous.1}}"><i class="fa fa-angle-up" aria-hidden="true"></i></button>
-			<button class="btn btn-eventnav btn-separator" onclick="changeView('next', false);" title="{{$next.1}}"><i class="fa fa-angle-down" aria-hidden="true"></i></button>
+			<button class="btn btn-eventnav" onclick="changeView('prev', false);" title="{{$prev}}"><i class="fa fa-angle-up" aria-hidden="true"></i></button>
+			<button class="btn btn-eventnav btn-separator" onclick="changeView('next', false);" title="{{$next}}"><i class="fa fa-angle-down" aria-hidden="true"></i></button>
 			<button class="btn btn-eventnav btn-separator" onclick="changeView('today', false);" title="{{$today}}"><i class="fa fa-bullseye" aria-hidden="true"></i></button>
 		</div>
 

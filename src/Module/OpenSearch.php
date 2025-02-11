@@ -1,32 +1,24 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Module;
 
 use DOMDocument;
 use DOMElement;
+use Friendica\App\Arguments;
+use Friendica\App\BaseURL;
 use Friendica\BaseModule;
-use Friendica\Core\System;
-use Friendica\DI;
+use Friendica\Core\Config\Capability\IManageConfigValues;
+use Friendica\Core\L10n;
+use Friendica\Util\BasePath;
+use Friendica\Util\Network;
+use Friendica\Util\Profiler;
 use Friendica\Util\XML;
+use Psr\Log\LoggerInterface;
 
 /**
  * Prints the opensearch description document
@@ -34,55 +26,82 @@ use Friendica\Util\XML;
  */
 class OpenSearch extends BaseModule
 {
+	/** @var IManageConfigValues */
+	private $config;
+
+	/** @var string */
+	private $basePath;
+
+	public function __construct(BasePath $basePath, IManageConfigValues $config, L10n $l10n, BaseURL $baseUrl, Arguments $args, LoggerInterface $logger, Profiler $profiler, Response $response, array $server, array $parameters = [])
+	{
+		parent::__construct($l10n, $baseUrl, $args, $logger, $profiler, $response, $server, $parameters);
+
+		$this->config   = $config;
+		$this->basePath = $basePath->getPath();
+	}
+
 	/**
 	 * @throws \Exception
 	 */
 	protected function rawContent(array $request = [])
 	{
-		$hostname = DI::baseUrl()->getHost();
-		$baseUrl  = (string)DI::baseUrl();
-
-		/** @var DOMDocument $xml */
-		XML::fromArray([
-			'OpenSearchDescription' => [
-				'@attributes' => [
-					'xmlns' => 'http://a9.com/-/spec/opensearch/1.1',
+		XML::fromArray(
+			[
+				'OpenSearchDescription' => [
+					'@attributes' => [
+						'xmlns' => 'http://a9.com/-/spec/opensearch/1.1/',
+					],
+					'ShortName'      => $this->baseUrl->getHost(),
+					'Description'    => $this->l10n->t('Search in Friendica %s', $this->baseUrl->getHost()),
+					'Contact'        => 'https://github.com/friendica/friendica/issues',
+					'InputEncoding'  => 'UTF-8',
+					'OutputEncoding' => 'UTF-8',
+					'Developer'      => 'Friendica Developer Team',
 				],
-				'ShortName'      => "Friendica $hostname",
-				'Description'    => "Search in Friendica $hostname",
-				'Contact'        => 'https://github.com/friendica/friendica/issues',
-				'InputEncoding'  => 'UTF-8',
-				'OutputEncoding' => 'UTF-8',
-				'Developer'      => 'Friendica Developer Team',
 			],
-		], $xml);
+			/** @var DOMDocument $xml */
+			$xml
+		);
 
 		/** @var DOMElement $parent */
 		$parent = $xml->getElementsByTagName('OpenSearchDescription')[0];
 
-		XML::addElement($xml, $parent, 'Image',
-			"$baseUrl/images/friendica-16.png", [
+		if (file_exists($this->basePath . '/favicon.ico')) {
+			$shortcut_icon = '/favicon.ico';
+		} else {
+			$shortcut_icon = $this->config->get('system', 'shortcut_icon');
+		}
+
+		if (!empty($shortcut_icon)) {
+			$shortcut_icon = Network::addBasePath($shortcut_icon, $this->baseUrl);
+			$imagedata = getimagesize($shortcut_icon);
+		}
+
+		if (!empty($imagedata)) {
+			XML::addElement($xml, $parent, 'Image', $shortcut_icon, [
+				'width'  => $imagedata[0],
+				'height' => $imagedata[1],
+				'type'   => $imagedata['mime'],
+			]);
+		} else {
+			XML::addElement($xml, $parent, 'Image',
+			$this->baseUrl . '/images/friendica-16.png', [
 				'height' => 16,
 				'width'  => 16,
 				'type'   => 'image/png',
 			]);
-
-		XML::addElement($xml, $parent, 'Image',
-			"$baseUrl/images/friendica-64.png", [
-				'height' => 64,
-				'width'  => 64,
-				'type'   => 'image/png',
-			]);
+		}
 
 		XML::addElement($xml, $parent, 'Url', '', [
 			'type'     => 'text/html',
-			'template' => "$baseUrl/search?search={searchTerms}",
+			'method'   => 'get',
+			'template' => $this->baseUrl . '/search?q={searchTerms}',
 		]);
 
 		XML::addElement($xml, $parent, 'Url', '', [
 			'type'     => 'application/opensearchdescription+xml',
 			'rel'      => 'self',
-			'template' => "$baseUrl/opensearch",
+			'template' => $this->baseUrl . '/opensearch',
 		]);
 
 		$this->httpExit($xml->saveXML(), Response::TYPE_XML, 'application/opensearchdescription+xml');

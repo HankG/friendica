@@ -1,31 +1,18 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Worker;
 
-use Friendica\Core\Logger;
 use Friendica\Core\Worker;
+use Friendica\DI;
 use Friendica\Model\Post;
 use Friendica\Model\User;
 use Friendica\Protocol\ActivityPub;
+
 class APDelivery
 {
 	/**
@@ -43,9 +30,9 @@ class APDelivery
 	public static function execute(string $cmd, int $item_id, string $inbox, int $uid, array $receivers = [], int $uri_id = 0)
 	{
 		if (ActivityPub\Transmitter::archivedInbox($inbox)) {
-			Logger::info('Inbox is archived', ['cmd' => $cmd, 'inbox' => $inbox, 'id' => $item_id, 'uri-id' => $uri_id, 'uid' => $uid]);
+			DI::logger()->info('Inbox is archived', ['cmd' => $cmd, 'inbox' => $inbox, 'id' => $item_id, 'uri-id' => $uri_id, 'uid' => $uid]);
 			if (empty($uri_id) && !empty($item_id)) {
-				$item = Post::selectFirst(['uri-id'], ['id' => $item_id]);
+				$item   = Post::selectFirst(['uri-id'], ['id' => $item_id]);
 				$uri_id = $item['uri-id'] ?? 0;
 			}
 			if (empty($uri_id)) {
@@ -62,7 +49,7 @@ class APDelivery
 			return;
 		}
 
-		Logger::debug('Invoked', ['cmd' => $cmd, 'inbox' => $inbox, 'id' => $item_id, 'uri-id' => $uri_id, 'uid' => $uid]);
+		DI::logger()->debug('Invoked', ['cmd' => $cmd, 'inbox' => $inbox, 'id' => $item_id, 'uri-id' => $uri_id, 'uid' => $uid]);
 
 		if (empty($uri_id)) {
 			$result  = ActivityPub\Delivery::deliver($inbox);

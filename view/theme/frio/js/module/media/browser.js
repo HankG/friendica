@@ -2,12 +2,10 @@
 /**
  * Filebrowser - Friendica Communications Server
  *
- * Copyright (c) 2010-2021, the Friendica project
+ * Copyright (C) 2010-2024, the Friendica pro*ject
+ * SPDX-FileCopyrightText: 2010-2024 the Friendica project
  *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * SPDX-License-Identifier: AGPL-3.0-or-later
  *
  * This code handle user interaction for photo/file upload/browser dialog.
  * Is loaded from filebrowser_plain.tpl

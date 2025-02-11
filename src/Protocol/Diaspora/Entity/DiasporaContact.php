@@ -1,54 +1,40 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Protocol\Diaspora\Entity;
 
 use Psr\Http\Message\UriInterface;
 
 /**
- * @property-read $uriId
- * @property-read $url
- * @property-read $guid
- * @property-read $addr
- * @property-read $alias
- * @property-read $nick
- * @property-read $name
- * @property-read $givenName
- * @property-read $familyName
- * @property-read $photo
- * @property-read $photoMedium
- * @property-read $photoSmall
- * @property-read $batch
- * @property-read $notify
- * @property-read $poll
- * @property-read $subscribe
- * @property-read $searchable
- * @property-read $pubKey
- * @property-read $baseurl
- * @property-read $gsid
- * @property-read $created
- * @property-read $updated
- * @property-read $interacting_count
- * @property-read $interacted_count
- * @property-read $post_count
+ * @property-read int $uriId
+ * @property-read UriInterface $url
+ * @property-read string $guid
+ * @property-read string $addr
+ * @property-read UriInterface $alias
+ * @property-read string $nick
+ * @property-read string $name
+ * @property-read string $givenName
+ * @property-read string $familyName
+ * @property-read UriInterface $photo
+ * @property-read UriInterface $photoMedium
+ * @property-read UriInterface $photoSmall
+ * @property-read UriInterface $batch
+ * @property-read UriInterface $notify
+ * @property-read UriInterface $poll
+ * @property-read string $subscribe
+ * @property-read bool $searchable
+ * @property-read string $pubKey
+ * @property-read UriInterface $baseurl
+ * @property-read int $gsid
+ * @property-read \DateTime $created
+ * @property-read \DateTime $updated
+ * @property-read int $interacting_count
+ * @property-read int $interacted_count
+ * @property-read int $post_count
  */
 class DiasporaContact extends \Friendica\BaseEntity
 {

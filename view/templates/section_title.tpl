@@ -1,3 +1,9 @@
+{{*
+  * Copyright (C) 2010-2024, the Friendica project
+  * SPDX-FileCopyrightText: 2010-2024 the Friendica project
+  *
+  * SPDX-License-Identifier: AGPL-3.0-or-later
+  *}}
 {{if $title}}
 <div class="section-title-wrapper{{if isset($pullright)}} pull-left{{/if}}">
 	<h2>{{$title}}</h2>

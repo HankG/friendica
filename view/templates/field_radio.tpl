@@ -1,3 +1,9 @@
+{{*
+  * Copyright (C) 2010-2024, the Friendica project
+  * SPDX-FileCopyrightText: 2010-2024 the Friendica project
+  *
+  * SPDX-License-Identifier: AGPL-3.0-or-later
+  *}}
 	<div class="field radio">
 		<label for="id_{{$field.0}}_{{$field.2}}">{{$field.1}}</label>
 		<input type="radio" name="{{$field.0}}" id="id_{{$field.0}}_{{$field.2}}" value="{{$field.2}}" {{if $field.4}}checked{{/if}} aria-describedby="{{$field.0}}_{{$field.2}}_tip">

@@ -35,23 +35,19 @@
     },
     "assertionMethod": {
       "@id": "https://w3id.org/security#assertionMethod",
-      "@type": "@id",
-      "@container": "@set"
+      "@type": "@id"
     },
     "authentication": {
       "@id": "https://w3id.org/security#authenticationMethod",
-      "@type": "@id",
-      "@container": "@set"
+      "@type": "@id"
     },
     "capabilityInvocation": {
       "@id": "https://w3id.org/security#capabilityInvocationMethod",
-      "@type": "@id",
-      "@container": "@set"
+      "@type": "@id"
     },
     "capabilityDelegation": {
       "@id": "https://w3id.org/security#capabilityDelegationMethod",
-      "@type": "@id",
-      "@container": "@set"
+      "@type": "@id"
     },
     "keyAgreement": {
       "@id": "https://w3id.org/security#keyAgreementMethod",

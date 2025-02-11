@@ -1,28 +1,14 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Util;
 
 use Friendica\Content\ContactSelector;
-use Friendica\Core\Logger;
+use Friendica\DI;
 use ParagonIE\ConstantTime\Base64;
 
 /**
@@ -169,7 +155,8 @@ class Strings
 	{
 		if ($network != '') {
 			if ($url != '') {
-				$network_name = '<a href="' . $url . '">' . ContactSelector::networkToName($network, $url) . '</a>';
+				$gsid         = ContactSelector::getServerIdForProfile($url);
+				$network_name = '<a href="' . $url . '">' . ContactSelector::networkToName($network, '', $gsid) . '</a>';
 			} else {
 				$network_name = ContactSelector::networkToName($network);
 			}
@@ -227,8 +214,8 @@ class Strings
 
 		$units = ['B', 'KiB', 'MiB', 'GiB', 'TiB'];
 		$bytes = max($bytes, 0);
-		$pow = floor(($bytes ? log($bytes) : 0) / log(1024));
-		$pow = min($pow, count($units) - 1);
+		$pow   = floor(($bytes ? log($bytes) : 0) / log(1024));
+		$pow   = min($pow, count($units) - 1);
 		$bytes /= pow(1024, $pow);
 
 		return round($bytes, $precision) . ' ' . $units[$pow];
@@ -461,13 +448,13 @@ class Strings
 
 		if ($start < 0) {
 			$start = max(0, $string_length + $start);
-		} else if ($start > $string_length) {
+		} elseif ($start > $string_length) {
 			$start = $string_length;
 		}
 
 		if ($length < 0) {
 			$length = max(0, $string_length - $start + $length);
-		} else if ($length > $string_length) {
+		} elseif ($length > $string_length) {
 			$length = $string_length;
 		}
 
@@ -511,7 +498,7 @@ class Strings
 		);
 
 		if (is_null($return)) {
-			Logger::notice('Received null value from preg_replace_callback', ['text' => $text, 'regex' => $regex, 'blocks' => $blocks, 'executionId' => $executionId]);
+			DI::logger()->notice('Received null value from preg_replace_callback', ['text' => $text, 'regex' => $regex, 'blocks' => $blocks, 'executionId' => $executionId]);
 		}
 
 		$text = $callback($return ?? $text) ?? '';
@@ -543,8 +530,12 @@ class Strings
 	{
 		$shorthand = trim($shorthand);
 
-		if (is_numeric($shorthand)) {
-			return $shorthand;
+		if (ctype_digit($shorthand)) {
+			return (int) $shorthand;
+		}
+
+		if ($shorthand === '') {
+			return 0;
 		}
 
 		$last      = strtolower($shorthand[strlen($shorthand) - 1]);
@@ -553,8 +544,10 @@ class Strings
 		switch ($last) {
 			case 'g':
 				$shorthand *= 1024;
+				// no break
 			case 'm':
 				$shorthand *= 1024;
+				// no break
 			case 'k':
 				$shorthand *= 1024;
 		}
@@ -565,21 +558,22 @@ class Strings
 	/**
 	 * Converts an URL in a nicer format (without the scheme and possibly shortened)
 	 *
-	 * @param string $url URL that is about to be reformatted
+	 * @param string $url        URL that is about to be reformatted
+	 * @param int    $max_length Maximum length of an url before it is shortened
 	 * @return string reformatted link
 	 */
-	public static function getStyledURL(string $url): string
+	public static function getStyledURL(string $url, int $max_length = 30): string
 	{
 		$parts = parse_url($url);
 		if (empty($parts['scheme'])) {
 			return $url;
 		}
 
-		$scheme = [$parts['scheme'] . '://www.', $parts['scheme'] . '://'];
+		$scheme     = [$parts['scheme'] . '://www.', $parts['scheme'] . '://'];
 		$styled_url = str_replace($scheme, '', $url);
 
-		if (strlen($styled_url) > 30) {
-			$styled_url = substr($styled_url, 0, 30) . "…";
+		if (!empty($max_length) && strlen($styled_url) > $max_length) {
+			$styled_url = substr($styled_url, 0, $max_length) . "…";
 		}
 
 		return $styled_url;

@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2010 - 2024 the Friendica project
+#
+# SPDX-License-Identifier: CC0-1.0
+
 favicon.*
 /.htconfig.php
 /.htpreconfig.php
@@ -35,7 +39,6 @@ robots.txt
 
 #Ignore config files from VSCode
 /.vscode/
-!/.vscode/launch.json
 
 #ignore smarty cache
 /view/smarty3/compiled/
@@ -69,7 +72,6 @@ venv/
 /.idea
 
 #ignore addons directory
-/addons
 /addon
 
 #ignore base .htaccess

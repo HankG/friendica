@@ -21,11 +21,6 @@ Friendica will recreate your account on the new server, with your contacts and c
 A message is sent to Friendica contacts, to inform them about your move:
 If your contacts are running on an updated server, your details on their side will be automatically updated.
 
-GNU Social contacts
----
-Contacts on GNU Social will be archived, as we can't inform them about your move.
-You should ask them to remove your contact from their lists and re-add you, and you should do the same with their contact.
-
 Diaspora contacts
 ---
 Newer Diaspora servers are able to process "account migration" messages.

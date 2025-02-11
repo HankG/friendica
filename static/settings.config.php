@@ -1,21 +1,9 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
+
+/* Copyright (C) 2010-2024, the Friendica project
+ * SPDX-FileCopyrightText: 2010-2024 the Friendica project
  *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: AGPL-3.0-or-later
  *
  * This file declares the default values for the admin settings of Friendica.
  *
@@ -86,7 +74,7 @@ return [
 
 		// curl_timeout (Integer)
 		// Value is in seconds. Set to 0 for unlimited (not recommended).
-		'curl_timeout' =>  60,
+		'curl_timeout' => 60,
 
 		// dbclean (Boolean)
 		// Remove old remote items, orphaned database records and old content from some other helper tables.
@@ -268,6 +256,10 @@ return [
 		// update_active_contacts (Boolean)
 		// When activated, only public contacts will be activated regularly that are used for example in items or tags.
 		'update_active_contacts' => false,
+
+		// update_known_contacts (Boolean)
+		// When activated, only public contacts will be activated regularly that are in a contact list of a local user.
+		'update_known_contacts' => false,
 
 		// url (String)
 		// The fully-qualified URL of this Friendica node.

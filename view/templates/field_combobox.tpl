@@ -1,3 +1,9 @@
+{{*
+  * Copyright (C) 2010-2024, the Friendica project
+  * SPDX-FileCopyrightText: 2010-2024 the Friendica project
+  *
+  * SPDX-License-Identifier: AGPL-3.0-or-later
+  *}}
 	<div class="field combobox">
 		<label for="id_{{$field.0}}" id="id_{{$field.0}}_label">{{$field.1}}</label>
 		{{* html5 don't work on Chrome, Safari and IE9

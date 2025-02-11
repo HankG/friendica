@@ -1,23 +1,9 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Module\Media\Attachment;
 
@@ -85,7 +71,7 @@ class Upload extends \Friendica\BaseModule
 		$tempFileName = $_FILES['userfile']['tmp_name'];
 		$fileName     = basename($_FILES['userfile']['name']);
 		$fileSize     = intval($_FILES['userfile']['size']);
-		$maxFileSize  = $this->config->get('system', 'maxfilesize');
+		$maxFileSize  = Strings::getBytesFromShorthand($this->config->get('system', 'maxfilesize'));
 
 		/*
 		 * Found html code written in text field of form, when trying to upload a
@@ -106,7 +92,7 @@ class Upload extends \Friendica\BaseModule
 			$this->return(401, $msg);
 		}
 
-		$newid = Attach::storeFile($tempFileName, $owner['uid'], $fileName, '<' . $owner['id'] . '>');
+		$newid = Attach::storeFile($tempFileName, $owner['uid'], $fileName, $_FILES['userfile']['type'] ?? '', '<' . $owner['id'] . '>');
 
 		@unlink($tempFileName);
 

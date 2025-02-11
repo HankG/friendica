@@ -1,28 +1,13 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Module\Admin\Addons;
 
 use Friendica\Content\Text\Markdown;
-use Friendica\Core\Addon;
 use Friendica\Core\Renderer;
 use Friendica\DI;
 use Friendica\Module\BaseAdmin;
@@ -45,7 +30,7 @@ class Details extends BaseAdmin
 				self::checkFormSecurityTokenRedirectOnError($redirect, 'admin_addons_details');
 
 				$func = $addon . '_addon_admin_post';
-				$func(DI::app());
+				$func();
 			}
 		}
 
@@ -56,14 +41,12 @@ class Details extends BaseAdmin
 	{
 		parent::content();
 
-		$a = DI::app();
-
-		$addons_admin = Addon::getAdminList();
+		$addonHelper = DI::addonHelper();
 
 		$addon = Strings::sanitizeFilePathItem($this->parameters['addon']);
 		if (!is_file("addon/$addon/$addon.php")) {
 			DI::sysmsg()->addNotice(DI::l10n()->t('Addon not found.'));
-			Addon::uninstall($addon);
+			$addonHelper->uninstallAddon($addon);
 			DI::baseUrl()->redirect('admin/addons');
 		}
 
@@ -71,11 +54,11 @@ class Details extends BaseAdmin
 			self::checkFormSecurityTokenRedirectOnError('/admin/addons', 'admin_addons_details', 't');
 
 			// Toggle addon status
-			if (Addon::isEnabled($addon)) {
-				Addon::uninstall($addon);
+			if ($addonHelper->isAddonEnabled($addon)) {
+				$addonHelper->uninstallAddon($addon);
 				DI::sysmsg()->addInfo(DI::l10n()->t('Addon %s disabled.', $addon));
 			} else {
-				Addon::install($addon);
+				$addonHelper->installAddon($addon);
 				DI::sysmsg()->addInfo(DI::l10n()->t('Addon %s enabled.', $addon));
 			}
 
@@ -83,7 +66,7 @@ class Details extends BaseAdmin
 		}
 
 		// display addon details
-		if (Addon::isEnabled($addon)) {
+		if ($addonHelper->isAddonEnabled($addon)) {
 			$status = 'on';
 			$action = DI::l10n()->t('Disable');
 		} else {
@@ -98,32 +81,42 @@ class Details extends BaseAdmin
 			$readme = '<pre>' . file_get_contents("addon/$addon/README") . '</pre>';
 		}
 
+		$addons_admin = $addonHelper->getEnabledAddonsWithAdminSettings();
+
 		$admin_form = '';
-		if (array_key_exists($addon, $addons_admin)) {
+		if (in_array($addon, $addons_admin)) {
 			require_once "addon/$addon/$addon.php";
 			$func = $addon . '_addon_admin';
 			$func($admin_form);
 		}
 
+		$addonInfo = $addonHelper->getAddonInfo($addon);
+
 		$t = Renderer::getMarkupTemplate('admin/addons/details.tpl');
 
 		return Renderer::replaceMacros($t, [
-			'$title' => DI::l10n()->t('Administration'),
-			'$page' => DI::l10n()->t('Addons'),
-			'$toggle' => DI::l10n()->t('Toggle'),
+			'$title'    => DI::l10n()->t('Administration'),
+			'$page'     => DI::l10n()->t('Addons'),
+			'$toggle'   => DI::l10n()->t('Toggle'),
 			'$settings' => DI::l10n()->t('Settings'),
 
-			'$addon' => $addon,
+			'$addon'  => $addon,
 			'$status' => $status,
 			'$action' => $action,
-			'$info' => Addon::getInfo($addon),
-			'$str_author' => DI::l10n()->t('Author: '),
+			'$info'   => [
+				'name'        => $addonInfo->getName(),
+				'version'     => $addonInfo->getVersion(),
+				'description' => $addonInfo->getDescription(),
+				'author'      => $addonInfo->getAuthors(),
+				'maintainer'  => $addonInfo->getMaintainers(),
+			],
+			'$str_author'     => DI::l10n()->t('Author: '),
 			'$str_maintainer' => DI::l10n()->t('Maintainer: '),
 
 			'$admin_form' => $admin_form,
-			'$function' => 'addons',
+			'$function'   => 'addons',
 			'$screenshot' => '',
-			'$readme' => $readme,
+			'$readme'     => $readme,
 
 			'$form_security_token' => self::getFormSecurityToken('admin_addons_details'),
 		]);

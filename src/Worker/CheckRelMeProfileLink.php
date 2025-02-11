@@ -1,29 +1,14 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Worker;
 
 use DOMDocument;
 use Friendica\Content\Text\HTML;
-use Friendica\Core\Logger;
 use Friendica\DI;
 use Friendica\Model\Profile;
 use Friendica\Model\User;
@@ -55,39 +40,44 @@ class CheckRelMeProfileLink
 	 */
 	public static function execute(int $uid)
 	{
-		Logger::notice('Verifying the homepage', ['uid' => $uid]);
+		DI::logger()->notice('Verifying the homepage', ['uid' => $uid]);
 		Profile::update(['homepage_verified' => false], $uid);
 
 		$owner = User::getOwnerDataById($uid);
 		if (empty($owner['homepage'])) {
-			Logger::notice('The user has no homepage link.', ['uid' => $uid]);
+			DI::logger()->notice('The user has no homepage link.', ['uid' => $uid]);
 			return;
 		}
 
 		$xrd_timeout = DI::config()->get('system', 'xrd_timeout');
-		$curlResult  = DI::httpClient()->get($owner['homepage'], HttpClientAccept::HTML, [HttpClientOptions::TIMEOUT => $xrd_timeout, HttpClientOptions::REQUEST => HttpClientRequest::CONTACTVERIFIER]);
+		try {
+			$curlResult = DI::httpClient()->get($owner['homepage'], HttpClientAccept::HTML, [HttpClientOptions::TIMEOUT => $xrd_timeout, HttpClientOptions::REQUEST => HttpClientRequest::CONTACTVERIFIER]);
+		} catch (\Throwable $th) {
+			DI::logger()->notice('Got exception', ['code' => $th->getCode(), 'message' => $th->getMessage()]);
+			return;
+		}
 		if (!$curlResult->isSuccess()) {
-			Logger::notice('Could not cURL the homepage URL', ['owner homepage' => $owner['homepage']]);
+			DI::logger()->notice('Could not cURL the homepage URL', ['owner homepage' => $owner['homepage']]);
 			return;
 		}
 
 		$content = $curlResult->getBodyString();
 		if (!$content) {
-			Logger::notice('Empty body of the fetched homepage link). Cannot verify the relation to profile of UID %s.', ['uid' => $uid, 'owner homepage' => $owner['homepage']]);
+			DI::logger()->notice('Empty body of the fetched homepage link). Cannot verify the relation to profile of UID %s.', ['uid' => $uid, 'owner homepage' => $owner['homepage']]);
 			return;
 		}
 
 		$doc = new DOMDocument();
 		if (!@$doc->loadHTML($content)) {
-			Logger::notice('Could not parse the content');
+			DI::logger()->notice('Could not parse the content');
 			return;
 		}
 
 		if (HTML::checkRelMeLink($doc, new Uri($owner['url']))) {
 			Profile::update(['homepage_verified' => true], $uid);
-			Logger::notice('Homepage URL verified', ['uid' => $uid, 'owner homepage' => $owner['homepage']]);
+			DI::logger()->notice('Homepage URL verified', ['uid' => $uid, 'owner homepage' => $owner['homepage']]);
 		} else {
-			Logger::notice('Homepage URL could not be verified', ['uid' => $uid, 'owner homepage' => $owner['homepage']]);
+			DI::logger()->notice('Homepage URL could not be verified', ['uid' => $uid, 'owner homepage' => $owner['homepage']]);
 		}
 	}
 }

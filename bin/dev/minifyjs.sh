@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# SPDX-FileCopyrightText: 2010-2024 the Friendica project
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 command -v uglifyjs >/dev/null 2>&1 || { echo >&2 "I require UglifyJS but it's not installed.  Aborting."; exit 1; }
 
 MINIFY_CMD=uglifyjs

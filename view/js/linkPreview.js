@@ -1,7 +1,10 @@
 // @license magnet:?xt=urn:btih:d3d9a9a6595521f9666a5e94cc830dab83b65699&dn=expat.txt Expat
 // @license magnet:?xt=urn:btih:cf05388f2679ee054f2beb29a391d25f4e673ac3&dn=gpl-2.0.txt GPL
 /**
- * Copyright (c) 2014 Leonardo Cardoso (http://leocardz.com)
+ * SPDX-FileCopyrightText: 2014 Leonardo Cardoso (http://leocardz.com), Rabuzarus to use it in the decentralized social network Friendica (https://friendi.ca).
+ *
+ * SPDX-License-Identifier: MIT OR GPL-2.0-only
+ *
  * Dual licensed under the MIT (http://www.opensource.org/licenses/mit-license.php)
  * and GPL (http://www.opensource.org/licenses/gpl-license.php) licenses.
  * 
@@ -200,7 +203,7 @@
 			if (!isExtern) {
 				return;
 			}
-			var bbcode = '\n[img]' + data.url + '[/img]\n';
+			var bbcode = '\n[img=' + data.url + '][/img]\n';
 			addeditortext(bbcode);
 		};
 

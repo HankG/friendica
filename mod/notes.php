@@ -1,25 +1,12 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2024, the Friendica project
+ * Copyright (C) 2010-2024, the Friendica project
+ * SPDX-FileCopyrightText: 2010-2024 the Friendica project
  *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: AGPL-3.0-or-later
  *
  */
 
-use Friendica\App;
 use Friendica\Content\Conversation;
 use Friendica\Content\Nav;
 use Friendica\Content\Pager;
@@ -29,7 +16,7 @@ use Friendica\Model\Item;
 use Friendica\Model\Post;
 use Friendica\Module\BaseProfile;
 
-function notes_init(App $a)
+function notes_init()
 {
 	if (! DI::userSession()->getLocalUserId()) {
 		return;
@@ -39,8 +26,10 @@ function notes_init(App $a)
 }
 
 
-function notes_content(App $a, bool $update = false)
+function notes_content(bool $update = false)
 {
+	$contactId = DI::appHelper()->getContactId();
+
 	if (!DI::userSession()->getLocalUserId()) {
 		DI::sysmsg()->addNotice(DI::l10n()->t('Permission denied.'));
 		return;
@@ -58,11 +47,11 @@ function notes_content(App $a, bool $update = false)
 			'acl_data' => '',
 		];
 
-		$o .= DI::conversation()->statusEditor($x, $a->getContactId());
+		$o .= DI::conversation()->statusEditor($x, $contactId);
 	}
 
 	$condition = ['uid' => DI::userSession()->getLocalUserId(), 'post-type' => Item::PT_PERSONAL_NOTE, 'gravity' => Item::GRAVITY_PARENT,
-		'contact-id'=> $a->getContactId()];
+		'contact-id'=> $contactId];
 
 	if (DI::mode()->isMobile()) {
 		$itemsPerPage = DI::pConfig()->get(DI::userSession()->getLocalUserId(), 'system', 'itemspage_mobile_network',

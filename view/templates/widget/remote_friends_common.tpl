@@ -1,3 +1,9 @@
+{{*
+  * Copyright (C) 2010-2024, the Friendica project
+  * SPDX-FileCopyrightText: 2010-2024 the Friendica project
+  *
+  * SPDX-License-Identifier: AGPL-3.0-or-later
+  *}}
 <div id="rfic-desc" onclick="openClose('remote-friends-in-common-wrapper');">{{$desc nofilter}}&emsp;&emsp;{{if $linkmore}}<a href="profile/{{$nickname}}/contacts/common">{{$more}}</a>{{/if}}</div>
 	<div id="remote-friends-in-common-wrapper">
 		<div id="remote-friends-in-common" class="bigwidget" >

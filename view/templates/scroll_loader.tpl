@@ -1,3 +1,9 @@
+{{*
+  * Copyright (C) 2010-2024, the Friendica project
+  * SPDX-FileCopyrightText: 2010-2024 the Friendica project
+  *
+  * SPDX-License-Identifier: AGPL-3.0-or-later
+  *}}
 <div id="scroll-loader" class="pager" style="display: none;">
 	<img class="scroll_loader_image" src="images/rotator.gif" />
 	<span class="scroll_loader_text">{{$wait}}</span>

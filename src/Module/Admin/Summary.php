@@ -1,29 +1,13 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Module\Admin;
 
 use Friendica\App;
-use Friendica\Core\Addon;
-use Friendica\Core\Config\Util\ConfigFileManager;
 use Friendica\Core\Config\ValueObject\Cache;
 use Friendica\Core\Renderer;
 use Friendica\Core\Update;
@@ -33,7 +17,6 @@ use Friendica\DI;
 use Friendica\Core\Config\Factory\Config;
 use Friendica\Module\BaseAdmin;
 use Friendica\Network\HTTPClient\Client\HttpClientAccept;
-use Friendica\Network\HTTPException\ServiceUnavailableException;
 use Friendica\Network\Probe;
 use Friendica\Util\DateTimeFormat;
 
@@ -43,13 +26,14 @@ class Summary extends BaseAdmin
 	{
 		parent::content();
 
-		$a = DI::app();
+		$basePath  = DI::appHelper()->getBasePath();
+		$addonPath = DI::addonHelper()->getAddonPath();
 
 		// are there MyISAM tables in the DB? If so, trigger a warning message
 		$warningtext = [];
 
 		$templateEngine = Renderer::getTemplateEngine();
-		$errors = [];
+		$errors         = [];
 		$templateEngine->testInstall($errors);
 		foreach ($errors as $error) {
 			$warningtext[] = DI::l10n()->t('Template engine (%s) error: %s', $templateEngine::$name, $error);
@@ -67,9 +51,9 @@ class Summary extends BaseAdmin
 		// Avoid the database error 1615 "Prepared statement needs to be re-prepared", see https://github.com/friendica/friendica/issues/8550
 		if (!DI::config()->get('database', 'pdo_emulate_prepares')) {
 			$table_definition_cache = DBA::getVariable('table_definition_cache');
-			$table_open_cache = DBA::getVariable('table_open_cache');
+			$table_open_cache       = DBA::getVariable('table_open_cache');
 			if (!empty($table_definition_cache) && !empty($table_open_cache)) {
-				$suggested_definition_cache = min(400 + round($table_open_cache / 2, 1), 2000);
+				$suggested_definition_cache = min(400 + round((int) $table_open_cache / 2, 1), 2000);
 				if ($suggested_definition_cache > $table_definition_cache) {
 					$warningtext[] = DI::l10n()->t('Your table_definition_cache is too low (%d). This can lead to the database error "Prepared statement needs to be re-prepared". Please set it at least to %d. See <a href="%s">here</a> for more information.<br />', $table_definition_cache, $suggested_definition_cache, 'https://dev.mysql.com/doc/refman/5.7/en/server-system-variables.html#sysvar_table_definition_cache');
 				}
@@ -78,23 +62,19 @@ class Summary extends BaseAdmin
 
 		// Check if github.com/friendica/stable/VERSION is higher then
 		// the local version of Friendica. Check is opt-in, source may be stable or develop branch
-		if (DI::config()->get('system', 'check_new_version_url', 'none') != 'none') {
-			$gitversion = DI::keyValue()->get('git_friendica_version') ?? '';
-
-			if (version_compare(App::VERSION, $gitversion) < 0) {
-				$warningtext[] = DI::l10n()->t('There is a new version of Friendica available for download. Your current version is %1$s, upstream version is %2$s', App::VERSION, $gitversion);
-			}
+		if (Update::isAvailable()) {
+			$warningtext[] = DI::l10n()->t('There is a new version of Friendica available for download. Your current version is %1$s, upstream version is %2$s', App::VERSION, Update::getAvailableVersion());
 		}
 
-		if (DI::config()->get('system', 'dbupdate', DBStructure::UPDATE_NOT_CHECKED) == DBStructure::UPDATE_NOT_CHECKED) {
+		if (DBStructure::getUpdateStatus() == DBStructure::UPDATE_NOT_CHECKED) {
 			DBStructure::performUpdate();
 		}
 
-		if (DI::config()->get('system', 'dbupdate') == DBStructure::UPDATE_FAILED) {
+		if (DBStructure::getUpdateStatus() == DBStructure::UPDATE_FAILED) {
 			$warningtext[] = DI::l10n()->t('The database update failed. Please run "php bin/console.php dbstructure update" from the command line and have a look at the errors that might appear.');
 		}
 
-		if (DI::config()->get('system', 'update') == Update::FAILED) {
+		if (Update::getStatus() == Update::FAILED) {
 			$warningtext[] = DI::l10n()->t('The last update failed. Please run "php bin/console.php dbstructure update" from the command line and have a look at the errors that might appear. (Some of the errors are possibly inside the logfile.)');
 		}
 
@@ -120,9 +100,13 @@ class Summary extends BaseAdmin
 
 		// Check server vitality
 		if (!self::checkSelfHostMeta()) {
-			$well_known = DI::baseUrl() . Probe::HOST_META;
-			$warningtext[] = DI::l10n()->t('<a href="%s">%s</a> is not reachable on your system. This is a severe configuration issue that prevents server to server communication. See <a href="%s">the installation page</a> for help.',
-				$well_known, $well_known, DI::baseUrl() . '/help/Install');
+			$well_known    = DI::baseUrl() . Probe::HOST_META;
+			$warningtext[] = DI::l10n()->t(
+				'<a href="%s">%s</a> is not reachable on your system. This is a severe configuration issue that prevents server to server communication. See <a href="%s">the installation page</a> for help.',
+				$well_known,
+				$well_known,
+				DI::baseUrl() . '/help/Install'
+			);
 		}
 
 		// Check logfile permission
@@ -134,8 +118,8 @@ class Summary extends BaseAdmin
 		}
 
 		// check legacy basepath settings
-		$configLoader = (new Config())->createConfigFileManager($a->getBasePath(), $_SERVER);
-		$configCache = new Cache();
+		$configLoader = (new Config())->createConfigFileManager($basePath, $addonPath, $_SERVER);
+		$configCache  = new Cache();
 		$configLoader->setupCache($configCache);
 		$confBasepath = $configCache->get('system', 'basepath');
 		$currBasepath = DI::config()->get('system', 'basepath');
@@ -145,25 +129,31 @@ class Summary extends BaseAdmin
 					'from' => $currBasepath,
 					'to'   => $confBasepath,
 				]);
-				$warningtext[] = DI::l10n()->t('Friendica\'s system.basepath was updated from \'%s\' to \'%s\'. Please remove the system.basepath from your db to avoid differences.',
+				$warningtext[] = DI::l10n()->t(
+					'Friendica\'s system.basepath was updated from \'%s\' to \'%s\'. Please remove the system.basepath from your db to avoid differences.',
 					$currBasepath,
-					$confBasepath);
+					$confBasepath
+				);
 			} elseif (!is_dir($currBasepath)) {
 				DI::logger()->alert('Friendica\'s system.basepath is wrong.', [
 					'from' => $currBasepath,
 					'to'   => $confBasepath,
 				]);
-				$warningtext[] = DI::l10n()->t('Friendica\'s current system.basepath \'%s\' is wrong and the config file \'%s\' isn\'t used.',
+				$warningtext[] = DI::l10n()->t(
+					'Friendica\'s current system.basepath \'%s\' is wrong and the config file \'%s\' isn\'t used.',
 					$currBasepath,
-					$confBasepath);
+					$confBasepath
+				);
 			} else {
 				DI::logger()->alert('Friendica\'s system.basepath is wrong.', [
 					'from' => $currBasepath,
 					'to'   => $confBasepath,
 				]);
-				$warningtext[] = DI::l10n()->t('Friendica\'s current system.basepath \'%s\' is not equal to the config file \'%s\'. Please fix your configuration.',
+				$warningtext[] = DI::l10n()->t(
+					'Friendica\'s current system.basepath \'%s\' is not equal to the config file \'%s\'. Please fix your configuration.',
 					$currBasepath,
-					$confBasepath);
+					$confBasepath
+				);
 			}
 		}
 
@@ -173,9 +163,6 @@ class Summary extends BaseAdmin
 
 		// We can do better, but this is a quick queue status
 		$queues = ['label' => DI::l10n()->t('Message queues'), 'deferred' => $deferred, 'workerq' => $workerqueue];
-
-		$variables = DBA::toArray(DBA::p('SHOW variables LIKE "max_allowed_packet"'));
-		$max_allowed_packet = $variables ? $variables[0]['Value'] : 0;
 
 		$server_settings = [
 			'label' => DI::l10n()->t('Server Settings'),
@@ -187,7 +174,7 @@ class Summary extends BaseAdmin
 				'memory_limit'        => ini_get('memory_limit')
 			],
 			'mysql' => [
-				'max_allowed_packet' => $max_allowed_packet
+				'max_allowed_packet' => DBA::getVariable('max_allowed_packet'),
 			]
 		];
 
@@ -200,7 +187,7 @@ class Summary extends BaseAdmin
 			'$platform'       => App::PLATFORM,
 			'$codename'       => App::CODENAME,
 			'$build'          => DI::config()->get('system', 'build'),
-			'$addons'         => [DI::l10n()->t('Active addons'), Addon::getEnabledList()],
+			'$addons'         => [DI::l10n()->t('Active addons'), DI::addonHelper()->getEnabledAddons()],
 			'$serversettings' => $server_settings,
 			'$warningtext'    => $warningtext,
 		]);

@@ -1,23 +1,9 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Model;
 
@@ -26,11 +12,11 @@ use Friendica\Database\DBA;
 use Friendica\DI;
 use Friendica\Core\Storage\Exception\InvalidClassStorageException;
 use Friendica\Core\Storage\Exception\ReferenceStorageException;
+use Friendica\Network\HTTPException\InternalServerErrorException;
 use Friendica\Object\Image;
 use Friendica\Util\DateTimeFormat;
 use Friendica\Util\Mimetype;
 use Friendica\Security\Security;
-use Friendica\Util\Network;
 
 /**
  * Class to handle attach database table
@@ -197,7 +183,7 @@ class Attach
 	 * @param string  $deny_gid  Permissions, denied circle. optional, default = ''
 	 *
 	 * @return boolean|integer Row id on success, False on errors
-	 * @throws \Friendica\Network\HTTPException\InternalServerErrorException
+	 * @throws InternalServerErrorException
 	 */
 	public static function store(string $data, int $uid, string $filename, string $filetype = '', int $filesize = null, string $allow_cid = '', string $allow_gid = '', string $deny_cid = '', string $deny_gid = '')
 	{
@@ -245,14 +231,15 @@ class Attach
 	 * @param string $src Source file name
 	 * @param int    $uid User id
 	 * @param string $filename Optional file name
+	 * @param string $filetype Optional file type
 	 * @param string $allow_cid
 	 * @param string $allow_gid
 	 * @param string $deny_cid
 	 * @param string $deny_gid
 	 * @return boolean|int Insert id or false on failure
-	 * @throws \Friendica\Network\HTTPException\InternalServerErrorException
+	 * @throws InternalServerErrorException
 	 */
-	public static function storeFile(string $src, int $uid, string $filename = '', string $allow_cid = '', string $allow_gid = '', string $deny_cid = '', string $deny_gid = '')
+	public static function storeFile(string $src, int $uid, string $filename = '', string $filetype = '', string $allow_cid = '', string $allow_gid = '', string $deny_cid = '', string $deny_gid = '')
 	{
 		if ($filename === '') {
 			$filename = basename($src);
@@ -260,7 +247,7 @@ class Attach
 
 		$data = @file_get_contents($src);
 
-		return self::store($data, $uid, $filename, '', null, $allow_cid, $allow_gid,  $deny_cid, $deny_gid);
+		return self::store($data, $uid, $filename, $filetype, null, $allow_cid, $allow_gid,  $deny_cid, $deny_gid);
 	}
 
 
@@ -270,11 +257,11 @@ class Attach
 	 * @param array         $fields     Contains the fields that are updated
 	 * @param array         $conditions Condition array with the key values
 	 * @param Image         $img        Image data to update. Optional, default null.
-	 * @param array|boolean $old_fields Array with the old field values that are about to be replaced (true = update on duplicate)
+	 * @param array         $old_fields Array with the old field values that are about to be replaced (true = update on duplicate)
 	 *
 	 * @return boolean  Was the update successful?
 	 *
-	 * @throws \Friendica\Network\HTTPException\InternalServerErrorException
+	 * @throws InternalServerErrorException
 	 * @see   \Friendica\Database\DBA::update
 	 */
 	public static function update(array $fields, array $conditions, Image $img = null, array $old_fields = []): bool
@@ -300,19 +287,17 @@ class Attach
 		return DBA::update('attach', $fields, $conditions, $old_fields);
 	}
 
-
 	/**
 	 * Delete info from table and data from storage
 	 *
 	 * @param array $conditions Field condition(s)
-	 * @param array $options    Options array, Optional
 	 *
 	 * @return boolean
 	 *
 	 * @throws \Exception
 	 * @see   \Friendica\Database\DBA::delete
 	 */
-	public static function delete(array $conditions, array $options = []): bool
+	public static function delete(array $conditions): bool
 	{
 		// get items to delete data info
 		$items = self::selectToArray(['backend-class', 'backend-ref'], $conditions);
@@ -328,7 +313,7 @@ class Attach
 			}
 		}
 
-		return DBA::delete('attach', $conditions, $options);
+		return DBA::delete('attach', $conditions);
 	}
 
 	public static function setPermissionFromBody(array $post)
@@ -343,6 +328,16 @@ class Attach
 				self::update($fields, ['id' => $match[1], 'uid' => $post['uid']]);
 			}
 		}
+	}
+
+	public static function setPermissionForId(int $id, int $uid, string $str_contact_allow, string $str_circle_allow, string $str_contact_deny, string $str_circle_deny)
+	{
+		$fields = [
+			'allow_cid' => $str_contact_allow, 'allow_gid' => $str_circle_allow,
+			'deny_cid' => $str_contact_deny, 'deny_gid' => $str_circle_deny,
+		];
+
+		self::update($fields, ['id' => $id, 'uid' => $uid]);
 	}
 
 	public static function addAttachmentToBody(string $body, int $uid): string

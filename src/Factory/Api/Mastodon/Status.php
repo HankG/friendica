@@ -1,23 +1,9 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Factory\Api\Mastodon;
 
@@ -26,14 +12,15 @@ use Friendica\Content\ContactSelector;
 use Friendica\Content\Item as ContentItem;
 use Friendica\Content\Smilies;
 use Friendica\Content\Text\BBCode;
-use Friendica\Core\Logger;
+use Friendica\Core\Protocol;
 use Friendica\Database\Database;
 use Friendica\Database\DBA;
 use Friendica\DI;
 use Friendica\Model\Item;
 use Friendica\Model\Post;
 use Friendica\Model\Verb;
-use Friendica\Network\HTTPException;
+use Friendica\Network\HTTPException\InternalServerErrorException;
+use Friendica\Network\HTTPException\NotFoundException;
 use Friendica\Object\Api\Mastodon\Status\FriendicaDeliveryData;
 use Friendica\Object\Api\Mastodon\Status\FriendicaExtension;
 use Friendica\Object\Api\Mastodon\Status\FriendicaVisibility;
@@ -100,12 +87,12 @@ class Status extends BaseFactory
 	 * @param bool $in_reply_status Add an "in_reply_status" element
 	 *
 	 * @return \Friendica\Object\Api\Mastodon\Status
-	 * @throws HTTPException\InternalServerErrorException
-	 * @throws ImagickException|HTTPException\NotFoundException
+	 * @throws InternalServerErrorException
+	 * @throws ImagickException|NotFoundException
 	 */
 	public function createFromUriId(int $uriId, int $uid = 0, bool $display_quote = false, bool $reblog = true, bool $in_reply_status = true): \Friendica\Object\Api\Mastodon\Status
 	{
-		$fields = ['uri-id', 'uid', 'author-id', 'causer-id', 'author-uri-id', 'author-link', 'causer-uri-id', 'post-reason', 'starred', 'app', 'title', 'body', 'raw-body', 'content-warning', 'question-id',
+		$fields = ['uri-id', 'uid', 'author-id', 'causer-id', 'author-uri-id', 'author-link', 'author-gsid', 'causer-uri-id', 'post-reason', 'starred', 'app', 'title', 'body', 'raw-body', 'content-warning', 'question-id',
 			'created', 'edited', 'commented', 'received', 'changed', 'network', 'thr-parent-id', 'parent-author-id', 'language', 'uri', 'plink', 'private', 'vid', 'gravity', 'featured', 'has-media', 'quote-uri-id',
 			'delivery_queue_count', 'delivery_queue_done','delivery_queue_failed', 'allow_cid', 'deny_cid', 'allow_gid', 'deny_gid', 'sensitive'];
 		$item = Post::selectFirst($fields, ['uri-id' => $uriId, 'uid' => [0, $uid]], ['order' => ['uid' => true]]);
@@ -114,7 +101,7 @@ class Status extends BaseFactory
 			if ($mail) {
 				return $this->createFromMailId($mail['id']);
 			}
-			throw new HTTPException\NotFoundException('Item with URI ID ' . $uriId . ' not found' . ($uid ? ' for user ' . $uid : '.'));
+			throw new NotFoundException('Item with URI ID ' . $uriId . ' not found' . ($uid ? ' for user ' . $uid : '.'));
 		}
 
 		$activity_fields = ['uri-id', 'thr-parent-id', 'uri', 'author-id', 'author-uri-id', 'author-link', 'app', 'created', 'network', 'parent-author-id', 'private'];
@@ -126,7 +113,7 @@ class Status extends BaseFactory
 			$activity   = $item;
 			$item       = Post::selectFirst($fields, ['uri-id' => $uriId, 'uid' => [0, $uid]], ['order' => ['uid' => true]]);
 			if (!$item) {
-				throw new HTTPException\NotFoundException('Item with URI ID ' . $uriId . ' not found' . ($uid ? ' for user ' . $uid : '.'));
+				throw new NotFoundException('Item with URI ID ' . $uriId . ' not found' . ($uid ? ' for user ' . $uid : '.'));
 			}
 			foreach ($activity_fields as $field) {
 				$item[$field] = $activity[$field];
@@ -212,11 +199,30 @@ class Status extends BaseFactory
 			$item['featured']
 		);
 
-		$sensitive   = (bool)$item['sensitive'];
-		$application = new \Friendica\Object\Api\Mastodon\Application($item['app'] ?: ContactSelector::networkToName($item['network'], $item['author-link']));
+		$sensitive = (bool)$item['sensitive'];
 
-		$mentions    = $this->mstdnMentionFactory->createFromUriId($uriId)->getArrayCopy();
-		$tags        = $this->mstdnTagFactory->createFromUriId($uriId);
+		$network  = ContactSelector::networkToName($item['network']);
+		$sitename = '';
+		$platform = '';
+		$version  = '';
+
+		if (in_array($item['network'], Protocol::FEDERATED)) {
+			$gserver = $this->dba->selectFirst('gserver', ['site_name', 'platform', 'version'], ['id' => $item['author-gsid']]);
+			if (!empty($gserver)) {
+				$platform = ucfirst($gserver['platform']);
+				$version  = $gserver['version'];
+				$sitename = $gserver['site_name'];
+			}
+		}
+
+		if ($platform == '') {
+			$platform = ContactSelector::networkToName($item['network'], $item['network'], $item['author-gsid']);
+		}
+
+		$application = new \Friendica\Object\Api\Mastodon\Application($item['app'] ?: $platform);
+
+		$mentions = $this->mstdnMentionFactory->createFromUriId($uriId)->getArrayCopy();
+		$tags     = $this->mstdnTagFactory->createFromUriId($uriId);
 		if ($item['has-media']) {
 			$card        = $this->mstdnCardFactory->createFromUriId($uriId);
 			$attachments = $this->mstdnAttachmentFactory->createFromUriId($uriId);
@@ -302,7 +308,7 @@ class Status extends BaseFactory
 			try {
 				$reshare = $this->createFromUriId($uriId, $uid, $display_quote, false, false)->toArray();
 			} catch (\Exception $exception) {
-				Logger::info('Reshare not fetchable', ['uri-id' => $item['uri-id'], 'uid' => $uid, 'exception' => $exception]);
+				DI::logger()->info('Reshare not fetchable', ['uri-id' => $item['uri-id'], 'uid' => $uid, 'exception' => $exception]);
 				$reshare = [];
 			}
 		} else {
@@ -313,7 +319,7 @@ class Status extends BaseFactory
 			try {
 				$in_reply = $this->createFromUriId($item['thr-parent-id'], $uid, $display_quote, false, false)->toArray();
 			} catch (\Exception $exception) {
-				Logger::info('Reply post not fetchable', ['uri-id' => $item['uri-id'], 'uid' => $uid, 'exception' => $exception]);
+				DI::logger()->info('Reply post not fetchable', ['uri-id' => $item['uri-id'], 'uid' => $uid, 'exception' => $exception]);
 				$in_reply = [];
 			}
 		} else {
@@ -322,7 +328,7 @@ class Status extends BaseFactory
 
 		$delivery_data   = $uid != $item['uid'] ? null : new FriendicaDeliveryData($item['delivery_queue_count'], $item['delivery_queue_done'], $item['delivery_queue_failed']);
 		$visibility_data = $uid != $item['uid'] ? null : new FriendicaVisibility($this->aclFormatter->expand($item['allow_cid']), $this->aclFormatter->expand($item['deny_cid']), $this->aclFormatter->expand($item['allow_gid']), $this->aclFormatter->expand($item['deny_gid']));
-		$friendica       = new FriendicaExtension($item['title'] ?? '', $item['changed'], $item['commented'], $item['received'], $counts->dislikes, $origin_dislike, $delivery_data, $visibility_data);
+		$friendica       = new FriendicaExtension($item['title'] ?? '', $item['changed'], $item['commented'], $item['received'], $counts->dislikes, $origin_dislike, $network, $platform, $version, $sitename, $delivery_data, $visibility_data, BBCode::convertForUriId($item['uri-id'], $item['body'], BBCode::EXTERNAL));
 
 		return new \Friendica\Object\Api\Mastodon\Status($item, $account, $counts, $userAttributes, $sensitive, $application, $mentions, $tags, $card, $attachments, $in_reply, $reshare, $friendica, $quote, $poll, $emojis);
 	}
@@ -343,7 +349,7 @@ class Status extends BaseFactory
 					$quote_id = $media['media-uri-id'];
 				} else {
 					$shared_item = Post::selectFirst(['uri-id'], ['plink' => $media[0]['url'], 'uid' => [$uid, 0]]);
-					$quote_id = $shared_item['uri-id'] ?? 0;
+					$quote_id    = $shared_item['uri-id'] ?? 0;
 				}
 			}
 		} else {
@@ -354,7 +360,7 @@ class Status extends BaseFactory
 			try {
 				$quote = $this->createFromUriId($quote_id, $uid, false, false, false)->toArray();
 			} catch (\Exception $exception) {
-				Logger::info('Quote not fetchable', ['uri-id' => $item['uri-id'], 'uid' => $uid, 'exception' => $exception]);
+				DI::logger()->info('Quote not fetchable', ['uri-id' => $item['uri-id'], 'uid' => $uid, 'exception' => $exception]);
 				$quote = [];
 			}
 		} else {
@@ -364,17 +370,17 @@ class Status extends BaseFactory
 	}
 
 	/**
-	 * @param int $uriId id of the mail
+	 * @param int $id id of the mail
 	 *
 	 * @return \Friendica\Object\Api\Mastodon\Status
-	 * @throws HTTPException\InternalServerErrorException
-	 * @throws ImagickException|HTTPException\NotFoundException
+	 * @throws InternalServerErrorException
+	 * @throws ImagickException|NotFoundException
 	 */
 	public function createFromMailId(int $id): \Friendica\Object\Api\Mastodon\Status
 	{
 		$item = ActivityPub\Transmitter::getItemArrayFromMail($id, true);
 		if (empty($item)) {
-			throw new HTTPException\NotFoundException('Mail record not found with id: ' . $id);
+			throw new NotFoundException('Mail record not found with id: ' . $id);
 		}
 
 		$account = $this->mstdnAccountFactory->createFromContactId($item['author-id']);
@@ -393,7 +399,7 @@ class Status extends BaseFactory
 		$attachments = [];
 		$in_reply    = [];
 		$reshare     = [];
-		$friendica   = new FriendicaExtension('', null, null, null, 0, false, null, null);
+		$friendica   = new FriendicaExtension('', null, null, null, 0, false, null, null, null, null, null, null, BBCode::convertForUriId($item['uri-id'], $item['body'], BBCode::EXTERNAL));
 
 		return new \Friendica\Object\Api\Mastodon\Status($item, $account, $counts, $userAttributes, $sensitive, $application, $mentions, $tags, $card, $attachments, $in_reply, $reshare, $friendica);
 	}

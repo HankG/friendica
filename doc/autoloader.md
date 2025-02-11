@@ -46,9 +46,9 @@ The code will be something like:
 // mod/network.php
 <?php
 
-use Friendica\App;
+use Friendica\AppHelper;
 
-function network_content(App $a) {
+function network_content(AppHelper $appHelper) {
 	$itemsmanager = new \Friendica\ItemsManager();
 	$items = $itemsmanager->getAll();
 

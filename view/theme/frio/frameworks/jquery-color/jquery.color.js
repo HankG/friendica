@@ -1,4 +1,8 @@
-/*!
+/*
+ * SPDX-FileCopyrightText: jQuery Foundation and other contributors
+ *
+ * SPDX-License-Identifier: MIT
+ *
  * jQuery Color Animations v@VERSION
  * https://github.com/jquery/jquery-color
  *

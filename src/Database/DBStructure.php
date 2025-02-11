@@ -1,28 +1,13 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Database;
 
 use Exception;
-use Friendica\Core\Logger;
 use Friendica\DI;
 use Friendica\Model\Item;
 use Friendica\Model\User;
@@ -86,10 +71,13 @@ class DBStructure
 		$old_tables = ['fserver', 'gcign', 'gcontact', 'gcontact-relation', 'gfollower' ,'glink', 'item-delivery-data',
 			'item-activity', 'item-content', 'item_id', 'participation', 'poll', 'poll_result', 'queue', 'retriever_rule',
 			'deliverq', 'dsprphotoq', 'ffinder', 'sign', 'spam', 'term', 'user-item', 'thread', 'item', 'challenge',
-			'auth_codes', 'tokens', 'clients', 'profile_check', 'host', 'conversation', 'fcontact', 'addon'];
+			'auth_codes', 'tokens', 'clients', 'profile_check', 'host', 'conversation', 'fcontact', 'addon', 'push_subscriber'];
 
-		$tables = DBA::selectToArray('INFORMATION_SCHEMA.TABLES', ['TABLE_NAME'],
-			['TABLE_SCHEMA' => DBA::databaseName(), 'TABLE_TYPE' => 'BASE TABLE']);
+		$tables = DBA::selectToArray(
+			'INFORMATION_SCHEMA.TABLES',
+			['TABLE_NAME'],
+			['TABLE_SCHEMA' => DBA::databaseName(), 'TABLE_TYPE' => 'BASE TABLE']
+		);
 
 		if (empty($tables)) {
 			echo DI::l10n()->t('No unused tables found.');
@@ -158,8 +146,11 @@ class DBStructure
 	 */
 	private static function printUpdateError(string $message): string
 	{
-		echo DI::l10n()->t("\nError %d occurred during database update:\n%s\n",
-			DBA::errorNo(), DBA::errorMessage());
+		echo DI::l10n()->t(
+			"\nError %d occurred during database update:\n%s\n",
+			DBA::errorNo(),
+			DBA::errorMessage()
+		);
 
 		return DI::l10n()->t('Errors encountered performing database changes: ') . $message . '<br />';
 	}
@@ -203,6 +194,16 @@ class DBStructure
 	}
 
 	/**
+	 * Returns the current status of the Update
+	 *
+	 * @return int
+	 */
+	public static function getUpdateStatus(): int
+	{
+		return (int)DI::config()->get('system', 'dbupdate') ?? static::UPDATE_NOT_CHECKED;
+	}
+
+	/**
 	 * Updates DB structure from the installation and returns eventual errors messages
 	 *
 	 * @return string Empty string if the update is successful, error messages otherwise
@@ -242,7 +243,7 @@ class DBStructure
 
 		$errors = '';
 
-		Logger::info('updating structure');
+		DI::logger()->info('updating structure');
 
 		// Get the current structure
 		$database = [];
@@ -255,7 +256,7 @@ class DBStructure
 			foreach ($tables as $table) {
 				$table = current($table);
 
-				Logger::info('updating structure', ['table' => $table]);
+				DI::logger()->info('updating structure', ['table' => $table]);
 				$database[$table] = self::tableStructure($table);
 			}
 		}
@@ -279,7 +280,7 @@ class DBStructure
 			$is_new_table = false;
 			$sql3         = "";
 			if (!isset($database[$name])) {
-				$sql = DbaDefinitionSqlWriter::createTable($name, $structure, $verbose, $action);
+				$sql = DbaDefinitionSqlWriter::createTable($name, $structure);
 				if ($verbose) {
 					echo $sql;
 				}
@@ -527,30 +528,36 @@ class DBStructure
 		// This query doesn't seem to be executable as a prepared statement
 		$indexes = DBA::toArray(DBA::p("SHOW INDEX FROM " . DBA::quoteIdentifier($table)));
 
-		$fields = DBA::selectToArray('INFORMATION_SCHEMA.COLUMNS',
+		$fields = DBA::selectToArray(
+			'INFORMATION_SCHEMA.COLUMNS',
 			['COLUMN_NAME', 'COLUMN_TYPE', 'IS_NULLABLE', 'COLUMN_DEFAULT', 'EXTRA',
-			'COLUMN_KEY', 'COLLATION_NAME', 'COLUMN_COMMENT'],
+				'COLUMN_KEY', 'COLLATION_NAME', 'COLUMN_COMMENT'],
 			["`TABLE_SCHEMA` = ? AND `TABLE_NAME` = ?",
-			DBA::databaseName(), $table]);
+				DBA::databaseName(), $table]
+		);
 
-		$foreign_keys = DBA::selectToArray('INFORMATION_SCHEMA.KEY_COLUMN_USAGE',
+		$foreign_keys = DBA::selectToArray(
+			'INFORMATION_SCHEMA.KEY_COLUMN_USAGE',
 			['COLUMN_NAME', 'CONSTRAINT_NAME', 'REFERENCED_TABLE_NAME', 'REFERENCED_COLUMN_NAME'],
 			["`TABLE_SCHEMA` = ? AND `TABLE_NAME` = ? AND `REFERENCED_TABLE_SCHEMA` IS NOT NULL",
-			DBA::databaseName(), $table]);
+				DBA::databaseName(), $table]
+		);
 
-		$table_status = DBA::selectFirst('INFORMATION_SCHEMA.TABLES',
+		$table_status = DBA::selectFirst(
+			'INFORMATION_SCHEMA.TABLES',
 			['ENGINE', 'TABLE_COLLATION', 'TABLE_COMMENT'],
 			["`TABLE_SCHEMA` = ? AND `TABLE_NAME` = ?",
-			DBA::databaseName(), $table]);
+				DBA::databaseName(), $table]
+		);
 
-		$fielddata = [];
-		$indexdata = [];
+		$fielddata   = [];
+		$indexdata   = [];
 		$foreigndata = [];
 
 		if (DBA::isResult($foreign_keys)) {
 			foreach ($foreign_keys as $foreign_key) {
-				$parameters = ['foreign' => [$foreign_key['REFERENCED_TABLE_NAME'] => $foreign_key['REFERENCED_COLUMN_NAME']]];
-				$constraint = self::getConstraintName($table, $foreign_key['COLUMN_NAME'], $parameters);
+				$parameters               = ['foreign' => [$foreign_key['REFERENCED_TABLE_NAME'] => $foreign_key['REFERENCED_COLUMN_NAME']]];
+				$constraint               = self::getConstraintName($table, $foreign_key['COLUMN_NAME'], $parameters);
 				$foreigndata[$constraint] = $foreign_key;
 			}
 		}
@@ -578,8 +585,8 @@ class DBStructure
 		$fielddata = [];
 		if (DBA::isResult($fields)) {
 			foreach ($fields as $field) {
-				$search = ['tinyint(1)', 'tinyint(3) unsigned', 'tinyint(4)', 'smallint(5) unsigned', 'smallint(6)', 'mediumint(8) unsigned', 'mediumint(9)', 'bigint(20)', 'int(10) unsigned', 'int(11)'];
-				$replace = ['boolean', 'tinyint unsigned', 'tinyint', 'smallint unsigned', 'smallint', 'mediumint unsigned', 'mediumint', 'bigint', 'int unsigned', 'int'];
+				$search               = ['tinyint(1)', 'tinyint(3) unsigned', 'tinyint(4)', 'smallint(5) unsigned', 'smallint(6)', 'mediumint(8) unsigned', 'mediumint(9)', 'bigint(20)', 'int(10) unsigned', 'int(11)'];
+				$replace              = ['boolean', 'tinyint unsigned', 'tinyint', 'smallint unsigned', 'smallint', 'mediumint unsigned', 'mediumint', 'bigint', 'int unsigned', 'int'];
 				$field['COLUMN_TYPE'] = str_replace($search, $replace, $field['COLUMN_TYPE']);
 
 				$fielddata[$field['COLUMN_NAME']]['type'] = $field['COLUMN_TYPE'];
@@ -601,13 +608,13 @@ class DBStructure
 				}
 
 				$fielddata[$field['COLUMN_NAME']]['Collation'] = $field['COLLATION_NAME'];
-				$fielddata[$field['COLUMN_NAME']]['comment'] = $field['COLUMN_COMMENT'];
+				$fielddata[$field['COLUMN_NAME']]['comment']   = $field['COLUMN_COMMENT'];
 			}
 		}
 
 		return [
-			'fields' => $fielddata,
-			'indexes' => $indexdata,
+			'fields'       => $fielddata,
+			'indexes'      => $indexdata,
 			'foreign_keys' => $foreigndata,
 			'table_status' => $table_status
 		];
@@ -736,9 +743,11 @@ class DBStructure
 	 */
 	public static function existsForeignKeyForField(string $table, string $field): bool
 	{
-		return DBA::exists('INFORMATION_SCHEMA.KEY_COLUMN_USAGE',
+		return DBA::exists(
+			'INFORMATION_SCHEMA.KEY_COLUMN_USAGE',
 			["`TABLE_SCHEMA` = ? AND `TABLE_NAME` = ? AND `COLUMN_NAME` = ? AND `REFERENCED_TABLE_SCHEMA` IS NOT NULL",
-			DBA::databaseName(), $table, $field]);
+				DBA::databaseName(), $table, $field]
+		);
 	}
 
 	/**
@@ -811,8 +820,8 @@ class DBStructure
 
 		if (self::existsTable('user') && !DBA::exists('user', ['uid' => 0])) {
 			$user = [
-				'verified' => true,
-				'page-flags' => User::PAGE_FLAGS_SOAPBOX,
+				'verified'     => true,
+				'page-flags'   => User::PAGE_FLAGS_SOAPBOX,
 				'account-type' => User::ACCOUNT_TYPE_RELAY,
 			];
 			DBA::insert('user', $user);
@@ -888,7 +897,7 @@ class DBStructure
 						$permission = '';
 					}
 					$fields = ['id' => $set['psid'], 'uid' => $set['uid'], 'allow_cid' => $permission,
-						'allow_gid' => '', 'deny_cid' => '', 'deny_gid' => ''];
+						'allow_gid'    => '', 'deny_cid' => '', 'deny_gid' => ''];
 					DBA::insert('permissionset', $fields, Database::INSERT_IGNORE);
 				}
 				DBA::close($sets);
@@ -918,7 +927,7 @@ class DBStructure
 		$isUpdate = false;
 
 		$processes = DBA::select('information_schema.processlist', ['info'], [
-			'db' => DBA::databaseName(),
+			'db'      => DBA::databaseName(),
 			'command' => ['Query', 'Execute']
 		]);
 

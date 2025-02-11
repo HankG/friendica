@@ -1,3 +1,9 @@
+{{*
+  * Copyright (C) 2010-2024, the Friendica project
+  * SPDX-FileCopyrightText: 2010-2024 the Friendica project
+  *
+  * SPDX-License-Identifier: AGPL-3.0-or-later
+  *}}
 	<div class="field checkbox" id="div_id_{{$field.0}}">
 		<label id="id_{{$field.0}}_label" for="id_{{$field.0}}">{{$field.1}}</label>
 		<input type="hidden" name="{{$field.0}}" value="0">

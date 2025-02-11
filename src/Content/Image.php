@@ -1,23 +1,9 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Content;
 
@@ -25,6 +11,7 @@ use Friendica\Content\Image\Collection\MasonryImageRow;
 use Friendica\Content\Image\Entity\MasonryImage;
 use Friendica\Content\Post\Collection\PostMedias;
 use Friendica\Core\Renderer;
+use Friendica\Network\HTTPException\ServiceUnavailableException;
 
 class Image
 {
@@ -56,9 +43,7 @@ class Image
 	}
 
 	/**
-	 * @param PostMedias $images
-	 * @return string
-	 * @throws \Friendica\Network\HTTPException\ServiceUnavailableException
+	 * @throws ServiceUnavailableException
 	 */
 	private static function getImageGridHtml(PostMedias $images): string
 	{
@@ -84,9 +69,7 @@ class Image
 	 * For each row, we calculate how much of the total width each picture will take depending on their aspect ratio
 	 * and how much relative height it needs to accomodate all pictures next to each other with their height normalized.
 	 *
-	 * @param array $images
-	 * @return string
-	 * @throws \Friendica\Network\HTTPException\ServiceUnavailableException
+	 * @throws ServiceUnavailableException
 	 */
 	private static function getHorizontalMasonryHtml(PostMedias $images): string
 	{

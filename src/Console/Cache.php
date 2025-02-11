@@ -1,28 +1,14 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Console;
 
 use Asika\SimpleConsole\CommandArgsException;
-use Friendica\App;
+use Friendica\App\Mode;
 use Friendica\Core\Cache\Enum\Duration;
 use Friendica\Core\Cache\Capability\ICanCache;
 use RuntimeException;
@@ -39,7 +25,7 @@ class Cache extends \Asika\SimpleConsole\Console
 	protected $helpOptions = ['h', 'help', '?'];
 
 	/**
-	 * @var App\Mode
+	 * @var Mode
 	 */
 	private $appMode;
 
@@ -82,7 +68,7 @@ HELP;
 		return $help;
 	}
 
-	public function __construct(App\Mode $appMode, ICanCache $cache, array $argv = null)
+	public function __construct(Mode $appMode, ICanCache $cache, array $argv = null)
 	{
 		parent::__construct($argv);
 
@@ -99,7 +85,7 @@ HELP;
 			$this->out('Options: ' . var_export($this->options, true));
 		}
 
-		if (!$this->appMode->has(App\Mode::DBAVAILABLE)) {
+		if (!$this->appMode->has(Mode::DBAVAILABLE)) {
 			$this->out('Database isn\'t ready or populated yet, database cache won\'t be available');
 		}
 

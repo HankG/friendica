@@ -1,34 +1,19 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Content;
 
-use Friendica\App;
 use Friendica\App\BaseURL;
+use Friendica\AppHelper;
 use Friendica\Content\Text\BBCode;
 use Friendica\Content\Text\BBCode\Video;
 use Friendica\Content\Text\HTML;
 use Friendica\Core\Hook;
 use Friendica\Core\L10n;
-use Friendica\Core\Logger;
 use Friendica\Core\PConfig\Capability\IManagePersonalConfigValues;
 use Friendica\Core\Protocol;
 use Friendica\Core\Session\Capability\IHandleUserSessions;
@@ -46,6 +31,7 @@ use Friendica\Model\Post;
 use Friendica\Model\Tag;
 use Friendica\Model\User;
 use Friendica\Network\HTTPException;
+use Friendica\Network\HTTPException\InternalServerErrorException;
 use Friendica\Object\EMail\ItemCCEMail;
 use Friendica\Protocol\Activity;
 use Friendica\Util\ACLFormatter;
@@ -56,6 +42,7 @@ use Friendica\Util\Profiler;
 use Friendica\Util\Proxy;
 use Friendica\Util\XML;
 use GuzzleHttp\Psr7\Uri;
+use ImagickException;
 
 /**
  * A content helper class for displaying items
@@ -80,10 +67,10 @@ class Item
 	private $baseURL;
 	/** @var Emailer */
 	private $emailer;
-	/** @var App */
-	private $app;
+	/** @var AppHelper */
+	private $appHelper;
 
-	public function __construct(Profiler $profiler, Activity $activity, L10n $l10n, IHandleUserSessions $userSession, Video $bbCodeVideo, ACLFormatter $aclFormatter, IManagePersonalConfigValues $pConfig, BaseURL $baseURL, Emailer $emailer, App $app)
+	public function __construct(Profiler $profiler, Activity $activity, L10n $l10n, IHandleUserSessions $userSession, Video $bbCodeVideo, ACLFormatter $aclFormatter, IManagePersonalConfigValues $pConfig, BaseURL $baseURL, Emailer $emailer, AppHelper $appHelper)
 	{
 		$this->profiler     = $profiler;
 		$this->activity     = $activity;
@@ -94,7 +81,7 @@ class Item
 		$this->baseURL      = $baseURL;
 		$this->pConfig      = $pConfig;
 		$this->emailer      = $emailer;
-		$this->app          = $app;
+		$this->appHelper    = $appHelper;
 	}
 
 	/**
@@ -129,8 +116,8 @@ class Item
 	public function determineCategoriesTerms(array $item, int $uid = 0): array
 	{
 		$categories = [];
-		$folders = [];
-		$first = true;
+		$folders    = [];
+		$first      = true;
 
 		$uid = $item['uid'] ?: $uid;
 
@@ -145,11 +132,11 @@ class Item
 				$url = '#';
 			}
 			$categories[] = [
-				'name' => $savedFolderName,
-				'url' => $url,
+				'name'      => $savedFolderName,
+				'url'       => $url,
 				'removeurl' => $this->userSession->getLocalUserId() == $uid ? 'filerm/' . $item['id'] . '?cat=' . rawurlencode($savedFolderName) : '',
-				'first' => $first,
-				'last' => false
+				'first'     => $first,
+				'last'      => false
 			];
 			$first = false;
 		}
@@ -161,11 +148,11 @@ class Item
 		if ($this->userSession->getLocalUserId() == $uid) {
 			foreach (Post\Category::getArrayByURIId($item['uri-id'], $uid, Post\Category::FILE) as $savedFolderName) {
 				$folders[] = [
-					'name' => $savedFolderName,
-					'url' => "#",
+					'name'      => $savedFolderName,
+					'url'       => "#",
 					'removeurl' => $this->userSession->getLocalUserId() == $uid ? 'filerm/' . $item['id'] . '?term=' . rawurlencode($savedFolderName) : '',
-					'first' => $first,
-					'last' => false
+					'first'     => $first,
+					'last'      => false
 				];
 				$first = false;
 			}
@@ -188,12 +175,13 @@ class Item
 	 * @param string $network     The network of the post
 	 *
 	 * @return array|bool ['replaced' => $replaced, 'contact' => $contact] or "false" on if already replaced
-	 * @throws \Friendica\Network\HTTPException\InternalServerErrorException
-	 * @throws \ImagickException
+	 * @throws InternalServerErrorException
+	 * @throws ImagickException
 	 */
 	public static function replaceTag(string &$body, int $profile_uid, string $tag, string $network = '')
 	{
 		$replaced = false;
+		$contact  = [];
 
 		//is it a person tag?
 		if (Tag::isType($tag, Tag::MENTION, Tag::IMPLICIT_MENTION, Tag::EXCLUSIVE_MENTION)) {
@@ -209,57 +197,59 @@ class Item
 			// Sometimes the tag detection doesn't seem to work right
 			// This is some workaround
 			$nameparts = explode(' ', $name);
-			$name = $nameparts[0];
+			$name      = $nameparts[0];
 
 			// Try to detect the contact in various ways
 			if (strpos($name, 'http://') || strpos($name, '@')) {
 				$contact = Contact::getByURLForUser($name, $profile_uid);
 			} else {
 				$contact = false;
-				$fields = ['id', 'url', 'nick', 'name', 'alias', 'network', 'forum', 'prv'];
+				$fields  = ['id', 'url', 'nick', 'name', 'alias', 'network', 'forum', 'prv'];
 
 				if (strrpos($name, '+')) {
 					// Is it in format @nick+number?
-					$tagcid = intval(substr($name, strrpos($name, '+') + 1));
+					$tagcid  = intval(substr($name, strrpos($name, '+') + 1));
 					$contact = DBA::selectFirst('contact', $fields, ['id' => $tagcid, 'uid' => $profile_uid]);
 				}
 
 				// select someone by nick in the current network
 				if (!DBA::isResult($contact) && ($network != '')) {
 					$condition = ['nick' => $name, 'network' => $network, 'uid' => $profile_uid];
-					$contact = DBA::selectFirst('contact', $fields, $condition);
+					$contact   = DBA::selectFirst('contact', $fields, $condition);
 				}
 
 				// select someone by attag in the current network
 				if (!DBA::isResult($contact) && ($network != '')) {
 					$condition = ['attag' => $name, 'network' => $network, 'uid' => $profile_uid];
-					$contact = DBA::selectFirst('contact', $fields, $condition);
+					$contact   = DBA::selectFirst('contact', $fields, $condition);
 				}
 
 				//select someone by name in the current network
 				if (!DBA::isResult($contact) && ($network != '')) {
 					$condition = ['name' => $name, 'network' => $network, 'uid' => $profile_uid];
-					$contact = DBA::selectFirst('contact', $fields, $condition);
+					$contact   = DBA::selectFirst('contact', $fields, $condition);
 				}
 
 				// select someone by nick in any network
 				if (!DBA::isResult($contact)) {
 					$condition = ['nick' => $name, 'uid' => $profile_uid];
-					$contact = DBA::selectFirst('contact', $fields, $condition);
+					$contact   = DBA::selectFirst('contact', $fields, $condition);
 				}
 
 				// select someone by attag in any network
 				if (!DBA::isResult($contact)) {
 					$condition = ['attag' => $name, 'uid' => $profile_uid];
-					$contact = DBA::selectFirst('contact', $fields, $condition);
+					$contact   = DBA::selectFirst('contact', $fields, $condition);
 				}
 
 				// select someone by name in any network
 				if (!DBA::isResult($contact)) {
 					$condition = ['name' => $name, 'uid' => $profile_uid];
-					$contact = DBA::selectFirst('contact', $fields, $condition);
+					$contact   = DBA::selectFirst('contact', $fields, $condition);
 				}
 			}
+
+			$newname = '';
 
 			// Check if $contact has been successfully loaded
 			if (DBA::isResult($contact)) {
@@ -272,8 +262,8 @@ class Item
 				$replaced = true;
 				// create profile link
 				$profile = str_replace(',', '%2c', $profile);
-				$newtag = $tag_type . '[url=' . $profile . ']' . $newname . '[/url]';
-				$body = str_replace($tag_type . $name, $newtag, $body);
+				$newtag  = $tag_type . '[url=' . $profile . ']' . $newname . '[/url]';
+				$body    = str_replace($tag_type . $name, $newtag, $body);
 			}
 		}
 
@@ -286,7 +276,7 @@ class Item
 	 * @param array $item
 	 * @return void
 	 * @throws ImagickException
-	 * @throws \Friendica\Network\HTTPException\InternalServerErrorException
+	 * @throws InternalServerErrorException
 	 */
 	public function localize(array &$item)
 	{
@@ -313,7 +303,7 @@ class Item
 					'url'     => $item['author-link'],
 					'alias'   => $item['author-alias'],
 				];
-				$author  = '[url=' . Contact::magicLinkByContact($author_arr) . ']' . $item['author-name'] . '[/url]';
+				$author = '[url=' . Contact::magicLinkByContact($author_arr) . ']' . $item['author-name'] . '[/url]';
 
 				$author_arr = [
 					'uid'     => 0,
@@ -322,7 +312,7 @@ class Item
 					'url'     => $obj['author-link'],
 					'alias'   => $obj['author-alias'],
 				];
-				$objauthor  = '[url=' . Contact::magicLinkByContact($author_arr) . ']' . $obj['author-name'] . '[/url]';
+				$objauthor = '[url=' . Contact::magicLinkByContact($author_arr) . ']' . $obj['author-name'] . '[/url]';
 
 				switch ($obj['verb']) {
 					case Activity::POST:
@@ -350,7 +340,7 @@ class Item
 
 				$parsedobj = XML::parseString($xmlhead . $item['object']);
 
-				$tag = sprintf('#[url=%s]%s[/url]', $parsedobj->id, $parsedobj->content);
+				$tag          = sprintf('#[url=%s]%s[/url]', $parsedobj->id, $parsedobj->content);
 				$item['body'] = $this->l10n->t('%1$s tagged %2$s\'s %3$s with %4$s', $author, $objauthor, $plink, $tag);
 			}
 		}
@@ -368,7 +358,7 @@ class Item
 	public function photoMenu(array $item, string $formSecurityToken): string
 	{
 		$this->profiler->startRecording('rendering');
-		$sub_link = $contact_url = $pm_url = $status_link = '';
+		$sub_link    = $contact_url = $pm_url = $status_link = '';
 		$photos_link = $posts_link = $block_link = $ignore_link = $collapse_link = $ignoreserver_link = '';
 
 		if ($this->userSession->getLocalUserId() && $this->userSession->getLocalUserId() == $item['uid'] && $item['gravity'] == ItemModel::GRAVITY_PARENT && !$item['self'] && !$item['mention']) {
@@ -389,16 +379,16 @@ class Item
 			$profile_link = $profile_link . '?' . http_build_query(['url' => $item['author-link'] . '/profile']);
 		}
 
-		$cid = 0;
-		$pcid = $item['author-id'];
-		$network = '';
-		$rel = 0;
+		$cid       = 0;
+		$pcid      = $item['author-id'];
+		$network   = '';
+		$rel       = 0;
 		$condition = ['uid' => $this->userSession->getLocalUserId(), 'uri-id' => $item['author-uri-id']];
-		$contact = DBA::selectFirst('contact', ['id', 'network', 'rel'], $condition);
+		$contact   = DBA::selectFirst('contact', ['id', 'network', 'rel'], $condition);
 		if (DBA::isResult($contact)) {
-			$cid = $contact['id'];
+			$cid     = $contact['id'];
 			$network = $contact['network'];
-			$rel = $contact['rel'];
+			$rel     = $contact['rel'];
 		}
 
 		if (!empty($pcid)) {
@@ -425,16 +415,16 @@ class Item
 
 		if ($this->userSession->getLocalUserId()) {
 			$menu = [
-				$this->l10n->t('Follow Thread') => $sub_link,
-				$this->l10n->t('View Status') => $status_link,
-				$this->l10n->t('View Profile') => $profile_link,
-				$this->l10n->t('View Photos') => $photos_link,
-				$this->l10n->t('Network Posts') => $posts_link,
-				$this->l10n->t('View Contact') => $contact_url,
-				$this->l10n->t('Send PM') => $pm_url,
-				$this->l10n->t('Block') => $block_link,
-				$this->l10n->t('Ignore') => $ignore_link,
-				$this->l10n->t('Collapse') => $collapse_link,
+				$this->l10n->t('Follow Thread')                               => $sub_link,
+				$this->l10n->t('View Status')                                 => $status_link,
+				$this->l10n->t('View Profile')                                => $profile_link,
+				$this->l10n->t('View Photos')                                 => $photos_link,
+				$this->l10n->t('Network Posts')                               => $posts_link,
+				$this->l10n->t('View Contact')                                => $contact_url,
+				$this->l10n->t('Send PM')                                     => $pm_url,
+				$this->l10n->t('Block')                                       => $block_link,
+				$this->l10n->t('Ignore')                                      => $ignore_link,
+				$this->l10n->t('Collapse')                                    => $collapse_link,
 				$this->l10n->t("Ignore %s server", $authorBaseUri->getHost()) => $ignoreserver_link,
 			];
 
@@ -527,29 +517,29 @@ class Item
 			if (!empty($contact['prv']) || ($tag[1] == Tag::TAG_CHARACTER[Tag::EXCLUSIVE_MENTION])) {
 				$private_group = $contact['prv'];
 				$only_to_group = ($tag[1] == Tag::TAG_CHARACTER[Tag::EXCLUSIVE_MENTION]);
-				$private_id = $contact['id'];
+				$private_id    = $contact['id'];
 				$group_contact = $contact;
-				Logger::info('Private group or exclusive mention', ['url' => $tag[2], 'mention' => $tag[1]]);
+				DI::logger()->info('Private group or exclusive mention', ['url' => $tag[2], 'mention' => $tag[1]]);
 			} elseif ($item['allow_cid'] == '<' . $contact['id'] . '>') {
 				$private_group = false;
 				$only_to_group = true;
-				$private_id = $contact['id'];
+				$private_id    = $contact['id'];
 				$group_contact = $contact;
-				Logger::info('Public group', ['url' => $tag[2], 'mention' => $tag[1]]);
+				DI::logger()->info('Public group', ['url' => $tag[2], 'mention' => $tag[1]]);
 			} else {
-				Logger::info('Post with group mention will not be converted to a group post', ['url' => $tag[2], 'mention' => $tag[1]]);
+				DI::logger()->info('Post with group mention will not be converted to a group post', ['url' => $tag[2], 'mention' => $tag[1]]);
 			}
 		}
-		Logger::info('Got inform', ['inform' => $item['inform']]);
+		DI::logger()->info('Got inform', ['inform' => $item['inform']]);
 
 		if (($item['gravity'] == ItemModel::GRAVITY_PARENT) && !empty($group_contact) && ($private_group || $only_to_group)) {
 			// we tagged a group in a top level post. Now we change the post
 			$item['private'] = $private_group ? ItemModel::PRIVATE : ItemModel::UNLISTED;
 
 			if ($only_to_group) {
-				$cdata = Contact::getPublicAndUserContactID($group_contact['id'], $item['uid']);
-				if (!empty($cdata['user'])) {
-					$item['owner-id'] = $cdata['user'];
+				$pcid = Contact::getPublicContactId($group_contact['id'], $item['uid']);
+				if ($pcid) {
+					$item['owner-id'] = $pcid;
 					unset($item['owner-link']);
 					unset($item['owner-name']);
 					unset($item['owner-avatar']);
@@ -571,7 +561,7 @@ class Item
 		} elseif ($setPermissions) {
 			if (empty($receivers)) {
 				// For security reasons direct posts without any receiver will be posts to yourself
-				$self = Contact::selectFirst(['id'], ['uid' => $item['uid'], 'self' => true]);
+				$self        = Contact::selectFirst(['id'], ['uid' => $item['uid'], 'self' => true]);
 				$receivers[] = $self['id'];
 			}
 
@@ -615,9 +605,9 @@ class Item
 			$owner_updated = '';
 			$owner_thumb   = $item['contact-avatar'];
 		} else {
-			$owner_avatar   = $item['owner-id'];
-			$owner_updated  = $item['owner-updated'];
-			$owner_thumb    = $item['owner-avatar'];
+			$owner_avatar  = $item['owner-id'];
+			$owner_updated = $item['owner-updated'];
+			$owner_thumb   = $item['owner-avatar'] ?? '';
 		}
 
 		if (empty($owner_thumb) || Photo::isPhotoURI($owner_thumb)) {
@@ -644,10 +634,10 @@ class Item
 			return $body;
 		}
 
-		$fields = ['uri-id', 'uri', 'body', 'title', 'author-name', 'author-link', 'author-avatar', 'guid', 'created', 'plink', 'network', 'quote-uri-id'];
+		$fields      = ['uri-id', 'uri', 'body', 'title', 'author-name', 'author-link', 'author-avatar', 'guid', 'created', 'plink', 'network', 'quote-uri-id'];
 		$shared_item = Post::selectFirst($fields, ['uri-id' => $item['quote-uri-id'], 'uid' => [$item['uid'], 0], 'private' => [ItemModel::PUBLIC, ItemModel::UNLISTED]]);
 		if (!DBA::isResult($shared_item)) {
-			Logger::notice('Post does not exist.', ['uri-id' => $item['quote-uri-id'], 'uid' => $item['uid']]);
+			DI::logger()->notice('Post does not exist.', ['uri-id' => $item['quote-uri-id'], 'uid' => $item['uid']]);
 			return $body;
 		}
 
@@ -656,19 +646,14 @@ class Item
 
 	/**
 	 * Add a share block for the given guid
-	 *
-	 * @param string $guid
-	 * @param integer $uid
-	 * @param bool $add_media
-	 * @return string
 	 */
 	private function createSharedPostByGuid(string $guid, bool $add_media): string
 	{
-		$fields = ['uri-id', 'uri', 'body', 'title', 'author-name', 'author-link', 'author-avatar', 'guid', 'created', 'plink', 'network'];
+		$fields      = ['uri-id', 'uri', 'body', 'title', 'author-name', 'author-link', 'author-avatar', 'guid', 'created', 'plink', 'network'];
 		$shared_item = Post::selectFirst($fields, ['guid' => $guid, 'uid' => 0, 'private' => [ItemModel::PUBLIC, ItemModel::UNLISTED]]);
 
 		if (!DBA::isResult($shared_item)) {
-			Logger::notice('Post does not exist.', ['guid' => $guid]);
+			DI::logger()->notice('Post does not exist.', ['guid' => $guid]);
 			return '';
 		}
 
@@ -815,14 +800,14 @@ class Item
 
 	public function storeAttachmentFromRequest(array $request): string
 	{
-		$attachment_type  = $request['attachment_type'] ??  '';
+		$attachment_type  = $request['attachment_type']  ?? '';
 		$attachment_title = $request['attachment_title'] ?? '';
-		$attachment_text  = $request['attachment_text'] ??  '';
+		$attachment_text  = $request['attachment_text']  ?? '';
 
-		$attachment_url     = hex2bin($request['attachment_url'] ??     '');
+		$attachment_url     = hex2bin($request['attachment_url'] ?? '');
 		$attachment_img_src = hex2bin($request['attachment_img_src'] ?? '');
 
-		$attachment_img_width  = $request['attachment_img_width'] ??  0;
+		$attachment_img_width  = $request['attachment_img_width']  ?? 0;
 		$attachment_img_height = $request['attachment_img_height'] ?? 0;
 
 		// Fetch the basic attachment data
@@ -830,10 +815,10 @@ class Item
 		unset($attachment['keywords']);
 
 		// Overwrite the basic data with possible changes from the frontend
-		$attachment['type'] = $attachment_type;
+		$attachment['type']  = $attachment_type;
 		$attachment['title'] = $attachment_title;
-		$attachment['text'] = $attachment_text;
-		$attachment['url'] = $attachment_url;
+		$attachment['text']  = $attachment_text;
+		$attachment['url']   = $attachment_url;
 
 		if (!empty($attachment_img_src)) {
 			$attachment['images'] = [
@@ -857,7 +842,7 @@ class Item
 			$filedas = FileTag::fileToArray($post['file']);
 		}
 
-		$list_array = explode(',', trim($category));
+		$list_array   = explode(',', trim($category));
 		$post['file'] = FileTag::arrayToFile($list_array, 'category');
 
 		if (!empty($filedas) && is_array($filedas)) {
@@ -873,8 +858,8 @@ class Item
 		if ($toplevel_item) {
 			$post['allow_cid'] = $toplevel_item['allow_cid'] ?? '';
 			$post['allow_gid'] = $toplevel_item['allow_gid'] ?? '';
-			$post['deny_cid']  = $toplevel_item['deny_cid'] ?? '';
-			$post['deny_gid']  = $toplevel_item['deny_gid'] ?? '';
+			$post['deny_cid']  = $toplevel_item['deny_cid']  ?? '';
+			$post['deny_gid']  = $toplevel_item['deny_gid']  ?? '';
 			$post['private']   = $toplevel_item['private'];
 			return $post;
 		}
@@ -893,7 +878,7 @@ class Item
 		if ($visibility === 'public') {
 			// The ACL selector introduced in version 2019.12 sends ACL input data even when the Public visibility is selected
 			$post['allow_cid'] = $post['allow_gid'] = $post['deny_cid'] = $post['deny_gid'] = '';
-		} else if ($visibility === 'custom') {
+		} elseif ($visibility === 'custom') {
 			// Since we know from the visibility parameter the item should be private, we have to prevent the empty ACL
 			// case that would make it public. So we always append the author's contact id to the allowed contacts.
 			// See https://github.com/friendica/friendica/issues/9672
@@ -922,7 +907,7 @@ class Item
 		if ((preg_match_all("/\[bookmark\=([^\]]*)\](.*?)\[\/bookmark\]/ism", $post['body'], $match, PREG_SET_ORDER) || !empty($data['type']))
 			&& ($post['post-type'] != ItemModel::PT_PERSONAL_NOTE)
 		) {
-			$post['post-type'] = ItemModel::PT_PAGE;
+			$post['post-type']   = ItemModel::PT_PAGE;
 			$post['object-type'] = Activity\ObjectType::BOOKMARK;
 		}
 
@@ -940,10 +925,10 @@ class Item
 		$post['direction']  = Conversation::PUSH;
 		$post['received']   = DateTimeFormat::utcNow();
 		$post['origin']     = true;
-		$post['wall']       = $post['wall'] ?? true;
-		$post['guid']       = $post['guid'] ?? System::createUUID();
-		$post['verb']       = $post['verb'] ?? Activity::POST;
-		$post['uri']        = $post['uri'] ?? ItemModel::newURI($post['guid']);
+		$post['wall']       = $post['wall']       ?? true;
+		$post['guid']       = $post['guid']       ?? System::createUUID();
+		$post['verb']       = $post['verb']       ?? Activity::POST;
+		$post['uri']        = $post['uri']        ?? ItemModel::newURI($post['guid']);
 		$post['thr-parent'] = $post['thr-parent'] ?? $post['uri'];
 
 		if (empty($post['gravity'])) {
@@ -1004,7 +989,7 @@ class Item
 		// Convert links with empty descriptions to links without an explicit description
 		$post['body'] = trim(preg_replace('#\[url=([^\]]*?)\]\[/url\]#ism', '[url]$1[/url]', $post['body']));
 		$post['body'] = $this->bbCodeVideo->transform($post['body']);
-		$post = $this->setObjectType($post);
+		$post         = $this->setObjectType($post);
 
 		// Personal notes must never be altered to a group post.
 		if ($post['post-type'] != ItemModel::PT_PERSONAL_NOTE) {
@@ -1032,7 +1017,7 @@ class Item
 			}
 
 			$this->emailer->send(new ItemCCEMail(
-				$this->app,
+				$this->userSession,
 				$this->l10n,
 				$this->baseURL,
 				$post,
@@ -1098,10 +1083,10 @@ class Item
 		}
 
 		if (($expire_interval > 0) && !empty($created)) {
-			$expire_date = time() - ($expire_interval * 86400);
+			$expire_date  = time() - ($expire_interval * 86400);
 			$created_date = strtotime($created);
 			if ($created_date < $expire_date) {
-				Logger::notice('Item created before expiration interval.', ['created' => date('c', $created_date), 'expired' => date('c', $expire_date)]);
+				DI::logger()->notice('Item created before expiration interval.', ['created' => date('c', $created_date), 'expired' => date('c', $expire_date)]);
 				return true;
 			}
 		}

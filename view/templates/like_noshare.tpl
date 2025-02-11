@@ -1,3 +1,9 @@
+{{*
+  * Copyright (C) 2010-2024, the Friendica project
+  * SPDX-FileCopyrightText: 2010-2024 the Friendica project
+  *
+  * SPDX-License-Identifier: AGPL-3.0-or-later
+  *}}
 
 <div class="wall-item-like-buttons" id="wall-item-like-buttons-{{$id}}">
 	<a href="#" class="icon like" title="{{$like_title}}" onclick="doActivityItem({{$id}}, 'like'{{if $responses.like.self}}, true{{/if}}); return false"></a>

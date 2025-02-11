@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2010 - 2024 the Friendica project
+#
+# SPDX-License-Identifier: CC0-1.0
+
 matrix:
   include:
     - PHP_MAJOR_VERSION: 7.4
@@ -14,6 +18,11 @@ matrix:
 # This forces PHP Unit executions at the "opensocial" labeled location (because of much more power...)
 labels:
   location: opensocial
+
+when:
+  branch:
+    exclude: [ stable ]
+  event: [ pull_request, push ]
 
 steps:
   php-lint:
@@ -34,6 +43,7 @@ steps:
   composer_install:
     image: friendicaci/php${PHP_MAJOR_VERSION}:php${PHP_VERSION}
     commands:
+      - git clone -b develop --single-branch https://git.friendi.ca/friendica/friendica-addons.git addon
       - export COMPOSER_HOME=.composer
       - ./bin/composer.phar validate
       - ./bin/composer.phar install --prefer-dist
@@ -50,6 +60,13 @@ steps:
         - '.composer'
     volumes:
       - /tmp/drone-cache:/tmp/cache
+  phpstan:
+    image: friendicaci/php${PHP_MAJOR_VERSION}:php${PHP_VERSION}
+    when:
+      matrix:
+        PHP_MAJOR_VERSION: 8.2
+    commands:
+      - bin/composer.phar run phpstan;
   test:
     image: friendicaci/php${PHP_MAJOR_VERSION}:php${PHP_VERSION}
     environment:
@@ -82,9 +99,9 @@ steps:
         - friendica/friendica
     commands:
       - codecov -R '.' -Z -f 'clover.xml'
-    secrets:
-      - source: codecov-token
-        target: codecov_token
+    environment:
+      CODECOV_TOKEN:
+        from_secret: codecov-token
 
 services:
   mariadb:

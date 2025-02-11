@@ -1,27 +1,16 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Module\Profile;
 
-use Friendica\App;
+use Friendica\App\Arguments;
+use Friendica\App\BaseURL;
+use Friendica\App\Page;
+use Friendica\AppHelper;
 use Friendica\Content\Feature;
 use Friendica\Content\Pager;
 use Friendica\Core\Config\Capability\IManageConfigValues;
@@ -51,12 +40,12 @@ class Photos extends \Friendica\Module\BaseProfile
 {
 	/** @var IHandleUserSessions */
 	private $session;
-	/** @var App\Page */
+	/** @var Page */
 	private $page;
 	/** @var IManageConfigValues */
 	private $config;
-	/** @var App */
-	private $app;
+	/** @var AppHelper */
+	private $appHelper;
 	/** @var Database */
 	private $database;
 	/** @var SystemMessages */
@@ -66,19 +55,19 @@ class Photos extends \Friendica\Module\BaseProfile
 	/** @var array owner-view record */
 	private $owner;
 
-	public function __construct(ACLFormatter $aclFormatter, SystemMessages $systemMessages, Database $database, App $app, IManageConfigValues $config, App\Page $page, IHandleUserSessions $session, L10n $l10n, App\BaseURL $baseUrl, App\Arguments $args, LoggerInterface $logger, Profiler $profiler, Response $response, array $server, array $parameters = [])
+	public function __construct(ACLFormatter $aclFormatter, SystemMessages $systemMessages, Database $database, AppHelper $appHelper, IManageConfigValues $config, Page $page, IHandleUserSessions $session, L10n $l10n, BaseURL $baseUrl, Arguments $args, LoggerInterface $logger, Profiler $profiler, Response $response, array $server, array $parameters = [])
 	{
 		parent::__construct($l10n, $baseUrl, $args, $logger, $profiler, $response, $server, $parameters);
 
 		$this->session        = $session;
 		$this->page           = $page;
 		$this->config         = $config;
-		$this->app            = $app;
+		$this->appHelper      = $appHelper;
 		$this->database       = $database;
 		$this->systemMessages = $systemMessages;
 		$this->aclFormatter   = $aclFormatter;
 
-		$owner = Profile::load($this->app, $this->parameters['nickname'] ?? '', false);
+		$owner = Profile::load($this->appHelper, $this->parameters['nickname'] ?? '', false);
 		if (!$owner || $owner['account_removed'] || $owner['account_expired']) {
 			throw new HTTPException\NotFoundException($this->t('User not found.'));
 		}
@@ -138,7 +127,11 @@ class Photos extends \Friendica\Module\BaseProfile
 			$visible = 0;
 		}
 
-		$ret = ['src' => '', 'filename' => '', 'filesize' => 0, 'type' => ''];
+		$ret      = ['src' => '', 'filename' => '', 'filesize' => 0, 'type' => ''];
+		$src      = null;
+		$filename = '';
+		$filesize = 0;
+		$type     = '';
 
 		Hook::callAll('photo_post_file', $ret);
 
@@ -178,7 +171,11 @@ class Photos extends \Friendica\Module\BaseProfile
 					$this->systemMessages->addNotice($this->t('Server can\'t accept new file upload at this time, please contact your administrator'));
 					break;
 			}
-			@unlink($src);
+
+			if ($src !== null) {
+				@unlink($src);
+			}
+
 			$foo = 0;
 			Hook::callAll('photo_post_end', $foo);
 			return;

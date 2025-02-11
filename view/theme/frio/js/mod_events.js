@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 // @license magnet:?xt=urn:btih:0b31508aeb0634b347b8270c7bee4d411b5d4109&dn=agpl-3.0.txt AGPLv3-or-later
 /**
  * @file view/theme/frio/js/mod_events.js
@@ -214,7 +218,7 @@ function eventHoverBodyTemplate() {
 // The template for presenting the event location in the event hover-card
 function eventHoverLocationTemplate() {
 	var template =
-		'<span role="presentation" aria-hidden="true"> · </span>\
+		'<span aria-hidden="true"> · </span>\
 			<span class="event-card-location"> {0}</span></div>';
 	return template;
 }

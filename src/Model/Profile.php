@@ -1,33 +1,18 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Model;
 
-use Friendica\App;
 use Friendica\App\Mode;
+use Friendica\AppHelper;
 use Friendica\Content\Text\BBCode;
 use Friendica\Content\Widget\ContactBlock;
 use Friendica\Core\Cache\Enum\Duration;
 use Friendica\Core\Hook;
-use Friendica\Core\Logger;
 use Friendica\Core\Protocol;
 use Friendica\Core\Renderer;
 use Friendica\Core\Search;
@@ -47,7 +32,7 @@ class Profile
 	/**
 	 * Returns default profile for a given user id
 	 *
-	 * @param integer User ID
+	 * @param int $uid User ID
 	 *
 	 * @return array|bool Profile data or false on error
 	 * @throws \Exception
@@ -75,8 +60,8 @@ class Profile
 	/**
 	 * Returns profile data for the contact owner
 	 *
-	 * @param int $uid The User ID
-	 * @param array|bool $fields The fields to retrieve or false on error
+	 * @param int   $uid    The User ID
+	 * @param array $fields The fields to retrieve or false on error
 	 *
 	 * @return array Array of profile data
 	 * @throws \Exception
@@ -204,7 +189,6 @@ class Profile
 	 *      the theme is chosen before the _init() function of a theme is run, which will usually
 	 *      load a lot of theme-specific content
 	 *
-	 * @param App    $a
 	 * @param string $nickname string
 	 * @param bool   $show_contacts
 	 *
@@ -213,11 +197,11 @@ class Profile
 	 * @throws HTTPException\InternalServerErrorException
 	 * @throws \ImagickException
 	 */
-	public static function load(App $a, string $nickname, bool $show_contacts = true): array
+	public static function load(AppHelper $appHelper, string $nickname, bool $show_contacts = true): array
 	{
 		$profile = User::getOwnerDataByNick($nickname);
 		if (!isset($profile['account_removed']) || $profile['account_removed']) {
-			Logger::info('profile error: ' . DI::args()->getQueryString());
+			DI::logger()->info('profile error: ' . DI::args()->getQueryString());
 			return [];
 		}
 
@@ -227,13 +211,13 @@ class Profile
 			throw new HTTPException\NotFoundException(DI::l10n()->t('User not found.'));
 		}
 
-		$a->setProfileOwner($profile['uid']);
+		$appHelper->setProfileOwner($profile['uid']);
 
 		DI::page()['title'] = $profile['name'] . ' @ ' . DI::config()->get('config', 'sitename');
 
 		if (!DI::userSession()->getLocalUserId()) {
-			$a->setCurrentTheme($profile['theme']);
-			$a->setCurrentMobileTheme(DI::pConfig()->get($a->getProfileOwner(), 'system', 'mobile_theme') ?? '');
+			$appHelper->setCurrentTheme($profile['theme']);
+			$appHelper->setCurrentMobileTheme(DI::pConfig()->get($appHelper->getProfileOwner(), 'system', 'mobile_theme') ?? '');
 		}
 
 		/*
@@ -242,7 +226,7 @@ class Profile
 
 		Renderer::setActiveTemplateEngine(); // reset the template engine to the default in case the user's theme doesn't specify one
 
-		$theme_info_file = 'view/theme/' . $a->getCurrentTheme() . '/theme.php';
+		$theme_info_file = 'view/theme/' . $appHelper->getCurrentTheme() . '/theme.php';
 		if (file_exists($theme_info_file)) {
 			require_once $theme_info_file;
 		}
@@ -282,7 +266,7 @@ class Profile
 	 */
 	public static function getVCardHtml(array $profile, bool $block, bool $show_contacts): string
 	{
-		$o = '';
+		$o        = '';
 		$location = false;
 
 		$profile_contact = [];
@@ -309,8 +293,8 @@ class Profile
 
 		$cid = $contact['id'];
 
-		$follow_link = null;
-		$unfollow_link = null;
+		$follow_link      = null;
+		$unfollow_link    = null;
 		$wallmessage_link = null;
 
 		// Who is the logged-in user to this profile?
@@ -319,13 +303,11 @@ class Profile
 			$visitor_contact = Contact::selectFirst(['rel'], ['uid' => $profile['uid'], 'nurl' => Strings::normaliseLink(DI::userSession()->getMyUrl())]);
 		}
 
-		$local_user_is_self = DI::userSession()->getMyUrl() && ($profile['url'] == DI::userSession()->getMyUrl());
+		$local_user_is_self       = DI::userSession()->getMyUrl() && ($profile['url'] == DI::userSession()->getMyUrl());
 		$visitor_is_authenticated = (bool)DI::userSession()->getMyUrl();
-		$visitor_is_following =
-			in_array($visitor_contact['rel'] ?? 0, [Contact::FOLLOWER, Contact::FRIEND])
+		$visitor_is_following     = in_array($visitor_contact['rel'] ?? 0, [Contact::FOLLOWER, Contact::FRIEND])
 			|| in_array($profile_contact['rel'] ?? 0, [Contact::SHARING, Contact::FRIEND]);
-		$visitor_is_followed =
-			in_array($visitor_contact['rel'] ?? 0, [Contact::SHARING, Contact::FRIEND])
+		$visitor_is_followed = in_array($visitor_contact['rel'] ?? 0, [Contact::SHARING, Contact::FRIEND])
 			|| in_array($profile_contact['rel'] ?? 0, [Contact::FOLLOWER, Contact::FRIEND]);
 		$visitor_base_path = DI::userSession()->getMyUrl() ? preg_replace('=/profile/(.*)=ism', '', DI::userSession()->getMyUrl()) : '';
 
@@ -339,7 +321,7 @@ class Profile
 				if ($visitor_is_following) {
 					$unfollow_link = $visitor_base_path . '/contact/unfollow?url=' . urlencode($profile_url) . '&auto=1';
 				} else {
-					$follow_link = $visitor_base_path . '/contact/follow?url=' . urlencode($profile_url) . '&auto=1';
+					$follow_link = $visitor_base_path . '/contact/follow?binurl=' . bin2hex($profile_url) . '&auto=1';
 				}
 			}
 
@@ -357,15 +339,15 @@ class Profile
 			$profile['edit'] = [DI::baseUrl() . '/settings/profile', DI::l10n()->t('Edit profile'), '', DI::l10n()->t('Edit profile')];
 			$profile['menu'] = [
 				'chg_photo' => DI::l10n()->t('Change profile photo'),
-				'cr_new' => null,
-				'entries' => [],
+				'cr_new'    => null,
+				'entries'   => [],
 			];
 		}
 
 		// Fetch the account type
 		$account_type = Contact::getAccountType($profile['account-type']);
 
-		if (!empty($profile['address'])	|| !empty($profile['location'])) {
+		if (!empty($profile['address']) || !empty($profile['location'])) {
 			$location = DI::l10n()->t('Location:');
 		}
 
@@ -379,8 +361,8 @@ class Profile
 		}
 
 		$split_name = Diaspora::splitName($profile['name']);
-		$firstname = $split_name['first'];
-		$lastname = $split_name['last'];
+		$firstname  = $split_name['first'];
+		$lastname   = $split_name['last'];
 
 		if (!empty($profile['guid'])) {
 			$diaspora = [
@@ -400,7 +382,7 @@ class Profile
 		}
 
 		$contact_block = '';
-		$updated = '';
+		$updated       = '';
 		$contact_count = 0;
 
 		if (!empty($profile['last-item'])) {
@@ -431,7 +413,7 @@ class Profile
 			'upubkey' => null,
 		];
 		foreach ($profile as $k => $v) {
-			$k = str_replace('-', '_', $k);
+			$k     = str_replace('-', '_', $k);
 			$p[$k] = $v;
 		}
 
@@ -448,7 +430,7 @@ class Profile
 		$p['url'] = Contact::magicLinkById($cid, $profile['url']);
 
 		if (!isset($profile['hidewall'])) {
-			Logger::warning('Missing hidewall key in profile array', ['profile' => $profile]);
+			DI::logger()->warning('Missing hidewall key in profile array', ['profile' => $profile]);
 		}
 
 		if ($profile['account-type'] == Contact::TYPE_COMMUNITY) {
@@ -460,35 +442,35 @@ class Profile
 			$mention_url   = 'compose/0?body=@' . $profile['addr'];
 			$network_label = DI::l10n()->t('Network Posts');
 		}
-		$network_url   = 'contact/' . $cid . '/conversations';
+		$network_url = 'contact/' . $cid . '/conversations';
 
 		$tpl = Renderer::getMarkupTemplate('profile/vcard.tpl');
 		$o .= Renderer::replaceMacros($tpl, [
-			'$profile' => $p,
-			'$xmpp' => $xmpp,
-			'$matrix' => $matrix,
-			'$follow' => DI::l10n()->t('Follow'),
-			'$follow_link' => $follow_link,
-			'$unfollow' => DI::l10n()->t('Unfollow'),
-			'$unfollow_link' => $unfollow_link,
-			'$subscribe_feed' => DI::l10n()->t('Atom feed'),
+			'$profile'             => $p,
+			'$xmpp'                => $xmpp,
+			'$matrix'              => $matrix,
+			'$follow'              => DI::l10n()->t('Follow'),
+			'$follow_link'         => $follow_link,
+			'$unfollow'            => DI::l10n()->t('Unfollow'),
+			'$unfollow_link'       => $unfollow_link,
+			'$subscribe_feed'      => DI::l10n()->t('Atom feed'),
 			'$subscribe_feed_link' => $profile['hidewall'] ?? 0 ? '' : $profile['poll'],
-			'$wallmessage' => DI::l10n()->t('Message'),
-			'$wallmessage_link' => $wallmessage_link,
-			'$account_type' => $account_type,
-			'$location' => $location,
-			'$homepage' => $homepage,
-			'$homepage_verified' => DI::l10n()->t('This website has been verified to belong to the same person.'),
-			'$about' => $about,
-			'$network' => DI::l10n()->t('Network:'),
-			'$contacts' => $contact_count,
-			'$updated' => $updated,
-			'$diaspora' => $diaspora,
-			'$contact_block' => $contact_block,
-			'$mention_label' => $mention_label,
-			'$mention_url' => $mention_url,
-			'$network_label' => $network_label,
-			'$network_url' => $network_url,
+			'$wallmessage'         => DI::l10n()->t('Message'),
+			'$wallmessage_link'    => $wallmessage_link,
+			'$account_type'        => $account_type,
+			'$location'            => $location,
+			'$homepage'            => $homepage,
+			'$homepage_verified'   => DI::l10n()->t('This website has been verified to belong to the same person.'),
+			'$about'               => $about,
+			'$network'             => DI::l10n()->t('Network:'),
+			'$contacts'            => $contact_count,
+			'$updated'             => $updated,
+			'$diaspora'            => $diaspora,
+			'$contact_block'       => $contact_block,
+			'$mention_label'       => $mention_label,
+			'$mention_url'         => $mention_url,
+			'$network_label'       => $network_label,
+			'$network_url'         => $network_url,
 		]);
 
 		$arr = ['profile' => &$profile, 'entry' => &$o];
@@ -619,23 +601,27 @@ class Profile
 	 */
 	public static function getEventsReminderHTML(int $uid, int $pcid): string
 	{
-		$bd_format = DI::l10n()->t('g A l F d'); // 8 AM Friday January 18
+		$bd_format  = DI::l10n()->t('g A l F d'); // 8 AM Friday January 18
 		$classtoday = '';
 
-		$condition = ["`uid` = ? AND `type` != 'birthday' AND `start` < ? AND `start` >= ?",
-			$uid, DateTimeFormat::utc('now + 7 days'), DateTimeFormat::utc('now - 1 days')];
+		$condition = [
+			"`uid` = ? AND `type` != 'birthday' AND `start` < ? AND `start` >= ?",
+			$uid, DateTimeFormat::utc('now + 7 days'), DateTimeFormat::utc('now - 1 days')
+		];
 		$s = DBA::select('event', [], $condition, ['order' => ['start']]);
 
 		$r = [];
 
 		if (DBA::isResult($s)) {
 			$istoday = false;
-			$total = 0;
+			$total   = 0;
 
 			while ($rr = DBA::fetch($s)) {
-				$condition = ['parent-uri' => $rr['uri'], 'uid' => $rr['uid'], 'author-id' => $pcid,
-					'vid' => [Verb::getID(Activity::ATTEND), Verb::getID(Activity::ATTENDMAYBE)],
-					'visible' => true, 'deleted' => false];
+				$condition = [
+					'parent-uri' => $rr['uri'], 'uid' => $rr['uid'], 'author-id' => $pcid,
+					'vid'        => [Verb::getID(Activity::ATTEND), Verb::getID(Activity::ATTENDMAYBE)],
+					'visible'    => true, 'deleted' => false
+				];
 				if (!Post::exists($condition)) {
 					continue;
 				}
@@ -668,11 +654,11 @@ class Profile
 
 				$today = substr($strt, 0, 10) === DateTimeFormat::localNow('Y-m-d');
 
-				$rr['title'] = $title;
+				$rr['title']       = $title;
 				$rr['description'] = $description;
-				$rr['date'] = DI::l10n()->getDay(DateTimeFormat::local($rr['start'], $bd_format)) . (($today) ? ' ' . DI::l10n()->t('[today]') : '');
-				$rr['startime'] = $strt;
-				$rr['today'] = $today;
+				$rr['date']        = DI::l10n()->getDay(DateTimeFormat::local($rr['start'], $bd_format)) . (($today) ? ' ' . DI::l10n()->t('[today]') : '');
+				$rr['startime']    = $strt;
+				$rr['today']       = $today;
 
 				$r[] = $rr;
 			}
@@ -681,11 +667,11 @@ class Profile
 		}
 		$tpl = Renderer::getMarkupTemplate('events_reminder.tpl');
 		return Renderer::replaceMacros($tpl, [
-			'$classtoday' => $classtoday,
-			'$count' => count($r),
+			'$classtoday'      => $classtoday,
+			'$count'           => count($r),
 			'$event_reminders' => DI::l10n()->t('Event Reminders'),
-			'$event_title' => DI::l10n()->t('Upcoming events the next 7 days:'),
-			'$events' => $r,
+			'$event_title'     => DI::l10n()->t('Upcoming events the next 7 days:'),
+			'$events'          => $r,
 		]);
 	}
 
@@ -697,15 +683,13 @@ class Profile
 	 * settings take precedence; unless a local user is logged in which means they don't
 	 * want to see anybody else's theme settings except their own while on this site.
 	 *
-	 * @param App $a
-	 *
 	 * @return int user ID
 	 *
 	 * @note Returns local_user instead of user ID if "always_my_theme" is set to true
 	 */
-	public static function getThemeUid(App $a): int
+	public static function getThemeUid(AppHelper $appHelper): int
 	{
-		return DI::userSession()->getLocalUserId() ?: $a->getProfileOwner();
+		return DI::userSession()->getLocalUserId() ?: $appHelper->getProfileOwner();
 	}
 
 	/**
@@ -722,9 +706,10 @@ class Profile
 	public static function searchProfiles(int $start = 0, int $count = 100, string $search = null): array
 	{
 		if (!empty($search)) {
-			$publish = (DI::config()->get('system', 'publish_all') ? '' : "AND `publish` ");
+			$publish    = (DI::config()->get('system', 'publish_all') ? '' : "AND `publish` ");
 			$searchTerm = '%' . $search . '%';
-			$condition = ["`verified` AND NOT `blocked` AND NOT `account_removed` AND NOT `account_expired`
+			$condition  = [
+				"`verified` AND NOT `blocked` AND NOT `account_removed` AND NOT `account_expired`
 				$publish
 				AND ((`name` LIKE ?) OR
 				(`nickname` LIKE ?) OR
@@ -735,7 +720,8 @@ class Profile
 				(`pub_keywords` LIKE ?) OR
 				(`prv_keywords` LIKE ?))",
 				$searchTerm, $searchTerm, $searchTerm, $searchTerm,
-				$searchTerm, $searchTerm, $searchTerm, $searchTerm];
+				$searchTerm, $searchTerm, $searchTerm, $searchTerm
+			];
 		} else {
 			$condition = ['verified' => true, 'blocked' => false, 'account_removed' => false, 'account_expired' => false];
 			if (!DI::config()->get('system', 'publish_all')) {
@@ -834,8 +820,48 @@ class Profile
 			$profile['profile-name'] = null;
 			$profile['is-default']   = null;
 			DBA::update('profile', $profile, ['id' => $profile['id']]);
-		} else if (!empty($profile['id'])) {
+		} elseif (!empty($profile['id'])) {
 			DBA::delete('profile', ['id' => $profile['id']]);
+		}
+	}
+
+	/**
+	 * Get "about" field with the added responsible relay contact if appropriate.
+	 *
+	 * @param string $about
+	 * @param integer|null $parent_uid
+	 * @param integer $account_type
+	 * @param string $language
+	 * @return string
+	 */
+	public static function addResponsibleRelayContact(string $about = null, int $parent_uid = null, int $account_type, string $language): ?string
+	{
+		if (($account_type != User::ACCOUNT_TYPE_RELAY) || empty($parent_uid)) {
+			return $about;
+		}
+
+		$parent = User::getOwnerDataById($parent_uid);
+		if (strpos($about, $parent['addr']) || strpos($about, $parent['url'])) {
+			return $about;
+		}
+
+		$l10n = DI::l10n()->withLang($language);
+
+		return $about .= "\n" . $l10n->t('Responsible account: %s', $parent['addr']);
+	}
+
+	/**
+	 * Set "about" field with the added responsible relay contact if appropriate.
+	 *
+	 * @param integer $uid
+	 * @return void
+	 */
+	public static function setResponsibleRelayContact(int $uid)
+	{
+		$owner = User::getOwnerDataById($uid);
+		$about = self::addResponsibleRelayContact($owner['about'], $owner['parent-uid'], $owner['account-type'], $owner['language']);
+		if ($about != $owner['about']) {
+			self::update(['about' => $about], $uid);
 		}
 	}
 }

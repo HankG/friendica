@@ -1,23 +1,9 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Module\Api\Mastodon;
 
@@ -28,6 +14,7 @@ use Friendica\Core\Protocol;
 use Friendica\Core\Worker;
 use Friendica\Database\DBA;
 use Friendica\DI;
+use Friendica\Model\Attach;
 use Friendica\Model\Contact;
 use Friendica\Model\Circle;
 use Friendica\Model\Item;
@@ -77,18 +64,18 @@ class Statuses extends BaseApi
 			throw new HTTPException\NotFoundException('Item with URI ID ' . $this->parameters['id'] . ' not found for user ' . $uid . '.');
 		}
 
-		$item['title']      = '';
-		$item['uid']        = $post['uid'];
-		$item['body']       = $this->formatStatus($request['status'], $uid);
-		$item['network']    = $post['network'];
-		$item['gravity']    = $post['gravity'];
-		$item['verb']       = $post['verb'];
-		$item['allow_cid']  = $post['allow_cid'];
-		$item['allow_gid']  = $post['allow_gid'];
-		$item['deny_cid']   = $post['deny_cid'];
-		$item['deny_gid']   = $post['deny_gid'];
-		$item['app']        = $this->getApp();
-		$item['sensitive']  = $request['sensitive'];
+		$item['title']     = '';
+		$item['uid']       = $post['uid'];
+		$item['body']      = $this->formatStatus($request['status'], $uid);
+		$item['network']   = $post['network'];
+		$item['gravity']   = $post['gravity'];
+		$item['verb']      = $post['verb'];
+		$item['allow_cid'] = $post['allow_cid'];
+		$item['allow_gid'] = $post['allow_gid'];
+		$item['deny_cid']  = $post['deny_cid'];
+		$item['deny_gid']  = $post['deny_gid'];
+		$item['app']       = $this->getApp();
+		$item['sensitive'] = $request['sensitive'];
 
 		if (!empty($request['language'])) {
 			$item['language'] = json_encode([$request['language'] => 1]);
@@ -104,7 +91,7 @@ class Statuses extends BaseApi
 			if (!isset($request['friendica']['title']) && $post['gravity'] == Item::GRAVITY_PARENT && DI::pConfig()->get($uid, 'system', 'api_spoiler_title', true)) {
 				$item['title'] = $spoiler_text;
 			} else {
-				$item['body'] = '[abstract=' . Protocol::ACTIVITYPUB . ']' . $spoiler_text . "[/abstract]\n" . $item['body'];
+				$item['body']            = '[abstract=' . Protocol::ACTIVITYPUB . ']' . $spoiler_text . "[/abstract]\n" . $item['body'];
 				$item['content-warning'] = BBCode::toPlaintext($spoiler_text);
 			}
 		}
@@ -320,7 +307,8 @@ class Statuses extends BaseApi
 
 		if (!empty($request['scheduled_at'])) {
 			$item['guid'] = Item::guid($item, true);
-			$item['uri'] = Item::newURI($item['guid']);
+			$item['uri']  = Item::newURI($item['guid']);
+
 			$id = Post\Delayed::add($item['uri'], $item, Worker::PRIORITY_HIGH, Post\Delayed::PREPARED, DateTimeFormat::utc($request['scheduled_at']));
 			if (empty($id)) {
 				$this->logAndJsonError(500, $this->errorFactory->InternalError());
@@ -363,7 +351,7 @@ class Statuses extends BaseApi
 	/**
 	 * @throws \Friendica\Network\HTTPException\InternalServerErrorException
 	 */
-	protected function rawContent(array $request = [])
+	protected function get(array $request = [])
 	{
 		$uid = self::getCurrentUserID();
 
@@ -397,6 +385,20 @@ class Statuses extends BaseApi
 		$item['attachments'] = [];
 
 		foreach ($media_ids as $id) {
+			if (DI::mstdnAttachment()->isAttach($id) && Attach::exists(['id' => substr($id, 7)])) {
+				$attach     = Attach::selectFirst([], ['id' => substr($id, 7)]);
+				$attachment = [
+					'type'     => Post\Media::getType($attach['filetype']),
+					'mimetype' => $attach['filetype'],
+					'url'      => DI::baseUrl() . '/attach/' . substr($id, 7),
+					'size'     => $attach['filetype'],
+					'name'     => $attach['filename']
+				];
+				$item['attachments'][] = $attachment;
+				Attach::setPermissionForId(substr($id, 7), $item['uid'], $item['allow_cid'], $item['allow_gid'], $item['deny_cid'], $item['deny_gid']);
+				continue;
+			}
+
 			$media = DBA::toArray(DBA::p("SELECT `resource-id`, `scale`, `type`, `desc`, `filename`, `datasize`, `width`, `height` FROM `photo`
 					WHERE `resource-id` IN (SELECT `resource-id` FROM `photo` WHERE `id` = ?) AND `photo`.`uid` = ?
 					ORDER BY `photo`.`width` DESC LIMIT 2", $id, $item['uid']));
@@ -409,17 +411,20 @@ class Statuses extends BaseApi
 
 			$ext = Images::getExtensionByMimeType($media[0]['type']);
 
-			$attachment = ['type' => Post\Media::IMAGE, 'mimetype' => $media[0]['type'],
-				'url' => DI::baseUrl() . '/photo/' . $media[0]['resource-id'] . '-' . $media[0]['scale'] . $ext,
-				'size' => $media[0]['datasize'],
-				'name' => $media[0]['filename'] ?: $media[0]['resource-id'],
+			$attachment = [
+				'type'        => Post\Media::IMAGE,
+				'mimetype'    => $media[0]['type'],
+				'url'         => DI::baseUrl() . '/photo/' . $media[0]['resource-id'] . '-' . $media[0]['scale'] . $ext,
+				'size'        => $media[0]['datasize'],
+				'name'        => $media[0]['filename'] ?: $media[0]['resource-id'],
 				'description' => $media[0]['desc'] ?? '',
-				'width' => $media[0]['width'],
-				'height' => $media[0]['height']];
+				'width'       => $media[0]['width'],
+				'height'      => $media[0]['height']
+			];
 
 			if (count($media) > 1) {
-				$attachment['preview'] = DI::baseUrl() . '/photo/' . $media[1]['resource-id'] . '-' . $media[1]['scale'] . $ext;
-				$attachment['preview-width'] = $media[1]['width'];
+				$attachment['preview']        = DI::baseUrl() . '/photo/' . $media[1]['resource-id'] . '-' . $media[1]['scale'] . $ext;
+				$attachment['preview-width']  = $media[1]['width'];
 				$attachment['preview-height'] = $media[1]['height'];
 			}
 			$item['attachments'][] = $attachment;

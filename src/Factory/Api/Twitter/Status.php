@@ -1,23 +1,9 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Factory\Api\Twitter;
 
@@ -31,7 +17,8 @@ use Friendica\Factory\Api\Twitter\User as TwitterUser;
 use Friendica\Model\Item;
 use Friendica\Model\Post;
 use Friendica\Model\Verb;
-use Friendica\Network\HTTPException;
+use Friendica\Network\HTTPException\InternalServerErrorException;
+use Friendica\Network\HTTPException\NotFoundException;
 use Friendica\Protocol\Activity;
 use ImagickException;
 use Psr\Log\LoggerInterface;
@@ -72,22 +59,22 @@ class Status extends BaseFactory
 	}
 
 	/**
-	 * @param int $uriId Uri-ID of the item
+	 * @param int $id    Uri-ID of the item
 	 * @param int $uid   Item user
 	 * @param bool $include_entities Whether to include entities
 	 *
 	 * @return \Friendica\Object\Api\Twitter\Status
-	 * @throws HTTPException\InternalServerErrorException
-	 * @throws ImagickException|HTTPException\NotFoundException
+	 * @throws InternalServerErrorException
+	 * @throws ImagickException|NotFoundException
 	 */
 	public function createFromItemId(int $id, int $uid, bool $include_entities = false): \Friendica\Object\Api\Twitter\Status
 	{
-		$fields = ['parent-uri-id', 'uri-id', 'uid', 'author-id', 'author-link', 'author-network', 'owner-id', 'causer-id',
+		$fields = ['parent-uri-id', 'uri-id', 'uid', 'author-id', 'author-link', 'author-network', 'author-gsid', 'owner-id', 'causer-id',
 			'starred', 'app', 'title', 'body', 'raw-body', 'created', 'network','post-reason', 'language', 'gravity',
 			'thr-parent-id', 'parent-author-id', 'parent-author-nick', 'uri', 'plink', 'private', 'vid', 'coord', 'quote-uri-id'];
 		$item = Post::selectFirst($fields, ['id' => $id], ['order' => ['uid' => true]]);
 		if (!$item) {
-			throw new HTTPException\NotFoundException('Item with ID ' . $id . ' not found.');
+			throw new NotFoundException('Item with ID ' . $id . ' not found.');
 		}
 		return $this->createFromArray($item, $uid, $include_entities);
 	}
@@ -98,17 +85,17 @@ class Status extends BaseFactory
 	 * @param bool $include_entities Whether to include entities
 	 *
 	 * @return \Friendica\Object\Api\Twitter\Status
-	 * @throws HTTPException\InternalServerErrorException
-	 * @throws ImagickException|HTTPException\NotFoundException
+	 * @throws InternalServerErrorException
+	 * @throws ImagickException|NotFoundException
 	 */
 	public function createFromUriId(int $uriId, int $uid = 0, bool $include_entities = false): \Friendica\Object\Api\Twitter\Status
 	{
-		$fields = ['parent-uri-id', 'uri-id', 'uid', 'author-id', 'author-link', 'author-network', 'owner-id', 'causer-id',
+		$fields = ['parent-uri-id', 'uri-id', 'uid', 'author-id', 'author-link', 'author-network', 'author-gsid', 'owner-id', 'causer-id',
 			'starred', 'app', 'title', 'body', 'raw-body', 'created', 'network','post-reason', 'language', 'gravity',
 			'thr-parent-id', 'parent-author-id', 'parent-author-nick', 'uri', 'plink', 'private', 'vid', 'coord'];
 		$item = Post::selectFirst($fields, ['uri-id' => $uriId, 'uid' => [0, $uid]], ['order' => ['uid' => true]]);
 		if (!$item) {
-			throw new HTTPException\NotFoundException('Item with URI ID ' . $uriId . ' not found' . ($uid ? ' for user ' . $uid : '.'));
+			throw new NotFoundException('Item with URI ID ' . $uriId . ' not found' . ($uid ? ' for user ' . $uid : '.'));
 		}
 		return $this->createFromArray($item, $uid, $include_entities);
 	}
@@ -119,8 +106,8 @@ class Status extends BaseFactory
 	 * @param bool $include_entities Whether to include entities
 	 *
 	 * @return \Friendica\Object\Api\Twitter\Status
-	 * @throws HTTPException\InternalServerErrorException
-	 * @throws ImagickException|HTTPException\NotFoundException
+	 * @throws InternalServerErrorException
+	 * @throws ImagickException|NotFoundException
 	 */
 	private function createFromArray(array $item, int $uid, bool $include_entities): \Friendica\Object\Api\Twitter\Status
 	{
@@ -175,8 +162,8 @@ class Status extends BaseFactory
 		if ($include_entities) {
 			$hashtags = $this->hashtag->createFromUriId($item['uri-id'], $text);
 			$medias   = $this->media->createFromUriId($item['uri-id'], $text);
-			$urls     = $this->url->createFromUriId($item['uri-id'], $text);
-			$mentions = $this->mention->createFromUriId($item['uri-id'], $text);
+			$urls     = $this->url->createFromUriId($item['uri-id']);
+			$mentions = $this->mention->createFromUriId($item['uri-id']);
 		} else {
 			$attachments = $this->attachment->createFromUriId($item['uri-id'], $text);
 		}
@@ -190,8 +177,8 @@ class Status extends BaseFactory
 			if ($include_entities) {
 				$hashtags = array_merge($hashtags, $this->hashtag->createFromUriId($shared_uri_id, $text));
 				$medias   = array_merge($medias, $this->media->createFromUriId($shared_uri_id, $text));
-				$urls     = array_merge($urls, $this->url->createFromUriId($shared_uri_id, $text));
-				$mentions = array_merge($mentions, $this->mention->createFromUriId($shared_uri_id, $text));
+				$urls     = array_merge($urls, $this->url->createFromUriId($shared_uri_id));
+				$mentions = array_merge($mentions, $this->mention->createFromUriId($shared_uri_id));
 			} else {
 				$attachments = array_merge($attachments, $this->attachment->createFromUriId($shared_uri_id, $text));
 			}

@@ -1,23 +1,9 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Core;
 
@@ -32,6 +18,9 @@ class Addon
 {
 	/**
 	 * The addon sub-directory
+	 *
+	 * @deprecated 2025.02 Use `Friendica\Core\Addon\AddonHelper::getAddonPath()` instead
+	 *
 	 * @var string
 	 */
 	const DIRECTORY = 'addon';
@@ -48,18 +37,20 @@ class Addon
 	 * This list is made from scanning the addon/ folder.
 	 * Unsupported addons are excluded unless they already are enabled or system.show_unsupported_addon is set.
 	 *
+	 * @deprecated 2025.02 Use `Friendica\Core\Addon\AddonHelper::getAvailableAddons()` instead
+	 *
 	 * @return array
 	 * @throws \Exception
 	 */
 	public static function getAvailableList(): array
 	{
 		$addons = [];
-		$files = glob('addon/*/');
+		$files  = glob('addon/*/');
 		if (is_array($files)) {
 			foreach ($files as $file) {
 				if (is_dir($file)) {
 					list($tmp, $addon) = array_map('trim', explode('/', $file));
-					$info = self::getInfo($addon);
+					$info              = self::getInfo($addon);
 
 					if (DI::config()->get('system', 'show_unsupported_addons')
 						|| strtolower($info['status']) != 'unsupported'
@@ -78,13 +69,15 @@ class Addon
 	 * Returns a list of addons that can be configured at the node level.
 	 * The list is formatted for display in the admin panel aside.
 	 *
+	 * @deprecated 2025.02 Use `Friendica\Core\Addon\AddonHelper::getEnabledAddonsWithAdminSettings()` instead
+	 *
 	 * @return array
 	 * @throws \Exception
 	 */
 	public static function getAdminList(): array
 	{
 		$addons_admin = [];
-		$addons = array_filter(DI::config()->get('addons') ?? []);
+		$addons       = array_filter(DI::config()->get('addons') ?? []);
 
 		ksort($addons);
 		foreach ($addons as $name => $data) {
@@ -93,15 +86,14 @@ class Addon
 			}
 
 			$addons_admin[$name] = [
-				'url' => 'admin/addons/' . $name,
-				'name' => $name,
+				'url'   => 'admin/addons/' . $name,
+				'name'  => $name,
 				'class' => 'addon'
 			];
 		}
 
 		return $addons_admin;
 	}
-
 
 	/**
 	 * Synchronize addons:
@@ -114,6 +106,7 @@ class Addon
 	 * Then go through the config list and if we have a addon that isn't installed,
 	 * call the install procedure and add it to the database.
 	 *
+	 * @deprecated 2025.02 Use `Friendica\Core\Addon\AddonHelper::loadAddons()` instead
 	 */
 	public static function loadAddons()
 	{
@@ -123,6 +116,8 @@ class Addon
 	/**
 	 * uninstalls an addon.
 	 *
+	 * @deprecated 2025.02 Use `Friendica\Core\Addon\AddonHelper::uninstallAddon()` instead
+	 *
 	 * @param string $addon name of the addon
 	 * @return void
 	 * @throws \Exception
@@ -131,7 +126,7 @@ class Addon
 	{
 		$addon = Strings::sanitizeFilePathItem($addon);
 
-		Logger::debug("Addon {addon}: {action}", ['action' => 'uninstall', 'addon' => $addon]);
+		DI::logger()->debug("Addon {addon}: {action}", ['action' => 'uninstall', 'addon' => $addon]);
 		DI::config()->delete('addons', $addon);
 
 		@include_once('addon/' . $addon . '/' . $addon . '.php');
@@ -149,6 +144,8 @@ class Addon
 	/**
 	 * installs an addon.
 	 *
+	 * @deprecated 2025.02 Use `Friendica\Core\Addon\AddonHelper::installAddon()` instead
+	 *
 	 * @param string $addon name of the addon
 	 * @return bool
 	 * @throws \Exception
@@ -164,17 +161,17 @@ class Addon
 			return false;
 		}
 
-		Logger::debug("Addon {addon}: {action}", ['action' => 'install', 'addon' => $addon]);
+		DI::logger()->debug("Addon {addon}: {action}", ['action' => 'install', 'addon' => $addon]);
 		$t = @filemtime($addon_file_path);
 		@include_once($addon_file_path);
 		if (function_exists($addon . '_install')) {
 			$func = $addon . '_install';
-			$func(DI::app());
+			$func();
 		}
 
 		DI::config()->set('addons', $addon, [
 			'last_update' => $t,
-			'admin' => function_exists($addon . '_addon_admin'),
+			'admin'       => function_exists($addon . '_addon_admin'),
 		]);
 
 		if (!self::isEnabled($addon)) {
@@ -187,6 +184,8 @@ class Addon
 	/**
 	 * reload all updated addons
 	 *
+	 * @deprecated 2025.02 Use `Friendica\Core\Addon\AddonHelper::reloadAddons()` instead
+	 *
 	 * @return void
 	 * @throws \Exception
 	 *
@@ -196,14 +195,14 @@ class Addon
 		$addons = array_filter(DI::config()->get('addons') ?? []);
 
 		foreach ($addons as $name => $data) {
-			$addonname = Strings::sanitizeFilePathItem(trim($name));
+			$addonname       = Strings::sanitizeFilePathItem(trim($name));
 			$addon_file_path = 'addon/' . $addonname . '/' . $addonname . '.php';
 			if (file_exists($addon_file_path) && $data['last_update'] == filemtime($addon_file_path)) {
 				// Addon unmodified, skipping
 				continue;
 			}
 
-			Logger::debug("Addon {addon}: {action}", ['action' => 'reload', 'addon' => $name]);
+			DI::logger()->debug("Addon {addon}: {action}", ['action' => 'reload', 'addon' => $name]);
 
 			self::uninstall($name);
 			self::install($name);
@@ -223,6 +222,9 @@ class Addon
 	 *   * Maintainer: Jess <email>
 	 *   *
 	 *   *\endcode
+	 *
+	 * @deprecated 2025.02 Use `Friendica\Core\Addon\AddonHelper::getAddonInfo()` instead
+	 *
 	 * @param string $addon the name of the addon
 	 * @return array with the addon information
 	 * @throws \Exception
@@ -232,12 +234,12 @@ class Addon
 		$addon = Strings::sanitizeFilePathItem($addon);
 
 		$info = [
-			'name' => $addon,
+			'name'        => $addon,
 			'description' => "",
-			'author' => [],
-			'maintainer' => [],
-			'version' => "",
-			'status' => ""
+			'author'      => [],
+			'maintainer'  => [],
+			'version'     => "",
+			'status'      => ""
 		];
 
 		if (!is_file("addon/$addon/$addon.php")) {
@@ -261,7 +263,7 @@ class Addon
 					}
 
 					list($type, $v) = $addon_info;
-					$type = strtolower($type);
+					$type           = strtolower($type);
 					if ($type == "author" || $type == "maintainer") {
 						$r = preg_match("|([^<]+)<([^>]+)>|", $v, $m);
 						if ($r) {
@@ -289,6 +291,8 @@ class Addon
 	/**
 	 * Checks if the provided addon is enabled
 	 *
+	 * @deprecated 2025.02 Use `Friendica\Core\Addon\AddonHelper::isAddonEnabled()` instead
+	 *
 	 * @param string $addon
 	 * @return boolean
 	 */
@@ -300,6 +304,8 @@ class Addon
 	/**
 	 * Returns a list of the enabled addon names
 	 *
+	 * @deprecated 2025.02 Use `Friendica\Core\Addon\AddonHelper::getEnabledAddons()` instead
+	 *
 	 * @return array
 	 */
 	public static function getEnabledList(): array
@@ -310,13 +316,15 @@ class Addon
 	/**
 	 * Returns the list of non-hidden enabled addon names
 	 *
+	 * @deprecated 2025.02 Use `Friendica\Core\Addon\AddonHelper::getVisibleEnabledAddons()` instead
+	 *
 	 * @return array
 	 * @throws \Exception
 	 */
 	public static function getVisibleList(): array
 	{
 		$visible_addons = [];
-		$addons = array_filter(DI::config()->get('addons') ?? []);
+		$addons         = array_filter(DI::config()->get('addons') ?? []);
 
 		foreach ($addons as $name => $data) {
 			$visible_addons[] = $name;

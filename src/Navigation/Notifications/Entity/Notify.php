@@ -1,23 +1,9 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Navigation\Notifications\Entity;
 
@@ -28,24 +14,24 @@ use Friendica\Core\Renderer;
 use Psr\Http\Message\UriInterface;
 
 /**
- * @property-read $type
- * @property-read $name
- * @property-read $url
- * @property-read $photo
- * @property-read $date
- * @property-read $msg
- * @property-read $uid
- * @property-read $link
- * @property-read $itemId
- * @property-read $parent
- * @property-read $seen
- * @property-read $verb
- * @property-read $otype
- * @property-read $name_cache
- * @property-read $msg_cache
- * @property-read $uriId
- * @property-read $parentUriId
- * @property-read $id
+ * @property-read string $type
+ * @property-read string $name
+ * @property-read UriInterface $url
+ * @property-read UriInterface $photo
+ * @property-read DateTime $date
+ * @property-read string|null $msg
+ * @property-read int $uid
+ * @property-read UriInterface $link
+ * @property-read int|null $itemId
+ * @property-read int|null $parent
+ * @property-read bool $seen
+ * @property-read string $verb
+ * @property-read string|null $otype
+ * @property-read string|null $name_cache
+ * @property-read string|null $msg_cache
+ * @property-read int|null $uriId
+ * @property-read int|null $parentUriId
+ * @property-read int|null $id
  *
  * @deprecated since 2022.05 Use \Friendica\Navigation\Notifications\Entity\Notification instead
  */
@@ -77,7 +63,7 @@ class Notify extends BaseEntity
 	protected $verb;
 	/** @var string */
 	protected $otype;
-	/** @var string */
+	/** @var string|null */
 	protected $name_cache;
 	/** @var string|null */
 	protected $msg_cache;
@@ -88,7 +74,7 @@ class Notify extends BaseEntity
 	/** @var int|null */
 	protected $id;
 
-	public function __construct(int $type, string $name, UriInterface $url, UriInterface $photo, DateTime $date, int $uid, UriInterface $link, bool $seen, string $verb, string $otype, string $name_cache, string $msg = null, string $msg_cache = null, int $itemId = null, int $uriId = null, int $parent = null, ?int $parentUriId = null, ?int $id = null)
+	public function __construct(int $type, string $name, UriInterface $url, UriInterface $photo, DateTime $date, int $uid, UriInterface $link, bool $seen, string $verb, string $otype, string $name_cache = null, string $msg = null, string $msg_cache = null, int $itemId = null, int $uriId = null, int $parent = null, ?int $parentUriId = null, ?int $id = null)
 	{
 		$this->type        = $type;
 		$this->name        = $name;
@@ -118,7 +104,7 @@ class Notify extends BaseEntity
 	public function updateMsgFromPreamble($epreamble)
 	{
 		$this->msg       = Renderer::replaceMacros($epreamble, ['$itemlink' => $this->link->__toString()]);
-		$this->msg_cache = self::formatMessage($this->name_cache, BBCode::toPlaintext($this->msg, false));
+		$this->msg_cache = self::formatMessage($this->name_cache ?? $this->name, BBCode::toPlaintext($this->msg, false));
 	}
 
 	/**

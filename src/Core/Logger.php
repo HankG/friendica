@@ -1,80 +1,25 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Core;
 
 use Friendica\DI;
-use Friendica\Core\Logger\Type\WorkerLogger;
 use Psr\Log\LoggerInterface;
-use Psr\Log\LogLevel;
 
 /**
  * Logger functions
+ *
+ * @deprecated 2025.02 Use constructor injection or `DI::logger()` instead
  */
 class Logger
 {
-	/**
-	 * @var LoggerInterface The default Logger type
-	 */
-	const TYPE_LOGGER = LoggerInterface::class;
-	/**
-	 * @var WorkerLogger A specific worker logger type, which can be enabled
-	 */
-	const TYPE_WORKER = WorkerLogger::class;
-	/**
-	 * @var LoggerInterface The current logger type
-	 */
-	private static $type = self::TYPE_LOGGER;
-
-	/**
-	 * @return LoggerInterface
-	 */
-	private static function getInstance()
+	private static function getInstance(): LoggerInterface
 	{
-		if (self::$type === self::TYPE_LOGGER) {
-			return DI::logger();
-		} else {
-			return DI::workerLogger();
-		}
-	}
-
-	/**
-	 * Enable additional logging for worker usage
-	 *
-	 * @param string $functionName The worker function, which got called
-	 *
-	 * @throws \Friendica\Network\HTTPException\InternalServerErrorException
-	 */
-	public static function enableWorker(string $functionName)
-	{
-		self::$type = self::TYPE_WORKER;
-		self::getInstance()->setFunctionName($functionName);
-	}
-
-	/**
-	 * Disable additional logging for worker usage
-	 */
-	public static function disableWorker()
-	{
-		self::$type = self::TYPE_LOGGER;
+		return DI::logger();
 	}
 
 	/**
@@ -89,6 +34,8 @@ class Logger
 	 */
 	public static function emergency(string $message, array $context = [])
 	{
+		@trigger_error('Class `' . __CLASS__ . '` is deprecated since 2025.02 and will be removed after 5 months, use constructor injection or `DI::logger()` instead.', E_USER_DEPRECATED);
+
 		self::getInstance()->emergency($message, $context);
 	}
 
@@ -106,6 +53,8 @@ class Logger
 	 */
 	public static function alert(string $message, array $context = [])
 	{
+		@trigger_error('Class `' . __CLASS__ . '` is deprecated since 2025.02 and will be removed after 5 months, use constructor injection or `DI::logger()` instead.', E_USER_DEPRECATED);
+
 		self::getInstance()->alert($message, $context);
 	}
 
@@ -122,6 +71,8 @@ class Logger
 	 */
 	public static function critical(string $message, array $context = [])
 	{
+		@trigger_error('Class `' . __CLASS__ . '` is deprecated since 2025.02 and will be removed after 5 months, use constructor injection or `DI::logger()` instead.', E_USER_DEPRECATED);
+
 		self::getInstance()->critical($message, $context);
 	}
 
@@ -137,6 +88,8 @@ class Logger
 	 */
 	public static function error(string $message, array $context = [])
 	{
+		@trigger_error('Class `' . __CLASS__ . '` is deprecated since 2025.02 and will be removed after 5 months, use constructor injection or `DI::logger()` instead.', E_USER_DEPRECATED);
+
 		self::getInstance()->error($message, $context);
 	}
 
@@ -154,6 +107,8 @@ class Logger
 	 */
 	public static function warning(string $message, array $context = [])
 	{
+		@trigger_error('Class `' . __CLASS__ . '` is deprecated since 2025.02 and will be removed after 5 months, use constructor injection or `DI::logger()` instead.', E_USER_DEPRECATED);
+
 		self::getInstance()->warning($message, $context);
 	}
 
@@ -168,6 +123,8 @@ class Logger
 	 */
 	public static function notice(string $message, array $context = [])
 	{
+		@trigger_error('Class `' . __CLASS__ . '` is deprecated since 2025.02 and will be removed after 5 months, use constructor injection or `DI::logger()` instead.', E_USER_DEPRECATED);
+
 		self::getInstance()->notice($message, $context);
 	}
 
@@ -185,6 +142,8 @@ class Logger
 	 */
 	public static function info(string $message, array $context = [])
 	{
+		@trigger_error('Class `' . __CLASS__ . '` is deprecated since 2025.02 and will be removed after 5 months, use constructor injection or `DI::logger()` instead.', E_USER_DEPRECATED);
+
 		self::getInstance()->info($message, $context);
 	}
 
@@ -199,23 +158,8 @@ class Logger
 	 */
 	public static function debug(string $message, array $context = [])
 	{
-		self::getInstance()->debug($message, $context);
-	}
+		@trigger_error('Class `' . __CLASS__ . '` is deprecated since 2025.02 and will be removed after 5 months, use constructor injection or `DI::logger()` instead.', E_USER_DEPRECATED);
 
-	/**
-	 * An alternative logger for development.
-	 *
-	 * Works largely as log() but allows developers
-	 * to isolate particular elements they are targeting
-	 * personally without background noise
-	 *
-	 * @param string $message Message to log
-	 * @param string $level Logging level
-	 * @return void
-	 * @throws \Exception
-	 */
-	public static function devLog(string $message, string $level = LogLevel::DEBUG)
-	{
-		DI::devLogger()->log($level, $message);
+		self::getInstance()->debug($message, $context);
 	}
 }

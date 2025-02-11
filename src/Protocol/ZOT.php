@@ -1,29 +1,13 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Protocol;
 
 use Friendica\App;
-use Friendica\Core\Addon;
-use Friendica\Core\Logger;
 use Friendica\DI;
 use Friendica\Module;
 use Friendica\Module\Register;
@@ -44,7 +28,7 @@ class ZOT
 	public static function isRequest(): bool
 	{
 		if (stristr($_SERVER['HTTP_ACCEPT'] ?? '', 'application/x-zot+json')) {
-			Logger::debug('Is ZOT request', ['accept' => $_SERVER['HTTP_ACCEPT'], 'agent' => $_SERVER['HTTP_USER_AGENT'] ?? '']);
+			DI::logger()->debug('Is ZOT request', ['accept' => $_SERVER['HTTP_ACCEPT'], 'agent' => $_SERVER['HTTP_USER_AGENT'] ?? '']);
 			return true;
 		}
 
@@ -58,6 +42,11 @@ class ZOT
 	 */
 	public static function getSiteInfo(): array
 	{
+		$baseUrl     = (string) DI::baseUrl();
+		$keyValue    = DI::keyValue();
+		$addonHelper = DI::addonHelper();
+		$config      = DI::config();
+
 		$policies = [
 			Module\Register::OPEN    => 'open',
 			Module\Register::APPROVE => 'approve',
@@ -65,14 +54,14 @@ class ZOT
 		];
 
 		return [
-			'url'             => (string)DI::baseUrl(),
-			'openWebAuth'     => (string)DI::baseUrl() . '/owa',
-			'authRedirect'    => (string)DI::baseUrl() . '/magic',
+			'url'             => $baseUrl,
+			'openWebAuth'     => $baseUrl . '/owa',
+			'authRedirect'    => $baseUrl . '/magic',
 			'register_policy' => $policies[Register::getPolicy()],
-			'accounts'        => DI::keyValue()->get('nodeinfo_total_users'),
-			'plugins'         => Addon::getVisibleList(),
-			'sitename'        => DI::config()->get('config', 'sitename'),
-			'about'           => DI::config()->get('config', 'info'),
+			'accounts'        => $keyValue->get('nodeinfo_total_users'),
+			'plugins'         => $addonHelper->getVisibleEnabledAddons(),
+			'sitename'        => $config->get('config', 'sitename'),
+			'about'           => $config->get('config', 'info'),
 			'project'         => App::PLATFORM,
 			'version'         => App::VERSION,
 		];

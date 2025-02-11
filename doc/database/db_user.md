@@ -27,8 +27,6 @@ Fields
 | theme                    | user theme preference                                                             | varchar(255)       | NO   |     |                     |                |
 | pubkey                   | RSA public key 4096 bit                                                           | text               | YES  |     | NULL                |                |
 | prvkey                   | RSA private key 4096 bit                                                          | text               | YES  |     | NULL                |                |
-| spubkey                  |                                                                                   | text               | YES  |     | NULL                |                |
-| sprvkey                  |                                                                                   | text               | YES  |     | NULL                |                |
 | verified                 | user is verified through email                                                    | boolean            | NO   |     | 0                   |                |
 | blocked                  | 1 for user is blocked                                                             | boolean            | NO   |     | 0                   |                |
 | blockwall                | Prohibit contacts to post to the profile page of the user                         | boolean            | NO   |     | 0                   |                |

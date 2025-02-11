@@ -1,23 +1,9 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Module\Contact;
 
@@ -91,8 +77,8 @@ class Profile extends BaseModule
 
 		// Backward compatibility: The update still needs a user-specific contact ID
 		// Change to user-contact table check by version 2022.03
-		$cdata = Contact::getPublicAndUserContactID($contact_id, $this->session->getLocalUserId());
-		if (empty($cdata['user']) || !$this->db->exists('contact', ['id' => $cdata['user'], 'deleted' => false])) {
+		$ucid = Contact::getUserContactId($contact_id, $this->session->getLocalUserId());
+		if (!$ucid || !$this->db->exists('contact', ['id' => $ucid, 'deleted' => false])) {
 			return;
 		}
 
@@ -134,16 +120,17 @@ class Profile extends BaseModule
 		}
 
 		if (isset($request['channel_frequency'])) {
-			Contact\User::setChannelFrequency($cdata['user'], $this->session->getLocalUserId(), $request['channel_frequency']);
+			Contact\User::setChannelFrequency($ucid, $this->session->getLocalUserId(), $request['channel_frequency']);
 		}
 
 		if (isset($request['channel_only'])) {
-			Contact\User::setChannelOnly($cdata['user'], $this->session->getLocalUserId(), $request['channel_only']);
+			Contact\User::setChannelOnly($ucid, $this->session->getLocalUserId(), $request['channel_only']);
 		}
 
-		if (!Contact::update($fields, ['id' => $cdata['user'], 'uid' => $this->session->getLocalUserId()])) {
+		if (!Contact::update($fields, ['id' => $ucid, 'uid' => $this->session->getLocalUserId()])) {
 			$this->systemMessages->addNotice($this->t('Failed to update contact record.'));
 		}
+		$this->baseUrl->redirect('contact/' . $contact_id);
 	}
 
 	protected function content(array $request = []): string
@@ -164,8 +151,22 @@ class Profile extends BaseModule
 			throw new HTTPException\NotFoundException($this->t('Contact not found.'));
 		}
 
+		// Fetch the protocol from the user's contact.
+		if ($data['user']) {
+			$usercontact = Contact::getById($data['user'], ['network', 'protocol']);
+			if ($this->db->isResult($usercontact)) {
+				$contact['network']  = $usercontact['network'];
+				$contact['protocol'] = $usercontact['protocol'];
+			}
+		}
+
+		if (empty($contact['network']) && Contact::isLocal($contact['url']) ) {
+			$contact['network']  = Protocol::DFRN;
+			$contact['protocol'] = Protocol::ACTIVITYPUB;
+		}
+
 		// Don't display contacts that are about to be deleted
-		if ($this->db->isResult($contact) && (!empty($contact['deleted']) || !empty($contact['network']) && $contact['network'] == Protocol::PHANTOM)) {
+		if ($contact['deleted'] || $contact['network'] == Protocol::PHANTOM) {
 			throw new HTTPException\NotFoundException($this->t('Contact not found.'));
 		}
 
@@ -294,9 +295,9 @@ class Profile extends BaseModule
 		}
 		$lblsuggest = (($contact['network'] === Protocol::DFRN) ? $this->t('Suggest friends') : '');
 
-		$poll_enabled = in_array($contact['network'], [Protocol::DFRN, Protocol::OSTATUS, Protocol::FEED, Protocol::MAIL]);
+		$poll_enabled = in_array($contact['network'], [Protocol::DFRN, Protocol::FEED, Protocol::MAIL]);
 
-		$nettype = $this->t('Network type: %s', ContactSelector::networkToName($contact['network'], $contact['url'], $contact['protocol'], $contact['gsid']));
+		$nettype = $this->t('Network type: %s', ContactSelector::networkToName($contact['network'], $contact['protocol'], $contact['gsid']));
 
 		// tabs
 		$tab_str = Module\Contact::getTabsHTML($contact, Module\Contact::TAB_PROFILE);
@@ -354,6 +355,11 @@ class Profile extends BaseModule
 		}
 
 		$contact_actions = $this->getContactActions($contact, $localRelationship);
+
+		if (Contact\User::isIsBlocked($contact['id'], $this->session->getLocalUserId())) {
+			$relation_text = $this->t('%s has blocked you', $contact['name'] ?: $contact['nick']);
+			unset($contact_actions['follow']);
+		}
 
 		if ($localRelationship->rel !== Contact::NOTHING) {
 			$lbl_info1              = $this->t('Contact Information / Notes');
@@ -460,7 +466,7 @@ class Profile extends BaseModule
 	 */
 	private function getContactActions(array $contact, LocalRelationship\Entity\LocalRelationship $localRelationship): array
 	{
-		$poll_enabled    = in_array($contact['network'], [Protocol::ACTIVITYPUB, Protocol::DFRN, Protocol::OSTATUS, Protocol::FEED, Protocol::MAIL]);
+		$poll_enabled    = in_array($contact['network'], [Protocol::ACTIVITYPUB, Protocol::DFRN, Protocol::FEED, Protocol::MAIL]);
 		$contact_actions = [];
 
 		$formSecurityToken = self::getFormSecurityToken('contact_action');
@@ -476,7 +482,7 @@ class Profile extends BaseModule
 		} else {
 			$contact_actions['follow'] = [
 				'label' => $this->t('Follow'),
-				'url'   => 'contact/follow?url=' . urlencode($contact['url']) . '&auto=1',
+				'url'   => 'contact/follow?binurl=' . bin2hex($contact['url']) . '&auto=1',
 				'title' => '',
 				'sel'   => '',
 				'id'    => 'follow',

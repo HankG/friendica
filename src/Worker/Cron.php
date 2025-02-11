@@ -1,34 +1,17 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Worker;
 
-use Friendica\Core\Addon;
 use Friendica\Core\Hook;
-use Friendica\Core\Logger;
 use Friendica\Core\Worker;
 use Friendica\Database\DBA;
 use Friendica\DI;
 use Friendica\Model\Tag;
-use Friendica\Protocol\ActivityPub\Queue;
 use Friendica\Protocol\Relay;
 use Friendica\Util\DateTimeFormat;
 
@@ -36,7 +19,7 @@ class Cron
 {
 	public static function execute()
 	{
-		$a = DI::app();
+		$basepath = DI::appHelper()->getBasePath();
 
 		$last = DI::keyValue()->get('last_cron');
 
@@ -45,16 +28,15 @@ class Cron
 		if ($last) {
 			$next = $last + ($poll_interval * 60);
 			if ($next > time()) {
-				Logger::notice('cron interval not reached');
+				DI::logger()->notice('cron interval not reached');
 				return;
 			}
 		}
 
-		Logger::notice('start');
+		DI::logger()->notice('start');
 
 		// Ensure to have a .htaccess file.
 		// this is a precaution for systems that update automatically
-		$basepath = $a->getBasePath();
 		if (!file_exists($basepath . '/.htaccess') && is_writable($basepath)) {
 			copy($basepath . '/.htaccess-dist', $basepath . '/.htaccess');
 		}
@@ -92,11 +74,8 @@ class Cron
 			Tag::setLocalTrendingHashtags(24, 20);
 			Tag::setGlobalTrendingHashtags(24, 20);
 
-			// Remove old pending posts from the queue
-			Queue::clear();
-
 			// Process all unprocessed entries
-			Queue::processAll();
+			Worker::add(Worker::PRIORITY_LOW, 'ProcessUnprocessedEntries');
 
 			// Search for new contacts in the directory
 			if (DI::config()->get('system', 'synchronize_directory')) {
@@ -125,11 +104,15 @@ class Cron
 
 			Worker::add(Worker::PRIORITY_LOW, 'ExpireSearchIndex');
 
+			Worker::add(Worker::PRIORITY_LOW, 'Expire');
+
 			Worker::add(Worker::PRIORITY_LOW, 'RemoveUnusedTags');
 
 			Worker::add(Worker::PRIORITY_LOW, 'RemoveUnusedContacts');
 
 			Worker::add(Worker::PRIORITY_LOW, 'RemoveUnusedAvatars');
+
+			Worker::add(Worker::PRIORITY_LOW, 'NodeInfo');
 
 			// check upstream version?
 			Worker::add(Worker::PRIORITY_LOW, 'CheckVersion');
@@ -161,12 +144,12 @@ class Cron
 			// Update "blocked" status of servers
 			Worker::add(Worker::PRIORITY_LOW, 'UpdateBlockedServers');
 
-			Addon::reload();
+			DI::addonHelper()->reloadAddons();
 
 			DI::keyValue()->set('last_cron_daily', time());
 		}
 
-		Logger::notice('end');
+		DI::logger()->notice('end');
 
 		DI::keyValue()->set('last_cron', time());
 	}
@@ -178,7 +161,7 @@ class Cron
 	 */
 	private static function deleteSleepingProcesses()
 	{
-		Logger::info('Looking for sleeping processes');
+		DI::logger()->info('Looking for sleeping processes');
 
 		DBA::deleteSleepingProcesses();
 	}

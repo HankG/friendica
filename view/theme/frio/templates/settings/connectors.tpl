@@ -1,3 +1,9 @@
+{{*
+  * Copyright (C) 2010-2024, the Friendica project
+  * SPDX-FileCopyrightText: 2010-2024 the Friendica project
+  *
+  * SPDX-License-Identifier: AGPL-3.0-or-later
+  *}}
 <div class="generic-page-wrapper">
 	{{include file="section_title.tpl" title=$title}}
 
@@ -33,10 +39,6 @@
 					{{include file="field_checkbox.tpl" field=$api_auto_attach}}
 
 					{{include file="field_select.tpl" field=$article_mode}}
-
-					{{include file="field_input.tpl" field=$legacy_contact}}					
-
-					<p><a href="{{$repair_ostatus_url}}">{{$repair_ostatus_text}}</a></p>
 				</div>
 				<div class="panel-footer">
 					<button type="submit" id="general-submit" name="general-submit" class="btn btn-primary" value="{{$submit}}">{{$submit}}</button>

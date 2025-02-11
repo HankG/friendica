@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 
+# SPDX-FileCopyrightText: 2010-2024 the Friendica project
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 # Run this as sudo!
 # I move this file to /usr/local/bin/vhost and run command 'vhost' from anywhere, using sudo.
 

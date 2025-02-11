@@ -1,27 +1,12 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Module\Api\Mastodon\Accounts;
 
-use Friendica\Core\Logger;
 use Friendica\DI;
 use Friendica\Model\Contact;
 use Friendica\Model\Photo;
@@ -85,9 +70,9 @@ class UpdateCredentials extends BaseApi
 			$profile['about'] = $request['note'];
 		}
 
-		Logger::debug('Patch data', ['data' => $request, 'files' => $_FILES]);
+		$this->logger->debug('Patch data', ['data' => $request, 'files' => $_FILES]);
 
-		Logger::info('Update profile and user', ['uid' => $uid, 'user' => $user, 'profile' => $profile]);
+		$this->logger->info('Update profile and user', ['uid' => $uid, 'user' => $user, 'profile' => $profile]);
 
 		if (!empty($request['avatar'])) {
 			Photo::uploadAvatar($uid, $request['avatar']);
@@ -100,12 +85,12 @@ class UpdateCredentials extends BaseApi
 		User::update($user, $uid);
 		Profile::update($profile, $uid);
 
-		$cdata = Contact::getPublicAndUserContactID($owner['id'], $uid);
-		if (empty($cdata)) {
+		$ucid = Contact::getUserContactId($owner['id'], $uid);
+		if (!$ucid) {
 			DI::mstdnError()->InternalError();
 		}
 
-		$account = DI::mstdnAccount()->createFromContactId($cdata['user'], $uid);
-		$this->response->addJsonContent($account->toArray());
+		$account = DI::mstdnAccount()->createFromContactId($ucid, $uid);
+		$this->jsonExit($account->toArray());
 	}
 }

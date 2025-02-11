@@ -1,3 +1,9 @@
+{{*
+  * Copyright (C) 2010-2024, the Friendica project
+  * SPDX-FileCopyrightText: 2010-2024 the Friendica project
+  *
+  * SPDX-License-Identifier: AGPL-3.0-or-later
+  *}}
 <script>
 	$(function(){
 		$(".collapse").on('show.bs.collapse', function(e) {
@@ -106,6 +112,7 @@
 						{{include file="field_input.tpl" field=$maximagesize}}
 						{{include file="field_input.tpl" field=$maximagelength}}
 						{{include file="field_input.tpl" field=$jpegimagequality}}
+						{{include file="field_input.tpl" field=$maxfilesize}}
 					</div>
 					<div class="panel-footer">
 						<input type="submit" name="page_site" class="btn btn-primary" value="{{$submit}}"/>
@@ -145,8 +152,6 @@
 								<span class="help-block" id="id_{{$mail_enabled.0}}" role="tooltip">{{$mail_not_able}}</span>
 							</div>
 						{{/if}}
-
-						{{include file="field_checkbox.tpl" field=$ostatus_enabled}}
 
 						{{if $diaspora_able}}
 							{{include file="field_checkbox.tpl" field=$diaspora_enabled}}
@@ -223,6 +228,7 @@
 					<div class="panel-body">
 						{{include file="field_select.tpl" field=$contact_discovery}}
 						{{include file="field_checkbox.tpl" field=$update_active_contacts}}
+						{{include file="field_checkbox.tpl" field=$update_known_contacts}}
 						{{include file="field_checkbox.tpl" field=$synchronize_directory}}
 						{{include file="field_checkbox.tpl" field=$poco_discovery}}
 						{{include file="field_input.tpl" field=$poco_requery_days}}

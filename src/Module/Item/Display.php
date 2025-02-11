@@ -1,27 +1,14 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Module\Item;
 
 use Friendica\App;
+use Friendica\AppHelper;
 use Friendica\BaseModule;
 use Friendica\Content\Conversation;
 use Friendica\Content\Item as ContentItem;
@@ -60,8 +47,8 @@ class Display extends BaseModule
 	protected $pConfig;
 	/** @var IHandleUserSessions */
 	protected $session;
-	/** @var App */
-	protected $app;
+	/** @var AppHelper */
+	protected $appHelper;
 	/** @var ContentItem */
 	protected $contentItem;
 	/** @var Conversation */
@@ -71,7 +58,7 @@ class Display extends BaseModule
 	/** @var Notify */
 	protected $notify;
 
-	public function __construct(L10n $l10n, App\BaseURL $baseUrl, App\Arguments $args, LoggerInterface $logger, Profiler $profiler, Response $response, IManageConfigValues $config, IManagePersonalConfigValues $pConfig, IHandleUserSessions $session, App $app, App\Page $page, ContentItem $contentItem, Conversation $conversation, Notification $notification, Notify $notify, array $server, array $parameters = [])
+	public function __construct(L10n $l10n, App\BaseURL $baseUrl, App\Arguments $args, LoggerInterface $logger, Profiler $profiler, Response $response, IManageConfigValues $config, IManagePersonalConfigValues $pConfig, IHandleUserSessions $session, AppHelper $appHelper, App\Page $page, ContentItem $contentItem, Conversation $conversation, Notification $notification, Notify $notify, array $server, array $parameters = [])
 	{
 		parent::__construct($l10n, $baseUrl, $args, $logger, $profiler, $response, $server, $parameters);
 
@@ -79,7 +66,7 @@ class Display extends BaseModule
 		$this->config       = $config;
 		$this->pConfig      = $pConfig;
 		$this->session      = $session;
-		$this->app          = $app;
+		$this->appHelper    = $appHelper;
 		$this->contentItem  = $contentItem;
 		$this->conversation = $conversation;
 		$this->notification = $notification;
@@ -179,22 +166,23 @@ class Display extends BaseModule
 	 */
 	protected function displaySidebar(array $item)
 	{
+		$author = [];
 		$shared = $this->contentItem->getSharedPost($item, ['author-link']);
-		if (!empty($shared) && empty($shared['comment'])) {
+		if (array_key_exists('comment', $shared) && strval($shared['comment']) === '') {
 			$author = Contact::getByURLForUser($shared['post']['author-link'], $this->session->getLocalUserId());
 		}
 
-		if (empty($contact)) {
+		if ($author === []) {
 			$author = Contact::getById($item['author-id']);
 		}
 
 		if ($this->baseUrl->isLocalUrl($author['url'])) {
-			Profile::load($this->app, $author['nick'], false);
+			Profile::load($this->appHelper, $author['nick'], false);
 		} else {
 			$this->page['aside'] = Widget\VCard::getHTML($author);
 		}
 
-		$this->app->setProfileOwner($item['uid']);
+		$this->appHelper->setProfileOwner($item['uid']);
 	}
 
 	protected function getDisplayData(array $item, bool $update = false, int $updateUid = 0, bool $force = false): string

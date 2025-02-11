@@ -1,23 +1,9 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Core;
 
@@ -34,7 +20,7 @@ class Theme
 	{
 		$allowed_themes_str = DI::config()->get('system', 'allowed_themes');
 		$allowed_themes_raw = explode(',', str_replace(' ', '', $allowed_themes_str));
-		$allowed_themes = [];
+		$allowed_themes     = [];
 		if (count($allowed_themes_raw)) {
 			foreach ($allowed_themes_raw as $theme) {
 				$theme = Strings::sanitizeFilePathItem(trim($theme));
@@ -72,14 +58,14 @@ class Theme
 		$theme = Strings::sanitizeFilePathItem($theme);
 
 		$info = [
-			'name' => $theme,
-			'description' => "",
-			'author' => [],
-			'maintainer' => [],
-			'version' => "",
-			'credits' => "",
+			'name'         => $theme,
+			'description'  => "",
+			'author'       => [],
+			'maintainer'   => [],
+			'version'      => "",
+			'credits'      => "",
 			'experimental' => file_exists("view/theme/$theme/experimental"),
-			'unsupported' => file_exists("view/theme/$theme/unsupported")
+			'unsupported'  => file_exists("view/theme/$theme/unsupported")
 		];
 
 		if (!is_file("view/theme/$theme/theme.php")) {
@@ -98,7 +84,7 @@ class Theme
 				$comment_line = trim($comment_line, "\t\n\r */");
 				if (strpos($comment_line, ':') !== false) {
 					list($key, $value) = array_map("trim", explode(":", $comment_line, 2));
-					$key = strtolower($key);
+					$key               = strtolower($key);
 					if ($key == "author") {
 						$result = preg_match("|([^<]+)<([^>]+)>|", $value, $matches);
 						if ($result) {
@@ -167,7 +153,7 @@ class Theme
 		}
 
 		$allowed_themes = Theme::getAllowedList();
-		$key = array_search($theme, $allowed_themes);
+		$key            = array_search($theme, $allowed_themes);
 		if ($key !== false) {
 			unset($allowed_themes[$key]);
 			Theme::setAllowedList($allowed_themes);
@@ -199,13 +185,13 @@ class Theme
 				$func();
 			}
 
-			$allowed_themes = Theme::getAllowedList();
+			$allowed_themes   = Theme::getAllowedList();
 			$allowed_themes[] = $theme;
 			Theme::setAllowedList($allowed_themes);
 
 			return true;
 		} catch (\Exception $e) {
-			Logger::error('Theme installation failed', ['theme' => $theme, 'error' => $e->getMessage()]);
+			DI::logger()->error('Theme installation failed', ['theme' => $theme, 'error' => $e->getMessage()]);
 			return false;
 		}
 	}
@@ -222,11 +208,11 @@ class Theme
 	 */
 	public static function getPathForFile(string $file): string
 	{
-		$a = DI::app();
+		$appHelper = DI::appHelper();
 
-		$theme = $a->getCurrentTheme();
+		$theme = $appHelper->getCurrentTheme();
 
-		$parent = Strings::sanitizeFilePathItem($a->getThemeInfoValue('extends', $theme));
+		$parent = Strings::sanitizeFilePathItem($appHelper->getThemeInfoValue('extends', $theme));
 
 		$paths = [
 			"view/theme/$theme/$file",
@@ -259,11 +245,11 @@ class Theme
 			return 'view/theme/' . $theme . '/style.css';
 		}
 
-		$a = DI::app();
+		$appHelper = DI::appHelper();
 
 		$query_params = [];
 
-		$puid = Profile::getThemeUid($a);
+		$puid = Profile::getThemeUid($appHelper);
 		if ($puid) {
 			$query_params['puid'] = $puid;
 		}
@@ -281,8 +267,8 @@ class Theme
 	{
 		$theme = Strings::sanitizeFilePathItem($theme);
 
-		$a = DI::app();
-		$base_theme = $a->getThemeInfoValue('extends') ?? '';
+		$appHelper  = DI::appHelper();
+		$base_theme = $appHelper->getThemeInfoValue('extends') ?? '';
 
 		if (file_exists("view/theme/$theme/config.php")) {
 			return "view/theme/$theme/config.php";

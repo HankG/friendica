@@ -1,23 +1,9 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Module\Debug;
 
@@ -35,14 +21,20 @@ use Friendica\Util\XML;
  */
 class Babel extends BaseModule
 {
+	protected function post(array $request = [])
+	{
+		// @todo check if POST is really used here
+		$this->content($request);
+	}
+
 	protected function content(array $request = []): string
 	{
-		function visible_whitespace($s)
-		{
-			return '<pre>' . htmlspecialchars($s) . '</pre>';
-		}
-
 		$results = [];
+
+		$visible_whitespace = function (string $s): string {
+			return '<pre>' . htmlspecialchars($s) . '</pre>';
+		};
+
 		if (!empty($request['text'])) {
 			self::checkFormSecurityTokenForbiddenOnError('babel');
 			switch (($request['type'] ?? '') ?: 'bbcode') {
@@ -50,24 +42,24 @@ class Babel extends BaseModule
 					$bbcode = $request['text'];
 					$results[] = [
 						'title'   => DI::l10n()->t('Source input'),
-						'content' => visible_whitespace($bbcode)
+						'content' => $visible_whitespace($bbcode)
 					];
 
 					$plain = Text\BBCode::toPlaintext($bbcode, false);
 					$results[] = [
 						'title'   => DI::l10n()->t('BBCode::toPlaintext'),
-						'content' => visible_whitespace($plain)
+						'content' => $visible_whitespace($plain)
 					];
 
 					$html = Text\BBCode::convertForUriId(0, $bbcode);
 					$results[] = [
 						'title'   => DI::l10n()->t('BBCode::convert (raw HTML)'),
-						'content' => visible_whitespace($html)
+						'content' => $visible_whitespace($html)
 					];
 
 					$results[] = [
 						'title'   => DI::l10n()->t('BBCode::convert (hex)'),
-						'content' => visible_whitespace(bin2hex($html)),
+						'content' => $visible_whitespace(bin2hex($html)),
 					];
 
 					$results[] = [
@@ -78,19 +70,19 @@ class Babel extends BaseModule
 					$bbcode2 = Text\HTML::toBBCode($html);
 					$results[] = [
 						'title'   => DI::l10n()->t('BBCode::convert => HTML::toBBCode'),
-						'content' => visible_whitespace($bbcode2)
+						'content' => $visible_whitespace($bbcode2)
 					];
 
 					$markdown = Text\BBCode::toMarkdown($bbcode);
 					$results[] = [
 						'title'   => DI::l10n()->t('BBCode::toMarkdown'),
-						'content' => visible_whitespace($markdown)
+						'content' => $visible_whitespace($markdown)
 					];
 
 					$html2 = Text\Markdown::convert($markdown);
 					$results[] = [
 						'title'   => DI::l10n()->t('BBCode::toMarkdown => Markdown::convert (raw HTML)'),
-						'content' => visible_whitespace($html2)
+						'content' => $visible_whitespace($html2)
 					];
 					$results[] = [
 						'title'   => DI::l10n()->t('BBCode::toMarkdown => Markdown::convert'),
@@ -100,13 +92,13 @@ class Babel extends BaseModule
 					$bbcode3 = Text\Markdown::toBBCode($markdown);
 					$results[] = [
 						'title'   => DI::l10n()->t('BBCode::toMarkdown => Markdown::toBBCode'),
-						'content' => visible_whitespace($bbcode3)
+						'content' => $visible_whitespace($bbcode3)
 					];
 
 					$bbcode4 = Text\HTML::toBBCode($html2);
 					$results[] = [
 						'title'   => DI::l10n()->t('BBCode::toMarkdown =>  Markdown::convert => HTML::toBBCode'),
-						'content' => visible_whitespace($bbcode4)
+						'content' => $visible_whitespace($bbcode4)
 					];
 
 					$tags = Text\BBCode::getTags($bbcode);
@@ -114,22 +106,22 @@ class Babel extends BaseModule
 					$body = Item::setHashtags($bbcode);
 					$results[] = [
 						'title'   => DI::l10n()->t('Item Body'),
-						'content' => visible_whitespace($body)
+						'content' => $visible_whitespace($body)
 					];
 					$results[] = [
 						'title'   => DI::l10n()->t('Item Tags'),
-						'content' => visible_whitespace(var_export($tags, true)),
+						'content' => $visible_whitespace(var_export($tags, true)),
 					];
 
 					$body2 = PageInfo::searchAndAppendToBody($bbcode, true);
 					$results[] = [
 						'title'   => DI::l10n()->t('PageInfo::appendToBody'),
-						'content' => visible_whitespace($body2)
+						'content' => $visible_whitespace($body2)
 					];
 					$html3 = Text\BBCode::convertForUriId(0, $body2);
 					$results[] = [
 						'title'   => DI::l10n()->t('PageInfo::appendToBody => BBCode::convert (raw HTML)'),
-						'content' => visible_whitespace($html3)
+						'content' => $visible_whitespace($html3)
 					];
 					$results[] = [
 						'title'   => DI::l10n()->t('PageInfo::appendToBody => BBCode::convert'),
@@ -140,7 +132,7 @@ class Babel extends BaseModule
 					$diaspora = trim($request['text']);
 					$results[] = [
 						'title'   => DI::l10n()->t('Source input (Diaspora format)'),
-						'content' => visible_whitespace($diaspora),
+						'content' => $visible_whitespace($diaspora),
 					];
 
 					$markdown = XML::unescape($diaspora);
@@ -149,13 +141,13 @@ class Babel extends BaseModule
 
 					$results[] = [
 						'title'   => DI::l10n()->t('Source input (Markdown)'),
-						'content' => visible_whitespace($markdown),
+						'content' => $visible_whitespace($markdown),
 					];
 
 					$html = Text\Markdown::convert($markdown);
 					$results[] = [
 						'title'   => DI::l10n()->t('Markdown::convert (raw HTML)'),
-						'content' => visible_whitespace($html),
+						'content' => $visible_whitespace($html),
 					];
 
 					$results[] = [
@@ -166,14 +158,14 @@ class Babel extends BaseModule
 					$bbcode = Text\Markdown::toBBCode($markdown);
 					$results[] = [
 						'title'   => DI::l10n()->t('Markdown::toBBCode'),
-						'content' => visible_whitespace($bbcode),
+						'content' => $visible_whitespace($bbcode),
 					];
 					break;
 				case 'html' :
 					$html = trim($request['text']);
 					$results[] = [
 						'title'   => DI::l10n()->t('Raw HTML input'),
-						'content' => visible_whitespace($html),
+						'content' => $visible_whitespace($html),
 					];
 
 					$results[] = [
@@ -185,12 +177,12 @@ class Babel extends BaseModule
 
 					$results[] = [
 						'title'   => DI::l10n()->t('HTML Purified (raw)'),
-						'content' => visible_whitespace($purified),
+						'content' => $visible_whitespace($purified),
 					];
 
 					$results[] = [
 						'title'   => DI::l10n()->t('HTML Purified (hex)'),
-						'content' => visible_whitespace(bin2hex($purified)),
+						'content' => $visible_whitespace(bin2hex($purified)),
 					];
 
 					$results[] = [
@@ -201,7 +193,7 @@ class Babel extends BaseModule
 					$bbcode = Text\HTML::toBBCode($html);
 					$results[] = [
 						'title'   => DI::l10n()->t('HTML::toBBCode'),
-						'content' => visible_whitespace($bbcode)
+						'content' => $visible_whitespace($bbcode)
 					];
 
 					$html2 = Text\BBCode::convertForUriId(0, $bbcode);
@@ -218,83 +210,55 @@ class Babel extends BaseModule
 					$bbcode2plain = Text\BBCode::toPlaintext($bbcode);
 					$results[] = [
 						'title'   => DI::l10n()->t('HTML::toBBCode => BBCode::toPlaintext'),
-						'content' => visible_whitespace($bbcode2plain),
+						'content' => $visible_whitespace($bbcode2plain),
 					];
 
 					$markdown = Text\HTML::toMarkdown($html);
 					$results[] = [
 						'title'   => DI::l10n()->t('HTML::toMarkdown'),
-						'content' => visible_whitespace($markdown)
+						'content' => $visible_whitespace($markdown)
 					];
 
 					$text = Text\HTML::toPlaintext($html, 0);
 					$results[] = [
 						'title'   => DI::l10n()->t('HTML::toPlaintext'),
-						'content' => visible_whitespace($text),
+						'content' => $visible_whitespace($text),
 					];
 
 					$text = Text\HTML::toPlaintext($html, 0, true);
 					$results[] = [
 						'title'   => DI::l10n()->t('HTML::toPlaintext (compact)'),
-						'content' => visible_whitespace($text),
+						'content' => $visible_whitespace($text),
 					];
 					break;
 				case 'twitter':
 					$json = trim($request['text']);
 
-					if (file_exists('addon/twitter/twitter.php')) {
-						require_once 'addon/twitter/twitter.php';
+					$status = json_decode($json);
 
-						if (parse_url($json) !== false) {
-							preg_match('#^https?://(?:mobile\.|www\.)?twitter.com/[^/]+/status/(\d+).*#', $json, $matches);
-							$status = twitter_statuses_show($matches[1]);
-						} else {
-							$status = json_decode($json);
-						}
+					$results[] = [
+						'title'   => DI::l10n()->t('Decoded post'),
+						'content' => $visible_whitespace(var_export($status, true)),
+					];
 
-						$results[] = [
-							'title'   => DI::l10n()->t('Decoded post'),
-							'content' => visible_whitespace(var_export($status, true)),
-						];
+					$postarray = [];
+					$postarray['object-type'] = Activity\ObjectType::NOTE;
 
-						$postarray = [];
-						$postarray['object-type'] = Activity\ObjectType::NOTE;
-
-						if (!empty($status->full_text)) {
-							$postarray['body'] = $status->full_text;
-						} else {
-							$postarray['body'] = $status->text;
-						}
-
-						// When the post contains links then use the correct object type
-						if (count($status->entities->urls) > 0) {
-							$postarray['object-type'] = Activity\ObjectType::BOOKMARK;
-						}
-
-						$picture = \twitter_media_entities($status, $postarray);
-
-						$results[] = [
-							'title'   => DI::l10n()->t('Post array before expand entities'),
-							'content' => visible_whitespace(var_export($postarray, true)),
-						];
-
-						$converted = \twitter_expand_entities($postarray['body'], $status, $picture);
-
-						$results[] = [
-							'title'   => DI::l10n()->t('Post converted'),
-							'content' => visible_whitespace(var_export($converted, true)),
-						];
-
-						$results[] = [
-							'title'   => DI::l10n()->t('Converted body'),
-							'content' => visible_whitespace($converted['body']),
-						];
+					if (!empty($status->full_text)) {
+						$postarray['body'] = $status->full_text;
 					} else {
-						$results[] = [
-							'title'   => DI::l10n()->tt('Error', 'Errors', 1),
-							'content' => DI::l10n()->t('Twitter addon is absent from the addon/ folder.'),
-						];
+						$postarray['body'] = $status->text;
 					}
+
+					// When the post contains links then use the correct object type
+					if (count($status->entities->urls) > 0) {
+						$postarray['object-type'] = Activity\ObjectType::BOOKMARK;
+					}
+
+					$results[] = [
+						'title'   => DI::l10n()->t('Post array before expand entities'),
+						'content' => $visible_whitespace(var_export($postarray, true)),
+					];
 
 					break;
 			}

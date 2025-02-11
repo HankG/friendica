@@ -1,21 +1,9 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
+
+/* Copyright (C) 2010-2024, the Friendica project
+ * SPDX-FileCopyrightText: 2010-2024 the Friendica project
  *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: AGPL-3.0-or-later
  *
  * Main view structure configuration file.
  *
@@ -36,7 +24,7 @@
  *
  */
 
- return [
+return [
 	"application-view" => [
 		"fields" => [
 			"id" => ["application", "id"],
@@ -113,6 +101,7 @@
 			"received" => ["post-thread-user", "received"],
 			"created" => ["post-thread-user", "created"],
 			"network" => ["post-thread-user", "network"],
+			"protocol" => ["post-user", "protocol"],
 			"restricted" => ["post-engagement", "language"],
 			"comments" => "0",
 			"activities" => "0",
@@ -127,7 +116,7 @@
 			AND (NOT `contact`.`readonly` AND NOT `contact`.`blocked` AND NOT `contact`.`pending`)
 			AND (`post-thread-user`.`hidden` IS NULL OR NOT `post-thread-user`.`hidden`)
 			AND NOT `authorcontact`.`blocked` AND NOT `ownercontact`.`blocked`
-			AND NOT EXISTS(SELECT `cid`  FROM `user-contact` WHERE `uid` = `post-thread-user`.`uid` AND `cid` IN (`authorcontact`.`id`, `ownercontact`.`id`) AND (`blocked` OR `ignored`))
+			AND NOT EXISTS(SELECT `cid`  FROM `user-contact` WHERE `uid` = `post-thread-user`.`uid` AND `cid` IN (`authorcontact`.`id`, `ownercontact`.`id`) AND (`blocked` OR `ignored` OR `is-blocked`))
 			AND NOT EXISTS(SELECT `gsid` FROM `user-gserver` WHERE `uid` = `post-thread-user`.`uid` AND `gsid` IN (`authorcontact`.`gsid`, `ownercontact`.`gsid`) AND `ignored`)"
 	],
 	"post-timeline-view" => [
@@ -165,6 +154,9 @@
 			"causer-id" => ["post-user", "causer-id"],
 			"causer-blocked" => ["causer", "blocked"],
 			"causer-gsid" => ["causer", "gsid"],
+			"parent-network" => ["post-thread-user", "network"],
+			"parent-owner-id" => ["post-thread-user", "owner-id"],
+			"parent-author-id" => ["post-thread-user", "author-id"],
 		],
 		"query" => "FROM `post-user`
 			LEFT JOIN `post-thread-user` ON `post-thread-user`.`uri-id` = `post-user`.`parent-uri-id` AND `post-thread-user`.`uid` = `post-user`.`uid`
@@ -230,6 +222,7 @@
 			"received" => ["post-thread-user", "received"],
 			"created" => ["post-thread-user", "created"],
 			"network" => ["post-thread-user", "network"],
+			"protocol" => ["post-user", "protocol"],
 			"restricted" => ["post-searchindex", "language"],
 			"comments" => "0",
 			"activities" => "0",
@@ -244,7 +237,7 @@
 			AND (NOT `contact`.`readonly` AND NOT `contact`.`blocked` AND NOT `contact`.`pending`)
 			AND (`post-thread-user`.`hidden` IS NULL OR NOT `post-thread-user`.`hidden`)
 			AND NOT `authorcontact`.`blocked` AND NOT `ownercontact`.`blocked`
-			AND NOT EXISTS(SELECT `cid`  FROM `user-contact` WHERE `uid` = `post-thread-user`.`uid` AND `cid` IN (`authorcontact`.`id`, `ownercontact`.`id`) AND (`blocked` OR `ignored`))
+			AND NOT EXISTS(SELECT `cid`  FROM `user-contact` WHERE `uid` = `post-thread-user`.`uid` AND `cid` IN (`authorcontact`.`id`, `ownercontact`.`id`) AND (`blocked` OR `ignored` OR `is-blocked`))
 			AND NOT EXISTS(SELECT `gsid` FROM `user-gserver` WHERE `uid` = `post-thread-user`.`uid` AND `gsid` IN (`authorcontact`.`gsid`, `ownercontact`.`gsid`) AND `ignored`)"
 	],
 	"post-origin-view" => [
@@ -261,6 +254,8 @@
 			"thr-parent-id" => ["post-origin", "thr-parent-id"],
 			"conversation" => ["conversation-item-uri", "uri"],
 			"conversation-id" => ["post-thread-user", "conversation-id"],
+			"context" => ["context-item-uri", "uri"],
+			"context-id" => ["post-thread-user", "context-id"],
 			"quote-uri" => ["quote-item-uri", "uri"],
 			"quote-uri-id" => ["post-content", "quote-uri-id"],
 			"guid" => ["item-uri", "guid"],
@@ -268,6 +263,8 @@
 			"gravity" => ["post-origin", "gravity"],
 			"extid" => ["external-item-uri", "uri"],
 			"external-id" => ["post-user", "external-id"],
+			"replies" => ["replies-item-uri", "uri"],
+			"replies-id" => ["post-user", "replies-id"],
 			"created" => ["post-origin", "created"],
 			"edited" => ["post-user", "edited"],
 			"commented" => ["post-thread-user", "commented"],
@@ -405,6 +402,7 @@
 			"signed_text" => ["diaspora-interaction", "interaction"],
 			"parent-guid" => ["parent-item-uri", "guid"],
 			"parent-network" => ["post-thread-user", "network"],
+			"parent-owner-id" => ["post-thread-user", "owner-id"],
 			"parent-author-id" => ["post-thread-user", "author-id"],
 			"parent-author-link" => ["parent-post-author", "url"],
 			"parent-author-name" => ["parent-post-author", "name"],
@@ -422,7 +420,9 @@
 			LEFT JOIN `item-uri` AS `thr-parent-item-uri` ON `thr-parent-item-uri`.`id` = `post-origin`.`thr-parent-id`
 			LEFT JOIN `item-uri` AS `parent-item-uri` ON `parent-item-uri`.`id` = `post-origin`.`parent-uri-id`
 			LEFT JOIN `item-uri` AS `conversation-item-uri` ON `conversation-item-uri`.`id` = `post-thread-user`.`conversation-id`
+			LEFT JOIN `item-uri` AS `context-item-uri` ON `context-item-uri`.`id` = `post-thread-user`.`context-id`
 			LEFT JOIN `item-uri` AS `external-item-uri` ON `external-item-uri`.`id` = `post-user`.`external-id`
+			LEFT JOIN `item-uri` AS `replies-item-uri` ON `replies-item-uri`.`id` = `post-user`.`replies-id`
 			LEFT JOIN `verb` ON `verb`.`id` = `post-origin`.`vid`
 			LEFT JOIN `event` ON `event`.`id` = `post-user`.`event-id`
 			LEFT JOIN `diaspora-interaction` ON `diaspora-interaction`.`uri-id` = `post-origin`.`uri-id`
@@ -447,6 +447,8 @@
 			"thr-parent-id" => ["post-origin", "thr-parent-id"],
 			"conversation" => ["conversation-item-uri", "uri"],
 			"conversation-id" => ["post-thread-user", "conversation-id"],
+			"context" => ["context-item-uri", "uri"],
+			"context-id" => ["post-thread-user", "context-id"],
 			"quote-uri" => ["quote-item-uri", "uri"],
 			"quote-uri-id" => ["post-content", "quote-uri-id"],
 			"guid" => ["item-uri", "guid"],
@@ -454,6 +456,8 @@
 			"gravity" => ["post-origin", "gravity"],
 			"extid" => ["external-item-uri", "uri"],
 			"external-id" => ["post-user", "external-id"],
+			"replies" => ["replies-item-uri", "uri"],
+			"replies-id" => ["post-user", "replies-id"],
 			"created" => ["post-origin", "created"],
 			"edited" => ["post-user", "edited"],
 			"commented" => ["post-thread-user", "commented"],
@@ -473,6 +477,7 @@
 			"global" => ["post-user", "global"],
 			"featured" => "EXISTS(SELECT `type` FROM `post-collection` WHERE `type` = 0 AND `uri-id` = `post-thread-user`.`uri-id`)",
 			"network" => ["post-thread-user", "network"],
+			"protocol" => ["post-user", "protocol"],
 			"vid" => ["post-origin", "vid"],
 			"psid" => ["post-thread-user", "psid"],
 			"verb" => "IF (`post-origin`.`vid` IS NULL, '', `verb`.`name`)",
@@ -590,6 +595,7 @@
 			"signed_text" => ["diaspora-interaction", "interaction"],
 			"parent-guid" => ["parent-item-uri", "guid"],
 			"parent-network" => ["post-thread-user", "network"],
+			"parent-owner-id" => ["post-thread-user", "owner-id"],
 			"parent-author-id" => ["post-thread-user", "author-id"],
 			"parent-author-link" => ["author", "url"],
 			"parent-author-name" => ["author", "name"],
@@ -607,7 +613,9 @@
 			LEFT JOIN `item-uri` AS `thr-parent-item-uri` ON `thr-parent-item-uri`.`id` = `post-origin`.`thr-parent-id`
 			LEFT JOIN `item-uri` AS `parent-item-uri` ON `parent-item-uri`.`id` = `post-origin`.`parent-uri-id`
 			LEFT JOIN `item-uri` AS `conversation-item-uri` ON `conversation-item-uri`.`id` = `post-thread-user`.`conversation-id`
+			LEFT JOIN `item-uri` AS `context-item-uri` ON `context-item-uri`.`id` = `post-thread-user`.`context-id`
 			LEFT JOIN `item-uri` AS `external-item-uri` ON `external-item-uri`.`id` = `post-user`.`external-id`
+			LEFT JOIN `item-uri` AS `replies-item-uri` ON `replies-item-uri`.`id` = `post-user`.`replies-id`
 			LEFT JOIN `verb` ON `verb`.`id` = `post-origin`.`vid`
 			LEFT JOIN `event` ON `event`.`id` = `post-user`.`event-id`
 			LEFT JOIN `diaspora-interaction` ON `diaspora-interaction`.`uri-id` = `post-origin`.`uri-id`
@@ -631,6 +639,8 @@
 			"thr-parent-id" => ["post-user", "thr-parent-id"],
 			"conversation" => ["conversation-item-uri", "uri"],
 			"conversation-id" => ["post-thread-user", "conversation-id"],
+			"context" => ["context-item-uri", "uri"],
+			"context-id" => ["post-thread-user", "context-id"],
 			"quote-uri" => ["quote-item-uri", "uri"],
 			"quote-uri-id" => ["post-content", "quote-uri-id"],
 			"guid" => ["item-uri", "guid"],
@@ -638,6 +648,8 @@
 			"gravity" => ["post-user", "gravity"],
 			"extid" => ["external-item-uri", "uri"],
 			"external-id" => ["post-user", "external-id"],
+			"replies" => ["replies-item-uri", "uri"],
+			"replies-id" => ["post-user", "replies-id"],
 			"created" => ["post-user", "created"],
 			"edited" => ["post-user", "edited"],
 			"commented" => ["post-thread-user", "commented"],
@@ -775,6 +787,7 @@
 			"signed_text" => ["diaspora-interaction", "interaction"],
 			"parent-guid" => ["parent-item-uri", "guid"],
 			"parent-network" => ["post-thread-user", "network"],
+			"parent-owner-id" => ["post-thread-user", "owner-id"],
 			"parent-author-id" => ["post-thread-user", "author-id"],
 			"parent-author-link" => ["parent-post-author", "url"],
 			"parent-author-name" => ["parent-post-author", "name"],
@@ -791,7 +804,9 @@
 			LEFT JOIN `item-uri` AS `thr-parent-item-uri` ON `thr-parent-item-uri`.`id` = `post-user`.`thr-parent-id`
 			LEFT JOIN `item-uri` AS `parent-item-uri` ON `parent-item-uri`.`id` = `post-user`.`parent-uri-id`
 			LEFT JOIN `item-uri` AS `conversation-item-uri` ON `conversation-item-uri`.`id` = `post-thread-user`.`conversation-id`
+			LEFT JOIN `item-uri` AS `context-item-uri` ON `context-item-uri`.`id` = `post-thread-user`.`context-id`
 			LEFT JOIN `item-uri` AS `external-item-uri` ON `external-item-uri`.`id` = `post-user`.`external-id`
+			LEFT JOIN `item-uri` AS `replies-item-uri` ON `replies-item-uri`.`id` = `post-user`.`replies-id`
 			LEFT JOIN `verb` ON `verb`.`id` = `post-user`.`vid`
 			LEFT JOIN `event` ON `event`.`id` = `post-user`.`event-id`
 			LEFT JOIN `diaspora-interaction` ON `diaspora-interaction`.`uri-id` = `post-user`.`uri-id`
@@ -816,6 +831,8 @@
 			"thr-parent-id" => ["post-user", "thr-parent-id"],
 			"conversation" => ["conversation-item-uri", "uri"],
 			"conversation-id" => ["post-thread-user", "conversation-id"],
+			"context" => ["context-item-uri", "uri"],
+			"context-id" => ["post-thread-user", "context-id"],
 			"quote-uri" => ["quote-item-uri", "uri"],
 			"quote-uri-id" => ["post-content", "quote-uri-id"],
 			"guid" => ["item-uri", "guid"],
@@ -823,6 +840,8 @@
 			"gravity" => ["post-user", "gravity"],
 			"extid" => ["external-item-uri", "uri"],
 			"external-id" => ["post-user", "external-id"],
+			"replies" => ["replies-item-uri", "uri"],
+			"replies-id" => ["post-user", "replies-id"],
 			"created" => ["post-thread-user", "created"],
 			"edited" => ["post-user", "edited"],
 			"commented" => ["post-thread-user", "commented"],
@@ -842,6 +861,7 @@
 			"global" => ["post-user", "global"],
 			"featured" => "EXISTS(SELECT `type` FROM `post-collection` WHERE `type` = 0 AND `uri-id` = `post-thread-user`.`uri-id`)",
 			"network" => ["post-thread-user", "network"],
+			"protocol" => ["post-user", "protocol"],
 			"vid" => ["post-user", "vid"],
 			"psid" => ["post-thread-user", "psid"],
 			"verb" => "IF (`post-user`.`vid` IS NULL, '', `verb`.`name`)",
@@ -959,6 +979,7 @@
 			"signed_text" => ["diaspora-interaction", "interaction"],
 			"parent-guid" => ["parent-item-uri", "guid"],
 			"parent-network" => ["post-thread-user", "network"],
+			"parent-owner-id" => ["post-thread-user", "owner-id"],
 			"parent-author-id" => ["post-thread-user", "author-id"],
 			"parent-author-link" => ["author", "url"],
 			"parent-author-name" => ["author", "name"],
@@ -975,7 +996,9 @@
 			LEFT JOIN `item-uri` AS `thr-parent-item-uri` ON `thr-parent-item-uri`.`id` = `post-user`.`thr-parent-id`
 			LEFT JOIN `item-uri` AS `parent-item-uri` ON `parent-item-uri`.`id` = `post-user`.`parent-uri-id`
 			LEFT JOIN `item-uri` AS `conversation-item-uri` ON `conversation-item-uri`.`id` = `post-thread-user`.`conversation-id`
+			LEFT JOIN `item-uri` AS `context-item-uri` ON `context-item-uri`.`id` = `post-thread-user`.`context-id`
 			LEFT JOIN `item-uri` AS `external-item-uri` ON `external-item-uri`.`id` = `post-user`.`external-id`
+			LEFT JOIN `item-uri` AS `replies-item-uri` ON `replies-item-uri`.`id` = `post-user`.`replies-id`
 			LEFT JOIN `verb` ON `verb`.`id` = `post-user`.`vid`
 			LEFT JOIN `event` ON `event`.`id` = `post-user`.`event-id`
 			LEFT JOIN `diaspora-interaction` ON `diaspora-interaction`.`uri-id` = `post-thread-user`.`uri-id`
@@ -995,12 +1018,16 @@
 			"thr-parent-id" => ["post", "thr-parent-id"],
 			"conversation" => ["conversation-item-uri", "uri"],
 			"conversation-id" => ["post-thread", "conversation-id"],
+			"context" => ["context-item-uri", "uri"],
+			"context-id" => ["post-thread", "context-id"],
 			"quote-uri" => ["quote-item-uri", "uri"],
 			"quote-uri-id" => ["post-content", "quote-uri-id"],
 			"guid" => ["item-uri", "guid"],
 			"gravity" => ["post", "gravity"],
 			"extid" => ["external-item-uri", "uri"],
 			"external-id" => ["post", "external-id"],
+			"replies" => ["replies-item-uri", "uri"],
+			"replies-id" => ["post", "replies-id"],
 			"created" => ["post", "created"],
 			"edited" => ["post", "edited"],
 			"commented" => ["post-thread", "commented"],
@@ -1013,6 +1040,7 @@
 			"global" => ["post", "global"],
 			"featured" => "EXISTS(SELECT `type` FROM `post-collection` WHERE `type` = 0 AND `uri-id` = `post`.`uri-id`)",
 			"network" => ["post", "network"],
+			"protocol" => "255",
 			"vid" => ["post", "vid"],
 			"verb" => "IF (`post`.`vid` IS NULL, '', `verb`.`name`)",
 			"title" => ["post-content", "title"],
@@ -1107,6 +1135,7 @@
 			"signed_text" => ["diaspora-interaction", "interaction"],
 			"parent-guid" => ["parent-item-uri", "guid"],
 			"parent-network" => ["post-thread", "network"],
+			"parent-owner-id" => ["post-thread", "owner-id"],
 			"parent-author-id" => ["post-thread", "author-id"],
 			"parent-author-link" => ["parent-post-author", "url"],
 			"parent-author-name" => ["parent-post-author", "name"],
@@ -1122,7 +1151,9 @@
 			LEFT JOIN `item-uri` AS `thr-parent-item-uri` ON `thr-parent-item-uri`.`id` = `post`.`thr-parent-id`
 			LEFT JOIN `item-uri` AS `parent-item-uri` ON `parent-item-uri`.`id` = `post`.`parent-uri-id`
 			LEFT JOIN `item-uri` AS `conversation-item-uri` ON `conversation-item-uri`.`id` = `post-thread`.`conversation-id`
+			LEFT JOIN `item-uri` AS `context-item-uri` ON `context-item-uri`.`id` = `post-thread`.`context-id`
 			LEFT JOIN `item-uri` AS `external-item-uri` ON `external-item-uri`.`id` = `post`.`external-id`
+			LEFT JOIN `item-uri` AS `replies-item-uri` ON `replies-item-uri`.`id` = `post`.`replies-id`
 			LEFT JOIN `verb` ON `verb`.`id` = `post`.`vid`
 			LEFT JOIN `diaspora-interaction` ON `diaspora-interaction`.`uri-id` = `post`.`uri-id`
 			LEFT JOIN `post-content` ON `post-content`.`uri-id` = `post`.`uri-id`
@@ -1140,12 +1171,16 @@
 			"thr-parent-id" => ["post", "thr-parent-id"],
 			"conversation" => ["conversation-item-uri", "uri"],
 			"conversation-id" => ["post-thread", "conversation-id"],
+			"context" => ["context-item-uri", "uri"],
+			"context-id" => ["post-thread", "context-id"],
 			"quote-uri" => ["quote-item-uri", "uri"],
 			"quote-uri-id" => ["post-content", "quote-uri-id"],
 			"guid" => ["item-uri", "guid"],
 			"gravity" => ["post", "gravity"],
 			"extid" => ["external-item-uri", "uri"],
 			"external-id" => ["post", "external-id"],
+			"replies" => ["replies-item-uri", "uri"],
+			"replies-id" => ["post", "replies-id"],
 			"created" => ["post-thread", "created"],
 			"edited" => ["post", "edited"],
 			"commented" => ["post-thread", "commented"],
@@ -1158,6 +1193,7 @@
 			"global" => ["post", "global"],
 			"featured" => "EXISTS(SELECT `type` FROM `post-collection` WHERE `type` = 0 AND `uri-id` = `post-thread`.`uri-id`)",
 			"network" => ["post-thread", "network"],
+			"protocol" => "255",
 			"vid" => ["post", "vid"],
 			"verb" => "IF (`post`.`vid` IS NULL, '', `verb`.`name`)",
 			"title" => ["post-content", "title"],
@@ -1254,6 +1290,7 @@
 			"signed_text" => ["diaspora-interaction", "interaction"],
 			"parent-guid" => ["parent-item-uri", "guid"],
 			"parent-network" => ["post-thread", "network"],
+			"parent-owner-id" => ["post-thread", "owner-id"],
 			"parent-author-id" => ["post-thread", "author-id"],
 			"parent-author-link" => ["author", "url"],
 			"parent-author-name" => ["author", "name"],
@@ -1269,7 +1306,9 @@
 			LEFT JOIN `item-uri` AS `thr-parent-item-uri` ON `thr-parent-item-uri`.`id` = `post`.`thr-parent-id`
 			LEFT JOIN `item-uri` AS `parent-item-uri` ON `parent-item-uri`.`id` = `post`.`parent-uri-id`
 			LEFT JOIN `item-uri` AS `conversation-item-uri` ON `conversation-item-uri`.`id` = `post-thread`.`conversation-id`
+			LEFT JOIN `item-uri` AS `context-item-uri` ON `context-item-uri`.`id` = `post-thread`.`context-id`
 			LEFT JOIN `item-uri` AS `external-item-uri` ON `external-item-uri`.`id` = `post`.`external-id`
+			LEFT JOIN `item-uri` AS `replies-item-uri` ON `replies-item-uri`.`id` = `post`.`replies-id`
 			LEFT JOIN `verb` ON `verb`.`id` = `post`.`vid`
 			LEFT JOIN `diaspora-interaction` ON `diaspora-interaction`.`uri-id` = `post-thread`.`uri-id`
 			LEFT JOIN `post-content` ON `post-content`.`uri-id` = `post-thread`.`uri-id`
@@ -1348,6 +1387,7 @@
 			"starred" => ["post-thread-user", "starred"],
 			"mention" => ["post-thread-user", "mention"],
 			"network" => ["post-thread-user", "network"],
+			"protocol" => ["post-user", "protocol"],
 			"contact-id" => ["post-thread-user", "contact-id"],
 			"contact-type" => ["ownercontact", "contact-type"],
 		],
@@ -1360,7 +1400,7 @@
 			AND (NOT `contact`.`readonly` AND NOT `contact`.`blocked` AND NOT `contact`.`pending`)
 			AND (`post-thread-user`.`hidden` IS NULL OR NOT `post-thread-user`.`hidden`)
 			AND NOT `authorcontact`.`blocked` AND NOT `ownercontact`.`blocked`
-			AND NOT EXISTS(SELECT `cid`  FROM `user-contact` WHERE `uid` = `post-thread-user`.`uid` AND `cid` IN (`post-thread-user`.`author-id`, `post-thread-user`.`owner-id`, `post-thread-user`.`causer-id`) AND (`blocked` OR `ignored` OR `channel-only`))
+			AND NOT EXISTS(SELECT `cid`  FROM `user-contact` WHERE `uid` = `post-thread-user`.`uid` AND `cid` IN (`post-thread-user`.`author-id`, `post-thread-user`.`owner-id`, `post-thread-user`.`causer-id`) AND (`blocked` OR `ignored` OR `is-blocked` OR `channel-only`))
 			AND NOT EXISTS(SELECT `gsid` FROM `user-gserver` WHERE `uid` = `post-thread-user`.`uid` AND `gsid` IN (`authorcontact`.`gsid`, `ownercontact`.`gsid`) AND `ignored`)"
 	],
 	"network-thread-circle-view" => [
@@ -1374,6 +1414,7 @@
 			"starred" => ["post-thread-user", "starred"],
 			"mention" => ["post-thread-user", "mention"],
 			"network" => ["post-thread-user", "network"],
+			"protocol" => ["post-user", "protocol"],
 			"contact-id" => ["post-thread-user", "contact-id"],
 			"contact-type" => ["ownercontact", "contact-type"],
 		],
@@ -1386,7 +1427,7 @@
 			AND (NOT `contact`.`readonly` AND NOT `contact`.`blocked` AND NOT `contact`.`pending`)
 			AND (`post-thread-user`.`hidden` IS NULL OR NOT `post-thread-user`.`hidden`)
 			AND NOT `authorcontact`.`blocked` AND NOT `ownercontact`.`blocked`
-			AND NOT EXISTS(SELECT `cid`  FROM `user-contact` WHERE `uid` = `post-thread-user`.`uid` AND `cid` IN (`post-thread-user`.`author-id`, `post-thread-user`.`owner-id`, `post-thread-user`.`causer-id`) AND (`blocked` OR `ignored`))
+			AND NOT EXISTS(SELECT `cid`  FROM `user-contact` WHERE `uid` = `post-thread-user`.`uid` AND `cid` IN (`post-thread-user`.`author-id`, `post-thread-user`.`owner-id`, `post-thread-user`.`causer-id`) AND (`blocked` OR `ignored` OR `is-blocked`))
 			AND NOT EXISTS(SELECT `gsid` FROM `user-gserver` WHERE `uid` = `post-thread-user`.`uid` AND `gsid` IN (`authorcontact`.`gsid`, `ownercontact`.`gsid`) AND `ignored`)"
 	],
 	"owner-view" => [
@@ -1426,7 +1467,6 @@
 			"poll" => ["contact", "poll"],
 			"confirm" => ["contact", "confirm"],
 			"poco" => ["contact", "poco"],
-			"subhub" => ["contact", "subhub"],
 			"hub-verify" => ["contact", "hub-verify"],
 			"last-update" => ["contact", "last-update"],
 			"success_update" => ["contact", "success_update"],
@@ -1453,6 +1493,7 @@
 			"unsearchable" => ["contact", "unsearchable"],
 			"sensitive" => ["contact", "sensitive"],
 			"baseurl" => ["contact", "baseurl"],
+			"gsid" => ["contact", "gsid"],
 			"reason" => ["contact", "reason"],
 			"info" => ["contact", "info"],
 			"bdyear" => ["contact", "bdyear"],
@@ -1475,8 +1516,6 @@
 			"theme" => ["user", "theme"],
 			"upubkey" => ["user", "pubkey"],
 			"uprvkey" => ["user", "prvkey"],
-			"sprvkey" => ["user", "sprvkey"],
-			"spubkey" => ["user", "spubkey"],
 			"verified" => ["user", "verified"],
 			"blockwall" => ["user", "blockwall"],
 			"hidewall" => ["user", "hidewall"],
@@ -1585,6 +1624,7 @@
 			"ap-outbox" => ["apcontact", "outbox"],
 			"ap-sharedinbox" => ["apcontact", "sharedinbox"],
 			"ap-generator" => ["apcontact", "generator"],
+			"ap-posting-restricted" => ["apcontact", "posting-restricted"],
 			"ap-following_count" => ["apcontact", "following_count"],
 			"ap-followers_count" => ["apcontact", "followers_count"],
 			"ap-statuses_count" => ["apcontact", "statuses_count"],
@@ -1668,7 +1708,6 @@
 			"readonly" => ["ucontact", "readonly"],
 			"blocked" => ["ucontact", "blocked"],
 			"block_reason" => ["ucontact", "block_reason"],
-			"subhub" => ["ucontact", "subhub"],
 			"hub-verify" => ["ucontact", "hub-verify"],
 			"reason" => ["ucontact", "reason"],
 			"dfrn-notify" => ["contact", "notify"],
@@ -1689,6 +1728,7 @@
 			"ap-outbox" => ["apcontact", "outbox"],
 			"ap-sharedinbox" => ["apcontact", "sharedinbox"],
 			"ap-generator" => ["apcontact", "generator"],
+			"ap-posting-restricted" => ["apcontact", "posting-restricted"],
 			"ap-following_count" => ["apcontact", "following_count"],
 			"ap-followers_count" => ["apcontact", "followers_count"],
 			"ap-statuses_count" => ["apcontact", "statuses_count"],
@@ -1723,7 +1763,8 @@
 		],
 		"query" => "FROM `register`
 			INNER JOIN `contact` ON `register`.`uid` = `contact`.`uid`
-			INNER JOIN `user` ON `register`.`uid` = `user`.`uid`"
+			INNER JOIN `user` ON `register`.`uid` = `user`.`uid`
+			WHERE `register`.`uid` != 0"
 	],
 	"tag-search-view" => [
 		"fields" => [
@@ -1737,6 +1778,7 @@
 			"gravity" => ["post-user", "gravity"],
 			"received" => ["post-user", "received"],
 			"network" => ["post-user", "network"],
+			"protocol" => ["post-user", "protocol"],
 			"author-id" => ["post-user", "author-id"],
 			"name" => ["tag", "name"],
 		],
@@ -1761,7 +1803,7 @@
 			"label" => ["profile_field", "label"],
 			"value" => ["profile_field", "value"],
 			"order" => ["profile_field", "order"],
-			"psid"=> ["profile_field", "psid"],
+			"psid" => ["profile_field", "psid"],
 			"allow_cid" => ["permissionset", "allow_cid"],
 			"allow_gid" => ["permissionset", "allow_gid"],
 			"deny_cid" => ["permissionset", "deny_cid"],

@@ -1,34 +1,20 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Test\src\Module\Api\Friendica;
 
 use Friendica\Capabilities\ICanCreateResponses;
 use Friendica\DI;
 use Friendica\Module\Api\Friendica\Notification;
-use Friendica\Test\src\Module\Api\ApiTest;
+use Friendica\Test\ApiTestCase;
 use Friendica\Util\DateTimeFormat;
 use Friendica\Util\Temporal;
 
-class NotificationTest extends ApiTest
+class NotificationTest extends ApiTestCase
 {
 	public function testEmpty()
 	{
@@ -66,7 +52,7 @@ class NotificationTest extends ApiTest
 </notes>
 XML;
 
-		$response = (new Notification(DI::mstdnError(), DI::app(), DI::l10n(), DI::baseUrl(), DI::args(), DI::logger(), DI::profiler(), DI::apiResponse(), [], ['extension' => 'xml']))
+		$response = (new Notification(DI::mstdnError(), DI::appHelper(), DI::l10n(), DI::baseUrl(), DI::args(), DI::logger(), DI::profiler(), DI::apiResponse(), [], ['extension' => 'xml']))
 			->run($this->httpExceptionMock);
 
 		self::assertXmlStringEqualsXmlString($assertXml, (string)$response->getBody());
@@ -78,7 +64,7 @@ XML;
 
 	public function testWithJsonResult()
 	{
-		$response = (new Notification(DI::mstdnError(), DI::app(), DI::l10n(), DI::baseUrl(), DI::args(), DI::logger(), DI::profiler(), DI::apiResponse(), [], ['extension' => 'json']))
+		$response = (new Notification(DI::mstdnError(), DI::appHelper(), DI::l10n(), DI::baseUrl(), DI::args(), DI::logger(), DI::profiler(), DI::apiResponse(), [], ['extension' => 'json']))
 			->run($this->httpExceptionMock);
 
 		$json = $this->toJson($response);

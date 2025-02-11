@@ -1,3 +1,9 @@
+{{*
+  * Copyright (C) 2010-2024, the Friendica project
+  * SPDX-FileCopyrightText: 2010-2024 the Friendica project
+  *
+  * SPDX-License-Identifier: AGPL-3.0-or-later
+  *}}
 <div id="welcome" class="generic-page-wrapper">
 	<h1>{{$welcome nofilter}}</h1>
 	<h3>{{$checklist nofilter}}</h3>

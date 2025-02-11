@@ -1,23 +1,9 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica;
 
@@ -103,7 +89,9 @@ class BaseCollection extends \ArrayIterator
 	 */
 	public function map(callable $callback): BaseCollection
 	{
-		return new static(array_map($callback, $this->getArrayCopy()), $this->getTotalCount());
+		$class = get_class($this);
+
+		return new $class(array_map($callback, $this->getArrayCopy()), $this->getTotalCount());
 	}
 
 	/**
@@ -116,7 +104,9 @@ class BaseCollection extends \ArrayIterator
 	 */
 	public function filter(callable $callback = null, int $flag = 0): BaseCollection
 	{
-		return new static(array_filter($this->getArrayCopy(), $callback, $flag));
+		$class = get_class($this);
+
+		return new $class(array_filter($this->getArrayCopy(), $callback, $flag));
 	}
 
 	/**
@@ -126,7 +116,9 @@ class BaseCollection extends \ArrayIterator
 	 */
 	public function reverse(): BaseCollection
 	{
-		return new static(array_reverse($this->getArrayCopy()), $this->getTotalCount());
+		$class = get_class($this);
+
+		return new $class(array_reverse($this->getArrayCopy()), $this->getTotalCount());
 	}
 
 	/**
@@ -142,7 +134,9 @@ class BaseCollection extends \ArrayIterator
 		}
 
 		return array_map(function ($array) {
-			return new static($array);
+			$class = get_class($this);
+
+			return new $class($array);
 		}, array_chunk($this->getArrayCopy(), $length));
 	}
 

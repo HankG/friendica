@@ -1,33 +1,19 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Test\src\Module\Api\Twitter\Statuses;
 
-use Friendica\App\Router;
 use Friendica\Capabilities\ICanCreateResponses;
+use Friendica\Core\Renderer;
 use Friendica\DI;
 use Friendica\Module\Api\Twitter\Statuses\NetworkPublicTimeline;
-use Friendica\Test\src\Module\Api\ApiTest;
+use Friendica\Test\ApiTestCase;
 
-class NetworkPublicTimelineTest extends ApiTest
+class NetworkPublicTimelineTest extends ApiTestCase
 {
 	/**
 	 * Test the api_statuses_networkpublic_timeline() function.
@@ -36,7 +22,10 @@ class NetworkPublicTimelineTest extends ApiTest
 	 */
 	public function testApiStatusesNetworkpublicTimeline()
 	{
-		$response = (new NetworkPublicTimeline(DI::mstdnError(), DI::app(), DI::l10n(), DI::baseUrl(), DI::args(), DI::logger(), DI::profiler(), DI::apiResponse(), []))
+		// @todo: This call is needed for this test
+		Renderer::registerTemplateEngine('Friendica\Render\FriendicaSmartyEngine');
+
+		$response = (new NetworkPublicTimeline(DI::mstdnError(), DI::appHelper(), DI::l10n(), DI::baseUrl(), DI::args(), DI::logger(), DI::profiler(), DI::apiResponse(), []))
 			->run($this->httpExceptionMock, [
 				'max_id' => 10
 			]);
@@ -58,7 +47,10 @@ class NetworkPublicTimelineTest extends ApiTest
 	 */
 	public function testApiStatusesNetworkpublicTimelineWithNegativePage()
 	{
-		$response = (new NetworkPublicTimeline(DI::mstdnError(), DI::app(), DI::l10n(), DI::baseUrl(), DI::args(), DI::logger(), DI::profiler(), DI::apiResponse(), []))
+		// @todo: This call is needed for this test
+		Renderer::registerTemplateEngine('Friendica\Render\FriendicaSmartyEngine');
+
+		$response = (new NetworkPublicTimeline(DI::mstdnError(), DI::appHelper(), DI::l10n(), DI::baseUrl(), DI::args(), DI::logger(), DI::profiler(), DI::apiResponse(), []))
 			->run($this->httpExceptionMock, [
 				'page' => -2
 			]);
@@ -94,7 +86,10 @@ class NetworkPublicTimelineTest extends ApiTest
 	 */
 	public function testApiStatusesNetworkpublicTimelineWithRss()
 	{
-		$response = (new NetworkPublicTimeline(DI::mstdnError(), DI::app(), DI::l10n(), DI::baseUrl(), DI::args(), DI::logger(), DI::profiler(), DI::apiResponse(), [], [
+		// @todo: This call is needed for this test
+		Renderer::registerTemplateEngine('Friendica\Render\FriendicaSmartyEngine');
+
+		$response = (new NetworkPublicTimeline(DI::mstdnError(), DI::appHelper(), DI::l10n(), DI::baseUrl(), DI::args(), DI::logger(), DI::profiler(), DI::apiResponse(), [], [
 			'extension' => ICanCreateResponses::TYPE_RSS
 		]))->run($this->httpExceptionMock, [
 			'page' => -2

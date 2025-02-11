@@ -1,5 +1,9 @@
 <?php
 
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 return [
 	'http/2 301'                => [''],
 	'date'                      => ['Thu, 11 Oct 2018 18:43:54 GMT'],

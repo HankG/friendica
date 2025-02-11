@@ -59,7 +59,6 @@ Fields
 | remote_self               |                                                                                                                | boolean            | NO   |     | 0                   |                |
 | rel                       | The kind of the relation between the user and the contact                                                      | tinyint unsigned   | NO   |     | 0                   |                |
 | protocol                  | Protocol of the contact                                                                                        | char(4)            | NO   |     |                     |                |
-| subhub                    |                                                                                                                | boolean            | NO   |     | 0                   |                |
 | hub-verify                |                                                                                                                | varbinary(383)     | NO   |     |                     |                |
 | rating                    | Automatically detected feed poll frequency                                                                     | tinyint            | NO   |     | 0                   |                |
 | priority                  | Feed poll priority                                                                                             | tinyint unsigned   | NO   |     | 0                   |                |

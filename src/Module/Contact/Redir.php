@@ -1,28 +1,16 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Module\Contact;
 
+use Friendica\App\Arguments;
+use Friendica\App\BaseURL;
+use Friendica\AppHelper;
 use Friendica\Core\L10n;
-use Friendica\App;
 use Friendica\Core\Protocol;
 use Friendica\Core\Session\Capability\IHandleUserSessions;
 use Friendica\Core\Worker;
@@ -41,16 +29,16 @@ class Redir extends \Friendica\BaseModule
 	private $session;
 	/** @var Database */
 	private $database;
-	/** @var App */
-	private $app;
+	/** @var AppHelper */
+	private $appHelper;
 
-	public function __construct(App $app, Database $database, IHandleUserSessions $session, L10n $l10n, App\BaseURL $baseUrl, App\Arguments $args, LoggerInterface $logger, Profiler $profiler, Response $response, array $server, array $parameters = [])
+	public function __construct(AppHelper $appHelper, Database $database, IHandleUserSessions $session, L10n $l10n, BaseURL $baseUrl, Arguments $args, LoggerInterface $logger, Profiler $profiler, Response $response, array $server, array $parameters = [])
 	{
 		parent::__construct($l10n, $baseUrl, $args, $logger, $profiler, $response, $server, $parameters);
 
 		$this->session    = $session;
 		$this->database   = $database;
-		$this->app        = $app;
+		$this->appHelper  = $appHelper;
 	}
 
 	protected function rawContent(array $request = [])
@@ -114,14 +102,14 @@ class Redir extends \Friendica\BaseModule
 		// We don't use magic auth when there is no visitor, we are on the same system, or we visit our own stuff
 		if (empty($visitor) || Strings::compareLink($basepath, $this->baseUrl) || Strings::compareLink($contact_url, $visitor)) {
 			$this->logger->info('Redirecting without magic', ['target' => $target_url, 'visitor' => $visitor, 'contact' => $contact_url]);
-			$this->app->redirect($target_url);
+			$this->appHelper->redirect($target_url);
 		}
 
 		$separator = strpos($target_url, '?') ? '&' : '?';
 		$target_url .= $separator . 'zrl=' . urlencode($visitor) . '&addr=' . urlencode($contact_url);
 
 		$this->logger->info('Redirecting with magic', ['target' => $target_url, 'visitor' => $visitor, 'contact' => $contact_url]);
-		$this->app->redirect($target_url);
+		$this->appHelper->redirect($target_url);
 	}
 
 	/**
@@ -149,9 +137,9 @@ class Redir extends \Friendica\BaseModule
 		$this->checkUrl($contact_url, $url);
 		$target_url = $url ?: $contact_url;
 
-		if (!empty($this->app->getContactId()) && $this->app->getContactId() == $cid) {
+		if (!empty($this->appHelper->getContactId()) && $this->appHelper->getContactId() == $cid) {
 			// Local user is already authenticated.
-			$this->app->redirect($target_url);
+			$this->appHelper->redirect($target_url);
 		}
 
 		if ($contact['uid'] == 0 && $this->session->getLocalUserId()) {
@@ -162,10 +150,10 @@ class Redir extends \Friendica\BaseModule
 				$cid = $contact['id'];
 			}
 
-			if (!empty($this->app->getContactId()) && $this->app->getContactId() == $cid) {
+			if (!empty($this->appHelper->getContactId()) && $this->appHelper->getContactId() == $cid) {
 				// Local user is already authenticated.
 				$this->logger->info('Contact already authenticated. Redirecting to target url', ['url' => $contact['url'], 'name' => $contact['name'], 'target_url' => $target_url]);
-				$this->app->redirect($target_url);
+				$this->appHelper->redirect($target_url);
 			}
 		}
 
@@ -180,7 +168,7 @@ class Redir extends \Friendica\BaseModule
 			if (($host == $remotehost) && ($this->session->getRemoteContactID($this->session->get('visitor_visiting')) == $this->session->get('visitor_id'))) {
 				// Remote user is already authenticated.
 				$this->logger->info('Contact already authenticated. Redirecting to target url', ['url' => $contact['url'], 'name' => $contact['name'], 'target_url' => $target_url]);
-				$this->app->redirect($target_url);
+				$this->appHelper->redirect($target_url);
 			}
 		}
 
@@ -195,7 +183,7 @@ class Redir extends \Friendica\BaseModule
 		}
 
 		$this->logger->info('redirecting to ' . $target_url);
-		$this->app->redirect($target_url);
+		$this->appHelper->redirect($target_url);
 	}
 
 

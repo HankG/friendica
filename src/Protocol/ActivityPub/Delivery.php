@@ -1,27 +1,12 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Protocol\ActivityPub;
 
-use Friendica\Core\Logger;
 use Friendica\Core\Worker;
 use Friendica\Database\DBA;
 use Friendica\DI;
@@ -56,13 +41,15 @@ class Delivery
 				continue;
 			}
 
+			$result = [];
+
 			if (!$serverfail) {
 				$result = self::deliverToInbox($post['command'], 0, $inbox, $owner, $post['receivers'], $post['uri-id']);
 
 				if ($result['serverfailure']) {
 					// In a timeout situation we assume that every delivery to that inbox will time out.
 					// So we set the flag and try all deliveries at a later time.
-					Logger::notice('Inbox delivery has a server failure', ['inbox' => $inbox]);
+					DI::logger()->notice('Inbox delivery has a server failure', ['inbox' => $inbox]);
 					$serverfail = true;
 				}
 				Worker::coolDown();
@@ -73,7 +60,7 @@ class Delivery
 			}
 		}
 
-		Logger::debug('Inbox delivery done', ['inbox' => $inbox, 'posts' => count($posts), 'failed' => count($uri_ids), 'serverfailure' => $serverfail]);
+		DI::logger()->debug('Inbox delivery done', ['inbox' => $inbox, 'posts' => count($posts), 'failed' => count($uri_ids), 'serverfailure' => $serverfail]);
 		return ['success' => empty($uri_ids), 'uri_ids' => $uri_ids];
 	}
 
@@ -96,11 +83,11 @@ class Delivery
 		if (empty($item_id) && !empty($uri_id) && !empty($uid)) {
 			$item = Post::selectFirst(['id', 'parent', 'origin', 'gravity', 'verb'], ['uri-id' => $uri_id, 'uid' => [$uid, 0]], ['order' => ['uid' => true]]);
 			if (empty($item['id'])) {
-				Logger::warning('Item not found, removing delivery', ['uri-id' => $uri_id, 'uid' => $uid, 'cmd' => $cmd, 'inbox' => $inbox]);
+				DI::logger()->warning('Item not found, removing delivery', ['uri-id' => $uri_id, 'uid' => $uid, 'cmd' => $cmd, 'inbox' => $inbox]);
 				Post\Delivery::remove($uri_id, $inbox);
 				return ['success' => true, 'serverfailure' => false, 'drop' => false];
 			} elseif (!DI::config()->get('system', 'redistribute_activities') && !$item['origin'] && ($item['gravity'] == Item::GRAVITY_ACTIVITY)) {
-				Logger::notice('Activities are not relayed, removing delivery', ['verb' => $item['verb'], 'uri-id' => $uri_id, 'uid' => $uid, 'cmd' => $cmd, 'inbox' => $inbox]);
+				DI::logger()->notice('Activities are not relayed, removing delivery', ['verb' => $item['verb'], 'uri-id' => $uri_id, 'uid' => $uid, 'cmd' => $cmd, 'inbox' => $inbox]);
 				Post\Delivery::remove($uri_id, $inbox);
 				return ['success' => true, 'serverfailure' => false, 'drop' => false];
 			} else {
@@ -128,12 +115,19 @@ class Delivery
 		} else {
 			$data = ActivityPub\Transmitter::createCachedActivityFromItem($item_id);
 			if (!empty($data)) {
-				$timestamp  = microtime(true);
-				$response   = HTTPSignature::post($data, $inbox, $owner);
-				$runtime    = microtime(true) - $timestamp;
-				$success    = $response->isSuccess();
-				$serverfail = $response->isTimeout();
-				if (!$success) {
+				$timestamp = microtime(true);
+				try {
+					$response   = HTTPSignature::post($data, $inbox, $owner);
+					$success    = $response->isSuccess();
+					$serverfail = $response->isTimeout();
+				} catch (\Throwable $th) {
+					DI::logger()->notice('Got exception', ['code' => $th->getCode(), 'message' => $th->getMessage()]);
+					$response   = null;
+					$success    = false;
+					$serverfail = true;
+				}
+				$runtime = microtime(true) - $timestamp;
+				if ($success === false) {
 					// 5xx errors are problems on the server. We don't need to continue delivery then.
 					if (!$serverfail && ($response->getReturnCode() >= 500) && ($response->getReturnCode() <= 599)) {
 						$serverfail = true;
@@ -156,10 +150,10 @@ class Delivery
 
 					// Resubscribe to relay server upon client error
 					if (!$serverfail && ($response->getReturnCode() >= 400) && ($response->getReturnCode() <= 499)) {
-						$actor = self:: fetchActorForRelayInbox($inbox);
+						$actor = self::fetchActorForRelayInbox($inbox);
 						if (!empty($actor)) {
 							$drop = !ActivityPub\Transmitter::sendRelayFollow($actor);
-							Logger::notice('Resubscribed to relay', ['url' => $actor, 'success' => !$drop]);
+							DI::logger()->notice('Resubscribed to relay', ['url' => $actor, 'success' => !$drop]);
 						} elseif ($cmd == ProtocolDelivery::DELETION) {
 							// Remote systems not always accept our deletion requests, so we drop them if rejected.
 							// Situation is: In Friendica we allow the thread owner to delete foreign comments to their thread.
@@ -169,7 +163,7 @@ class Delivery
 
 					}
 
-					Logger::notice('Delivery failed', ['retcode' => $response->getReturnCode(), 'serverfailure' => $serverfail, 'drop' => $drop, 'runtime' => round($runtime, 3), 'uri-id' => $uri_id, 'uid' => $uid, 'item_id' => $item_id, 'cmd' => $cmd, 'inbox' => $inbox]);
+					DI::logger()->notice('Delivery failed', ['retcode' => $response->getReturnCode() ?? 0, 'serverfailure' => $serverfail, 'drop' => $drop, 'runtime' => round($runtime, 3), 'uri-id' => $uri_id, 'uid' => $uid, 'item_id' => $item_id, 'cmd' => $cmd, 'inbox' => $inbox]);
 				}
 				if ($uri_id) {
 					if ($success) {
@@ -185,7 +179,7 @@ class Delivery
 
 		self::setSuccess($receivers, $success);
 
-		Logger::debug('Delivered', ['uri-id' => $uri_id, 'uid' => $uid, 'item_id' => $item_id, 'cmd' => $cmd, 'inbox' => $inbox, 'success' => $success, 'serverfailure' => $serverfail, 'drop' => $drop]);
+		DI::logger()->debug('Delivered', ['uri-id' => $uri_id, 'uid' => $uid, 'item_id' => $item_id, 'cmd' => $cmd, 'inbox' => $inbox, 'success' => $success, 'serverfailure' => $serverfail, 'drop' => $drop]);
 
 		if (($success || $drop) && in_array($cmd, [ProtocolDelivery::POST])) {
 			Post\DeliveryData::incrementQueueDone($uri_id, Post\DeliveryData::ACTIVITYPUB);

@@ -1,23 +1,9 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Util;
 
@@ -26,7 +12,6 @@ use DOMXPath;
 use Friendica\Content\Text\HTML;
 use Friendica\Protocol\HTTP\MediaType;
 use Friendica\Core\Hook;
-use Friendica\Core\Logger;
 use Friendica\Database\Database;
 use Friendica\Database\DBA;
 use Friendica\DI;
@@ -79,15 +64,20 @@ class ParseUrl
 
 		// Workaround for systems that can't handle a HEAD request. Don't retry on timeouts.
 		if (!$curlResult->isSuccess() && ($curlResult->getReturnCode() >= 400) && !in_array($curlResult->getReturnCode(), [408, 504])) {
-			$curlResult = DI::httpClient()->get($url, $accept, array_merge([HttpClientOptions::CONTENT_LENGTH => 1000000], $options));
+			try {
+				$curlResult = DI::httpClient()->get($url, $accept, array_merge([HttpClientOptions::CONTENT_LENGTH => 1000000], $options));
+			} catch (\Throwable $th) {
+				DI::logger()->notice('Got exception', ['code' => $th->getCode(), 'message' => $th->getMessage()]);
+				return [];
+			}
 		}
 
 		if (!$curlResult->isSuccess()) {
-			Logger::debug('Got HTTP Error', ['http error' => $curlResult->getReturnCode(), 'url' => $url]);
+			DI::logger()->debug('Got HTTP Error', ['http error' => $curlResult->getReturnCode(), 'url' => $url]);
 			return [];
 		}
 
-		$contenttype =  $curlResult->getContentType();
+		$contenttype = $curlResult->getContentType();
 		if (empty($contenttype)) {
 			return ['application', 'octet-stream'];
 		}
@@ -98,7 +88,8 @@ class ParseUrl
 	/**
 	 * Search for cached embeddable data of an url otherwise fetch it
 	 *
-	 * @param string $url         The url of the page which should be scraped
+	 * @param string $url      The url of the page which should be scraped
+	 * @param string $mimetype Optional mimetype that had already been detected for this page
 	 *
 	 * @return array which contains needed data for embedding
 	 *    string 'url'      => The url of the parsed page
@@ -113,26 +104,24 @@ class ParseUrl
 	 * @see   ParseUrl::getSiteinfo() for more information about scraping
 	 * embeddable content
 	 */
-	public static function getSiteinfoCached(string $url): array
+	public static function getSiteinfoCached(string $url, string $mimetype = ''): array
 	{
 		if (empty($url)) {
 			return [
-				'url' => '',
+				'url'  => '',
 				'type' => 'error',
 			];
 		}
 
 		$urlHash = hash('sha256', $url);
 
-		$parsed_url = DBA::selectFirst('parsed_url', ['content'],
-			['url_hash' => $urlHash, 'oembed' => false]
-		);
+		$parsed_url = DBA::selectFirst('parsed_url', ['content'], ['url_hash' => $urlHash, 'oembed' => false]);
 		if (!empty($parsed_url['content'])) {
 			$data = unserialize($parsed_url['content']);
 			return $data;
 		}
 
-		$data = self::getSiteinfo($url);
+		$data = self::getSiteinfo($url, $mimetype);
 
 		$expires = $data['expires'];
 
@@ -164,8 +153,9 @@ class ParseUrl
 	 * like \<title\>Awesome Title\</title\> or
 	 * \<meta name="description" content="An awesome description"\>
 	 *
-	 * @param string $url         The url of the page which should be scraped
-	 * @param int    $count       Internal counter to avoid endless loops
+	 * @param string $url      The url of the page which should be scraped
+	 * @param string $mimetype Optional mimetype that had already been detected for this page
+	 * @param int    $count    Internal counter to avoid endless loops
 	 *
 	 * @return array which contains needed data for embedding
 	 *    string 'url'      => The url of the parsed page
@@ -190,11 +180,11 @@ class ParseUrl
 	 * </body>
 	 * @endverbatim
 	 */
-	public static function getSiteinfo(string $url, int $count = 1): array
+	public static function getSiteinfo(string $url, string $mimetype = '', int $count = 1): array
 	{
 		if (empty($url)) {
 			return [
-				'url' => '',
+				'url'  => '',
 				'type' => 'error',
 			];
 		}
@@ -211,36 +201,40 @@ class ParseUrl
 		$url = Network::stripTrackingQueryParams($url);
 
 		$siteinfo = [
-			'url' => $url,
-			'type' => 'link',
+			'url'     => $url,
+			'type'    => 'link',
 			'expires' => DateTimeFormat::utc(self::DEFAULT_EXPIRATION_FAILURE),
 		];
 
 		if ($count > 10) {
-			Logger::warning('Endless loop detected', ['url' => $url]);
+			DI::logger()->warning('Endless loop detected', ['url' => $url]);
 			return $siteinfo;
 		}
 
-		$type = self::getContentType($url);
-		Logger::info('Got content-type', ['content-type' => $type, 'url' => $url]);
+		if (!empty($mimetype)) {
+			$type = explode('/', current(explode(';', $mimetype)));
+		} else {
+			$type = self::getContentType($url);
+		}
+		DI::logger()->info('Got content-type', ['content-type' => $type, 'url' => $url]);
 		if (!empty($type) && in_array($type[0], ['image', 'video', 'audio'])) {
 			$siteinfo['type'] = $type[0];
 			return $siteinfo;
 		}
 
 		if ((count($type) >= 2) && (($type[0] != 'text') || ($type[1] != 'html'))) {
-			Logger::info('Unparseable content-type, quitting here, ', ['content-type' => $type, 'url' => $url]);
+			DI::logger()->info('Unparseable content-type, quitting here, ', ['content-type' => $type, 'url' => $url]);
 			return $siteinfo;
 		}
 
 		try {
 			$curlResult = DI::httpClient()->get($url, HttpClientAccept::HTML, [HttpClientOptions::CONTENT_LENGTH => 1000000, HttpClientOptions::REQUEST => HttpClientRequest::SITEINFO]);
 		} catch (\Throwable $th) {
-			Logger::info('Exception when fetching', ['url' => $url, 'code' => $th->getCode(), 'message' => $th->getMessage()]);
+			DI::logger()->info('Exception when fetching', ['url' => $url, 'code' => $th->getCode(), 'message' => $th->getMessage()]);
 			return $siteinfo;
 		}
 		if (!$curlResult->isSuccess() || empty($curlResult->getBodyString())) {
-			Logger::info('Empty body or error when fetching', ['url' => $url, 'success' => $curlResult->isSuccess(), 'code' => $curlResult->getReturnCode()]);
+			DI::logger()->info('Empty body or error when fetching', ['url' => $url, 'success' => $curlResult->isSuccess(), 'code' => $curlResult->getReturnCode()]);
 			return $siteinfo;
 		}
 
@@ -249,11 +243,14 @@ class ParseUrl
 		if ($cacheControlHeader = $curlResult->getHeader('Cache-Control')[0] ?? '') {
 			if (preg_match('/max-age=([0-9]+)/i', $cacheControlHeader, $matches)) {
 				$maxAge = max(86400, (int)array_pop($matches));
+
 				$siteinfo['expires'] = DateTimeFormat::utc("now + $maxAge seconds");
 			}
 		}
 
 		$body = $curlResult->getBodyString();
+
+		$siteinfo['size'] = mb_strlen($body);
 
 		$charset = '';
 		try {
@@ -262,7 +259,8 @@ class ParseUrl
 			if (isset($mediaType->parameters['charset'])) {
 				$charset = $mediaType->parameters['charset'];
 			}
-		} catch(\InvalidArgumentException $e) {}
+		} catch(\InvalidArgumentException $e) {
+		}
 
 		$siteinfo['charset'] = $charset;
 
@@ -270,7 +268,7 @@ class ParseUrl
 			// See https://github.com/friendica/friendica/issues/5470#issuecomment-418351211
 			$charset = str_ireplace('latin-1', 'latin1', $charset);
 
-			Logger::info('detected charset', ['charset' => $charset]);
+			DI::logger()->info('detected charset', ['charset' => $charset]);
 			$body = iconv($charset, 'UTF-8//TRANSLIT', $body);
 		}
 
@@ -308,16 +306,15 @@ class ParseUrl
 			}
 
 			if (@$meta_tag['http-equiv'] == 'refresh') {
-				$path = $meta_tag['content'];
-				$pathinfo = explode(';', $path);
+				$path    = $meta_tag['content'];
 				$content = '';
-				foreach ($pathinfo as $value) {
+				foreach (explode(';', $path) as $value) {
 					if (substr(strtolower($value), 0, 4) == 'url=') {
 						$content = substr($value, 4);
 					}
 				}
 				if ($content != '') {
-					$siteinfo = self::getSiteinfo($content, ++$count);
+					$siteinfo = self::getSiteinfo($content, $mimetype, ++$count);
 					return $siteinfo;
 				}
 			}
@@ -457,7 +454,8 @@ class ParseUrl
 		$list = $xpath->query("//script[@type='application/ld+json']");
 		foreach ($list as $node) {
 			if (!empty($node->nodeValue)) {
-				if ($jsonld = json_decode($node->nodeValue, true)) {
+				$jsonld = json_decode($node->nodeValue, true);
+				if (is_array($jsonld)) {
 					$siteinfo = self::parseParts($siteinfo, $jsonld);
 				}
 			}
@@ -490,13 +488,14 @@ class ParseUrl
 
 		if (!empty($siteinfo['text']) && mb_strlen($siteinfo['text']) > self::MAX_DESC_COUNT) {
 			$siteinfo['text'] = mb_substr($siteinfo['text'], 0, self::MAX_DESC_COUNT) . '…';
+
 			$pos = mb_strrpos($siteinfo['text'], '.');
 			if ($pos > self::MIN_DESC_COUNT) {
 				$siteinfo['text'] = mb_substr($siteinfo['text'], 0, $pos + 1);
 			}
 		}
 
-		Logger::info('Siteinfo fetched', ['url' => $url, 'siteinfo' => $siteinfo]);
+		DI::logger()->info('Siteinfo fetched', ['url' => $url, 'siteinfo' => $siteinfo]);
 
 		Hook::callAll('getsiteinfo', $siteinfo);
 
@@ -513,7 +512,7 @@ class ParseUrl
 	 * @param array $siteinfo
 	 * @return array
 	 */
-	private static function checkMedia(string $page_url, array $siteinfo) : array
+	private static function checkMedia(string $page_url, array $siteinfo): array
 	{
 		if (!empty($siteinfo['images'])) {
 			array_walk($siteinfo['images'], function (&$image) use ($page_url) {
@@ -524,13 +523,14 @@ class ParseUrl
 				 */
 				if (!empty($image['url'])) {
 					$image['url'] = self::completeUrl($image['url'], $page_url);
+
 					$photodata = Images::getInfoFromURLCached($image['url']);
 					if (($photodata) && ($photodata[0] > 50) && ($photodata[1] > 50)) {
-						$image['src'] = $image['url'];
-						$image['width'] = $photodata[0];
-						$image['height'] = $photodata[1];
+						$image['src']         = $image['url'];
+						$image['width']       = $photodata[0];
+						$image['height']      = $photodata[1];
 						$image['contenttype'] = $photodata['mime'];
-						$image['blurhash'] = $photodata['blurhash'] ?? null;
+						$image['blurhash']    = $photodata['blurhash'] ?? null;
 						unset($image['url']);
 						ksort($image);
 					} else {
@@ -547,13 +547,14 @@ class ParseUrl
 		foreach (['audio', 'video'] as $element) {
 			if (!empty($siteinfo[$element])) {
 				array_walk($siteinfo[$element], function (&$media) use ($page_url, &$siteinfo) {
-					$url = '';
-					$embed = '';
-					$content = '';
+					$url         = '';
+					$embed       = '';
+					$content     = '';
 					$contenttype = '';
 					foreach (['embed', 'content', 'url'] as $field) {
 						if (!empty($media[$field])) {
 							$media[$field] = self::completeUrl($media[$field], $page_url);
+
 							$type = self::getContentType($media[$field]);
 							if (($type[0] ?? '') == 'text') {
 								if ($field == 'embed') {
@@ -562,7 +563,7 @@ class ParseUrl
 									$url = $media[$field];
 								}
 							} elseif (!empty($type[0])) {
-								$content = $media[$field];
+								$content     = $media[$field];
 								$contenttype = implode('/', $type);
 							}
 						}
@@ -709,7 +710,7 @@ class ParseUrl
 		} elseif (!empty($jsonld['@type'])) {
 			$siteinfo = self::parseJsonLd($siteinfo, $jsonld);
 		} elseif (!empty($jsonld)) {
-			$keys = array_keys($jsonld);
+			$keys         = array_keys($jsonld);
 			$numeric_keys = true;
 			foreach ($keys as $key) {
 				if (!is_int($key)) {
@@ -748,7 +749,7 @@ class ParseUrl
 	{
 		$type = JsonLD::fetchElement($jsonld, '@type');
 		if (empty($type)) {
-			Logger::info('Empty type', ['url' => $siteinfo['url']]);
+			DI::logger()->info('Empty type', ['url' => $siteinfo['url']]);
 			return $siteinfo;
 		}
 
@@ -813,7 +814,7 @@ class ParseUrl
 			case 'Person':
 			case 'Patient':
 			case 'PerformingGroup':
-			case 'DanceGroup';
+			case 'DanceGroup':
 			case 'MusicGroup':
 			case 'TheaterGroup':
 				return self::parseJsonLdWebPerson($siteinfo, $jsonld);
@@ -825,7 +826,7 @@ class ParseUrl
 			case 'ImageObject':
 				return self::parseJsonLdMediaObject($siteinfo, $jsonld, 'images');
 			default:
-				Logger::info('Unknown type', ['type' => $type, 'url' => $siteinfo['url']]);
+				DI::logger()->info('Unknown type', ['type' => $type, 'url' => $siteinfo['url']]);
 				return $siteinfo;
 		}
 	}
@@ -909,7 +910,7 @@ class ParseUrl
 			$jsonldinfo['author_name'] = trim($jsonld['author']);
 		}
 
-		Logger::info('Fetched Author information', ['fetched' => $jsonldinfo]);
+		DI::logger()->info('Fetched Author information', ['fetched' => $jsonldinfo]);
 
 		return array_merge($siteinfo, $jsonldinfo);
 	}
@@ -956,8 +957,7 @@ class ParseUrl
 			$content = JsonLD::fetchElement($jsonld, 'keywords');
 			if (!empty($content)) {
 				$siteinfo['keywords'] = [];
-				$keywords = explode(',', $content);
-				foreach ($keywords as $keyword) {
+				foreach (explode(',', $content) as $keyword) {
 					$siteinfo['keywords'][] = trim($keyword);
 				}
 			}
@@ -980,7 +980,7 @@ class ParseUrl
 
 		$jsonldinfo = self::parseJsonLdAuthor($jsonldinfo, $jsonld);
 
-		Logger::info('Fetched article information', ['url' => $siteinfo['url'], 'fetched' => $jsonldinfo]);
+		DI::logger()->info('Fetched article information', ['url' => $siteinfo['url'], 'fetched' => $jsonldinfo]);
 
 		return array_merge($siteinfo, $jsonldinfo);
 	}
@@ -1020,7 +1020,7 @@ class ParseUrl
 
 		$jsonldinfo = self::parseJsonLdAuthor($jsonldinfo, $jsonld);
 
-		Logger::info('Fetched WebPage information', ['url' => $siteinfo['url'], 'fetched' => $jsonldinfo]);
+		DI::logger()->info('Fetched WebPage information', ['url' => $siteinfo['url'], 'fetched' => $jsonldinfo]);
 
 		return array_merge($siteinfo, $jsonldinfo);
 	}
@@ -1060,7 +1060,7 @@ class ParseUrl
 
 		$jsonldinfo = self::parseJsonLdAuthor($jsonldinfo, $jsonld);
 
-		Logger::info('Fetched WebSite information', ['url' => $siteinfo['url'], 'fetched' => $jsonldinfo]);
+		DI::logger()->info('Fetched WebSite information', ['url' => $siteinfo['url'], 'fetched' => $jsonldinfo]);
 		return array_merge($siteinfo, $jsonldinfo);
 	}
 
@@ -1095,7 +1095,7 @@ class ParseUrl
 		$content = JsonLD::fetchElement($jsonld, 'logo', 'url', '@type', 'ImageObject');
 		if (!empty($content) && is_string($content)) {
 			$jsonldinfo['publisher_img'] = trim($content);
-		} elseif (!empty($content) && is_array($content)) {
+		} elseif (is_array($content) && array_key_exists(0, $content)) {
 			$jsonldinfo['publisher_img'] = trim($content[0]);
 		}
 
@@ -1109,7 +1109,7 @@ class ParseUrl
 			$jsonldinfo['publisher_url'] = Network::sanitizeUrl($content);
 		}
 
-		Logger::info('Fetched Organization information', ['url' => $siteinfo['url'], 'fetched' => $jsonldinfo]);
+		DI::logger()->info('Fetched Organization information', ['url' => $siteinfo['url'], 'fetched' => $jsonldinfo]);
 		return array_merge($siteinfo, $jsonldinfo);
 	}
 
@@ -1148,14 +1148,14 @@ class ParseUrl
 
 		$content = JsonLD::fetchElement($jsonld, 'image', 'url', '@type', 'ImageObject');
 		if (!empty($content) && !is_string($content)) {
-			Logger::notice('Unexpected return value for the author image', ['content' => $content]);
+			DI::logger()->notice('Unexpected return value for the author image', ['content' => $content]);
 		}
 
 		if (!empty($content) && is_string($content)) {
 			$jsonldinfo['author_img'] = trim($content);
 		}
 
-		Logger::info('Fetched Person information', ['url' => $siteinfo['url'], 'fetched' => $jsonldinfo]);
+		DI::logger()->info('Fetched Person information', ['url' => $siteinfo['url'], 'fetched' => $jsonldinfo]);
 		return array_merge($siteinfo, $jsonldinfo);
 	}
 
@@ -1231,7 +1231,7 @@ class ParseUrl
 			}
 		}
 
-		Logger::info('Fetched Media information', ['url' => $siteinfo['url'], 'fetched' => $media]);
+		DI::logger()->info('Fetched Media information', ['url' => $siteinfo['url'], 'fetched' => $media]);
 		$siteinfo[$name][] = $media;
 		return $siteinfo;
 	}

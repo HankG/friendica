@@ -27,10 +27,10 @@ Due to the large variety of operating systems and PHP platforms in existence we 
 
 ### Requirements
 
-* Apache with mod-rewrite enabled and "Options All" so you can use a local `.htaccess` file
+* Apache with mod_rewrite enabled and "[AllowOverride All](https://httpd.apache.org/docs/2.4/mod/core.html#allowoverride)" so you can use a local `.htaccess` file
 * PHP 7.4+
   * PHP *command line* access with register_argc_argv set to true in the php.ini file
-  * Curl, GD, GMP, PDO, mbstrings, MySQLi, hash, xml, zip, IntlChar, IDN and OpenSSL extensions
+  * Curl, GD, GMP, PDO, mbstring, MySQLi, xml, zip, IntlChar, IDN and OpenSSL extensions
   * The POSIX module of PHP needs to be activated (e.g. [RHEL, CentOS](http://www.bigsoft.co.uk/blog/index.php/2014/12/08/posix-php-commands-not-working-under-centos-7) have disabled it)
   * Some form of email server or email gateway such that PHP mail() works.
     If you cannot set up your own email server, you can use the [phpmailer](https://github.com/friendica/friendica-addons/tree/develop/phpmailer) addon and use a remote SMTP server.
@@ -58,6 +58,7 @@ If this is nothing for you, you might be interested in the following:
 * [Tutorial: Creating a Friendica Server with Ubuntu 22.04](https://nequalsonelifestyle.com/2022/07/30/creating-friendica-server-ubuntu/)
   * [Setting Up Friendica Daemon as a Systemd Service Tutorial](https://nequalsonelifestyle.com/2022/08/04/setting-up-friendica-daemon-systemd-service/)
 * [Setting up Friendica on Unraid](https://www.jenovarain.com/2023/03/setting-up-friendica-on-unraid/) (NAS)
+* [Installing Friendica with Elastio](https://elest.io/open-source/friendica)
 
 ### Get Friendica
 
@@ -75,14 +76,6 @@ This makes the software much easier to update.
 The Linux commands to clone the repository into a directory "mywebsite" would be
 
     git clone https://github.com/friendica/friendica.git -b stable mywebsite
-    cd mywebsite
-    bin/composer.phar install --no-dev
-
-Make sure the folder *view/smarty3* exists and is writable by the webserver user, in this case *www-data*
-
-    mkdir -p view/smarty3
-    chown www-data:www-data view/smarty3
-    chmod 775 view/smarty3
 
 Get the addons by going into your website folder.
 
@@ -90,12 +83,22 @@ Get the addons by going into your website folder.
 
 Clone the addon repository (separately):
 
-    git clone https://github.com/friendica/friendica-addons.git -b stable addon
+	git clone https://github.com/friendica/friendica-addons.git -b stable addon
+
+Install the dependencies:
+
+    bin/composer.phar run install:prod
+
+Make sure the folder *view/smarty3* exists and is writable by the webserver user, in this case *www-data*
+
+    mkdir -p view/smarty3
+    chown www-data:www-data view/smarty3
+    chmod 775 view/smarty3
 
 If you want to use the development version of Friendica you can switch to the develop branch in the repository by running
 
     git checkout develop
-    bin/composer.phar install
+    bin/composer.phar run install:prod
     cd addon
     git checkout develop
 
@@ -267,7 +270,7 @@ You might wish to delete/rename `config/local.config.php` to another name and dr
 Set up a cron job or scheduled task to run the worker once every 5-10 minutes in order to perform background processing.
 Example:
 
-    cd /base/directory; /path/to/php bin/worker.php
+    cd /base/directory; /path/to/php bin/console.php worker
 
 Change "/base/directory", and "/path/to/php" as appropriate for your situation.
 
@@ -276,7 +279,7 @@ Change "/base/directory", and "/path/to/php" as appropriate for your situation.
 If you are using a Linux server, run "crontab -e" and add a line like the
 one shown, substituting for your unique paths and settings:
 
-    */10 * * * * cd /home/myname/mywebsite; /usr/bin/php bin/worker.php
+    */10 * * * * cd /home/myname/mywebsite; /usr/bin/php bin/console.php worker
 
 You can generally find the location of PHP by executing "which php".
 If you run into trouble with this section please contact your hosting provider for assistance.
@@ -289,11 +292,11 @@ Once you have installed Friendica and created an admin account as part of the pr
 #### worker alternative: daemon
 Otherwise, you’ll need to use the command line on your remote server and start the Friendica daemon (background task) using the following command:
 
-    cd /path/to/friendica; php bin/daemon.php start
+    cd /path/to/friendica; php bin/console.php daemon start
 
 Once started, you can check the daemon status using the following command:
 
-    cd /path/to/friendica; php bin/daemon.php status
+    cd /path/to/friendica; php bin/console.php daemon status
 
 After a server restart or any other failure, the daemon needs to be restarted.
 This could be achieved by a cronjob.
@@ -425,7 +428,7 @@ provided by one of our members.
 >
 > 	*/10 * * * * cd /var/www/friendica/friendica/ && sudo -u www-data /usr/bin/php \
 >       -d suhosin.executor.func.blacklist=none \
->       -d suhosin.executor.eval.blacklist=none -f bin/worker.php
+>       -d suhosin.executor.eval.blacklist=none -f bin/console.php
 >
 > This worked well for simple test cases, but the friendica-cron still failed
 > with a fatal error:
@@ -434,7 +437,7 @@ provided by one of our members.
 >     (attacker 'REMOTE_ADDR not set', file '/var/www/friendica/friendica/boot.php',
 >     line 1341)
 >
-> After a while I noticed, that `bin/worker.php` calls further PHP script via `proc_open`.
+> After a while I noticed, that `bin/console.php worker` calls further PHP script via `proc_open`.
 > These scripts themselves also use `proc_open` and fail, because they are NOT
 > called with `-d suhosin.executor.func.blacklist=none`.
 >

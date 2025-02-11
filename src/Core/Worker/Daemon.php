@@ -1,28 +1,13 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Core\Worker;
 
 use Friendica\App\Mode;
-use Friendica\Core\Logger;
 use Friendica\DI;
 
 /**
@@ -112,11 +97,11 @@ class Daemon
 
 		$pid = intval(file_get_contents($pidfile));
 		if (posix_kill($pid, 0)) {
-			Logger::info('Daemon process is running', ['pid' => $pid]);
+			DI::logger()->info('Daemon process is running', ['pid' => $pid]);
 			return;
 		}
 
-		Logger::warning('Daemon process is not running', ['pid' => $pid]);
+		DI::logger()->warning('Daemon process is not running', ['pid' => $pid]);
 
 		self::spawn();
 	}
@@ -128,8 +113,8 @@ class Daemon
 	 */
 	private static function spawn()
 	{
-		Logger::notice('Starting new daemon process');
-		DI::system()->run('bin/daemon.php', ['start']);
-		Logger::notice('New daemon process started');
+		DI::logger()->notice('Starting new daemon process');
+		DI::system()->run('bin/console.php', ['start']);
+		DI::logger()->notice('New daemon process started');
 	}
 }

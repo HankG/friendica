@@ -1,27 +1,16 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Module\Moderation\Blocklist\Server;
 
-use Friendica\App;
+use Friendica\App\Arguments;
+use Friendica\App\BaseURL;
+use Friendica\App\Page;
+use Friendica\AppHelper;
 use Friendica\Core\L10n;
 use Friendica\Core\Renderer;
 use Friendica\Core\Session\Capability\IHandleUserSessions;
@@ -41,9 +30,9 @@ class Import extends \Friendica\Module\BaseModeration
 	/** @var array of blocked server domain patterns */
 	private $blocklist = [];
 
-	public function __construct(DomainPatternBlocklist $localBlocklist, App\Page $page, App $app, SystemMessages $systemMessages, IHandleUserSessions $session, L10n $l10n, App\BaseURL $baseUrl, App\Arguments $args, LoggerInterface $logger, Profiler $profiler, Response $response, array $server, array $parameters = [])
+	public function __construct(DomainPatternBlocklist $localBlocklist, Page $page, AppHelper $appHelper, SystemMessages $systemMessages, IHandleUserSessions $session, L10n $l10n, BaseURL $baseUrl, Arguments $args, LoggerInterface $logger, Profiler $profiler, Response $response, array $server, array $parameters = [])
 	{
-		parent::__construct($page, $app, $systemMessages, $session, $l10n, $baseUrl, $args, $logger, $profiler, $response, $server, $parameters);
+		parent::__construct($page, $appHelper, $systemMessages, $session, $l10n, $baseUrl, $args, $logger, $profiler, $response, $server, $parameters);
 
 		$this->localBlocklist = $localBlocklist;
 	}
@@ -72,34 +61,32 @@ class Import extends \Friendica\Module\BaseModeration
 				$this->blocklist = $this->localBlocklist::extractFromCSVFile($_FILES['listfile']['tmp_name']);
 			} catch (\Throwable $e) {
 				$this->systemMessages->addNotice($this->t('Error importing pattern file'));
+				return;
 			}
-
-			return;
 		}
-
-		if (isset($request['page_blocklist_import'])) {
-			$blocklist = json_decode($request['blocklist'], true);
-			if ($blocklist === null) {
+		else if (isset($request['page_blocklist_import'])) {
+			$this->blocklist = json_decode($request['blocklist'], true);
+			if ($this->blocklist === null) {
 				$this->systemMessages->addNotice($this->t('Error importing pattern file'));
 				return;
 			}
-
-			if (($request['mode'] ?? 'append') == 'replace') {
-				$this->localBlocklist->set($blocklist);
-				$this->systemMessages->addNotice($this->t('Local blocklist replaced with the provided file.'));
-			} else {
-				$count = $this->localBlocklist->append($blocklist);
-				if ($count) {
-					$this->systemMessages->addNotice($this->tt('%d pattern was added to the local blocklist.', '%d patterns were added to the local blocklist.', $count));
-				} else {
-					$this->systemMessages->addNotice($this->t('No pattern was added to the local blocklist.'));
-				}
-			}
-
-			Worker::add(Worker::PRIORITY_LOW, 'UpdateBlockedServers');
-
-			$this->baseUrl->redirect('/moderation/blocklist/server');
 		}
+
+		if (($request['mode'] ?? 'append') == 'replace') {
+			$this->localBlocklist->set($this->blocklist);
+			$this->systemMessages->addNotice($this->t('Local blocklist replaced with the provided file.'));
+		} else {
+			$count = $this->localBlocklist->append($this->blocklist);
+			if ($count) {
+				$this->systemMessages->addNotice($this->tt('%d pattern was added to the local blocklist.', '%d patterns were added to the local blocklist.', $count));
+			} else {
+				$this->systemMessages->addNotice($this->t('No pattern was added to the local blocklist.'));
+			}
+		}
+
+		Worker::add(Worker::PRIORITY_LOW, 'UpdateBlockedServers');
+
+		$this->baseUrl->redirect('/moderation/blocklist/server');
 	}
 
 	/**

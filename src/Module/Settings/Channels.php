@@ -1,23 +1,9 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Module\Settings;
 
@@ -141,7 +127,7 @@ class Channels extends BaseSettings
 			throw new HTTPException\ForbiddenException($this->t('Permission denied.'));
 		}
 
-		$user = User::getById($uid, ['account-type']);
+		$user         = User::getById($uid, ['account-type']);
 		$account_type = $user['account-type'];
 
 		if (in_array($account_type, [User::ACCOUNT_TYPE_COMMUNITY, User::ACCOUNT_TYPE_RELAY])) {
@@ -165,7 +151,7 @@ class Channels extends BaseSettings
 			$circles[$circle['id']] = $circle['name'];
 		}
 
-		$languages = $this->l10n->getLanguageCodes(true);
+		$languages         = $this->l10n->getLanguageCodes(true);
 		$channel_languages = User::getWantedLanguages($uid);
 
 		$channels = [];
@@ -199,7 +185,7 @@ class Channels extends BaseSettings
 				'image'        => ["image[$channel->code]", $this->t("Images"), $channel->mediaType & 1],
 				'video'        => ["video[$channel->code]", $this->t("Videos"), $channel->mediaType & 2],
 				'audio'        => ["audio[$channel->code]", $this->t("Audio"), $channel->mediaType & 4],
-				'languages'    => ["languages[$channel->code][]", $this->t('Languages'), $channel->languages ?? $channel_languages, $this->t('Select all languages that you want to see in this channel.'), $languages, 'multiple'],
+				'languages'    => ["languages[$channel->code][]", $this->t('Languages'), $channel->languages ?? $channel_languages, $this->t('Select all languages that you want to see in this channel. "Unspecified" describes all posts for which no language information was detected (e.g. posts with just an image or too little text to be sure of the language). If you want to see all languages, you will need to select all items in the list.'), $languages, 'multiple'],
 				'publish'      => $publish,
 				'delete'       => ["delete[$channel->code]", $this->t("Delete channel") . ' (' . $channel->label . ')', false, $this->t("Check to delete this entry from the channel list")]
 			];

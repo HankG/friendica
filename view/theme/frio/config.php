@@ -1,36 +1,27 @@
 <?php
 /**
- * @copyright Copyright (C) 2010-2024, the Friendica project
+ * Copyright (C) 2010-2024, the Friendica project
+ * SPDX-FileCopyrightText: 2010-2024 the Friendica project
  *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: AGPL-3.0-or-later
  *
  */
 
-use Friendica\App;
+use Friendica\AppHelper;
+use Friendica\Content\ContactSelector;
 use Friendica\Core\Renderer;
 use Friendica\DI;
 
 require_once 'view/theme/frio/php/Image.php';
 require_once 'view/theme/frio/php/scheme.php';
 
-function theme_post(App $a)
+function theme_post(AppHelper $appHelper)
 {
 	if (!DI::userSession()->getLocalUserId()) {
 		return;
 	}
+
+	$previous_scheme = DI::pConfig()->get(DI::userSession()->getLocalUserId(), 'frio', 'scheme');
 
 	if (isset($_POST['frio-settings-submit'])) {
 		foreach ([
@@ -52,8 +43,22 @@ function theme_post(App $a)
 			}
 
 		}
-
 		DI::pConfig()->set(DI::userSession()->getLocalUserId(), 'frio', 'css_modified',     time());
+
+		$current_scheme = DI::pConfig()->get(DI::userSession()->getLocalUserId(), 'frio', 'scheme');
+
+		if ($previous_scheme != $current_scheme) {
+			$icon_style = DI::pConfig()->get(DI::userSession()->getLocalUserId(), 'accessibility', 'platform_icon_style');
+			if (in_array($current_scheme, ['dark', 'black']) && in_array($icon_style, [ContactSelector::SVG_BLACK])) {
+				DI::pConfig()->set(DI::userSession()->getLocalUserId(), 'accessibility', 'platform_icon_style', ContactSelector::SVG_WHITE);
+			} elseif (in_array($current_scheme, ['dark', 'black']) && in_array($icon_style, [ContactSelector::SVG_COLOR_BLACK])) {
+				DI::pConfig()->set(DI::userSession()->getLocalUserId(), 'accessibility', 'platform_icon_style', ContactSelector::SVG_COLOR_WHITE);
+			} elseif (in_array($current_scheme, ['light']) && in_array($icon_style, [ContactSelector::SVG_WHITE])) {
+				DI::pConfig()->set(DI::userSession()->getLocalUserId(), 'accessibility', 'platform_icon_style', ContactSelector::SVG_BLACK);
+			} elseif (in_array($current_scheme, ['light']) && in_array($icon_style, [ContactSelector::SVG_COLOR_WHITE])) {
+				DI::pConfig()->set(DI::userSession()->getLocalUserId(), 'accessibility', 'platform_icon_style', ContactSelector::SVG_COLOR_BLACK);
+			}
+		}
 	}
 }
 
@@ -87,7 +92,7 @@ function theme_admin_post()
 	}
 }
 
-function theme_content(): string
+function theme_content(AppHelper $appHelper): string
 {
 	if (!DI::userSession()->getLocalUserId()) {
 		return '';
@@ -110,7 +115,7 @@ function theme_content(): string
 	return frio_form($arr);
 }
 
-function theme_admin(): string
+function theme_admin(AppHelper $appHelper): string
 {
 	if (!DI::userSession()->getLocalUserId()) {
 		return '';

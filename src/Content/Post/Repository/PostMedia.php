@@ -1,23 +1,9 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Content\Post\Repository;
 
@@ -130,9 +116,10 @@ class PostMedia extends BaseRepository
 			return $attachments;
 		}
 
-		$heights = [];
+		$heights  = [];
 		$selected = '';
 		$previews = [];
+		$video    = [];
 
 		foreach ($PostMedias as $PostMedia) {
 			foreach ($links as $link) {
@@ -167,7 +154,7 @@ class PostMedia extends BaseRepository
 			}
 
 			if (
-				in_array($PostMedia->type, [Entity\PostMedia::TYPE_AUDIO, Entity\PostMedia::TYPE_IMAGE]) ||
+				in_array($PostMedia->type, [Entity\PostMedia::TYPE_AUDIO, Entity\PostMedia::TYPE_IMAGE, Entity\PostMedia::TYPE_HLS]) ||
 				in_array($PostMedia->mimetype->type, ['audio', 'image'])
 			) {
 				$attachments['visual'][] = $PostMedia;

@@ -1,27 +1,14 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Content;
 
 use DOMDocument;
+use DOMElement;
 use DOMXPath;
 use Exception;
 use Friendica\Content\Text\BBCode;
@@ -32,6 +19,7 @@ use Friendica\Database\Database;
 use Friendica\Database\DBA;
 use Friendica\DI;
 use Friendica\Network\HTTPClient\Client\HttpClientAccept;
+use Friendica\Network\HTTPClient\Client\HttpClientOptions;
 use Friendica\Network\HTTPClient\Client\HttpClientRequest;
 use Friendica\Util\DateTimeFormat;
 use Friendica\Util\Network;
@@ -61,11 +49,11 @@ class OEmbed
 	{
 		$embedurl = trim($embedurl, '\'"');
 
-		$a = DI::app();
+		$appHelper = DI::appHelper();
 
-		$cache_key = 'oembed:' . $a->getThemeInfoValue('videowidth') . ':' . $embedurl;
+		$cache_key = 'oembed:' . $appHelper->getThemeInfoValue('videowidth') . ':' . $embedurl;
 
-		$condition = ['url' => Strings::normaliseLink($embedurl), 'maxwidth' => $a->getThemeInfoValue('videowidth')];
+		$condition = ['url' => Strings::normaliseLink($embedurl), 'maxwidth' => $appHelper->getThemeInfoValue('videowidth')];
 		$oembed_record = DBA::selectFirst('oembed', ['content'], $condition);
 		if (DBA::isResult($oembed_record)) {
 			$json_string = $oembed_record['content'];
@@ -96,12 +84,13 @@ class OEmbed
 							$xpath->query("//link[@type='application/json+oembed'] | //link[@type='text/json+oembed']")
 							as $link)
 						{
+							/** @var DOMElement $link */
 							$href = $link->getAttributeNode('href')->nodeValue;
 							// Both Youtube and Vimeo output OEmbed endpoint URL with HTTP
 							// but their OEmbed endpoint is only accessible by HTTPS ¯\_(ツ)_/¯
 							$href = str_replace(['http://www.youtube.com/', 'http://player.vimeo.com/'],
 								['https://www.youtube.com/', 'https://player.vimeo.com/'], $href);
-							$result = DI::httpClient()->fetchFull($href . '&maxwidth=' . $a->getThemeInfoValue('videowidth'), HttpClientAccept::DEFAULT, 0, '', HttpClientRequest::SITEINFO);
+							$result = DI::httpClient()->get($href . '&maxwidth=' . $appHelper->getThemeInfoValue('videowidth'), HttpClientAccept::DEFAULT, [HttpClientOptions::REQUEST => HttpClientRequest::SITEINFO]);
 							if ($result->isSuccess()) {
 								$json_string = $result->getBodyString();
 								break;
@@ -122,7 +111,7 @@ class OEmbed
 			if (!empty($oembed->type) && $oembed->type != 'error') {
 				DBA::insert('oembed', [
 					'url' => Strings::normaliseLink($embedurl),
-					'maxwidth' => $a->getThemeInfoValue('videowidth'),
+					'maxwidth' => $appHelper->getThemeInfoValue('videowidth'),
 					'content' => $json_string,
 					'created' => DateTimeFormat::utcNow()
 				], Database::INSERT_UPDATE);
@@ -191,7 +180,7 @@ class OEmbed
 			$oembed->thumbnail_height = $data['images'][0]['height'];
 		}
 
-		Hook::callAll('oembed_fetch_url', $embedurl, $oembed);
+		Hook::callAll('oembed_fetch_url', $embedurl);
 
 		return $oembed;
 	}

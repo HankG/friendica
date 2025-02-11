@@ -45,6 +45,10 @@ Falls du an automatischen Möglichkeiten interesse hast, wirf doch einen Blick a
 
 * das [Docker image für Friendica](https://github.com/friendica/docker) oder
 * die [Installation von Friendica auf YunoHost](https://github.com/YunoHost-Apps/friendica_ynh).
+* [Tutorial: Creating a Friendica Server with Ubuntu 22.04](https://nequalsonelifestyle.com/2022/07/30/creating-friendica-server-ubuntu/)
+  * [Setting Up Friendica Daemon as a Systemd Service Tutorial](https://nequalsonelifestyle.com/2022/08/04/setting-up-friendica-daemon-systemd-service/)
+* [Setting up Friendica on Unraid](https://www.jenovarain.com/2023/03/setting-up-friendica-on-unraid/) (NAS)
+* [Installing Friendica with Elastio](https://elest.io/open-source/friendica)
 
 ### Friendica
 
@@ -55,7 +59,7 @@ Der Linux-Code, mit dem man die Dateien direkt in ein Verzeichnis wie "meinewebs
 
     git clone https://github.com/friendica/friendica.git -b stable mywebsite
     cd mywebsite
-    bin/composer.phar install
+    bin/composer.phar run install:prod
 
 Stelle sicher, dass der Ordner *view/smarty3* existiert and von dem Webserver-Benutzer beschreibbar ist
 
@@ -81,7 +85,7 @@ Wenn du die Entwickler Version von Friendica verwenden möchtest kannst du auf d
 Dies tust du mit den folgenden Befehlen
 
     git checkout develop
-    bin/composer.phar install
+    bin/composer.phar run install:prod
     cd addon
     git checkout develop
 
@@ -206,13 +210,13 @@ Gehe in den Friendica-Hauptordner und führe den Kommandozeilen Befehl aus:
 Erstelle einen Cron job oder einen regelmäßigen Task, um den Poller alle 5-10 Minuten im Hintergrund ablaufen zu lassen.
 Beispiel:
 
-    cd /base/directory; /path/to/php bin/worker.php
+    cd /base/directory; /path/to/php bin/console.php worker
 
 Ändere "/base/directory" und "/path/to/php" auf deine Systemvorgaben.
 
 Wenn du einen Linux-Server nutzt, benutze den Befehl "crontab -e" und ergänze eine Zeile wie die Folgende; angepasst an dein System
 
-`*/10 * * * * cd /home/myname/mywebsite; /usr/bin/php bin/worker.php`
+`*/10 * * * * cd /home/myname/mywebsite; /usr/bin/php bin/console.php worker`
 
 Du kannst den PHP-Pfad finden, indem du den Befehl „which php“ ausführst.
 Wenn du Schwierigkeiten mit diesem Schritt hast, kannst du deinen Hosting-Anbieter kontaktieren.

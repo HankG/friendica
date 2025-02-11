@@ -1,3 +1,9 @@
+{{*
+  * Copyright (C) 2010-2024, the Friendica project
+  * SPDX-FileCopyrightText: 2010-2024 the Friendica project
+  *
+  * SPDX-License-Identifier: AGPL-3.0-or-later
+  *}}
 	<div class="field password" id="wrapper_{{$field.0}}">
 		<label for="id_{{$field.0}}">{{$field.1}}{{if $field.4}} <span class="required" title="{{$field.4}}">*</span>{{/if}}</label>
 		<input type="password" name="{{$field.0}}" id="id_{{$field.0}}" value="{{$field.2}}" {{if $field.4}}required{{/if}} {{$field.5 nofilter}} {{if $field.6}}pattern="(($field.6}}"{{/if}} aria-describedby="{{$field.0}}_tip">

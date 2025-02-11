@@ -1,27 +1,12 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Worker;
 
-use Friendica\Core\Logger;
 use Friendica\Core\Worker;
 use Friendica\DI;
 use Friendica\Protocol\ActivityPub;
@@ -40,22 +25,26 @@ class FetchMissingActivity
 	 */
 	public static function execute(string $url, array $child = [], string $relay_actor = '', int $completion = Receiver::COMPLETION_MANUAL)
 	{
-		Logger::info('Start fetching missing activity', ['url' => $url]);
+		DI::logger()->info('Start fetching missing activity', ['url' => $url]);
+		if (ActivityPub\Processor::alreadyKnown($url, $child['id'] ?? '')) {
+			DI::logger()->info('Activity is already known.', ['url' => $url]);
+			return;
+		}
 		$result = ActivityPub\Processor::fetchMissingActivity($url, $child, $relay_actor, $completion);
 		if ($result) {
-			Logger::info('Successfully fetched missing activity', ['url' => $url]);
+			DI::logger()->info('Successfully fetched missing activity', ['url' => $url]);
 		} elseif (is_null($result)) {
-			Logger::info('Permament error, activity could not be fetched', ['url' => $url]);
+			DI::logger()->info('Permament error, activity could not be fetched', ['url' => $url]);
 		} elseif (!Worker::defer(self::WORKER_DEFER_LIMIT)) {
-			Logger::info('Defer limit reached, activity could not be fetched', ['url' => $url]);
+			DI::logger()->info('Defer limit reached, activity could not be fetched', ['url' => $url]);
 
 			// recursively delete all entries that belong to this worker task
-			$queue = DI::app()->getQueue();
+			$queue = DI::appHelper()->getQueue();
 			if (!empty($queue['id'])) {
 				Queue::deleteByWorkerId($queue['id']);
 			}
 		} else {
-			Logger::info('Fetching deferred', ['url' => $url]);
+			DI::logger()->info('Fetching deferred', ['url' => $url]);
 		}
 	}
 }

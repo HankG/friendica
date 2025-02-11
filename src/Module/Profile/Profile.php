@@ -1,38 +1,27 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Module\Profile;
 
-use Friendica\App;
+use Friendica\App\Arguments;
+use Friendica\App\BaseURL;
+use Friendica\App\Page;
+use Friendica\AppHelper;
 use Friendica\Content\Feature;
 use Friendica\Content\GroupManager;
 use Friendica\Content\Nav;
 use Friendica\Content\Text\BBCode;
+use Friendica\Content\Text\HTML;
 use Friendica\Core\Config\Capability\IManageConfigValues;
 use Friendica\Core\Hook;
 use Friendica\Core\L10n;
 use Friendica\Core\Protocol;
 use Friendica\Core\Renderer;
 use Friendica\Core\Session\Capability\IHandleUserSessions;
-use Friendica\Core\System;
 use Friendica\Database\Database;
 use Friendica\Database\DBA;
 use Friendica\Model\Contact;
@@ -43,35 +32,37 @@ use Friendica\Module\BaseProfile;
 use Friendica\Module\Response;
 use Friendica\Module\Security\Login;
 use Friendica\Network\HTTPException;
+use Friendica\Network\HTTPException\InternalServerErrorException;
 use Friendica\Profile\ProfileField\Repository\ProfileField;
 use Friendica\Protocol\ActivityPub;
 use Friendica\Util\DateTimeFormat;
+use Friendica\Util\Network;
 use Friendica\Util\Profiler;
-use Friendica\Util\Strings;
 use Friendica\Util\Temporal;
+use GuzzleHttp\Psr7\Uri;
 use Psr\Log\LoggerInterface;
 
 class Profile extends BaseProfile
 {
 	/** @var Database */
 	private $database;
-	/** @var App */
-	private $app;
+	/** @var AppHelper */
+	private $appHelper;
 	/** @var IHandleUserSessions */
 	private $session;
 	/** @var IManageConfigValues */
 	private $config;
-	/** @var App\Page */
+	/** @var Page */
 	private $page;
 	/** @var ProfileField */
 	private $profileField;
 
-	public function __construct(ProfileField $profileField, App\Page $page, IManageConfigValues $config, IHandleUserSessions $session, App $app, Database $database, L10n $l10n, App\BaseURL $baseUrl, App\Arguments $args, LoggerInterface $logger, Profiler $profiler, Response $response, array $server, array $parameters = [])
+	public function __construct(ProfileField $profileField, Page $page, IManageConfigValues $config, IHandleUserSessions $session, AppHelper $appHelper, Database $database, L10n $l10n, BaseURL $baseUrl, Arguments $args, LoggerInterface $logger, Profiler $profiler, Response $response, array $server, array $parameters = [])
 	{
 		parent::__construct($l10n, $baseUrl, $args, $logger, $profiler, $response, $server, $parameters);
 
 		$this->database     = $database;
-		$this->app          = $app;
+		$this->appHelper    = $appHelper;
 		$this->session      = $session;
 		$this->config       = $config;
 		$this->page         = $page;
@@ -107,7 +98,7 @@ class Profile extends BaseProfile
 
 	protected function content(array $request = []): string
 	{
-		$profile = ProfileModel::load($this->app, $this->parameters['nickname'] ?? '');
+		$profile = ProfileModel::load($this->appHelper, $this->parameters['nickname'] ?? '');
 		if (!$profile) {
 			throw new HTTPException\NotFoundException($this->t('Profile not found.'));
 		}
@@ -164,7 +155,7 @@ class Profile extends BaseProfile
 
 		$basic_fields = [];
 
-		$basic_fields += self::buildField('fullname', $this->t('Full Name:'), $profile['name']);
+		$basic_fields += self::buildField('fullname', $this->t('Full Name:'), $this->cleanInput($profile['uri-id'], $profile['name']));
 
 		if (Feature::isEnabled($profile['uid'], Feature::MEMBER_SINCE)) {
 			$basic_fields += self::buildField(
@@ -196,18 +187,18 @@ class Profile extends BaseProfile
 		}
 
 		if ($profile['xmpp']) {
-			$basic_fields += self::buildField('xmpp', $this->t('XMPP:'), $profile['xmpp']);
+			$basic_fields += self::buildField('xmpp', $this->t('XMPP:'), $this->cleanInput($profile['uri-id'], $profile['xmpp']));
 		}
 
 		if ($profile['matrix']) {
-			$basic_fields += self::buildField('matrix', $this->t('Matrix:'), $profile['matrix']);
+			$basic_fields += self::buildField('matrix', $this->t('Matrix:'), $this->cleanInput($profile['uri-id'], $profile['matrix']));
 		}
 
 		if ($profile['homepage']) {
 			$basic_fields += self::buildField(
 				'homepage',
 				$this->t('Homepage:'),
-				$this->tryRelMe($profile['homepage']) ?: $profile['homepage']
+				$this->tryRelMe($profile['homepage']) ?: $this->cleanInput($profile['uri-id'], $profile['homepage'])
 			);
 		}
 
@@ -218,7 +209,7 @@ class Profile extends BaseProfile
 			|| $profile['region']
 			|| $profile['country-name']
 		) {
-			$basic_fields += self::buildField('location', $this->t('Location:'), ProfileModel::formatLocation($profile));
+			$basic_fields += self::buildField('location', $this->t('Location:'), $this->cleanInput($profile['uri-id'], ProfileModel::formatLocation($profile)));
 		}
 
 		if ($profile['pub_keywords']) {
@@ -348,7 +339,6 @@ class Profile extends BaseProfile
 			$htmlhead .= '<meta content="noindex, noarchive" name="robots" />' . "\n";
 		}
 
-		$htmlhead .= '<link rel="alternate" type="application/atom+xml" href="' . $this->baseUrl . '/dfrn_poll/' . $nickname . '" title="DFRN: ' . $this->t('%s\'s timeline', htmlspecialchars($profile['name'], ENT_COMPAT, 'UTF-8', true)) . '"/>' . "\n";
 		$htmlhead .= '<link rel="alternate" type="application/atom+xml" href="' . $this->baseUrl . '/feed/' . $nickname . '/" title="' . $this->t('%s\'s posts', htmlspecialchars($profile['name'], ENT_COMPAT, 'UTF-8', true)) . '"/>' . "\n";
 		$htmlhead .= '<link rel="alternate" type="application/atom+xml" href="' . $this->baseUrl . '/feed/' . $nickname . '/comments" title="' . $this->t('%s\'s comments', htmlspecialchars($profile['name'], ENT_COMPAT, 'UTF-8', true)) . '"/>' . "\n";
 		$htmlhead .= '<link rel="alternate" type="application/atom+xml" href="' . $this->baseUrl . '/feed/' . $nickname . '/activity" title="' . $this->t('%s\'s timeline', htmlspecialchars($profile['name'], ENT_COMPAT, 'UTF-8', true)) . '"/>' . "\n";
@@ -356,7 +346,7 @@ class Profile extends BaseProfile
 		$htmlhead .= '<link rel="lrdd" type="application/xrd+xml" href="' . $this->baseUrl . '/xrd/?uri=' . $uri . '" />' . "\n";
 		header('Link: <' . $this->baseUrl . '/xrd/?uri=' . $uri . '>; rel="lrdd"; type="application/xrd+xml"', false);
 
-		$dfrn_pages = ['request', 'confirm', 'notify', 'poll'];
+		$dfrn_pages = ['notify', 'poll'];
 		foreach ($dfrn_pages as $dfrn) {
 			$htmlhead .= '<link rel="dfrn-' . $dfrn . '" href="' . $this->baseUrl . '/dfrn_' . $dfrn . '/' . $nickname . '" />' . "\n";
 		}
@@ -372,10 +362,28 @@ class Profile extends BaseProfile
 	 */
 	private function tryRelMe(string $input): string
 	{
-		if (preg_match(Strings::onlyLinkRegEx(), trim($input))) {
-			return '<a href="' . trim($input) . '" target="_blank" rel="noopener noreferrer me">' . trim($input) . '</a>';
+		$input = trim($input);
+		if (Network::isValidHttpUrl($input)) {
+			try {
+				$input = (string)Uri::fromParts(parse_url($input));
+				return '<a href="' . $input . '" target="_blank" rel="noopener noreferrer me">' . $input . '</a>';
+			} catch (\Throwable $th) {
+				return '';
+			}
 		}
 
 		return '';
+	}
+
+	/**
+	 * Clean the provided input to prevent XSS problems
+	 * @param int $uri_id
+	 * @param string $input
+	 * @return string
+	 * @throws InternalServerErrorException
+	 */
+	private function cleanInput(int $uri_id, string $input): string
+	{
+		return BBCode::convertForUriId($uri_id, HTML::toBBCode($input));
 	}
 }

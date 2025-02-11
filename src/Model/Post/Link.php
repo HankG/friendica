@@ -1,27 +1,12 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Model\Post;
 
-use Friendica\Core\Logger;
 use Friendica\Database\Database;
 use Friendica\Database\DBA;
 use Friendica\DI;
@@ -67,22 +52,22 @@ class Link
 		}
 
 		if (!in_array(parse_url($url, PHP_URL_SCHEME), ['http', 'https'])) {
-			Logger::info('Bad URL, quitting', ['uri-id' => $uriId, 'url' => $url]);
+			DI::logger()->info('Bad URL, quitting', ['uri-id' => $uriId, 'url' => $url]);
 			return $url;
 		}
 
 		$link = DBA::selectFirst('post-link', ['id'], ['uri-id' => $uriId, 'url' => $url]);
 		if (!empty($link['id'])) {
 			$id = $link['id'];
-			Logger::info('Found', ['id' => $id, 'uri-id' => $uriId, 'url' => $url]);
+			DI::logger()->info('Found', ['id' => $id, 'uri-id' => $uriId, 'url' => $url]);
 		} else {
-			$fields = self::fetchMimeType($url);
+			$fields           = self::fetchMimeType($url);
 			$fields['uri-id'] = $uriId;
-			$fields['url'] = Network::sanitizeUrl($url);
+			$fields['url']    = Network::sanitizeUrl($url);
 
 			DBA::insert('post-link', $fields, Database::INSERT_IGNORE);
 			$id = DBA::lastInsertId();
-			Logger::info('Inserted', $fields);
+			DI::logger()->info('Inserted', $fields);
 		}
 
 		if (empty($id)) {
@@ -127,16 +112,13 @@ class Link
 
 		try {
 			$curlResult = HTTPSignature::fetchRaw($url, 0, [HttpClientOptions::TIMEOUT => $timeout, HttpClientOptions::ACCEPT_CONTENT => $accept]);
-			if (empty($curlResult) || !$curlResult->isSuccess()) {
-				return [];
-			}
 		} catch (\Exception $exception) {
-			Logger::notice('Error fetching url', ['url' => $url, 'exception' => $exception]);
+			DI::logger()->notice('Error fetching url', ['url' => $url, 'exception' => $exception]);
 			return [];
 		}
 
 		if (!$curlResult->isSuccess()) {
-			Logger::notice('Fetching unsuccessful', ['url' => $url]);
+			DI::logger()->notice('Fetching unsuccessful', ['url' => $url]);
 			return [];
 		}
 
@@ -144,12 +126,12 @@ class Link
 
 		if (Images::isSupportedMimeType($fields['mimetype'])) {
 			$img_str = $curlResult->getBodyString();
-			$image = new Image($img_str, $fields['mimetype'], $url);
+			$image   = new Image($img_str, $fields['mimetype'], $url, false);
 			if ($image->isValid()) {
 				$fields['mimetype'] = $image->getType();
 				$fields['width']    = $image->getWidth();
 				$fields['height']   = $image->getHeight();
-				$fields['blurhash'] = $image->getBlurHash();
+				$fields['blurhash'] = $image->getBlurHash($img_str);
 			}
 		}
 

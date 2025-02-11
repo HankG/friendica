@@ -1,3 +1,9 @@
+{{*
+  * Copyright (C) 2010-2024, the Friendica project
+  * SPDX-FileCopyrightText: 2010-2024 the Friendica project
+  *
+  * SPDX-License-Identifier: AGPL-3.0-or-later
+  *}}
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <base href="{{$baseurl}}/" />
 <meta name="generator" content="{{$generator}}" />
@@ -65,7 +71,7 @@ window.onload = function(){
 };
 </script>
 <script type="text/javascript">
-	const updateInterval = {{$update_interval}};
+	const updateContent = {{$update_content}};
 	const localUser = {{if $local_user}}{{$local_user}}{{else}}false{{/if}};
 </script>
 <script type="text/javascript" src="view/js/main.js?v={{$VERSION}}"></script>

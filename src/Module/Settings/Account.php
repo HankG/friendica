@@ -1,29 +1,14 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Module\Settings;
 
 use Exception;
 use Friendica\Core\ACL;
-use Friendica\Core\Logger;
 use Friendica\Core\Renderer;
 use Friendica\Core\Search;
 use Friendica\Core\Worker;
@@ -39,7 +24,6 @@ use Friendica\Module\BaseSettings;
 use Friendica\Network\HTTPException;
 use Friendica\Protocol\Activity;
 use Friendica\Protocol\Delivery;
-use Friendica\Util\Network;
 use Friendica\Util\Temporal;
 
 class Account extends BaseSettings
@@ -53,8 +37,6 @@ class Account extends BaseSettings
 		$redirectUrl = '/settings' . (isset($this->parameters['open']) ? '/account/' . $this->parameters['open'] : '');
 
 		self::checkFormSecurityTokenRedirectOnError($redirectUrl, 'settings');
-
-		$a = DI::app();
 
 		$user = User::getById($this->session->getLocalUserId());
 
@@ -125,7 +107,7 @@ class Account extends BaseSettings
 			}
 
 			if (strlen($timezone) && $timezone != $user['timezone']) {
-				$a->setTimeZone($timezone);
+				DI::appHelper()->setTimeZone($timezone);
 			}
 
 			$fields = [
@@ -330,40 +312,9 @@ class Account extends BaseSettings
 			}
 
 			User::setCommunityUserSettings(DI::userSession()->getLocalUserId());
-			DI::baseUrl()->redirect($redirectUrl);
-		}
 
-		// Import Contacts from CSV file
-		if (!empty($request['importcontact-submit'])) {
-			if (isset($_FILES['importcontact-filename'])) {
-				// was there an error
-				if ($_FILES['importcontact-filename']['error'] > 0) {
-					Logger::notice('Contact CSV file upload error', ['error' => $_FILES['importcontact-filename']['error']]);
-					DI::sysmsg()->addNotice(DI::l10n()->t('Contact CSV file upload error'));
-				} else {
-					$csvArray = array_map('str_getcsv', file($_FILES['importcontact-filename']['tmp_name']));
-					Logger::notice('Import started', ['lines' => count($csvArray)]);
-					// import contacts
-					foreach ($csvArray as $csvRow) {
-						// The 1st row may, or may not contain the headers of the table
-						// We expect the 1st field of the row to contain either the URL
-						// or the handle of the account, therefore we check for either
-						// "http" or "@" to be present in the string.
-						// All other fields from the row will be ignored
-						if ((strpos($csvRow[0], '@') !== false) || Network::isValidHttpUrl($csvRow[0])) {
-							Worker::add(Worker::PRIORITY_MEDIUM, 'AddContact', DI::userSession()->getLocalUserId(), trim($csvRow[0], '@'));
-						} else {
-							Logger::notice('Invalid account', ['url' => $csvRow[0]]);
-						}
-					}
-					Logger::notice('Import done');
-
-					DI::sysmsg()->addInfo(DI::l10n()->t('Importing Contacts done'));
-					// delete temp file
-					unlink($_FILES['importcontact-filename']['tmp_name']);
-				}
-			} else {
-				Logger::notice('Import triggered, but no import file was found.');
+			if ($account_type == User::ACCOUNT_TYPE_RELAY) {
+				Profile::setResponsibleRelayContact(DI::userSession()->getLocalUserId());
 			}
 
 			DI::baseUrl()->redirect($redirectUrl);
@@ -392,8 +343,6 @@ class Account extends BaseSettings
 			return '';
 		}
 
-		$a = DI::app();
-
 		$user = User::getById($this->session->getLocalUserId());
 
 		$username         = $user['username'];
@@ -413,7 +362,7 @@ class Account extends BaseSettings
 		$expire_network_only = DI::pConfig()->get(DI::userSession()->getLocalUserId(), 'expire', 'network_only', false);
 
 		if (!strlen($user['timezone'])) {
-			$timezone = $a->getTimeZone();
+			$timezone = DI::appHelper()->getTimeZone();
 		}
 
 		// Set the account type to "Community" when the page is a community page but the account type doesn't fit
@@ -425,7 +374,7 @@ class Account extends BaseSettings
 			$user['account-type'] = User::ACCOUNT_TYPE_COMMUNITY;
 		}
 
-		if (DI::config()->get('system', 'allow_relay_channels')) {
+		if (!empty($user['parent-uid']) && DI::config()->get('system', 'allow_relay_channels')) {
 			$account_relay = [
 				'account-type',
 				DI::l10n()->t('Channel Relay'),
@@ -645,11 +594,6 @@ class Account extends BaseSettings
 			'$h_advn'     => DI::l10n()->t('Advanced Account/Page Type Settings'),
 			'$h_descadvn' => DI::l10n()->t('Change the behaviour of this account for special situations'),
 			'$pagetype'   => $pagetype,
-
-			'$importcontact'         => DI::l10n()->t('Import Contacts'),
-			'$importcontact_text'    => DI::l10n()->t('Upload a CSV file that contains the handle of your followed accounts in the first column you exported from the old account.'),
-			'$importcontact_button'  => DI::l10n()->t('Upload File'),
-			'$importcontact_maxsize' => DI::config()->get('system', 'max_csv_file_size', 30720),
 
 			'$relocate'        => DI::l10n()->t('Relocate'),
 			'$relocate_text'   => DI::l10n()->t("If you have moved this profile from another server, and some of your contacts don't receive your updates, try pushing this button."),

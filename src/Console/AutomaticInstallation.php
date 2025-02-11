@@ -1,29 +1,15 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Console;
 
 use Asika\SimpleConsole\Console;
-use Friendica\App;
-use Friendica\App\BaseURL;
+use Exception;
+use Friendica\App\Mode;
 use Friendica\Core\Config\Capability\IManageConfigValues;
 use Friendica\Core\Config\ValueObject\Cache;
 use Friendica\Core\Installer;
@@ -34,7 +20,7 @@ use RuntimeException;
 
 class AutomaticInstallation extends Console
 {
-	/** @var App\Mode */
+	/** @var Mode */
 	private $appMode;
 	/** @var \Friendica\Core\Config\ValueObject\Cache */
 	private $configCache;
@@ -68,12 +54,12 @@ Options
     -d|--dbdata <database>    The name of the mysql/mariadb database (env MYSQL_DATABASE)
     -u|--dbuser <username>    The username of the mysql/mariadb database login (env MYSQL_USER or MYSQL_USERNAME)
     -P|--dbpass <password>    The password of the mysql/mariadb database login (env MYSQL_PASSWORD)
-    -U|--url <url>            The full base URL of Friendica - f.e. 'https://friendica.local/sub' (env FRIENDICA_URL) 
+    -U|--url <url>            The full base URL of Friendica - f.e. 'https://friendica.local/sub' (env FRIENDICA_URL)
     -B|--phppath <php_path>   The path of the PHP binary (env FRIENDICA_PHP_PATH)
     -b|--basepath <base_path> The basepath of Friendica (env FRIENDICA_BASE_PATH)
     -t|--tz <timezone>        The timezone of Friendica (env FRIENDICA_TZ)
     -L|--lang <language>      The language of Friendica (env FRIENDICA_LANG)
- 
+
 Environment variables
    MYSQL_HOST                  The host of the mysql/mariadb database (mandatory if mysql and environment is used)
    MYSQL_PORT                  The port of the mysql/mariadb database
@@ -87,7 +73,7 @@ Environment variables
    FRIENDICA_ADMIN_MAIL        The admin email address of Friendica (this email will be used for admin access)
    FRIENDICA_TZ                The timezone of Friendica
    FRIENDICA_LANG              The langauge of Friendica
-   
+
 Examples
 	bin/console autoinstall -f 'input.config.php
 		Installs Friendica with the prepared 'input.config.php' file
@@ -100,7 +86,7 @@ Examples
 HELP;
 	}
 
-	public function __construct(App\Mode $appMode, Cache $configCache, IManageConfigValues $config, Database $dba, array $argv = null)
+	public function __construct(Mode $appMode, Cache $configCache, IManageConfigValues $config, Database $dba, array $argv = null)
 	{
 		parent::__construct($argv);
 

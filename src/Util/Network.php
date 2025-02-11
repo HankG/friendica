@@ -1,28 +1,13 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Util;
 
 use Friendica\Core\Hook;
-use Friendica\Core\Logger;
 use Friendica\DI;
 use Friendica\Model\Contact;
 use Friendica\Network\HTTPClient\Client\HttpClientAccept;
@@ -35,7 +20,6 @@ use Psr\Http\Message\UriInterface;
 
 class Network
 {
-
 	/**
 	 * Return raw post data from a post request
 	 *
@@ -73,7 +57,7 @@ class Network
 		}
 
 		$xrd_timeout = DI::config()->get('system', 'xrd_timeout');
-		$host = parse_url($url, PHP_URL_HOST);
+		$host        = parse_url($url, PHP_URL_HOST);
 
 		if (empty($host) || !(filter_var($host, FILTER_VALIDATE_IP) || @dns_get_record($host . '.', DNS_A + DNS_AAAA))) {
 			return false;
@@ -81,7 +65,7 @@ class Network
 
 		if (in_array(parse_url($url, PHP_URL_SCHEME), ['https', 'http'])) {
 			$options = [HttpClientOptions::VERIFY => true, HttpClientOptions::TIMEOUT => $xrd_timeout,
-				HttpClientOptions::REQUEST => HttpClientRequest::URLVERIFIER];
+				HttpClientOptions::REQUEST           => HttpClientRequest::URLVERIFIER];
 			try {
 				$curlResult = DI::httpClient()->head($url, $options);
 			} catch (\Exception $e) {
@@ -93,12 +77,13 @@ class Network
 				try {
 					$curlResult = DI::httpClient()->get($url, HttpClientAccept::DEFAULT, $options);
 				} catch (\Exception $e) {
+					DI::logger()->notice('Got exception', ['code' => $e->getCode(), 'message' => $e->getMessage()]);
 					return false;
 				}
 			}
 
 			if (!$curlResult->isSuccess()) {
-				Logger::notice('Url not reachable', ['host' => $host, 'url' => $url]);
+				DI::logger()->notice('Url not reachable', ['host' => $host, 'url' => $url]);
 				return false;
 			} elseif ($curlResult->isRedirectUrl()) {
 				$url = $curlResult->getRedirectUrl();
@@ -197,7 +182,7 @@ class Network
 		try {
 			return self::isUriBlocked(new Uri($url));
 		} catch (\Throwable $e) {
-			Logger::warning('Invalid URL', ['url' => $url]);
+			DI::logger()->warning('Invalid URL', ['url' => $url]);
 			return false;
 		}
 	}
@@ -312,9 +297,9 @@ class Network
 
 	public static function lookupAvatarByEmail(string $email): string
 	{
-		$avatar['size'] = 300;
-		$avatar['email'] = $email;
-		$avatar['url'] = '';
+		$avatar['size']    = 300;
+		$avatar['email']   = $email;
+		$avatar['url']     = '';
 		$avatar['success'] = false;
 
 		Hook::callAll('avatar_lookup', $avatar);
@@ -323,7 +308,7 @@ class Network
 			$avatar['url'] = DI::baseUrl() . Contact::DEFAULT_AVATAR_PHOTO;
 		}
 
-		Logger::info('Avatar: ' . $avatar['email'] . ' ' . $avatar['url']);
+		DI::logger()->info('Avatar: ' . $avatar['email'] . ' ' . $avatar['url']);
 		return $avatar['url'];
 	}
 
@@ -354,18 +339,18 @@ class Network
 							'fb_action_ids', 'fb_action_types', 'fb_ref',
 							'awesm', 'wtrid',
 							'woo_campaign', 'woo_source', 'woo_medium', 'woo_content', 'woo_term']
-						)
+					)
 					) {
 						$pair = $param . '=' . urlencode($value);
-						$url = str_replace($pair, '', $url);
+						$url  = str_replace($pair, '', $url);
 
 						// Second try: if the url isn't encoded completely
 						$pair = $param . '=' . str_replace(' ', '+', $value);
-						$url = str_replace($pair, '', $url);
+						$url  = str_replace($pair, '', $url);
 
 						// Third try: Maybe the url isn't encoded at all
 						$pair = $param . '=' . $value;
-						$url = str_replace($pair, '', $url);
+						$url  = str_replace($pair, '', $url);
 
 						$url = str_replace(['?&', '&&'], ['?', ''], $url);
 					}
@@ -397,7 +382,7 @@ class Network
 
 		$base = [
 			'scheme' => parse_url($basepath, PHP_URL_SCHEME),
-			'host' => parse_url($basepath, PHP_URL_HOST),
+			'host'   => parse_url($basepath, PHP_URL_HOST),
 		];
 
 		$parts = array_merge($base, parse_url('/' . ltrim($url, '/')));
@@ -477,7 +462,7 @@ class Network
 		$pathparts1 = explode('/', $parts1['path']);
 		$pathparts2 = explode('/', $parts2['path']);
 
-		$i = 0;
+		$i    = 0;
 		$path = '';
 		do {
 			$path1 = $pathparts1[$i] ?? '';
@@ -505,7 +490,7 @@ class Network
 		$parts = parse_url($uri);
 		if (!empty($parts['scheme']) && !empty($parts['host'])) {
 			$parts['host'] = self::idnToAscii($parts['host']);
-			$uri = (string)Uri::fromParts($parts);
+			$uri           = (string)Uri::fromParts($parts);
 		} else {
 			$parts = explode('@', $uri);
 			if (count($parts) == 2) {
@@ -521,7 +506,7 @@ class Network
 	private static function idnToAscii(string $uri): string
 	{
 		if (!function_exists('idn_to_ascii')) {
-			Logger::error('IDN functions are missing.');
+			DI::logger()->error('IDN functions are missing.');
 			return $uri;
 		}
 		return idn_to_ascii($uri);
@@ -647,7 +632,7 @@ class Network
 		}
 
 		if ($sanitized != $url) {
-			Logger::debug('Link got sanitized', ['url' => $url, 'sanitzed' => $sanitized]);
+			DI::logger()->debug('Link got sanitized', ['url' => $url, 'sanitzed' => $sanitized]);
 		}
 		return $sanitized;
 	}
@@ -667,7 +652,7 @@ class Network
 		try {
 			return new Uri($uri);
 		} catch (\Exception $e) {
-			Logger::debug('Invalid URI', ['code' => $e->getCode(), 'message' => $e->getMessage(), 'uri' => $uri]);
+			DI::logger()->debug('Invalid URI', ['code' => $e->getCode(), 'message' => $e->getMessage(), 'uri' => $uri]);
 			return null;
 		}
 	}
@@ -675,10 +660,10 @@ class Network
 	/**
 	 * Remove an Url parameter
 	 *
-	 * @param string $url 
-	 * @param string $parameter 
-	 * @return string 
-	 * @throws MalformedUriException 
+	 * @param string $url
+	 * @param string $parameter
+	 * @return string
+	 * @throws MalformedUriException
 	 */
 	public static function removeUrlParameter(string $url, string $parameter): string
 	{
@@ -694,5 +679,20 @@ class Network
 		$parts['query'] = http_build_query($data);
 
 		return (string)Uri::fromParts($parts);
+	}
+
+	/**
+	 * Get base url without a path, fragment or query
+	 *
+	 * @param UriInterface $uri
+	 * @return string baseurl
+	 */
+	public static function getBaseUrl(UriInterface $uri): string
+	{
+		return $uri
+			->withUserInfo('')
+			->withQuery('')
+			->withFragment('')
+			->withPath('');
 	}
 }

@@ -1,27 +1,12 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Core;
 
-use Dice\Dice;
 use Friendica;
 use Friendica\App;
 
@@ -30,14 +15,25 @@ use Friendica\App;
  */
 class Console extends \Asika\SimpleConsole\Console
 {
-	// Disables the default help handling
-	protected $helpOptions = [];
-	protected $customHelpOptions = ['h', 'help', '?'];
+	/** @var string The default executable for a console call */
+	private const CONSOLE_EXECUTABLE = 'bin/console.php';
 
 	/**
-	 * @var Dice The DI library
+	 * @return string The default executable for a console call
 	 */
-	protected $dice;
+	public static function getDefaultExecutable(): string
+	{
+		return self::CONSOLE_EXECUTABLE;
+	}
+
+	// Disables the default help handling
+	protected $helpOptions             = [];
+	protected array $customHelpOptions = ['h', 'help', '?'];
+
+	/**
+	 * @var Container The Container
+	 */
+	protected Container $container;
 
 	protected function getHelp()
 	{
@@ -47,9 +43,13 @@ Usage: bin/console [--version] [-h|--help|-?] <command> [<args>] [-v]
 Commands:
 	addon                  Addon management
 	cache                  Manage node cache
+	clearavatarcache       Clear the file based avatar cache
 	config                 Edit site config
 	contact                Contact management
 	createdoxygen          Generate Doxygen headers
+	daemon                 Interact with the Friendica daemon
+	jetstream              Interact with the Jetstream daemon
+	worker                 Start worker process
 	dbstructure            Do database updates
 	docbloxerrorchecker    Check the file tree for DocBlox errors
 	extract                Generate translation string file for the Friendica project (deprecated)
@@ -79,47 +79,55 @@ HELP;
 		return $help;
 	}
 
-	protected $subConsoles = [
-		'addon'                  => Friendica\Console\Addon::class,
-		'archivecontact'         => Friendica\Console\ArchiveContact::class,
-		'autoinstall'            => Friendica\Console\AutomaticInstallation::class,
-		'cache'                  => Friendica\Console\Cache::class,
-		'config'                 => Friendica\Console\Config::class,
-		'contact'                => Friendica\Console\Contact::class,
-		'createdoxygen'          => Friendica\Console\CreateDoxygen::class,
-		'docbloxerrorchecker'    => Friendica\Console\DocBloxErrorChecker::class,
-		'dbstructure'            => Friendica\Console\DatabaseStructure::class,
-		'extract'                => Friendica\Console\Extract::class,
+	protected array $subConsoles = [
+		'addon'                             => Friendica\Console\Addon::class,
+		'archivecontact'                    => Friendica\Console\ArchiveContact::class,
+		'autoinstall'                       => Friendica\Console\AutomaticInstallation::class,
+		'cache'                             => Friendica\Console\Cache::class,
+		'clearavatarcache'                  => Friendica\Console\ClearAvatarCache::class,
+		'config'                            => Friendica\Console\Config::class,
+		'contact'                           => Friendica\Console\Contact::class,
+		'createdoxygen'                     => Friendica\Console\CreateDoxygen::class,
+		'daemon'                            => Friendica\Console\Daemon::class,
+		'jetstream'                         => Friendica\Console\JetstreamDaemon::class,
+		'worker'                            => Friendica\Console\Worker::class,
+		'docbloxerrorchecker'               => Friendica\Console\DocBloxErrorChecker::class,
+		'dbstructure'                       => Friendica\Console\DatabaseStructure::class,
+		'extract'                           => Friendica\Console\Extract::class,
 		'fixapdeliveryworkertaskparameters' => Friendica\Console\FixAPDeliveryWorkerTaskParameters::class,
-		'globalcommunityblock'   => Friendica\Console\GlobalCommunityBlock::class,
-		'globalcommunitysilence' => Friendica\Console\GlobalCommunitySilence::class,
-		'lock'                   => Friendica\Console\Lock::class,
-		'maintenance'            => Friendica\Console\Maintenance::class,
-		'mergecontacts'          => Friendica\Console\MergeContacts::class,
-		'movetoavatarcache'      => Friendica\Console\MoveToAvatarCache::class,
-		'php2po'                 => Friendica\Console\PhpToPo::class,
-		'postupdate'             => Friendica\Console\PostUpdate::class,
-		'po2php'                 => Friendica\Console\PoToPhp::class,
-		'relay'                  => Friendica\Console\Relay::class,
-		'relocate'               => Friendica\Console\Relocate::class,
-		'serverblock'            => Friendica\Console\ServerBlock::class,
-		'storage'                => Friendica\Console\Storage::class,
-		'test'                   => Friendica\Console\Test::class,
-		'typo'                   => Friendica\Console\Typo::class,
-		'user'                   => Friendica\Console\User::class,
+		'globalcommunityblock'              => Friendica\Console\GlobalCommunityBlock::class,
+		'globalcommunitysilence'            => Friendica\Console\GlobalCommunitySilence::class,
+		'lock'                              => Friendica\Console\Lock::class,
+		'maintenance'                       => Friendica\Console\Maintenance::class,
+		'mergecontacts'                     => Friendica\Console\MergeContacts::class,
+		'movetoavatarcache'                 => Friendica\Console\MoveToAvatarCache::class,
+		'php2po'                            => Friendica\Console\PhpToPo::class,
+		'postupdate'                        => Friendica\Console\PostUpdate::class,
+		'po2php'                            => Friendica\Console\PoToPhp::class,
+		'relay'                             => Friendica\Console\Relay::class,
+		'relocate'                          => Friendica\Console\Relocate::class,
+		'serverblock'                       => Friendica\Console\ServerBlock::class,
+		'storage'                           => Friendica\Console\Storage::class,
+		'test'                              => Friendica\Console\Test::class,
+		'typo'                              => Friendica\Console\Typo::class,
+		'user'                              => Friendica\Console\User::class,
 	];
 
 	/**
 	 * CliInput Friendica constructor.
 	 *
-	 * @param Dice $dice The DI library
-	 * @param array $argv
+	 * @param Container $container The Friendica container
 	 */
-	public function __construct(Dice $dice, array $argv = null)
+	public function __construct(Container $container, array $argv = null)
 	{
 		parent::__construct($argv);
 
-		$this->dice = $dice;
+		$this->container = $container;
+	}
+
+	public static function create(Container $container, array $argv = null): Console
+	{
+		return new self($container, $argv);
 	}
 
 	protected function doExecute(): int
@@ -178,12 +186,8 @@ HELP;
 
 		$className = $this->subConsoles[$command];
 
-		Friendica\DI::init($this->dice);
-
-		Renderer::registerTemplateEngine('Friendica\Render\FriendicaSmartyEngine');
-
 		/** @var Console $subconsole */
-		$subconsole = $this->dice->create($className, [$subargs]);
+		$subconsole = $this->container->create($className, [$subargs]);
 
 		foreach ($this->options as $name => $value) {
 			$subconsole->setOption($name, $value);
@@ -191,5 +195,4 @@ HELP;
 
 		return $subconsole;
 	}
-
 }

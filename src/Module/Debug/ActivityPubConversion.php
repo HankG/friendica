@@ -1,23 +1,9 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Module\Debug;
 
@@ -29,14 +15,20 @@ use Friendica\Util\JsonLD;
 
 class ActivityPubConversion extends BaseModule
 {
+	protected function post(array $request = [])
+	{
+		// @todo check if POST is really used here
+		$this->content($request);
+	}
+
 	protected function content(array $request = []): string
 	{
-		function visible_whitespace($s)
-		{
-			return '<pre>' . htmlspecialchars($s) . '</pre>';
-		}
-
 		$results = [];
+
+		$visible_whitespace = function (string $s): string {
+			return '<pre>' . htmlspecialchars($s) . '</pre>';
+		};
+
 		if (!empty($_REQUEST['source'])) {
 			try {
 				$source = json_decode($_REQUEST['source'], true);
@@ -51,11 +43,11 @@ class ActivityPubConversion extends BaseModule
 				$formatted = json_encode($source, JSON_PRETTY_PRINT);
 				$results[] = [
 					'title'   => DI::l10n()->t('Formatted'),
-					'content' => visible_whitespace(trim(var_export($formatted, true), "'")),
+					'content' => $visible_whitespace(trim(var_export($formatted, true), "'")),
 				];
 				$results[] = [
 					'title'   => DI::l10n()->t('Source'),
-					'content' => visible_whitespace(var_export($source, true))
+					'content' => $visible_whitespace(var_export($source, true))
 				];
 				$activity = JsonLD::compact($source);
 				if (!$activity) {
@@ -63,7 +55,7 @@ class ActivityPubConversion extends BaseModule
 				}
 				$results[] = [
 					'title'   => DI::l10n()->t('Activity'),
-					'content' => visible_whitespace(var_export($activity, true))
+					'content' => $visible_whitespace(var_export($activity, true))
 				];
 
 				$type = JsonLD::fetchElement($activity, '@type');
@@ -100,10 +92,6 @@ class ActivityPubConversion extends BaseModule
 					throw new \Exception('No trust for activity type "' . $type . '", so we quit now.');
 				}
 
-				if (!empty($body) && empty($object_data['raw'])) {
-					$object_data['raw'] = $body;
-				}
-
 				// Internal flag for thread completion. See Processor.php
 				if (!empty($activity['thread-completion'])) {
 					$object_data['thread-completion'] = $activity['thread-completion'];
@@ -115,14 +103,14 @@ class ActivityPubConversion extends BaseModule
 
 				$results[] = [
 					'title'   => DI::l10n()->t('Object data'),
-					'content' => visible_whitespace(var_export($object_data, true))
+					'content' => $visible_whitespace(var_export($object_data, true))
 				];
 
 				$item = ActivityPub\Processor::createItem($object_data, true);
 
 				$results[] = [
 					'title'   => DI::l10n()->t('Result Item'),
-					'content' => visible_whitespace(var_export($item, true))
+					'content' => $visible_whitespace(var_export($item, true))
 				];
 			} catch (\Throwable $e) {
 				$results[] = [

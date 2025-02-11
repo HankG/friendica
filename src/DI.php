@@ -1,32 +1,22 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica;
 
 use Dice\Dice;
+use Friendica\Core\Addon\AddonHelper;
 use Friendica\Core\Logger\Capability\ICheckLoggerSettings;
+use Friendica\Core\Logger\LoggerManager;
 use Friendica\Core\Logger\Util\LoggerSettingsCheck;
 use Friendica\Core\Session\Capability\IHandleSessions;
 use Friendica\Core\Session\Capability\IHandleUserSessions;
 use Friendica\Navigation\SystemMessages;
+use Friendica\Protocol\ATProtocol;
+use Friendica\Util\BasePath;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -66,12 +56,13 @@ abstract class DI
 	public static function setCompositeRootDependencyByHand()
 	{
 		$database = static::dba();
-		$database->setDependency(static::config(), static::profiler(), static::logger());
+		$database->setDependency(static::config(), static::profiler(), static::logger(), static::lock());
 	}
 
 	/**
 	 * Returns a clone of the current dice instance
-	 * This useful for overloading the current instance with mocked methods during tests
+	 *
+	 * @internal This useful for overloading the current instance with mocked methods during tests
 	 *
 	 * @return Dice
 	 */
@@ -84,12 +75,9 @@ abstract class DI
 	// common instances
 	//
 
-	/**
-	 * @return App
-	 */
-	public static function app()
+	public static function appHelper(): AppHelper
 	{
-		return self::$dice->create(App::class);
+		return self::$dice->create(AppHelper::class);
 	}
 
 	/**
@@ -155,6 +143,34 @@ abstract class DI
 	public static function router()
 	{
 		return self::$dice->create(App\Router::class);
+	}
+
+	//
+	// "AtProtocol" namespace instances
+	//
+
+	/**
+	 * @return AtProtocol
+	 */
+	public static function atProtocol()
+	{
+		return self::$dice->create(ATProtocol::class);
+	}
+
+	/**
+	 * @return ATProtocol\Actor
+	 */
+	public static function atpActor()
+	{
+		return self::$dice->create(ATProtocol\Actor::class);
+	}
+
+	/**
+	 * @return AtProtocol\Processor
+	 */
+	public static function atpProcessor()
+	{
+		return self::$dice->create(ATProtocol\Processor::class);
 	}
 
 	//
@@ -265,6 +281,11 @@ abstract class DI
 		return self::$dice->create(Core\Storage\Repository\StorageManager::class);
 	}
 
+	public static function addonHelper(): AddonHelper
+	{
+		return self::$dice->create(AddonHelper::class);
+	}
+
 	/**
 	 * @return \Friendica\Core\System
 	 */
@@ -292,8 +313,8 @@ abstract class DI
 	public static function flushLogger()
 	{
 		$flushDice = self::$dice
-			->addRule(LoggerInterface::class, self::$dice->getRule(LoggerInterface::class))
-			->addRule('$devLogger', self::$dice->getRule('$devLogger'));
+			->addRule(LoggerInterface::class, self::$dice->getRule(LoggerInterface::class));
+
 		static::init($flushDice);
 	}
 
@@ -311,19 +332,25 @@ abstract class DI
 	}
 
 	/**
-	 * @return LoggerInterface
-	 */
-	public static function devLogger()
-	{
-		return self::$dice->create('$devLogger');
-	}
-
-	/**
-	 * @return LoggerInterface
+	 * @deprecated 2025.02 Use `DI::loggerManager()` and `DI::logger()` instead
+	 *
+	 * @return \Friendica\Core\Logger\Type\WorkerLogger
 	 */
 	public static function workerLogger()
 	{
+		@trigger_error('`' . __METHOD__ . '()` is deprecated since 2025.02 and will be removed after 5 months, use `DI::logger()` instead.', E_USER_DEPRECATED);
+
 		return self::$dice->create(Core\Logger\Type\WorkerLogger::class);
+	}
+
+	/**
+	 * @internal Only for use in Friendica\Core\Worker class
+	 *
+	 * @see Friendica\Core\Worker::execFunction()
+	 */
+	public static function loggerManager(): LoggerManager
+	{
+		return self::$dice->create(LoggerManager::class);
 	}
 
 	//
@@ -532,7 +559,7 @@ abstract class DI
 	//
 
 	/**
-	 * @return Contact\FriendSuggest\Repository\FriendSuggest;
+	 * @return Contact\FriendSuggest\Repository\FriendSuggest
 	 */
 	public static function fsuggest()
 	{
@@ -540,7 +567,7 @@ abstract class DI
 	}
 
 	/**
-	 * @return Contact\FriendSuggest\Factory\FriendSuggest;
+	 * @return Contact\FriendSuggest\Factory\FriendSuggest
 	 */
 	public static function fsuggestFactory()
 	{
@@ -734,7 +761,10 @@ abstract class DI
 	 */
 	public static function basePath()
 	{
-		return self::$dice->create('$basepath');
+		/** @var BasePath */
+		$basePath = self::$dice->create(BasePath::class);
+
+		return $basePath->getPath();
 	}
 
 	/**
@@ -764,5 +794,14 @@ abstract class DI
 	public static function postMediaRepository(): Content\Post\Repository\PostMedia
 	{
 		return self::$dice->create(Content\Post\Repository\PostMedia::class);
+	}
+
+	/**
+	 * @internal The EventDispatcher should never called outside of the core, like in addons or themes
+	 * @deprecated 2025.02 Use constructor injection instead
+	 */
+	public static function eventDispatcher(): \Psr\EventDispatcher\EventDispatcherInterface
+	{
+		return self::$dice->create(\Psr\EventDispatcher\EventDispatcherInterface::class);
 	}
 }

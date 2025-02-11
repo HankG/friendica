@@ -1,29 +1,14 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Worker;
 
 use Friendica\Content\Text\BBCode;
 use Friendica\Content\Text\Plaintext;
-use Friendica\Core\Logger;
 use Friendica\Database\DBA;
 use Friendica\DI;
 use Friendica\Factory\Api\Mastodon\Notification as NotificationFactory;
@@ -46,30 +31,30 @@ class PushSubscription
 	 */
 	public static function execute(int $sid, int $nid)
 	{
-		Logger::info('Start', ['subscription' => $sid, 'notification' => $nid]);
+		DI::logger()->info('Start', ['subscription' => $sid, 'notification' => $nid]);
 
 		$subscription = DBA::selectFirst('subscription', [], ['id' => $sid]);
 		if (empty($subscription)) {
-			Logger::info('Subscription not found', ['subscription' => $sid]);
+			DI::logger()->info('Subscription not found', ['subscription' => $sid]);
 			return;
 		}
 
 		try {
 			$notification = DI::notification()->selectOneById($nid);
 		} catch (NotFoundException $e) {
-			Logger::info('Notification not found', ['notification' => $nid]);
+			DI::logger()->info('Notification not found', ['notification' => $nid]);
 			return;
 		}
 
 		$application_token = DBA::selectFirst('application-token', [], ['application-id' => $subscription['application-id'], 'uid' => $subscription['uid']]);
 		if (empty($application_token)) {
-			Logger::info('Application token not found', ['application' => $subscription['application-id']]);
+			DI::logger()->info('Application token not found', ['application' => $subscription['application-id']]);
 			return;
 		}
 
 		$user = User::getById($notification->uid);
 		if (empty($user)) {
-			Logger::info('User not found', ['application' => $subscription['uid']]);
+			DI::logger()->info('User not found', ['application' => $subscription['uid']]);
 			return;
 		}
 
@@ -90,7 +75,7 @@ class PushSubscription
 		}
 
 		$message = DI::notificationFactory()->getMessageFromNotification($notification);
-		$title = $message['plain'] ?? '';
+		$title   = $message['plain'] ?? '';
 
 		$push = Subscription::create([
 			'contentEncoding' => 'aesgcm',
@@ -111,7 +96,7 @@ class PushSubscription
 			'body'              => $body ?: $l10n->t('Empty Post'),
 		];
 
-		Logger::info('Payload', ['payload' => $payload]);
+		DI::logger()->info('Payload', ['payload' => $payload]);
 
 		$auth = [
 			'VAPID' => [
@@ -128,9 +113,9 @@ class PushSubscription
 		$endpoint = $report->getRequest()->getUri()->__toString();
 
 		if ($report->isSuccess()) {
-			Logger::info('Message sent successfully for subscription', ['subscription' => $sid, 'notification' => $nid, 'endpoint' => $endpoint]);
+			DI::logger()->info('Message sent successfully for subscription', ['subscription' => $sid, 'notification' => $nid, 'endpoint' => $endpoint]);
 		} else {
-			Logger::info('Message failed to sent for subscription', ['subscription' => $sid, 'notification' => $nid, 'endpoint' => $endpoint, 'reason' => $report->getReason()]);
+			DI::logger()->info('Message failed to sent for subscription', ['subscription' => $sid, 'notification' => $nid, 'endpoint' => $endpoint, 'reason' => $report->getReason()]);
 		}
 	}
 }

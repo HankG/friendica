@@ -1,23 +1,9 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Model;
 
@@ -53,6 +39,8 @@ class Nodeinfo
 			return;
 		}
 
+		$logger->info('User statistics - start');
+
 		$userStats = User::getStatistics();
 
 		DI::keyValue()->set('nodeinfo_total_users', $userStats['total_users']);
@@ -60,21 +48,26 @@ class Nodeinfo
 		DI::keyValue()->set('nodeinfo_active_users_monthly', $userStats['active_users_monthly']);
 		DI::keyValue()->set('nodeinfo_active_users_weekly', $userStats['active_users_weekly']);
 
-		$logger->info('user statistics', $userStats);
+		$logger->info('user statistics - done', $userStats);
 
 		$posts = DBA::count('post-thread', ["`uri-id` IN (SELECT `uri-id` FROM `post-user` WHERE NOT `deleted` AND `origin`)"]);
 		$comments = DBA::count('post', ["NOT `deleted` AND `gravity` = ? AND `uri-id` IN (SELECT `uri-id` FROM `post-user` WHERE `origin`)", Item::GRAVITY_COMMENT]);
 		DI::keyValue()->set('nodeinfo_local_posts', $posts);
 		DI::keyValue()->set('nodeinfo_local_comments', $comments);
 
-		$logger->info('User activity', ['posts' => $posts, 'comments' => $comments]);
+		$posts = DBA::count('post', ['deleted' => false, 'gravity' => Item::GRAVITY_COMMENT]);
+		$comments = DBA::count('post', ['deleted' => false, 'gravity' => Item::GRAVITY_COMMENT]);
+		DI::keyValue()->set('nodeinfo_total_posts', $posts);
+		DI::keyValue()->set('nodeinfo_total_comments', $comments);
+
+		$logger->info('Post statistics - done', ['posts' => $posts, 'comments' => $comments]);
 	}
 
 	/**
 	 * Return the supported services
 	 *
 	 * @return Object with supported services
-	*/
+	 */
 	public static function getUsage(bool $version2 = false)
 	{
 		$config = DI::config();
@@ -101,7 +94,7 @@ class Nodeinfo
 	 * Return the supported services
 	 *
 	 * @return array with supported services
-	*/
+	 */
 	public static function getServices(): array
 	{
 		$services = [

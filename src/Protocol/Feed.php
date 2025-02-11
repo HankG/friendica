@@ -1,23 +1,9 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Protocol;
 
@@ -29,7 +15,6 @@ use Friendica\Contact\LocalRelationship\Entity\LocalRelationship;
 use Friendica\Content\PageInfo;
 use Friendica\Content\Text\BBCode;
 use Friendica\Content\Text\HTML;
-use Friendica\Core\Logger;
 use Friendica\Core\Protocol;
 use Friendica\Core\Worker;
 use Friendica\Database\DBA;
@@ -70,15 +55,15 @@ class Feed
 		$dryRun = empty($importer) && empty($contact);
 
 		if ($dryRun) {
-			Logger::info("Test Atom/RSS feed");
+			DI::logger()->info("Test Atom/RSS feed");
 		} else {
-			Logger::info('Import Atom/RSS feed "' . $contact['name'] . '" (Contact ' . $contact['id'] . ') for user ' . $importer['uid']);
+			DI::logger()->info('Import Atom/RSS feed "' . $contact['name'] . '" (Contact ' . $contact['id'] . ') for user ' . $importer['uid']);
 		}
 
 		$xml = trim($xml);
 
 		if (empty($xml)) {
-			Logger::info('XML is empty.');
+			DI::logger()->info('XML is empty.');
 			return [];
 		}
 
@@ -103,14 +88,14 @@ class Feed
 		$xpath->registerNamespace('media', 'http://search.yahoo.com/mrss/');
 		$xpath->registerNamespace('poco', ActivityNamespace::POCO);
 
-		$author = [];
-		$atomns = 'atom';
-		$entries = null;
+		$author   = [];
+		$atomns   = 'atom';
+		$entries  = null;
 		$protocol = Conversation::PARCEL_UNKNOWN;
 
 		// Is it RDF?
 		if ($xpath->query('/rdf:RDF/rss:channel')->length > 0) {
-			$protocol = Conversation::PARCEL_RDF;
+			$protocol              = Conversation::PARCEL_RDF;
 			$author['author-link'] = XML::getFirstNodeValue($xpath, '/rdf:RDF/rss:channel/rss:link/text()');
 			$author['author-name'] = XML::getFirstNodeValue($xpath, '/rdf:RDF/rss:channel/rss:title/text()');
 
@@ -121,9 +106,9 @@ class Feed
 		}
 
 		if ($xpath->query('/opml')->length > 0) {
-			$protocol = Conversation::PARCEL_OPML;
+			$protocol              = Conversation::PARCEL_OPML;
 			$author['author-name'] = XML::getFirstNodeValue($xpath, '/opml/head/title/text()');
-			$entries = $xpath->query('/opml/body/outline');
+			$entries               = $xpath->query('/opml/body/outline');
 		}
 
 		// Is it Atom?
@@ -131,7 +116,7 @@ class Feed
 			$protocol = Conversation::PARCEL_ATOM;
 		} elseif ($xpath->query('/atom03:feed')->length > 0) {
 			$protocol = Conversation::PARCEL_ATOM03;
-			$atomns = 'atom03';
+			$atomns   = 'atom03';
 		}
 
 		if (in_array($protocol, [Conversation::PARCEL_ATOM, Conversation::PARCEL_ATOM03])) {
@@ -218,7 +203,7 @@ class Feed
 
 		// Is it RSS?
 		if ($xpath->query('/rss/channel')->length > 0) {
-			$protocol = Conversation::PARCEL_RSS;
+			$protocol              = Conversation::PARCEL_RSS;
 			$author['author-link'] = XML::getFirstNodeValue($xpath, '/rss/channel/link/text()');
 
 			$author['author-name'] = XML::getFirstNodeValue($xpath, '/rss/channel/title/text()');
@@ -266,8 +251,8 @@ class Feed
 
 			$author['author-avatar'] = $contact['thumb'];
 
-			$author['owner-link'] = $contact['url'];
-			$author['owner-name'] = $contact['name'];
+			$author['owner-link']   = $contact['url'];
+			$author['owner-name']   = $contact['name'];
 			$author['owner-avatar'] = $contact['thumb'];
 		}
 
@@ -284,20 +269,20 @@ class Feed
 			'contact-id'  => $contact['id'] ?? 0,
 		];
 
-		$datarray['protocol'] = $protocol;
+		$datarray['protocol']  = $protocol;
 		$datarray['direction'] = Conversation::PULL;
 
 		if (!is_object($entries)) {
-			Logger::info("There are no entries in this feed.");
+			DI::logger()->info("There are no entries in this feed.");
 			return [];
 		}
 
-		$items = [];
+		$items          = [];
 		$creation_dates = [];
 
 		// Limit the number of items that are about to be fetched
 		$total_items = ($entries->length - 1);
-		$max_items = DI::config()->get('system', 'max_feed_items');
+		$max_items   = DI::config()->get('system', 'max_feed_items');
 		if (($max_items > 0) && ($total_items > $max_items)) {
 			$total_items = $max_items;
 		}
@@ -326,7 +311,7 @@ class Feed
 			if ($entry->nodeName == 'outline') {
 				$isrss = false;
 				$plink = '';
-				$uri = '';
+				$uri   = '';
 				foreach ($entry->attributes as $attribute) {
 					switch ($attribute->nodeName) {
 						case 'title':
@@ -351,7 +336,7 @@ class Feed
 					}
 				}
 				$item['plink'] = $plink ?: $uri;
-				$item['uri'] = $uri ?: $plink;
+				$item['uri']   = $uri ?: $plink;
 				if (!$isrss || empty($item['uri'])) {
 					continue;
 				}
@@ -397,7 +382,7 @@ class Feed
 				try {
 					$item['plink'] = DI::httpClient()->finalUrl($item['plink']);
 				} catch (TransferException $exception) {
-					Logger::notice('Item URL couldn\'t get expanded', ['url' => $item['plink'], 'exception' => $exception]);
+					DI::logger()->notice('Item URL couldn\'t get expanded', ['url' => $item['plink'], 'exception' => $exception]);
 				}
 			}
 
@@ -456,7 +441,7 @@ class Feed
 				if (DBA::isResult($previous)) {
 					// Use the creation date when the post had been stored. It can happen this date changes in the feed.
 					$creation_dates[] = $previous['created'];
-					Logger::info('Item with URI ' . $item['uri'] . ' for user ' . $importer['uid'] . ' already existed under id ' . $previous['id']);
+					DI::logger()->info('Item with URI ' . $item['uri'] . ' for user ' . $importer['uid'] . ' already existed under id ' . $previous['id']);
 					continue;
 				}
 				$creation_dates[] = DateTimeFormat::utc($item['created']);
@@ -491,9 +476,9 @@ class Feed
 			$enclosures = $xpath->query("enclosure|$atomns:link[@rel='enclosure']", $entry);
 			if (!empty($enclosures)) {
 				foreach ($enclosures as $enclosure) {
-					$href = '';
+					$href   = '';
 					$length = null;
-					$type = null;
+					$type   = null;
 
 					foreach ($enclosure->attributes as $attribute) {
 						if (in_array($attribute->name, ['url', 'href'])) {
@@ -520,7 +505,7 @@ class Feed
 				}
 			}
 
-			$taglist = [];
+			$taglist    = [];
 			$categories = $xpath->query('category', $entry);
 			foreach ($categories as $category) {
 				$taglist[] = $category->nodeValue;
@@ -541,7 +526,7 @@ class Feed
 			}
 
 			if (empty($body)) {
-				$body = $summary;
+				$body    = $summary;
 				$summary = '';
 			}
 
@@ -552,25 +537,25 @@ class Feed
 			}
 
 			$item['body'] = self::formatBody($body, $basepath);
-			$summary = self::formatBody($summary, $basepath);
+			$summary      = self::formatBody($summary, $basepath);
 
 			if (($item['body'] == '') && ($item['title'] != '')) {
-				$item['body'] = $item['title'];
+				$item['body']  = $item['title'];
 				$item['title'] = '';
 			}
 
 			if ($dryRun) {
 				$item['attachments'] = $attachments;
-				$items[] = $item;
+				$items[]             = $item;
 				break;
 			} elseif (!Item::isValid($item)) {
-				Logger::info('Feed item is invalid', ['created' => $item['created'], 'uid' => $item['uid'], 'uri' => $item['uri']]);
+				DI::logger()->info('Feed item is invalid', ['created' => $item['created'], 'uid' => $item['uid'], 'uri' => $item['uri']]);
 				continue;
 			} elseif (DI::contentItem()->isTooOld($item['created'], $item['uid'])) {
-				Logger::info('Feed is too old', ['created' => $item['created'], 'uid' => $item['uid'], 'uri' => $item['uri']]);
+				DI::logger()->info('Feed is too old', ['created' => $item['created'], 'uid' => $item['uid'], 'uri' => $item['uri']]);
 				continue;
 			}
-			
+
 			if (!empty($item['plink'])) {
 				$fetch_further_information = $contact['fetch_further_information'] ?? LocalRelationship::FFI_NONE;
 			} else {
@@ -597,7 +582,7 @@ class Feed
 					$summary = '';
 				}
 
-				$saved_body = $item['body'];
+				$saved_body  = $item['body'];
 				$saved_title = $item['title'];
 
 				if (self::replaceBodyWithTitle($item['body'], $item['title'])) {
@@ -627,7 +612,7 @@ class Feed
 					// Take the data that was provided by the feed if the query is empty
 					if (($data['type'] == 'link') && empty($data['title']) && empty($data['text'])) {
 						$data['title'] = $saved_title;
-						$item['body'] = $saved_body;
+						$item['body']  = $saved_body;
 					}
 
 					$data_text = strip_tags(trim($data['text'] ?? ''));
@@ -638,11 +623,11 @@ class Feed
 					}
 
 					// We always strip the title since it will be added in the page information
-					$item['title'] = '';
-					$item['body'] = $item['body'] . "\n" . PageInfo::getFooterFromData($data, false);
-					$taglist = $fetch_further_information == LocalRelationship::FFI_BOTH ? PageInfo::getTagsFromUrl($item['plink'], $preview, $contact['ffi_keyword_denylist'] ?? '') : [];
+					$item['title']       = '';
+					$item['body']        = $item['body'] . "\n" . PageInfo::getFooterFromData($data, false);
+					$taglist             = $fetch_further_information == LocalRelationship::FFI_BOTH ? PageInfo::getTagsFromUrl($item['plink'], $preview, $contact['ffi_keyword_denylist'] ?? '') : [];
 					$item['object-type'] = Activity\ObjectType::BOOKMARK;
-					$attachments = [];
+					$attachments         = [];
 
 					foreach (['audio', 'video'] as $elementname) {
 						if (!empty($data[$elementname])) {
@@ -687,9 +672,9 @@ class Feed
 				$item['post-type'] = Item::PT_NOTE;
 			}
 
-			Logger::info('Stored feed', ['item' => $item]);
+			DI::logger()->info('Stored feed', ['item' => $item]);
 
-			$notify = Item::isRemoteSelf($contact, $item);
+			$notify       = Item::isRemoteSelf($contact, $item);
 			$item['wall'] = (bool)$notify;
 
 			// Distributed items should have a well-formatted URI.
@@ -711,23 +696,23 @@ class Feed
 					Post\Delayed::publish($item, $notify, $taglist, $attachments);
 				} else {
 					$postings[] = [
-						'item' => $item, 'notify' => $notify,
+						'item'    => $item, 'notify' => $notify,
 						'taglist' => $taglist, 'attachments' => $attachments
 					];
 				}
 			} else {
-				Logger::info('Post already created or exists in the delayed posts queue', ['uid' => $item['uid'], 'uri' => $item['uri']]);
+				DI::logger()->info('Post already created or exists in the delayed posts queue', ['uid' => $item['uid'], 'uri' => $item['uri']]);
 			}
 		}
 
 		if (!empty($postings)) {
 			$min_posting = DI::config()->get('system', 'minimum_posting_interval', 0);
-			$total = count($postings);
+			$total       = count($postings);
 			if ($total > 1) {
 				// Posts shouldn't be delayed more than a day
 				$interval = min(1440, self::getPollInterval($contact));
-				$delay = max(round(($interval * 60) / $total), 60 * $min_posting);
-				Logger::info('Got posting delay', ['delay' => $delay, 'interval' => $interval, 'items' => $total, 'cid' => $contact['id'], 'url' => $contact['url']]);
+				$delay    = max(round(($interval * 60) / $total), 60 * $min_posting);
+				DI::logger()->info('Got posting delay', ['delay' => $delay, 'interval' => $interval, 'items' => $total, 'cid' => $contact['id'], 'url' => $contact['url']]);
 			} else {
 				$delay = 0;
 			}
@@ -750,7 +735,7 @@ class Feed
 				$publish_at = date(DateTimeFormat::MYSQL, $publish_time);
 
 				if (Post\Delayed::add($posting['item']['uri'], $posting['item'], $posting['notify'], Post\Delayed::PREPARED, $publish_at, $posting['taglist'], $posting['attachments'])) {
-					DI::pConfig()->set($item['uid'], 'system', 'last_publish', $publish_time);
+					DI::pConfig()->set($posting['item']['uid'], 'system', 'last_publish', $publish_time);
 				}
 			}
 		}
@@ -804,21 +789,21 @@ class Feed
 	private static function adjustPollFrequency(array $contact, array $creation_dates)
 	{
 		if ($contact['network'] != Protocol::FEED) {
-			Logger::info('Contact is no feed, skip.', ['id' => $contact['id'], 'uid' => $contact['uid'], 'url' => $contact['url'], 'network' => $contact['network']]);
+			DI::logger()->info('Contact is no feed, skip.', ['id' => $contact['id'], 'uid' => $contact['uid'], 'url' => $contact['url'], 'network' => $contact['network']]);
 			return;
 		}
 
 		if (!empty($creation_dates)) {
 			// Count the post frequency and the earliest and latest post date
-			$frequency = [];
-			$oldest = time();
-			$newest = 0;
-			$oldest_date = $newest_date = '';
+			$frequency   = [];
+			$oldest      = time();
+			$newest      = 0;
+			$newest_date = '';
 
 			foreach ($creation_dates as $date) {
 				$timestamp = strtotime($date);
-				$day = intdiv($timestamp, 86400);
-				$hour = $timestamp % 86400;
+				$day       = intdiv($timestamp, 86400);
+				$hour      = $timestamp % 86400;
 
 				// Only have a look at values from the last seven days
 				if (((time() / 86400) - $day) < 7) {
@@ -836,32 +821,31 @@ class Feed
 				}
 				if ($oldest > $day) {
 					$oldest = $day;
-					$oldest_date = $date;
 				}
 
 				if ($newest < $day) {
-					$newest = $day;
+					$newest      = $day;
 					$newest_date = $date;
 				}
 			}
 
 			if (count($creation_dates) == 1) {
-				Logger::info('Feed had posted a single time, switching to daily polling', ['newest' => $newest_date, 'id' => $contact['id'], 'uid' => $contact['uid'], 'url' => $contact['url']]);
+				DI::logger()->info('Feed had posted a single time, switching to daily polling', ['newest' => $newest_date, 'id' => $contact['id'], 'uid' => $contact['uid'], 'url' => $contact['url']]);
 				$priority = 8; // Poll once a day
 			}
 
 			if (empty($priority) && (((time() / 86400) - $newest) > 730)) {
-				Logger::info('Feed had not posted for two years, switching to monthly polling', ['newest' => $newest_date, 'id' => $contact['id'], 'uid' => $contact['uid'], 'url' => $contact['url']]);
+				DI::logger()->info('Feed had not posted for two years, switching to monthly polling', ['newest' => $newest_date, 'id' => $contact['id'], 'uid' => $contact['uid'], 'url' => $contact['url']]);
 				$priority = 10; // Poll every month
 			}
 
 			if (empty($priority) && (((time() / 86400) - $newest) > 365)) {
-				Logger::info('Feed had not posted for a year, switching to weekly polling', ['newest' => $newest_date, 'id' => $contact['id'], 'uid' => $contact['uid'], 'url' => $contact['url']]);
+				DI::logger()->info('Feed had not posted for a year, switching to weekly polling', ['newest' => $newest_date, 'id' => $contact['id'], 'uid' => $contact['uid'], 'url' => $contact['url']]);
 				$priority = 9; // Poll every week
 			}
 
 			if (empty($priority) && empty($frequency)) {
-				Logger::info('Feed had not posted for at least a week, switching to daily polling', ['newest' => $newest_date, 'id' => $contact['id'], 'uid' => $contact['uid'], 'url' => $contact['url']]);
+				DI::logger()->info('Feed had not posted for at least a week, switching to daily polling', ['newest' => $newest_date, 'id' => $contact['id'], 'uid' => $contact['uid'], 'url' => $contact['url']]);
 				$priority = 8; // Poll once a day
 			}
 
@@ -878,7 +862,7 @@ class Feed
 
 					// Assume at least four hours between oldest and newest post per day - should be okay for news outlets
 					$duration = max($entry['high'] - $entry['low'], 14400);
-					$ppd = (86400 / $duration) * $entry['count'];
+					$ppd      = (86400 / $duration) * $entry['count'];
 					if ($ppd > $max) {
 						$max = $ppd;
 					}
@@ -898,15 +882,15 @@ class Feed
 				} else {
 					$priority = 7; // Poll twice a day
 				}
-				Logger::info('Calculated priority by the posts per day', ['priority' => $priority, 'max' => round($max, 2), 'id' => $contact['id'], 'uid' => $contact['uid'], 'url' => $contact['url']]);
+				DI::logger()->info('Calculated priority by the posts per day', ['priority' => $priority, 'max' => round($max, 2), 'id' => $contact['id'], 'uid' => $contact['uid'], 'url' => $contact['url']]);
 			}
 		} else {
-			Logger::info('No posts, switching to daily polling', ['id' => $contact['id'], 'uid' => $contact['uid'], 'url' => $contact['url']]);
+			DI::logger()->info('No posts, switching to daily polling', ['id' => $contact['id'], 'uid' => $contact['uid'], 'url' => $contact['url']]);
 			$priority = 8; // Poll once a day
 		}
 
 		if ($contact['rating'] != $priority) {
-			Logger::notice('Adjusting priority', ['old' => $contact['rating'], 'new' => $priority, 'id' => $contact['id'], 'uid' => $contact['uid'], 'url' => $contact['url']]);
+			DI::logger()->notice('Adjusting priority', ['old' => $contact['rating'], 'new' => $priority, 'id' => $contact['id'], 'uid' => $contact['uid'], 'url' => $contact['url']]);
 			Contact::update(['rating' => $priority], ['id' => $contact['id']]);
 		}
 	}
@@ -931,11 +915,6 @@ class Feed
 		} else {
 			// Check once a week per default for all other networks
 			$rating = 9;
-		}
-
-		// Friendica and OStatus are checked once a day
-		if (in_array($contact['network'], [Protocol::DFRN, Protocol::OSTATUS])) {
-			$rating = 8;
 		}
 
 		// Check archived contacts or contacts with unsupported protocols once a month
@@ -1001,7 +980,7 @@ class Feed
 			$pos = strrpos($title, '...');
 			if ($pos > 0) {
 				$title = substr($title, 0, $pos);
-				$body = substr($body, 0, $pos);
+				$body  = substr($body, 0, $pos);
 			}
 		}
 		return ($title == $body);
@@ -1034,20 +1013,19 @@ class Feed
 
 		// Display events in the user's timezone
 		if (strlen($owner['timezone'])) {
-			DI::app()->setTimeZone($owner['timezone']);
+			DI::appHelper()->setTimeZone($owner['timezone']);
 		}
 
 		$previous_created = $last_update;
 
 		$check_date = empty($last_update) ? '' : DateTimeFormat::utc($last_update);
-		$authorid = Contact::getIdForURL($owner['url']);
+		$authorid   = Contact::getIdForURL($owner['url']);
 
 		$condition = [
 			"`uid` = ? AND `received` > ? AND NOT `deleted` AND `gravity` IN (?, ?)
-			AND `private` != ? AND `visible` AND `wall` AND `parent-network` IN (?, ?, ?, ?)",
+			AND `private` != ? AND `visible` AND `wall` AND `parent-network` IN (?, ?, ?)",
 			$owner['uid'], $check_date, Item::GRAVITY_PARENT, Item::GRAVITY_COMMENT,
-			Item::PRIVATE, Protocol::ACTIVITYPUB,
-			Protocol::OSTATUS, Protocol::DFRN, Protocol::DIASPORA
+			Item::PRIVATE, Protocol::ACTIVITYPUB, Protocol::DFRN, Protocol::DIASPORA
 		];
 
 		if ($filter === 'comments') {
@@ -1071,7 +1049,7 @@ class Feed
 
 		$items = Post::toArray($ret);
 
-		$doc = new DOMDocument('1.0', 'utf-8');
+		$doc               = new DOMDocument('1.0', 'utf-8');
 		$doc->formatOutput = true;
 
 		$root = self::addHeader($doc, $owner, $filter);
@@ -1087,7 +1065,7 @@ class Feed
 
 		$feeddata = trim($doc->saveXML());
 
-		Logger::info('Feed duration', ['seconds' => number_format(microtime(true) - $stamp, 3), 'nick' => $owner['nickname'], 'filter' => $filter, 'created' => $previous_created]);
+		DI::logger()->info('Feed duration', ['seconds' => number_format(microtime(true) - $stamp, 3), 'nick' => $owner['nickname'], 'filter' => $filter, 'created' => $previous_created]);
 
 		return $feeddata;
 	}
@@ -1107,7 +1085,7 @@ class Feed
 		$root = $doc->createElementNS(ActivityNamespace::ATOM1, 'feed');
 		$doc->appendChild($root);
 
-		$title = '';
+		$title   = '';
 		$selfUri = '/feed/' . $owner['nick'] . '/';
 		switch ($filter) {
 			case 'activity':
@@ -1136,8 +1114,6 @@ class Feed
 
 		$attributes = ['href' => $owner['url'], 'rel' => 'alternate', 'type' => 'text/html'];
 		XML::addElement($doc, $root, 'link', '', $attributes);
-
-		OStatus::addHubLink($doc, $root, $owner['nick']);
 
 		$attributes = ['href' => DI::baseUrl() . $selfUri, 'rel' => 'self', 'type' => 'application/atom+xml'];
 		XML::addElement($doc, $root, 'link', '', $attributes);
@@ -1169,7 +1145,6 @@ class Feed
 	 * @param DOMDocument $doc       XML document
 	 * @param array       $item      Data of the item that is to be posted
 	 * @param array       $owner     Contact data of the poster
-	 * @param bool        $toplevel  Is it for en entry element (false) or a feed entry (true)?
 	 * @return DOMElement Entry element
 	 * @throws \Friendica\Network\HTTPException\InternalServerErrorException
 	 * @throws \ImagickException
@@ -1177,10 +1152,10 @@ class Feed
 	private static function noteEntry(DOMDocument $doc, array $item, array $owner): DOMElement
 	{
 		if (($item['gravity'] != Item::GRAVITY_PARENT) && (Strings::normaliseLink($item['author-link']) != Strings::normaliseLink($owner['url']))) {
-			Logger::info('Feed entry author does not match feed owner', ['owner' => $owner['url'], 'author' => $item['author-link']]);
+			DI::logger()->info('Feed entry author does not match feed owner', ['owner' => $owner['url'], 'author' => $item['author-link']]);
 		}
 
-		$entry = OStatus::entryHeader($doc, $owner, $item, false);
+		$entry = self::entryHeader($doc, $owner, $item, false);
 
 		self::entryContent($doc, $entry, $item, self::getTitle($item), '', true);
 
@@ -1195,17 +1170,16 @@ class Feed
 	 * @param DOMDocument $doc       XML document
 	 * @param \DOMElement $entry     Entry element where the content is added
 	 * @param array       $item      Data of the item that is to be posted
-	 * @param array       $owner     Contact data of the poster
 	 * @param string      $title     Title for the post
 	 * @param string      $verb      The activity verb
 	 * @param bool        $complete  Add the "status_net" element?
-	 * @return void
+	 *
 	 * @throws \Friendica\Network\HTTPException\InternalServerErrorException
 	 */
-	private static function entryContent(DOMDocument $doc, DOMElement $entry, array $item, $title, string $verb = '', bool $complete = true)
+	private static function entryContent(DOMDocument $doc, DOMElement $entry, array $item, $title, string $verb = '', bool $complete = true): void
 	{
 		if ($verb == '') {
-			$verb = OStatus::constructVerb($item);
+			$verb = self::constructVerb($item);
 		}
 
 		XML::addElement($doc, $entry, 'id', $item['uri']);
@@ -1224,7 +1198,7 @@ class Feed
 			'link',
 			'',
 			[
-				'rel' => 'alternate', 'type' => 'text/html',
+				'rel'  => 'alternate', 'type' => 'text/html',
 				'href' => DI::baseUrl() . '/display/' . $item['guid']
 			]
 		);
@@ -1240,11 +1214,10 @@ class Feed
 	 * @param object      $entry     The entry element where the elements are added
 	 * @param array       $item      Data of the item that is to be posted
 	 * @param array       $owner     Contact data of the poster
-	 * @param bool        $complete  default true
-	 * @return void
+	 *
 	 * @throws \Friendica\Network\HTTPException\InternalServerErrorException
 	 */
-	private static function entryFooter(DOMDocument $doc, $entry, array $item, array $owner)
+	private static function entryFooter(DOMDocument $doc, $entry, array $item, array $owner): void
 	{
 		$mentioned = [];
 
@@ -1292,7 +1265,7 @@ class Feed
 			}
 		}
 
-		OStatus::getAttachment($doc, $entry, $item);
+		self::getAttachment($doc, $entry, $item);
 	}
 
 	/**
@@ -1317,11 +1290,11 @@ class Feed
 		// Remove the share element before fetching the first line
 		$title = trim(preg_replace("/\[share.*?\](.*?)\[\/share\]/ism", "\n$1\n", $item['body']));
 
-		$title = BBCode::toPlaintext($title) . "\n";
-		$pos = strpos($title, "\n");
+		$title   = BBCode::toPlaintext($title) . "\n";
+		$pos     = strpos($title, "\n");
 		$trailer = '';
 		if (($pos == 0) || ($pos > 100)) {
-			$pos = 100;
+			$pos     = 100;
 			$trailer = '...';
 		}
 
@@ -1333,7 +1306,7 @@ class Feed
 		if (!HTML::isHTML($body)) {
 			$html = BBCode::convert($body, false, BBCode::EXTERNAL);
 			if ($body != $html) {
-				Logger::debug('Body contained no HTML', ['original' => $body, 'converted' => $html]);
+				DI::logger()->debug('Body contained no HTML', ['original' => $body, 'converted' => $html]);
 				$body = $html;
 			}
 		}
@@ -1359,5 +1332,90 @@ class Feed
 			$replace = true;
 		}
 		return $replace;
+	}
+
+	/**
+	 * Adds attachment data to the XML document
+	 *
+	 * @param DOMDocument $doc  XML document
+	 * @param DOMElement  $root XML root element where the hub links are added
+	 * @param array       $item Data of the item that is to be posted
+	 * @return void
+	 * @throws \Friendica\Network\HTTPException\InternalServerErrorException
+	 */
+	private static function getAttachment(DOMDocument $doc, DOMElement $root, array $item)
+	{
+		foreach (Post\Media::getByURIId($item['uri-id'], [Post\Media::AUDIO, Post\Media::IMAGE, Post\Media::VIDEO, Post\Media::DOCUMENT, Post\Media::TORRENT]) as $attachment) {
+			$attributes = ['rel' => 'enclosure',
+				'href'              => $attachment['url'],
+				'type'              => $attachment['mimetype']];
+
+			if (!empty($attachment['size'])) {
+				$attributes['length'] = intval($attachment['size']);
+			}
+			if (!empty($attachment['description'])) {
+				$attributes['title'] = $attachment['description'];
+			}
+
+			XML::addElement($doc, $root, 'link', '', $attributes);
+		}
+	}
+
+	/**
+	 * @TODO Picture attachments should look like this:
+	 *	<a href="https://status.pirati.ca/attachment/572819" title="https://status.pirati.ca/file/heluecht-20151202T222602-rd3u49p.gif"
+	 *	class="attachment thumbnail" id="attachment-572819" rel="nofollow external">https://status.pirati.ca/attachment/572819</a>
+	 */
+
+	/**
+	 * Returns the given activity if present - otherwise returns the "post" activity
+	 *
+	 * @param array $item Data of the item that is to be posted
+	 * @return string activity
+	 */
+	private static function constructVerb(array $item): string
+	{
+		if (!empty($item['verb'])) {
+			return $item['verb'];
+		}
+
+		return Activity::POST;
+	}
+
+	/**
+	 * Adds a header element to the XML document
+	 *
+	 * @param DOMDocument $doc      XML document
+	 * @param array       $owner    Contact data of the poster
+	 * @param array       $item
+	 * @param bool        $toplevel Is it for en entry element (false) or a feed entry (true)?
+	 * @return DOMElement The entry element where the elements are added
+	 * @throws \Friendica\Network\HTTPException\InternalServerErrorException
+	 * @throws \ImagickException
+	 */
+	private static function entryHeader(DOMDocument $doc, array $owner, array $item, bool $toplevel): DOMElement
+	{
+		if (!$toplevel) {
+			$entry = $doc->createElement('entry');
+
+			if ($owner['contact-type'] == Contact::TYPE_COMMUNITY) {
+				$entry->setAttribute('xmlns:activity', ActivityNamespace::ACTIVITY);
+
+				$contact             = Contact::getByURL($item['author-link']) ?: $owner;
+				$contact['nickname'] = $contact['nickname'] ?? $contact['nick'];
+				$author              = self::addAuthor($doc, $contact);
+				$entry->appendChild($author);
+			}
+		} else {
+			$entry = $doc->createElementNS(ActivityNamespace::ATOM1, 'entry');
+
+			$entry->setAttribute('xmlns:thr', ActivityNamespace::THREAD);
+			$entry->setAttribute('xmlns:poco', ActivityNamespace::POCO);
+
+			$author = self::addAuthor($doc, $owner);
+			$entry->appendChild($author);
+		}
+
+		return $entry;
 	}
 }

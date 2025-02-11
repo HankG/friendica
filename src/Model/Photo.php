@@ -1,28 +1,13 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Model;
 
 use Friendica\Core\Cache\Enum\Duration;
-use Friendica\Core\Logger;
 use Friendica\Core\System;
 use Friendica\Database\DBA;
 use Friendica\DI;
@@ -115,7 +100,7 @@ class Photo
 	public static function getPhotosForUser(int $uid, string $resourceid, array $conditions = [], array $params = [])
 	{
 		$conditions['resource-id'] = $resourceid;
-		$conditions['uid'] = $uid;
+		$conditions['uid']         = $uid;
 
 		return self::selectToArray([], $conditions, $params);
 	}
@@ -137,8 +122,8 @@ class Photo
 	public static function getPhotoForUser(int $uid, $resourceid, $scale = 0, array $conditions = [], array $params = [])
 	{
 		$conditions['resource-id'] = $resourceid;
-		$conditions['uid'] = $uid;
-		$conditions['scale'] = $scale;
+		$conditions['uid']         = $uid;
+		$conditions['scale']       = $scale;
 
 		return self::selectFirst([], $conditions, $params);
 	}
@@ -175,8 +160,8 @@ class Photo
 		}
 
 		$conditions = ["`resource-id` = ? AND `scale` <= ? " . $sql_acl, $resourceid, $scale];
-		$params = ['order' => ['scale' => true]];
-		$photo = self::selectFirst([], $conditions, $params);
+		$params     = ['order' => ['scale' => true]];
+		$photo      = self::selectFirst([], $conditions, $params);
 
 		return $photo;
 	}
@@ -222,7 +207,7 @@ class Photo
 
 		if (!empty($album)) {
 			$sqlExtra  = "AND `album` = ? ";
-			$values[] = $album;
+			$values[]  = $album;
 			$sqlExtra2 = "";
 		} else {
 			$sqlExtra  = '';
@@ -317,7 +302,7 @@ class Photo
 	private static function getFields(): array
 	{
 		$allfields = DI::dbaDefinition()->getAll();
-		$fields = array_keys($allfields['photo']['fields']);
+		$fields    = array_keys($allfields['photo']['fields']);
 		array_splice($fields, array_search('data', $fields), 1);
 		return $fields;
 	}
@@ -336,10 +321,11 @@ class Photo
 		$fields = self::getFields();
 		$values = array_fill(0, count($fields), '');
 
-		$photo                  = array_combine($fields, $values);
-		$photo['data']          = $image_data;
-		$photo['type']          = $mimetype ?: Images::getMimeTypeByData($image_data);
-		$photo['cacheable']     = false;
+		$photo = array_combine($fields, $values);
+
+		$photo['data']      = $image_data;
+		$photo['type']      = $mimetype ?: Images::getMimeTypeByData($image_data);
+		$photo['cacheable'] = false;
 
 		return $photo;
 	}
@@ -398,7 +384,7 @@ class Photo
 		$photo['backend-class'] = ExternalResource::NAME;
 		$photo['backend-ref']   = json_encode(['url' => $url, 'uid' => $uid]);
 		$photo['type']          = $mimetype;
-		$photo['filename'] 	    = basename(parse_url($url, PHP_URL_PATH));
+		$photo['filename']      = basename(parse_url($url, PHP_URL_PATH));
 		$photo['cacheable']     = true;
 		$photo['blurhash']      = $blurhash;
 		$photo['width']         = $width;
@@ -437,7 +423,7 @@ class Photo
 		}
 
 		$existing_photo = self::selectFirst(['id', 'created', 'backend-class', 'backend-ref'], ['resource-id' => $rid, 'uid' => $uid, 'contact-id' => $cid, 'scale' => $scale]);
-		$created = DateTimeFormat::utcNow();
+		$created        = DateTimeFormat::utcNow();
 		if (DBA::isResult($existing_photo)) {
 			$created = $existing_photo['created'];
 		}
@@ -448,6 +434,7 @@ class Photo
 		$data        = '';
 		$backend_ref = '';
 		$storage     = '';
+		$img_str     = $image->asString();
 
 		try {
 			if (DBA::isResult($existing_photo)) {
@@ -456,38 +443,40 @@ class Photo
 			} else {
 				$storage = DI::storage();
 			}
-			$backend_ref = $storage->put($image->asString(), $backend_ref);
+			$backend_ref = $storage->put($img_str, $backend_ref);
 		} catch (InvalidClassStorageException $storageException) {
-			$data = $image->asString();
+			$data = $img_str;
 		}
 
 		$fields = [
-			'uid' => $uid,
-			'contact-id' => $cid,
-			'guid' => $guid,
-			'resource-id' => $rid,
-			'hash' => md5($image->asString()),
-			'created' => $created,
-			'edited' => DateTimeFormat::utcNow(),
-			'filename' => basename($filename),
-			'type' => $image->getType(),
-			'album' => $album,
-			'height' => $image->getHeight(),
-			'width' => $image->getWidth(),
-			'datasize' => strlen($image->asString()),
-			'blurhash' => $image->getBlurHash(),
-			'data' => $data,
-			'scale' => $scale,
-			'photo-type' => $type,
-			'profile' => false,
-			'allow_cid' => $allow_cid,
-			'allow_gid' => $allow_gid,
-			'deny_cid' => $deny_cid,
-			'deny_gid' => $deny_gid,
-			'desc' => $desc,
+			'uid'           => $uid,
+			'contact-id'    => $cid,
+			'guid'          => $guid,
+			'resource-id'   => $rid,
+			'hash'          => md5($img_str),
+			'created'       => $created,
+			'edited'        => DateTimeFormat::utcNow(),
+			'filename'      => basename($filename),
+			'type'          => $image->getType(),
+			'album'         => $album,
+			'height'        => $image->getHeight(),
+			'width'         => $image->getWidth(),
+			'datasize'      => strlen($img_str),
+			'blurhash'      => $image->getBlurHash($img_str),
+			'data'          => $data,
+			'scale'         => $scale,
+			'photo-type'    => $type,
+			'profile'       => false,
+			'allow_cid'     => $allow_cid,
+			'allow_gid'     => $allow_gid,
+			'deny_cid'      => $deny_cid,
+			'deny_gid'      => $deny_gid,
+			'desc'          => $desc,
 			'backend-class' => (string)$storage,
-			'backend-ref' => $backend_ref
+			'backend-ref'   => $backend_ref
 		];
+
+		$fields = DI::dbaDefinition()->truncateFieldsForTable('photo', $fields);
 
 		if (DBA::isResult($existing_photo)) {
 			$r = DBA::update('photo', $fields, ['id' => $existing_photo['id']]);
@@ -503,14 +492,11 @@ class Photo
 	 * Delete info from table and data from storage
 	 *
 	 * @param array $conditions Field condition(s)
-	 * @param array $options    Options array, Optional
-	 *
-	 * @return boolean
 	 *
 	 * @throws \Exception
 	 * @see   \Friendica\Database\DBA::delete
 	 */
-	public static function delete(array $conditions, array $options = []): bool
+	public static function delete(array $conditions): bool
 	{
 		// get photo to delete data info
 		$photos = DBA::select('photo', ['id', 'backend-class', 'backend-ref'], $conditions);
@@ -530,7 +516,7 @@ class Photo
 
 		DBA::close($photos);
 
-		return DBA::delete('photo', $conditions, $options);
+		return DBA::delete('photo', $conditions);
 	}
 
 	/**
@@ -596,19 +582,24 @@ class Photo
 		$photo_failure = false;
 
 		if (!Network::isValidHttpUrl($image_url)) {
-			Logger::warning('Invalid image url', ['image_url' => $image_url, 'uid' => $uid, 'cid' => $cid]);
+			DI::logger()->warning('Invalid image url', ['image_url' => $image_url, 'uid' => $uid, 'cid' => $cid]);
 			return false;
 		}
 
 		$filename = basename($image_url);
 		if (!empty($image_url)) {
-			$ret = DI::httpClient()->get($image_url, HttpClientAccept::IMAGE, [HttpClientOptions::REQUEST => HttpClientRequest::MEDIAPROXY]);
-			Logger::debug('Got picture', ['Content-Type' => $ret->getHeader('Content-Type'), 'url' => $image_url]);
+			try {
+				$ret = DI::httpClient()->get($image_url, HttpClientAccept::IMAGE, [HttpClientOptions::REQUEST => HttpClientRequest::MEDIAPROXY]);
+			} catch (\Throwable $th) {
+				DI::logger()->notice('Got exception', ['code' => $th->getCode(), 'message' => $th->getMessage()]);
+				return false;
+			}
+			DI::logger()->debug('Got picture', ['Content-Type' => $ret->getHeader('Content-Type'), 'url' => $image_url]);
 			$img_str = $ret->getBodyString();
-			$type = $ret->getContentType();
+			$type    = $ret->getContentType();
 		} else {
 			$img_str = '';
-			$type = '';
+			$type    = '';
 		}
 
 		if ($quit_on_error && ($img_str == '')) {
@@ -619,28 +610,28 @@ class Photo
 		if ($image->isValid()) {
 			$image->scaleToSquare(300);
 
-			$filesize = strlen($image->asString());
+			$filesize     = strlen($image->asString());
 			$maximagesize = Strings::getBytesFromShorthand(DI::config()->get('system', 'maximagesize'));
 
 			if ($maximagesize && ($filesize > $maximagesize)) {
-				Logger::info('Avatar exceeds image limit', ['uid' => $uid, 'cid' => $cid, 'maximagesize' => $maximagesize, 'size' => $filesize, 'type' => $image->getType()]);
+				DI::logger()->info('Avatar exceeds image limit', ['uid' => $uid, 'cid' => $cid, 'maximagesize' => $maximagesize, 'size' => $filesize, 'type' => $image->getType()]);
 				if ($image->getImageType() == IMAGETYPE_GIF) {
 					$image->toStatic();
 					$image = new Image($image->asString(), image_type_to_mime_type(IMAGETYPE_PNG));
 
 					$filesize = strlen($image->asString());
-					Logger::info('Converted gif to a static png', ['uid' => $uid, 'cid' => $cid, 'size' => $filesize, 'type' => $image->getType()]);
+					DI::logger()->info('Converted gif to a static png', ['uid' => $uid, 'cid' => $cid, 'size' => $filesize, 'type' => $image->getType()]);
 				}
 				if ($filesize > $maximagesize) {
 					foreach ([160, 80] as $pixels) {
 						if ($filesize > $maximagesize) {
-							Logger::info('Resize', ['uid' => $uid, 'cid' => $cid, 'size' => $filesize, 'max' => $maximagesize, 'pixels' => $pixels, 'type' => $image->getType()]);
+							DI::logger()->info('Resize', ['uid' => $uid, 'cid' => $cid, 'size' => $filesize, 'max' => $maximagesize, 'pixels' => $pixels, 'type' => $image->getType()]);
 							$image->scaleDown($pixels);
 							$filesize = strlen($image->asString());
 						}
 					}
 				}
-				Logger::info('Avatar is resized', ['uid' => $uid, 'cid' => $cid, 'size' => $filesize, 'type' => $image->getType()]);
+				DI::logger()->info('Avatar is resized', ['uid' => $uid, 'cid' => $cid, 'size' => $filesize, 'type' => $image->getType()]);
 			}
 
 			$r = self::store($image, $uid, $cid, $resource_id, $filename, self::CONTACT_PHOTOS, 4, self::CONTACT_AVATAR);
@@ -668,8 +659,8 @@ class Photo
 			$suffix = '?ts=' . time();
 
 			$image_url = DI::baseUrl() . '/photo/' . $resource_id . '-4' . $image->getExt() . $suffix;
-			$thumb = DI::baseUrl() . '/photo/' . $resource_id . '-5' . $image->getExt() . $suffix;
-			$micro = DI::baseUrl() . '/photo/' . $resource_id . '-6' . $image->getExt() . $suffix;
+			$thumb     = DI::baseUrl() . '/photo/' . $resource_id . '-5' . $image->getExt() . $suffix;
+			$micro     = DI::baseUrl() . '/photo/' . $resource_id . '-6' . $image->getExt() . $suffix;
 		} else {
 			$photo_failure = true;
 		}
@@ -679,10 +670,10 @@ class Photo
 		}
 
 		if ($photo_failure) {
-			$contact = Contact::getById($cid) ?: [];
+			$contact   = Contact::getById($cid) ?: [];
 			$image_url = Contact::getDefaultAvatar($contact, Proxy::SIZE_SMALL);
-			$thumb = Contact::getDefaultAvatar($contact, Proxy::SIZE_THUMB);
-			$micro = Contact::getDefaultAvatar($contact, Proxy::SIZE_MICRO);
+			$thumb     = Contact::getDefaultAvatar($contact, Proxy::SIZE_THUMB);
+			$micro     = Contact::getDefaultAvatar($contact, Proxy::SIZE_MICRO);
 		}
 
 		$photo = DBA::selectFirst(
@@ -751,7 +742,7 @@ class Photo
 		$avatar_type = (DI::userSession()->getLocalUserId() && (DI::userSession()->getLocalUserId() == $uid)) ? self::USER_AVATAR : self::DEFAULT;
 		$banner_type = (DI::userSession()->getLocalUserId() && (DI::userSession()->getLocalUserId() == $uid)) ? self::USER_BANNER : self::DEFAULT;
 
-		$key = 'photo_albums:' . $uid . ':' . DI::userSession()->getLocalUserId() . ':' . DI::userSession()->getRemoteUserId();
+		$key    = 'photo_albums:' . $uid . ':' . DI::userSession()->getLocalUserId() . ':' . DI::userSession()->getRemoteUserId();
 		$albums = DI::cache()->get($key);
 
 		if (is_null($albums) || $update) {
@@ -871,15 +862,15 @@ class Photo
 			$srch = '<' . intval($original_contact_id) . '>';
 
 			$condition = [
-				'allow_cid' => $srch, 'allow_gid' => '', 'deny_cid' => '', 'deny_gid' => '',
+				'allow_cid'   => $srch, 'allow_gid' => '', 'deny_cid' => '', 'deny_gid' => '',
 				'resource-id' => $image_rid, 'uid' => $uid
 			];
 			if (!self::exists($condition)) {
 				$photo = self::selectFirst(['allow_cid', 'allow_gid', 'deny_cid', 'deny_gid', 'uid'], ['resource-id' => $image_rid]);
 				if (!DBA::isResult($photo)) {
-					Logger::info('Image not found', ['resource-id' => $image_rid]);
+					DI::logger()->info('Image not found', ['resource-id' => $image_rid]);
 				} else {
-					Logger::info('Mismatching permissions', ['condition' => $condition, 'photo' => $photo]);
+					DI::logger()->info('Mismatching permissions', ['condition' => $condition, 'photo' => $photo]);
 				}
 				continue;
 			}
@@ -912,13 +903,13 @@ class Photo
 	public static function setPermissionForResource(string $image_rid, int $uid, string $str_contact_allow, string $str_circle_allow, string $str_contact_deny, string $str_circle_deny)
 	{
 		$fields = [
-			'allow_cid' => $str_contact_allow, 'allow_gid' => $str_circle_allow,
-			'deny_cid' => $str_contact_deny, 'deny_gid' => $str_circle_deny,
+			'allow_cid'  => $str_contact_allow, 'allow_gid' => $str_circle_allow,
+			'deny_cid'   => $str_contact_deny, 'deny_gid' => $str_circle_deny,
 			'accessible' => DI::pConfig()->get($uid, 'system', 'accessible-photos', false)
 		];
 
 		$condition = ['resource-id' => $image_rid, 'uid' => $uid];
-		Logger::info('Set permissions', ['condition' => $condition, 'permissions' => $fields]);
+		DI::logger()->info('Set permissions', ['condition' => $condition, 'permissions' => $fields]);
 		self::update($fields, $condition);
 	}
 
@@ -1018,11 +1009,11 @@ class Photo
 			// Scale down to multiples of 640 until the maximum size isn't exceeded anymore
 			foreach ([5120, 2560, 1280, 640, 320] as $pixels) {
 				if (($filesize > $maximagesize) && (max($width, $height) > $pixels)) {
-					Logger::info('Resize', ['size' => $filesize, 'width' => $width, 'height' => $height, 'max' => $maximagesize, 'pixels' => $pixels]);
+					DI::logger()->info('Resize', ['size' => $filesize, 'width' => $width, 'height' => $height, 'max' => $maximagesize, 'pixels' => $pixels]);
 					$image->scaleDown($pixels);
 					$filesize = strlen($image->asString());
-					$width = $image->getWidth();
-					$height = $image->getHeight();
+					$width    = $image->getWidth();
+					$height   = $image->getHeight();
 				}
 			}
 		}
@@ -1041,7 +1032,7 @@ class Photo
 		$max_length = DI::config()->get('system', 'max_image_length');
 		if ($max_length > 0) {
 			$image->scaleDown($max_length);
-			Logger::info('File upload: Scaling picture to new size', ['max-length' => $max_length]);
+			DI::logger()->info('File upload: Scaling picture to new size', ['max-length' => $max_length]);
 		}
 
 		return self::resizeToFileSize($image, Strings::getBytesFromShorthand(DI::config()->get('system', 'maximagesize')));
@@ -1057,17 +1048,22 @@ class Photo
 	{
 		$filename = basename($image_url);
 		if (!empty($image_url)) {
-			$ret = DI::httpClient()->get($image_url, HttpClientAccept::IMAGE, [HttpClientOptions::REQUEST => HttpClientRequest::MEDIAPROXY]);
-			Logger::debug('Got picture', ['Content-Type' => $ret->getHeader('Content-Type'), 'url' => $image_url]);
+			try {
+				$ret = DI::httpClient()->get($image_url, HttpClientAccept::IMAGE, [HttpClientOptions::REQUEST => HttpClientRequest::MEDIAPROXY]);
+			} catch (\Throwable $th) {
+				DI::logger()->notice('Got exception', ['code' => $th->getCode(), 'message' => $th->getMessage()]);
+				return [];
+			}
+			DI::logger()->debug('Got picture', ['Content-Type' => $ret->getHeader('Content-Type'), 'url' => $image_url]);
 			$img_str = $ret->getBodyString();
-			$type = $ret->getContentType();
+			$type    = $ret->getContentType();
 		} else {
 			$img_str = '';
-			$type = '';
+			$type    = '';
 		}
 
 		if (empty($img_str)) {
-			Logger::notice('Empty content');
+			DI::logger()->notice('Empty content');
 			return [];
 		}
 
@@ -1089,10 +1085,10 @@ class Photo
 	 */
 	private static function uploadImage(array $files): array
 	{
-		Logger::info('starting new upload');
+		DI::logger()->info('starting new upload');
 
 		if (empty($files)) {
-			Logger::notice('Empty upload file');
+			DI::logger()->notice('Empty upload file');
 			return [];
 		}
 
@@ -1137,16 +1133,16 @@ class Photo
 		}
 
 		if (empty($src)) {
-			Logger::notice('No source file name', ['files' => $files]);
+			DI::logger()->notice('No source file name', ['files' => $files]);
 			return [];
 		}
 
-		Logger::info('File upload', ['src' => $src, 'filename' => $filename, 'size' => $filesize, 'type' => $filetype]);
+		DI::logger()->info('File upload', ['src' => $src, 'filename' => $filename, 'size' => $filesize, 'type' => $filetype]);
 
 		$imagedata = @file_get_contents($src);
-		$image = new Image($imagedata, $filetype, $filename);
+		$image     = new Image($imagedata, $filetype, $filename);
 		if (!$image->isValid()) {
-			Logger::notice('Image is unvalid', ['files' => $files]);
+			DI::logger()->notice('Image is unvalid', ['files' => $files]);
 			return [];
 		}
 
@@ -1180,13 +1176,13 @@ class Photo
 	{
 		$user = User::getOwnerDataById($uid);
 		if (empty($user)) {
-			Logger::notice('User not found', ['uid' => $uid]);
+			DI::logger()->notice('User not found', ['uid' => $uid]);
 			return [];
 		}
 
 		$data = self::uploadImage($files);
 		if (empty($data)) {
-			Logger::info('upload failed');
+			DI::logger()->info('upload failed');
 			return [];
 		}
 
@@ -1204,14 +1200,14 @@ class Photo
 
 		$preview = self::storeWithPreview($image, $user['uid'], $resource_id, $filename, $filesize, $album, $desc, $allow_cid, $allow_gid, $deny_cid, $deny_gid);
 		if ($preview < 0) {
-			Logger::warning('Photo could not be stored', ['uid' => $user['uid'], 'resource_id' => $resource_id, 'filename' => $filename, 'album' => $album]);
+			DI::logger()->warning('Photo could not be stored', ['uid' => $user['uid'], 'resource_id' => $resource_id, 'filename' => $filename, 'album' => $album]);
 			return [];
 		}
 
 		$condition = ['resource-id' => $resource_id];
-		$photo = self::selectFirst(['id', 'datasize', 'width', 'height', 'type'], $condition, ['order' => ['width' => true]]);
+		$photo     = self::selectFirst(['id', 'datasize', 'width', 'height', 'type'], $condition, ['order' => ['width' => true]]);
 		if (empty($photo)) {
-			Logger::notice('Photo not found', ['condition' => $condition]);
+			DI::logger()->notice('Photo not found', ['condition' => $condition]);
 			return [];
 		}
 
@@ -1227,7 +1223,7 @@ class Photo
 		$picture['picture']     = DI::baseUrl() . '/photo/' . $resource_id . '-0.' . $image->getExt();
 		$picture['preview']     = DI::baseUrl() . '/photo/' . $resource_id . '-' . $preview . '.' . $image->getExt();
 
-		Logger::info('upload done', ['picture' => $picture]);
+		DI::logger()->info('upload done', ['picture' => $picture]);
 		return $picture;
 	}
 
@@ -1259,7 +1255,7 @@ class Photo
 
 		$result = self::store($image, $uid, 0, $resource_id, $filename, $album, 0, self::DEFAULT, $allow_cid, $allow_gid, $deny_cid, $deny_gid, $description);
 		if (!$result) {
-			Logger::warning('Photo could not be stored', ['uid' => $uid, 'resource_id' => $resource_id, 'filename' => $filename, 'album' => $album]);
+			DI::logger()->warning('Photo could not be stored', ['uid' => $uid, 'resource_id' => $resource_id, 'filename' => $filename, 'album' => $album]);
 			return -1;
 		}
 
@@ -1294,17 +1290,17 @@ class Photo
 		if (!empty($files)) {
 			$data = self::uploadImage($files);
 			if (empty($data)) {
-				Logger::info('upload failed');
+				DI::logger()->info('upload failed');
 				return '';
 			}
 		} elseif (!empty($url)) {
 			$data = self::loadImageFromURL($url);
 			if (empty($data)) {
-				Logger::info('loading from external url failed');
+				DI::logger()->info('loading from external url failed');
 				return '';
 			}
 		} else {
-			Logger::info('Neither files nor url provided');
+			DI::logger()->info('Neither files nor url provided');
 			return '';
 		}
 
@@ -1317,7 +1313,7 @@ class Photo
 		$album       = DI::l10n()->t(self::PROFILE_PHOTOS);
 
 		// upload profile image (scales 4, 5, 6)
-		logger::info('starting new profile image upload');
+		DI::logger()->info('starting new profile image upload');
 
 		if ($width > 300 || $height > 300) {
 			$image->scaleDown(300);
@@ -1325,7 +1321,7 @@ class Photo
 
 		$r = self::store($image, $uid, 0, $resource_id, $filename, $album, 4, self::USER_AVATAR);
 		if (!$r) {
-			logger::warning('profile image upload with scale 4 (300) failed', ['uid' => $uid, 'resource_id' => $resource_id, 'filename' => $filename, 'album' => $album]);
+			DI::logger()->warning('profile image upload with scale 4 (300) failed', ['uid' => $uid, 'resource_id' => $resource_id, 'filename' => $filename, 'album' => $album]);
 		}
 
 		if ($width > 80 || $height > 80) {
@@ -1334,7 +1330,7 @@ class Photo
 
 		$r = self::store($image, $uid, 0, $resource_id, $filename, $album, 5, self::USER_AVATAR);
 		if (!$r) {
-			logger::warning('profile image upload with scale 5 (80) failed', ['uid' => $uid, 'resource_id' => $resource_id, 'filename' => $filename, 'album' => $album]);
+			DI::logger()->warning('profile image upload with scale 5 (80) failed', ['uid' => $uid, 'resource_id' => $resource_id, 'filename' => $filename, 'album' => $album]);
 		}
 
 		if ($width > 48 || $height > 48) {
@@ -1343,10 +1339,10 @@ class Photo
 
 		$r = self::store($image, $uid, 0, $resource_id, $filename, $album, 6, self::USER_AVATAR);
 		if (!$r) {
-			logger::warning('profile image upload with scale 6 (48) failed', ['uid' => $uid, 'resource_id' => $resource_id, 'filename' => $filename, 'album' => $album]);
+			DI::logger()->warning('profile image upload with scale 6 (48) failed', ['uid' => $uid, 'resource_id' => $resource_id, 'filename' => $filename, 'album' => $album]);
 		}
 
-		logger::info('new profile image upload ended');
+		DI::logger()->info('new profile image upload ended');
 
 		$condition = ["`profile` AND `resource-id` != ? AND `uid` = ?", $resource_id, $uid];
 		self::update(['profile' => false, 'photo-type' => self::DEFAULT], $condition);
@@ -1372,17 +1368,17 @@ class Photo
 		if (!empty($files)) {
 			$data = self::uploadImage($files);
 			if (empty($data)) {
-				Logger::info('upload failed');
+				DI::logger()->info('upload failed');
 				return '';
 			}
 		} elseif (!empty($url)) {
 			$data = self::loadImageFromURL($url);
 			if (empty($data)) {
-				Logger::info('loading from external url failed');
+				DI::logger()->info('loading from external url failed');
 				return '';
 			}
 		} else {
-			Logger::info('Neither files nor url provided');
+			DI::logger()->info('Neither files nor url provided');
 			return '';
 		}
 
@@ -1400,10 +1396,10 @@ class Photo
 
 		$r = self::store($image, $uid, 0, $resource_id, $filename, $album, 3, self::USER_BANNER);
 		if (!$r) {
-			logger::warning('profile banner upload with scale 3 (960) failed');
+			DI::logger()->warning('profile banner upload with scale 3 (960) failed');
 		}
 
-		logger::info('new profile banner upload ended', ['uid' => $uid, 'resource_id' => $resource_id, 'filename' => $filename]);
+		DI::logger()->info('new profile banner upload ended', ['uid' => $uid, 'resource_id' => $resource_id, 'filename' => $filename]);
 
 		$condition = ["`photo-type` = ? AND `resource-id` != ? AND `uid` = ?", self::USER_BANNER, $resource_id, $uid];
 		self::update(['photo-type' => self::DEFAULT], $condition);

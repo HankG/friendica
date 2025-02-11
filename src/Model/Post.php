@@ -1,28 +1,13 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Model;
 
 use BadMethodCallException;
-use Friendica\Core\Logger;
 use Friendica\Database\Database;
 use Friendica\Database\DBA;
 use Friendica\DI;
@@ -33,8 +18,6 @@ class Post
 	/**
 	 * Insert a new post entry
 	 *
-	 * @param integer $uri_id
-	 * @param array   $fields
 	 * @return bool   Success of the insert process
 	 * @throws \Exception
 	 */
@@ -198,10 +181,6 @@ class Post
 	/**
 	 * Retrieve a single record from the post-user-view view and returns it in an associative array
 	 *
-	 * @param array $fields
-	 * @param array $condition
-	 * @param array $params
-	 * @param bool  $user_mode true = post-user-view, false = post-view
 	 * @return bool|array
 	 * @throws \Exception
 	 * @see   DBA::select
@@ -226,10 +205,6 @@ class Post
 	 * When the requested record is a reshare activity, the system fetches the reshared original post.
 	 * Otherwise the function reacts similar to selectFirst
 	 *
-	 * @param array $fields
-	 * @param array $condition
-	 * @param array $params
-	 * @param bool  $user_mode true = post-user-view, false = post-view
 	 * @return bool|array
 	 * @throws \Exception
 	 * @see   DBA::select
@@ -237,7 +212,7 @@ class Post
 	public static function selectOriginal(array $fields = [], array $condition = [], array $params = [])
 	{
 		$original_fields = $fields;
-		$remove = [];
+		$remove          = [];
 		if (!empty($fields)) {
 			foreach (['gravity', 'verb', 'thr-parent-id', 'uid'] as $field) {
 				if (!in_array($field, $fields)) {
@@ -314,7 +289,7 @@ class Post
 	/**
 	 * Select rows from the post-user-view view and returns them as an array
 	 *
-	 * @param array $selected  Array of selected fields, empty for all
+	 * @param array $fields    Array of selected fields, empty for all
 	 * @param array $condition Array of fields for condition
 	 * @param array $params    Array of several parameters
 	 *
@@ -472,16 +447,18 @@ class Post
 			$selected = Item::DISPLAY_FIELDLIST;
 		}
 
-		$condition = DBA::mergeConditions($condition,
+		$condition = DBA::mergeConditions(
+			$condition,
 			["`visible` AND NOT `deleted`
 			AND NOT `author-blocked` AND NOT `owner-blocked`
 			AND (NOT `causer-blocked` OR `causer-id` = ? OR `causer-id` IS NULL) AND NOT `contact-blocked`
 			AND ((NOT `contact-readonly` AND NOT `contact-pending` AND (`contact-rel` IN (?, ?)))
 				OR `self` OR `contact-uid` = ?)
 			AND NOT EXISTS(SELECT `uri-id` FROM `post-user`    WHERE `uid` = ? AND `uri-id` = " . DBA::quoteIdentifier($view) . ".`uri-id` AND `hidden`)
-			AND NOT EXISTS(SELECT `cid`    FROM `user-contact` WHERE `uid` = ? AND `cid` IN (`author-id`, `owner-id`) AND (`blocked` OR `ignored`))
+			AND NOT EXISTS(SELECT `cid`    FROM `user-contact` WHERE `uid` = ? AND `cid` IN (`author-id`, `owner-id`) AND (`blocked` OR `ignored` OR `is-blocked`))
 			AND NOT EXISTS(SELECT `gsid`   FROM `user-gserver` WHERE `uid` = ? AND `gsid` IN (`author-gsid`, `owner-gsid`, `causer-gsid`) AND `ignored`)",
-				0, Contact::SHARING, Contact::FRIEND, 0, $uid, $uid, $uid]);
+				0, Contact::SHARING, Contact::FRIEND, 0, $uid, $uid, $uid]
+		);
 
 		$select_string = implode(', ', array_map([DBA::class, 'quoteIdentifier'], $selected));
 
@@ -606,7 +583,7 @@ class Post
 	public static function selectOriginalForUser(int $uid, array $selected = [], array $condition = [], array $params = [])
 	{
 		$original_selected = $selected;
-		$remove = [];
+		$remove            = [];
 		if (!empty($selected)) {
 			foreach (['gravity', 'verb', 'thr-parent-id'] as $field) {
 				if (!in_array($field, $selected)) {
@@ -645,7 +622,7 @@ class Post
 	{
 		$affected = 0;
 
-		Logger::info('Start Update', ['fields' => $fields, 'condition' => $condition, 'uid' => DI::userSession()->getLocalUserId()]);
+		DI::logger()->info('Start Update', ['fields' => $fields, 'condition' => $condition, 'uid' => DI::userSession()->getLocalUserId()]);
 
 		// Don't allow changes to fields that are responsible for the relation between the records
 		unset($fields['id']);
@@ -671,7 +648,7 @@ class Post
 				$puids = array_column($rows, 'post-user-id');
 				if (!DBA::update('post-user', $update_fields, ['id' => $puids])) {
 					DBA::rollback();
-					Logger::warning('Updating post-user failed', ['fields' => $update_fields, 'condition' => $condition]);
+					DI::logger()->warning('Updating post-user failed', ['fields' => $update_fields, 'condition' => $condition]);
 					return false;
 				}
 				$affected_count += DBA::affectedRows();
@@ -688,7 +665,7 @@ class Post
 				$uriids = array_column($rows, 'uri-id');
 				if (!DBA::update('post-content', $update_fields, ['uri-id' => $uriids])) {
 					DBA::rollback();
-					Logger::warning('Updating post-content failed', ['fields' => $update_fields, 'condition' => $condition]);
+					DI::logger()->warning('Updating post-content failed', ['fields' => $update_fields, 'condition' => $condition]);
 					return false;
 				}
 				$affected_count += DBA::affectedRows();
@@ -711,7 +688,7 @@ class Post
 
 				if (!DBA::update('post', $update_fields, ['uri-id' => $uriids])) {
 					DBA::rollback();
-					Logger::warning('Updating post failed', ['fields' => $update_fields, 'condition' => $condition]);
+					DI::logger()->warning('Updating post failed', ['fields' => $update_fields, 'condition' => $condition]);
 					return false;
 				}
 				$affected_count += DBA::affectedRows();
@@ -728,7 +705,7 @@ class Post
 				$uriids = array_column($rows, 'uri-id');
 				if (!DBA::update('post-delivery-data', $update_fields, ['uri-id' => $uriids])) {
 					DBA::rollback();
-					Logger::warning('Updating post-delivery-data failed', ['fields' => $update_fields, 'condition' => $condition]);
+					DI::logger()->warning('Updating post-delivery-data failed', ['fields' => $update_fields, 'condition' => $condition]);
 					return false;
 				}
 				$affected_count += DBA::affectedRows();
@@ -745,7 +722,7 @@ class Post
 				$uriids = array_column($rows, 'uri-id');
 				if (!DBA::update('post-thread', $update_fields, ['uri-id' => $uriids])) {
 					DBA::rollback();
-					Logger::warning('Updating post-thread failed', ['fields' => $update_fields, 'condition' => $condition]);
+					DI::logger()->warning('Updating post-thread failed', ['fields' => $update_fields, 'condition' => $condition]);
 					return false;
 				}
 				$affected_count += DBA::affectedRows();
@@ -762,7 +739,7 @@ class Post
 				$thread_puids = array_column($rows, 'post-user-id');
 				if (!DBA::update('post-thread-user', $update_fields, ['post-user-id' => $thread_puids])) {
 					DBA::rollback();
-					Logger::warning('Updating post-thread-user failed', ['fields' => $update_fields, 'condition' => $condition]);
+					DI::logger()->warning('Updating post-thread-user failed', ['fields' => $update_fields, 'condition' => $condition]);
 					return false;
 				}
 				$affected_count += DBA::affectedRows();
@@ -773,7 +750,7 @@ class Post
 
 		DBA::commit();
 
-		Logger::info('Updated posts', ['rows' => $affected]);
+		DI::logger()->info('Updated posts', ['rows' => $affected]);
 		return $affected;
 	}
 
@@ -781,15 +758,12 @@ class Post
 	 * Delete a row from the post table
 	 *
 	 * @param array        $conditions Field condition(s)
-	 * @param array        $options
-	 *                           - cascade: If true we delete records in other tables that depend on the one we're deleting through
-	 *                           relations (default: true)
 	 *
 	 * @return boolean was the delete successful?
 	 * @throws \Exception
 	 */
-	public static function delete(array $conditions, array $options = []): bool
+	public static function delete(array $conditions): bool
 	{
-		return DBA::delete('post', $conditions, $options);
+		return DBA::delete('post', $conditions);
 	}
 }

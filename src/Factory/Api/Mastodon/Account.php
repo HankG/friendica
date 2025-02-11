@@ -1,31 +1,19 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Factory\Api\Mastodon;
 
 use Friendica\App\BaseURL;
 use Friendica\BaseFactory;
 use Friendica\Collection\Api\Mastodon\Fields;
+use Friendica\Content\Widget;
 use Friendica\Database\DBA;
 use Friendica\Model\Contact;
+use Friendica\Model\User;
 use Friendica\Network\HTTPException;
 use Friendica\Profile\ProfileField\Repository\ProfileField as ProfileFieldRepository;
 use ImagickException;
@@ -89,10 +77,15 @@ class Account extends BaseFactory
 		$fields = new Fields();
 
 		if (Contact::isLocal($account['url'])) {
-			$self_contact = Contact::selectFirst(['uid'], ['nurl' => $account['nurl'], 'self' => true]);
-			if (!empty($self_contact['uid'])) {
-				$profileFields = $this->profileFieldRepo->selectPublicFieldsByUserId($self_contact['uid']);
+			$profile_uid = User::getIdForContactId($account['id']);
+			if ($profile_uid) {
+				$profileFields = $this->profileFieldRepo->selectPublicFieldsByUserId($profile_uid);
 				$fields        = $this->mstdnFieldFactory->createFromProfileFields($profileFields);
+
+				if ($profile_uid == $uid) {
+					$account['ap-followers_count'] = $this->getContactRelationCountForUid($uid, [Contact::FOLLOWER, Contact::FRIEND]);
+					$account['ap-following_count'] = $this->getContactRelationCountForUid($uid, [Contact::SHARING, Contact::FRIEND]);
+				}
 			}
 		}
 
@@ -111,5 +104,21 @@ class Account extends BaseFactory
 		$fields        = $this->mstdnFieldFactory->createFromProfileFields($profileFields);
 
 		return new \Friendica\Object\Api\Mastodon\Account($this->baseUrl, $account, $fields);
+	}
+
+	private function getContactRelationCountForUid(int $uid, array $rel): int
+	{
+		$condition = [
+			'uid' => $uid,
+			'rel' => $rel,
+			'self' => false,
+			'deleted' => false,
+			'archive' => false,
+			'pending' => false,
+			'blocked' => false,
+			'network' => Widget::availableNetworks(),
+		];
+
+		return DBA::count('contact', $condition);
 	}
 }

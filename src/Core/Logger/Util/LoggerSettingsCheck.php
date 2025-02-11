@@ -1,23 +1,9 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Core\Logger\Util;
 
@@ -31,7 +17,7 @@ class LoggerSettingsCheck implements ICheckLoggerSettings
 {
 	/** @var IManageConfigValues */
 	protected $config;
-	/** @var $fileSystem */
+	/** @var FileSystem */
 	protected $fileSystem;
 	/** @var L10n */
 	protected $l10n;
@@ -52,10 +38,8 @@ class LoggerSettingsCheck implements ICheckLoggerSettings
 
 			try {
 				$stream = $this->fileSystem->createStream($file);
-
-				if (!isset($stream)) {
-					throw new LoggerUnusableException('Stream is null.');
-				}
+			} catch (LoggerUnusableException $exception) {
+				throw new LoggerUnusableException('Stream is null.', $exception);
 			} catch (\Throwable $exception) {
 				return $this->l10n->t('The logfile \'%s\' is not usable. No logging possible (error: \'%s\')', $file, $exception->getMessage());
 			}
@@ -71,16 +55,14 @@ class LoggerSettingsCheck implements ICheckLoggerSettings
 		if ($this->config->get('system', 'debugging')) {
 			$file = $this->config->get('system', 'dlogfile');
 
-			if (empty($file)) {
+			if ($file === null || $file === '') {
 				return null;
 			}
 
 			try {
 				$stream = $this->fileSystem->createStream($file);
-
-				if (!isset($stream)) {
-					throw new LoggerUnusableException('Stream is null.');
-				}
+			} catch (LoggerUnusableException $exception) {
+				throw new LoggerUnusableException('Stream is null.', $exception);
 			} catch (\Throwable $exception) {
 				return $this->l10n->t('The debug logfile \'%s\' is not usable. No logging possible (error: \'%s\')', $file, $exception->getMessage());
 			}

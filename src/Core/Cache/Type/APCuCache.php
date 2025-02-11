@@ -1,23 +1,9 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Core\Cache\Type;
 
@@ -55,11 +41,7 @@ class APCuCache extends AbstractCache implements ICanCacheInMemory
 		$ns = $this->getCacheKey($prefix ?? '');
 		$ns = preg_quote($ns, '/');
 
-		if (class_exists('\APCIterator')) {
-			$iterator = new \APCIterator('user', '/^' . $ns. '/', APC_ITER_KEY);
-		} else {
-			$iterator = new \APCUIterator('/^' . $ns . '/', APC_ITER_KEY);
-		}
+		$iterator = new \APCUIterator('/^' . $ns . '/', APC_ITER_KEY);
 
 		$keys = [];
 		foreach ($iterator as $item) {
@@ -136,11 +118,7 @@ class APCuCache extends AbstractCache implements ICanCacheInMemory
 			$prefix = $this->getPrefix();
 			$prefix = preg_quote($prefix, '/');
 
-			if (class_exists('\APCIterator')) {
-				$iterator = new \APCIterator('user', '/^' . $prefix . '/', APC_ITER_KEY);
-			} else {
-				$iterator = new \APCUIterator('/^' . $prefix . '/', APC_ITER_KEY);
-			}
+			$iterator = new \APCUIterator('/^' . $prefix . '/', APC_ITER_KEY);
 
 			return apcu_delete($iterator);
 		}
@@ -163,10 +141,7 @@ class APCuCache extends AbstractCache implements ICanCacheInMemory
 			return false;
 		} elseif (!ini_get('apc.enabled') && !ini_get('apc.enable_cli')) {
 			return false;
-		} elseif (
-			version_compare(phpversion('apc') ?: '0.0.0', '4.0.6') === -1 &&
-			version_compare(phpversion('apcu') ?: '0.0.0', '5.1.0') === -1
-		) {
+		} elseif (version_compare(phpversion('apcu') ?: '0.0.0', '5.1.0', '<')) {
 			return false;
 		}
 

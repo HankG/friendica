@@ -1,23 +1,9 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Object\Api\Mastodon;
 
@@ -38,40 +24,24 @@ use Friendica\Object\Api\Mastodon\InstanceV2\Configuration;
  */
 class Instance extends BaseDataTransferObject
 {
-	/** @var string (URL) */
-	protected $uri;
-	/** @var string */
-	protected $title;
-	/** @var string */
-	protected $short_description;
-	/** @var string */
-	protected $description;
-	/** @var string */
-	protected $email;
-	/** @var string */
-	protected $version;
-	/** @var array */
-	protected $urls;
-	/** @var Stats */
-	protected $stats;
-	/** @var string|null This is meant as a server banner, default Mastodon "thumbnail" is 1600×620px */
-	protected $thumbnail = null;
-	/** @var array */
-	protected $languages;
-	/** @var int */
-	protected $max_toot_chars;
-	/** @var bool */
-	protected $registrations;
-	/** @var bool */
-	protected $approval_required;
-	/** @var bool */
-	protected $invites_enabled;
-	/** @var Configuration  */
-	protected $configuration;
-	/** @var Account|null */
-	protected $contact_account = null;
-	/** @var array */
-	protected $rules = [];
+	protected string $uri;
+	protected string $title;
+	protected string $short_description;
+	protected string $description;
+	protected string $email;
+	protected string $version;
+	protected array $urls;
+	protected Stats $stats;
+	/** This is meant as a server banner, default Mastodon "thumbnail" is 1600×620px */
+	protected ?string $thumbnail = null;
+	protected array $languages;
+	protected int $max_toot_chars;
+	protected bool $registrations;
+	protected bool $approval_required;
+	protected bool $invites_enabled;
+	protected Configuration $configuration;
+	protected ?Account $contact_account = null;
+	protected array $rules              = [];
 
 	public function __construct(IManageConfigValues $config, BaseURL $baseUrl, Database $database, Configuration $configuration, ?Account $contact_account, array $rules)
 	{
@@ -91,7 +61,7 @@ class Instance extends BaseDataTransferObject
 		$this->approval_required = ($register_policy === Register::APPROVE);
 		$this->invites_enabled   = false;
 		$this->configuration     = $configuration;
-		$this->contact_account   = $contact_account ?? [];
+		$this->contact_account   = $contact_account;
 		$this->rules             = $rules;
 	}
 }

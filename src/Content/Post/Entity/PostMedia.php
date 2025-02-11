@@ -1,23 +1,9 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Content\Post\Entity;
 
@@ -65,6 +51,7 @@ class PostMedia extends BaseEntity
 	const TYPE_PLAIN       = 19;
 	const TYPE_ACTIVITY    = 20;
 	const TYPE_ACCOUNT     = 21;
+	const TYPE_HLS         = 22;
 	const TYPE_DOCUMENT    = 128;
 
 	/** @var int */
@@ -177,17 +164,17 @@ class PostMedia extends BaseEntity
 	/**
 	 * Get preview path for given media id relative to the base URL
 	 *
-	 * @param string  $size     One of the Proxy::SIZE_* constants
-	 * @param bool     $vlurred If "true", the preview will be blurred
+	 * @param string  $size  One of the Proxy::SIZE_* constants
+	 * @param bool    $blur  If "true", the preview will be blurred
 	 * @return string preview link
 	 */
-	public function getPreviewPath(string $size = '', bool $blurred = false): string
+	public function getPreviewPath(string $size = '', bool $blur = false): string
 	{
 		$path = '/photo/preview/' .
 			(Proxy::getPixelsFromSize($size) ? Proxy::getPixelsFromSize($size) . '/' : '') .
 			$this->id;
 
-		if ($blurred) {
+		if ($blur) {
 			$path .= '?' . http_build_query(['blur' => true]);
 		}
 		return $path;
@@ -241,7 +228,7 @@ class PostMedia extends BaseEntity
 			$newHeight = $dimensionts['height'];
 		}
 
-		return new static(
+		return new self(
 			$this->uriId,
 			$this->url,
 			$this->type,
@@ -268,7 +255,7 @@ class PostMedia extends BaseEntity
 
 	public function withUrl(\GuzzleHttp\Psr7\Uri $url): self
 	{
-		return new static(
+		return new self(
 			$this->uriId,
 			$url,
 			$this->type,

@@ -1,27 +1,15 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Database;
 
 use Friendica\Core\Config\Capability\IManageConfigValues;
+use Friendica\Core\Lock\Capability\ICanLock;
+use Friendica\Core\Lock\Exception\LockPersistenceException;
 use Friendica\Core\System;
 use Friendica\Database\Definition\DbaDefinition;
 use Friendica\Database\Definition\ViewDefinition;
@@ -50,6 +38,8 @@ class Database
 	const INSERT_UPDATE  = 1;
 	const INSERT_IGNORE  = 2;
 
+	const LOCK_OPTIMIZE = 'database::optimize_tables';
+
 	protected $connected = false;
 
 	/**
@@ -64,6 +54,11 @@ class Database
 	 * @var LoggerInterface
 	 */
 	protected $logger = null;
+	/**
+	 * @var ICanLock
+	 */
+	protected $syslock = null;
+
 	protected $server_info = '';
 	/** @var PDO|mysqli */
 	protected $connection;
@@ -106,11 +101,12 @@ class Database
 	 *
 	 * @todo Make this method obsolete - use a clean pattern instead ...
 	 */
-	public function setDependency(IManageConfigValues $config, Profiler $profiler, LoggerInterface $logger)
+	public function setDependency(IManageConfigValues $config, Profiler $profiler, LoggerInterface $logger, ICanLock $lock)
 	{
 		$this->logger   = $logger;
 		$this->profiler = $profiler;
 		$this->config   = $config;
+		$this->syslock  = $lock;
 	}
 
 	/**
@@ -538,6 +534,8 @@ class Database
 			throw new ServiceUnavailableException('The Connection is empty, although connected is set true.');
 		}
 
+		$retval = false;
+
 		switch ($this->driver) {
 			case self::PDO:
 				// If there are no arguments we use "query"
@@ -554,8 +552,10 @@ class Database
 					break;
 				}
 
-				/** @var $stmt mysqli_stmt|PDOStatement */
-				if (!$stmt = $this->connection->prepare($sql)) {
+				/** @var mysqli_stmt|PDOStatement $stmt */
+				$stmt = $this->connection->prepare($sql);
+
+				if (!$stmt) {
 					$errorInfo     = $this->connection->errorInfo();
 					$this->error   = (string)$errorInfo[2];
 					$this->errorno = (int)$errorInfo[1];
@@ -891,7 +891,7 @@ class Database
 	/**
 	 * Returns the number of columns of a statement
 	 *
-	 * @param object Statement object
+	 * @param object $stmt Statement object
 	 *
 	 * @return int Number of columns
 	 */
@@ -912,7 +912,7 @@ class Database
 	/**
 	 * Returns the number of rows of a statement
 	 *
-	 * @param PDOStatement|mysqli_result|mysqli_stmt Statement object
+	 * @param PDOStatement|mysqli_result|mysqli_stmt $stmt Statement object
 	 *
 	 * @return int Number of rows
 	 */
@@ -1078,6 +1078,8 @@ class Database
 	 */
 	public function lastInsertId(): int
 	{
+		$id = 0;
+
 		switch ($this->driver) {
 			case self::PDO:
 				$id = $this->connection->lastInsertId();
@@ -1652,7 +1654,7 @@ class Database
 	/**
 	 * Returns the error number of the last query
 	 *
-	 * @return string Error number (0 if no error)
+	 * @return int Error number (0 if no error)
 	 */
 	public function errorNo(): int
 	{
@@ -1685,6 +1687,8 @@ class Database
 			return false;
 		}
 
+		$ret = false;
+
 		switch ($this->driver) {
 			case self::PDO:
 				$ret = $stmt->closeCursor();
@@ -1699,8 +1703,6 @@ class Database
 				} elseif ($stmt instanceof mysqli_result) {
 					$stmt->free();
 					$ret = true;
-				} else {
-					$ret = false;
 				}
 				break;
 		}
@@ -1755,7 +1757,42 @@ class Database
 	 */
 	public function optimizeTable(string $table): bool
 	{
-		return $this->e("OPTIMIZE TABLE " . DBA::buildTableString([$table])) !== false;
+		if ($this->syslock->isLocked(self::LOCK_OPTIMIZE)) {
+			$this->logger->info('Optimization is locked');
+			return false;
+		}
+
+		if (!$this->acquireOptimizeLock()) {
+			return false;
+		}
+
+		$result = $this->e("OPTIMIZE TABLE " . DBA::buildTableString([$table])) !== false;
+
+		$this->releaseOptimizeLock();
+
+		return $result;
+	}
+
+	/**
+	 * Acquire a lock to prevent a table optimization
+	 *
+	 * @return bool
+	 * @throws LockPersistenceException
+	 */
+	public function acquireOptimizeLock(): bool
+	{
+		return $this->syslock->acquire(self::LOCK_OPTIMIZE, 0);
+	}
+
+	/**
+	 * Release the table optimization lock
+	 *
+	 * @return bool
+	 * @throws LockPersistenceException
+	 */
+	public function releaseOptimizeLock(): bool
+	{
+		return $this->syslock->release(self::LOCK_OPTIMIZE);
 	}
 
 	/**

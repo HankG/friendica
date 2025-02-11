@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2013 Tim Schlechter
+//
+// SPDX-License-Identifier: MIT
+
 /*
  * friendica-tagsinput v0.8.0
  * Based on bootstrap-tagsinput v0.8.0

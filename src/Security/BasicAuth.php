@@ -1,34 +1,18 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Security;
 
 use Exception;
 use Friendica\Core\Hook;
-use Friendica\Core\Logger;
 use Friendica\Database\DBA;
 use Friendica\DI;
 use Friendica\Model\User;
 use Friendica\Network\HTTPException\UnauthorizedException;
-use Friendica\Util\DateTimeFormat;
 
 /**
  * Authentication via the basic auth method
@@ -89,9 +73,9 @@ class BasicAuth
 				$source = 'Twidere';
 			}
 
-			Logger::info('Unrecognized user-agent', ['http_user_agent' => $_SERVER['HTTP_USER_AGENT']]);
+			DI::logger()->info('Unrecognized user-agent', ['http_user_agent' => $_SERVER['HTTP_USER_AGENT']]);
 		} else {
-			Logger::info('Empty user-agent');
+			DI::logger()->info('Empty user-agent');
 		}
 
 		if (empty($source)) {
@@ -119,23 +103,22 @@ class BasicAuth
 	 *
 	 * @return integer User ID
 	 */
-	private static function getUserIdByAuth(bool $do_login = true):int
+	private static function getUserIdByAuth(bool $do_login = true): int
 	{
-		$a = DI::app();
 		self::$current_user_id = 0;
 
 		// workaround for HTTP-auth in CGI mode
 		if (!empty($_SERVER['REDIRECT_REMOTE_USER'])) {
 			$userpass = base64_decode(substr($_SERVER["REDIRECT_REMOTE_USER"], 6));
 			if (!empty($userpass) && strpos($userpass, ':')) {
-				list($name, $password) = explode(':', $userpass);
+				list($name, $password)    = explode(':', $userpass);
 				$_SERVER['PHP_AUTH_USER'] = $name;
-				$_SERVER['PHP_AUTH_PW'] = $password;
+				$_SERVER['PHP_AUTH_PW']   = $password;
 			}
 		}
 
 		$user     = $_SERVER['PHP_AUTH_USER'] ?? '';
-		$password = $_SERVER['PHP_AUTH_PW'] ?? '';
+		$password = $_SERVER['PHP_AUTH_PW']   ?? '';
 
 		// allow "user@server" login (but ignore 'server' part)
 		$at = strstr($user, "@", true);
@@ -147,10 +130,10 @@ class BasicAuth
 		$record = null;
 
 		$addon_auth = [
-			'username' => trim($user),
-			'password' => trim($password),
+			'username'      => trim($user),
+			'password'      => trim($password),
 			'authenticated' => 0,
-			'user_record' => null,
+			'user_record'   => null,
 		];
 
 		/*
@@ -165,7 +148,7 @@ class BasicAuth
 		} else {
 			try {
 				$user_id = User::getIdFromPasswordAuthentication(trim($user), trim($password), true);
-				$record = DBA::selectFirst('user', [], ['uid' => $user_id]);
+				$record  = DBA::selectFirst('user', [], ['uid' => $user_id]);
 			} catch (Exception $ex) {
 				$record = [];
 			}
@@ -175,7 +158,7 @@ class BasicAuth
 			if (!$do_login) {
 				return 0;
 			}
-			Logger::debug('Access denied', ['parameters' => $_SERVER]);
+			DI::logger()->debug('Access denied', ['parameters' => $_SERVER]);
 			// Checking for commandline for the tests, we have to avoid to send a header
 			if (DI::config()->get('system', 'basicauth') && (php_sapi_name() !== 'cli')) {
 				header('WWW-Authenticate: Basic realm="Friendica"');
@@ -183,7 +166,7 @@ class BasicAuth
 			throw new UnauthorizedException("This API requires login");
 		}
 
-		DI::auth()->setForUser($a, $record, false, false, false);
+		DI::auth()->setForUser($record, false, false, false);
 
 		Hook::callAll('logged_in', $record);
 

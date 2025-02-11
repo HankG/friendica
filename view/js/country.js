@@ -1,5 +1,10 @@
 //<!--  Docs at: http://www.microcosmotalk.com/tech/scripts/
 // @license magnet:?xt=urn:btih:e95b018ef3580986a04669f1b5879592219e2a7a&dn=public-domain.txt Public Domain
+//
+// SPDX-License-Identifer = CC0-1.0
+//
+// SPDX-FileCopyrightText = Jim Carlock
+//
 // NOTE:
 // This code is placed into the public domain and may be used in any manner desired.
 // 

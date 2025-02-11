@@ -1,28 +1,17 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Security;
 
 use Exception;
-use Friendica\App;
+use Friendica\App\BaseURL;
+use Friendica\App\Mode;
+use Friendica\App\Request;
+use Friendica\AppHelper;
 use Friendica\Core\Config\Capability\IManageConfigValues;
 use Friendica\Core\PConfig\Capability\IManagePersonalConfigValues;
 use Friendica\Core\Hook;
@@ -39,6 +28,7 @@ use LightOpenID;
 use Friendica\Core\L10n;
 use Friendica\Core\Worker;
 use Friendica\Model\Contact;
+use Friendica\Model\User\Cookie;
 use Friendica\Util\Strings;
 use Psr\Log\LoggerInterface;
 
@@ -49,9 +39,9 @@ class Authentication
 {
 	/** @var IManageConfigValues */
 	private $config;
-	/** @var App\Mode */
+	/** @var Mode */
 	private $mode;
-	/** @var App\BaseURL */
+	/** @var BaseURL */
 	private $baseUrl;
 	/** @var L10n */
 	private $l10n;
@@ -59,12 +49,14 @@ class Authentication
 	private $dba;
 	/** @var LoggerInterface */
 	private $logger;
-	/** @var User\Cookie */
+	/** @var Cookie */
 	private $cookie;
 	/** @var IHandleUserSessions */
 	private $session;
 	/** @var IManagePersonalConfigValues */
 	private $pConfig;
+	/** @var AppHelper */
+	private $appHelper;
 	/** @var string */
 	private $remoteAddress;
 
@@ -84,18 +76,29 @@ class Authentication
 	 * Authentication constructor.
 	 *
 	 * @param IManageConfigValues         $config
-	 * @param App\Mode                    $mode
-	 * @param App\BaseURL                 $baseUrl
+	 * @param Mode                        $mode
+	 * @param BaseURL                     $baseUrl
 	 * @param L10n                        $l10n
 	 * @param Database                    $dba
 	 * @param LoggerInterface             $logger
-	 * @param User\Cookie                 $cookie
+	 * @param Cookie                      $cookie
 	 * @param IHandleUserSessions         $session
 	 * @param IManagePersonalConfigValues $pConfig
-	 * @param App\Request                 $request
+	 * @param Request                     $request
 	 */
-	public function __construct(IManageConfigValues $config, App\Mode $mode, App\BaseURL $baseUrl, L10n $l10n, Database $dba, LoggerInterface $logger, User\Cookie $cookie, IHandleUserSessions $session, IManagePersonalConfigValues $pConfig, App\Request $request)
-	{
+	public function __construct(
+		IManageConfigValues $config,
+		Mode $mode,
+		BaseURL $baseUrl,
+		L10n $l10n,
+		Database $dba,
+		LoggerInterface $logger,
+		Cookie $cookie,
+		IHandleUserSessions $session,
+		IManagePersonalConfigValues $pConfig,
+		AppHelper $appHelper,
+		Request $request
+	) {
 		$this->config        = $config;
 		$this->mode          = $mode;
 		$this->baseUrl       = $baseUrl;
@@ -105,18 +108,17 @@ class Authentication
 		$this->cookie        = $cookie;
 		$this->session       = $session;
 		$this->pConfig       = $pConfig;
+		$this->appHelper     = $appHelper;
 		$this->remoteAddress = $request->getRemoteAddress();
 	}
 
 	/**
 	 * Tries to auth the user from the cookie or session
 	 *
-	 * @param App   $a      The Friendica Application context
-	 *
 	 * @throws HttpException\InternalServerErrorException In case of Friendica internal exceptions
 	 * @throws Exception In case of general exceptions (like SQL Grammar)
 	 */
-	public function withSession(App $a)
+	public function withSession()
 	{
 		// When the "Friendica" cookie is set, take the value to authenticate and renew the cookie.
 		if ($this->cookie->get('uid')) {
@@ -147,7 +149,7 @@ class Authentication
 
 				// Do the authentication if not done by now
 				if (!$this->session->isAuthenticated()) {
-					$this->setForUser($a, $user);
+					$this->setForUser($user);
 
 					if ($this->config->get('system', 'paranoia')) {
 						$this->session->set('addr', $this->cookie->get('ip'));
@@ -159,7 +161,7 @@ class Authentication
 		if ($this->session->isVisitor()) {
 			$contact = $this->dba->selectFirst('contact', ['id'], ['id' => $this->session->get('visitor_id')]);
 			if ($this->dba->isResult($contact)) {
-				$a->setContactId($contact['id']);
+				$this->appHelper->setContactId($contact['id']);
 			}
 		}
 
@@ -193,7 +195,7 @@ class Authentication
 				$this->baseUrl->redirect();
 			}
 
-			$this->setForUser($a, $user);
+			$this->setForUser($user);
 		}
 	}
 
@@ -218,6 +220,7 @@ class Authentication
 		// Otherwise it's probably an openid.
 		try {
 			$openid           = new LightOpenID($this->baseUrl->getHost());
+			/** @phpstan-ignore-next-line $openid->identity is private, but will be set via magic setter */
 			$openid->identity = $openid_url;
 			$this->session->set('openid', $openid_url);
 			$this->session->set('remember', $remember);
@@ -232,7 +235,6 @@ class Authentication
 	/**
 	 * Attempts to authenticate using login/password
 	 *
-	 * @param App    $a           The Friendica Application context
 	 * @param string $username
 	 * @param string $password    Clear password
 	 * @param bool   $remember    Whether to set the session remember flag
@@ -244,7 +246,7 @@ class Authentication
 	 * @throws HTTPException\MovedPermanentlyException
 	 * @throws HTTPException\TemporaryRedirectException
 	 */
-	public function withPassword(App $a, string $username, string $password, bool $remember, string $return_path = '')
+	public function withPassword(string $username, string $password, bool $remember, string $return_path = '')
 	{
 		$record = null;
 
@@ -252,11 +254,17 @@ class Authentication
 			$record = $this->dba->selectFirst(
 				'user',
 				[],
-				['uid' => User::getIdFromPasswordAuthentication($username, $password)]
+				['uid' => User::getIdFromPasswordAuthentication($username, $password, false, true)]
 			);
 		} catch (Exception $e) {
 			$this->logger->warning('authenticate: failed login attempt', ['action' => 'login', 'username' => $username, 'ip' => $this->remoteAddress]);
 			DI::sysmsg()->addNotice($this->l10n->t('Login failed. Please check your credentials.'));
+			$this->baseUrl->redirect();
+		}
+
+		if ($record['blocked']) {
+			$this->logger->warning('authenticate: user is blocked', ['action' => 'login', 'username' => $username, 'ip' => $this->remoteAddress]);
+			DI::sysmsg()->addNotice($this->l10n->t('Login failed because your account is blocked.'));
 			$this->baseUrl->redirect();
 		}
 
@@ -285,7 +293,7 @@ class Authentication
 			$return_path = '/security/password_too_long?' . http_build_query(['return_path' => $return_path]);
 		}
 
-		$this->setForUser($a, $record, true, true);
+		$this->setForUser($record, true, true);
 
 		$this->baseUrl->redirect($return_path);
 	}
@@ -293,7 +301,6 @@ class Authentication
 	/**
 	 * Sets the provided user's authenticated session
 	 *
-	 * @param App   $a           The Friendica application context
 	 * @param array $user_record The current "user" record
 	 * @param bool  $login_initial
 	 * @param bool  $interactive
@@ -307,7 +314,7 @@ class Authentication
 	 * @throws HTTPException\InternalServerErrorException In case of Friendica specific exceptions
 	 *
 	 */
-	public function setForUser(App $a, array $user_record, bool $login_initial = false, bool $interactive = false, bool $refresh_login = true)
+	public function setForUser(array $user_record, bool $login_initial = false, bool $interactive = false, bool $refresh_login = true)
 	{
 		$my_url = $this->baseUrl . '/profile/' . $user_record['nickname'];
 
@@ -329,12 +336,12 @@ class Authentication
 		$this->session->set('new_member', time() < ($member_since + (60 * 60 * 24 * 14)));
 
 		if (strlen($user_record['timezone'])) {
-			$a->setTimeZone($user_record['timezone']);
+			$this->appHelper->setTimeZone($user_record['timezone']);
 		}
 
 		$contact = $this->dba->selectFirst('contact', ['id'], ['uid' => $user_record['uid'], 'self' => true]);
 		if ($this->dba->isResult($contact)) {
-			$a->setContactId($contact['id']);
+			$this->appHelper->setContactId($contact['id']);
 			$this->session->set('cid', $contact['id']);
 		}
 
@@ -453,13 +460,13 @@ class Authentication
 	 */
 	public function setUnauthenticatedVisitor(string $url)
 	{
-		if (Strings::compareLink($this->session->get('visitor_home'), $url)) {
+		if (Strings::compareLink($this->session->get('visitor_home') ?: '', $url)) {
 			return;
 		}
-		
+
 		$this->session->set('my_url', $url);
 		$this->session->set('authenticated', 0);
-		
+
 		$remote_contact = Contact::getByURL($url, false, ['subscribe']);
 		if (!empty($remote_contact['subscribe'])) {
 			$this->session->set('remote_comment', $remote_contact['subscribe']);

@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2010 - 2024 the Friendica project
+#
+# SPDX-License-Identifier: CC0-1.0
+
 depends_on:
   - phpunit
   - code_standards_check
@@ -9,6 +13,12 @@ labels:
   location: friendica
   type: releaser
 
+# CD is triggered after pushing new code to the develop or *-rc branch, excluding the stable branch
+when:
+  repo: friendica/friendica
+  branch: [ develop, '*-rc' ]
+  event: push
+
 skip_clone: true
 
 steps:
@@ -19,10 +29,6 @@ steps:
       - git checkout $CI_COMMIT_BRANCH
       - git fetch origin $CI_COMMIT_REF
       - git merge $CI_COMMIT_SHA
-    when:
-      repo: friendica/friendica
-      branch: [ develop, '*-rc' ]
-      event: push
   restore_cache:
     image: meltwater/drone-cache:dev
     settings:
@@ -34,22 +40,15 @@ steps:
         - '.composer'
     volumes:
       - /tmp/drone-cache:/tmp/cache
-    when:
-      repo: friendica/friendica
-      branch: [ develop, '*-rc' ]
-      event: push
   composer_install:
     image: friendicaci/php8.2:php8.2.16
     commands:
+      - mkdir addon # create empty addon folder to appease composer
       - export COMPOSER_HOME=.composer
       - composer validate
       - composer install --no-dev --optimize-autoloader
     volumes:
       - /etc/hosts:/etc/hosts
-    when:
-      repo: friendica/friendica
-      branch: [ develop, '*-rc' ]
-      event: push
   create_artifacts:
     image: debian
     commands:
@@ -70,10 +69,6 @@ steps:
       - ls -lh
       - cat "$ARTIFACT.sum256"
       - sha256sum "$ARTIFACT"
-    when:
-      repo: friendica/friendica
-      branch: [ develop, '*-rc' ]
-      event: push
   sign_artifacts:
     image: plugins/gpgsign
     settings:
@@ -86,17 +81,9 @@ steps:
       exclude:
         - build/*.sum256
       detach_sign: true
-    when:
-      repo: friendica/friendica
-      branch: [ develop, '*-rc' ]
-      event: push
   publish_artifacts:
     image: alpine
     commands:
       - cp -fr build/* /tmp/friendica_files/
     volumes:
       - files:/tmp/friendica_files
-    when:
-      repo: friendica/friendica
-      branch: [ develop, '*-rc' ]
-      event: push

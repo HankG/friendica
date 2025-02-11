@@ -1,32 +1,17 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Console;
 
-use Friendica\App;
+use Asika\SimpleConsole\CommandArgsException;
+use Friendica\App\Mode;
+use Friendica\Core\L10n;
 use Friendica\Database\Database;
-use Friendica\Database\DBA;
-use Friendica\DI;
 use Friendica\Model\Contact;
-use Friendica\Util\Strings;
 use RuntimeException;
 
 /**
@@ -37,13 +22,17 @@ class FixAPDeliveryWorkerTaskParameters extends \Asika\SimpleConsole\Console
 	protected $helpOptions = ['h', 'help', '?'];
 
 	/**
-	 * @var App\Mode
+	 * @var Mode
 	 */
 	private $appMode;
 	/**
 	 * @var Database
 	 */
 	private $dba;
+	/**
+	 * @var L10n
+	 */
+	private $l10n;
 	/**
 	 * @var int
 	 */
@@ -67,7 +56,7 @@ Usage
 Description
 	During the 2020.12 RC period some worker task parameters have been corrupted, resulting in the impossibility to execute them.
 	This command restores their expected parameters.
-	If you didn't run Friendica during the 2020.12 RC period, you do not need to use this command. 
+	If you didn't run Friendica during the 2020.12 RC period, you do not need to use this command.
 
 Options
     -h|--help|-? Show help information
@@ -76,7 +65,7 @@ HELP;
 		return $help;
 	}
 
-	public function __construct(App\Mode $appMode, Database $dba, \Friendica\Core\L10n $l10n, array $argv = null)
+	public function __construct(Mode $appMode, Database $dba, L10n $l10n, array $argv = null)
 	{
 		parent::__construct($argv);
 
@@ -94,7 +83,7 @@ HELP;
 		}
 
 		if (count($this->args) > 0) {
-			throw new \Asika\SimpleConsole\CommandArgsException('Too many arguments');
+			throw new CommandArgsException('Too many arguments');
 		}
 
 		if ($this->appMode->isInstall()) {

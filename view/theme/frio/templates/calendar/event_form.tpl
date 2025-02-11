@@ -1,3 +1,9 @@
+{{*
+  * Copyright (C) 2010-2024, the Friendica project
+  * SPDX-FileCopyrightText: 2010-2024 the Friendica project
+  *
+  * SPDX-License-Identifier: AGPL-3.0-or-later
+  *}}
 <div id="event-form-wrapper">
 	<h3 class="heading">{{$title}}</h3>
 
@@ -69,7 +75,7 @@
 			{{* The textarea for the event description *}}
 			<div class="form-group">
 				<div id="event-desc-text"><b>{{$d_text}}</b></div>
-				<textarea id="comment-edit-text-desc" class="form-control text-autosize" name="desc" dir="auto">{{$d_orig}}</textarea>
+				<textarea id="comment-edit-text-desc" class="form-control text-autosize" name="desc" rows="8" dir="auto">{{$d_orig}}</textarea>
 				<ul id="event-desc-text-edit-bb" class="comment-edit-bb comment-icon-list nav nav-pills hidden-xs pull-left">
 					{{* commented out because it isn't implemented yet
 					<li>

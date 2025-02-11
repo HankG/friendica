@@ -1,3 +1,9 @@
+{{*
+  * Copyright (C) 2010-2024, the Friendica project
+  * SPDX-FileCopyrightText: 2010-2024 the Friendica project
+  *
+  * SPDX-License-Identifier: AGPL-3.0-or-later
+  *}}
 <div id="adminpage">
 	<h1>{{$title}} - {{$page}}</h1>
 
@@ -22,7 +28,7 @@
 			</div>
 		</form>
 
-		<table class="table table-hover">
+		<table class="table table-hover table-logs">
 			<thead>
 				<tr>
 					<th>{{$l10n.Date}}</th>
@@ -59,24 +65,24 @@
 			</thead>
 			<tbody>
 				{{foreach $data as $row}}
-				<tr id="ev-{{$row->id}}" class="log-event" 
+				<tr id="ev-{{$row->id}}" class="log-event"
 					role="button" tabIndex="0"
 					aria-label="{{$l10n.View_details}}" aria-haspopup="true" aria-expanded="false"
 					data-data="{{$row->data}}" data-source="{{$row->source}}">
 					<td>{{$row->date}}</td>
-					<td class="
-						{{if $row->level == "EMERGENCY"}}bg-danger
-						{{elseif $row->level == "ALERT"}}bg-danger
-						{{elseif $row->level == "CRITICAL"}}bg-danger
-						{{elseif $row->level == "ERROR"}}bg-danger
-						{{elseif $row->level == "WARNING"}}bg-warning
-						{{elseif $row->level == "NOTICE"}}bg-info
-						{{elseif $row->level == "INFO"}}bg-info
-						{{else}}text-muted
-						{{/if}}
-					">{{$row->level}}</td>
+					{{assign var="class" value="text-info"}}
+					{{if $row->level == "EMERGENCY" || $row->level == "ALERT" || $row->level == "CRITICAL" || $row->level == "ERROR"}}
+						{{assign var="class" value="text-danger"}}
+					{{elseif $row->level == "WARNING"}}
+						{{assign var="class" value="text-warning"}}
+					{{elseif $row->level == "NOTICE" || $row->level == "INFO"}}
+						{{assign var="class" value="text-info"}}
+					{{else}}
+						{{assign var="class" value="text-muted"}}
+					{{/if}}
+					<td class="{{$class}}">{{$row->level}}</td>
 					<td>{{$row->context}}</td>
-					<td style="width:80%">{{$row->message}}</td>
+					<td class="log-message">{{$row->message}}</td>
 				</tr>
 				{{/foreach}}
 			</tbody>
@@ -85,7 +91,7 @@
 </div>
 
 <div id="logdetail" class="modal fade" tabindex="-1" role="dialog">
-	<div class="modal-dialog modal-lg" style="width:90%" role="document">
+	<div class="modal-dialog modal-lg" style="width:90%">
 		<div class="modal-content">
 			<div class="modal-header">
 				<button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>

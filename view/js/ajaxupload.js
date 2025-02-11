@@ -1,10 +1,9 @@
 // @license magnet:?xt=urn:btih:d3d9a9a6595521f9666a5e94cc830dab83b65699&dn=expat.txt Expat
-/**
- * AJAX Upload ( http://valums.com/ajax-upload/ ) 
- * Copyright (c) Andris Valums
- * Licensed under the MIT license ( http://valums.com/mit-license/ )
- * Thanks to Gary Haran, David Mark, Corey Burns and others for contributions. 
- */
+
+// Copyright (c) Andris Valums
+// SPDX-FileCopyrightText: Andris Valums
+//
+// SPDX-License-Identifier: MIT
 
 (function () {
     /* global window */

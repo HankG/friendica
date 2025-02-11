@@ -1,27 +1,14 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Module\Admin;
 
 use Friendica\App;
+use Friendica\Content\ContactSelector;
 use Friendica\Core\Protocol;
 use Friendica\Core\Renderer;
 use Friendica\Database\DBA;
@@ -50,6 +37,7 @@ class Federation extends BaseAdmin
 			'foundkey'     => ['name' => 'Foundkey', 'color' => '#609926'], // Some random color from the repository
 			'funkwhale'    => ['name' => 'Funkwhale', 'color' => '#4082B4'], // From the homepage
 			'gancio'       => ['name' => 'Gancio', 'color' => '#7253ed'], // Fontcolor from the page
+			'glitchsoc'    => ['name' => 'Mastodon Glitch Edition', 'color' => '#82dcb9'], // Color from their site
 			'gnusocial'    => ['name' => 'GNU Social/Statusnet', 'color' => '#a22430'], // dark red from the logo
 			'gotosocial'   => ['name' => 'GoToSocial', 'color' => '#df8958'], // Some color from their mascot
 			'hometown'     => ['name' => 'Hometown', 'color' => '#1f70c1'], // Color from the Patreon page
@@ -142,6 +130,10 @@ class Federation extends BaseAdmin
 				$platform = 'nomad';
 			} elseif(stristr($platform, 'pleroma')) {
 				$platform = 'pleroma';
+			} elseif(stristr($platform, 'glitchsoc')) {
+				$platform = 'glitchsoc';
+			} elseif(stristr($platform, 'iceshrimp.net')) {
+				$platform = 'iceshrimp';
 			} elseif(stristr($platform, 'statusnet')) {
 				$platform = 'gnusocial';
 			} elseif(stristr($platform, 'nextcloud')) {
@@ -190,6 +182,7 @@ class Federation extends BaseAdmin
 			}
 
 			$gserver['platform']    = $systems[$platform]['name'];
+			$gserver['svg']         = ContactSelector::networkToSVG($gserver['network'], null, $platform, DI::userSession()->getLocalUserId());
 			$gserver['totallbl']    = DI::l10n()->tt('%2$s total system'                   , '%2$s total systems'                     , $gserver['total'], number_format($gserver['total']));
 			$gserver['monthlbl']    = DI::l10n()->tt('%2$s active user last month'         , '%2$s active users last month'           , $gserver['month'] ?? 0, number_format($gserver['month'] ?? 0));
 			$gserver['halfyearlbl'] = DI::l10n()->tt('%2$s active user last six months'    , '%2$s active users last six months'      , $gserver['halfyear'] ?? 0, number_format($gserver['halfyear'] ?? 0));

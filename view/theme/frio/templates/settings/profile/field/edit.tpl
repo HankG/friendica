@@ -1,3 +1,9 @@
+{{*
+  * Copyright (C) 2010-2024, the Friendica project
+  * SPDX-FileCopyrightText: 2010-2024 the Friendica project
+  *
+  * SPDX-License-Identifier: AGPL-3.0-or-later
+  *}}
 <fieldset data-id="{{$profile_field.id}}">
 	<legend>&#8801; {{$profile_field.legend}}</legend>
 
@@ -13,7 +19,7 @@
 	</p>
 
 	{{* We include the aclModal directly into the template since we cant use frio's default modal *}}
-	<div class="modal" id="profile-field-acl-{{$profile_field.id}}">
+	<div id="profile-field-acl-{{$profile_field.id}}" class="modal fade">
 		<div class="modal-dialog">
 			<div class="modal-content">
 				<div class="modal-header">

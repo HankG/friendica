@@ -1,23 +1,9 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 declare(strict_types=1);
 
@@ -211,7 +197,7 @@ class ErrorHandler
 			E_STRICT            => LogLevel::NOTICE,
 			E_RECOVERABLE_ERROR => LogLevel::ERROR,
 			E_DEPRECATED        => LogLevel::NOTICE,
-			E_USER_DEPRECATED   => LogLevel::NOTICE,
+			E_USER_DEPRECATED   => LogLevel::WARNING,
 		];
 	}
 
@@ -262,8 +248,22 @@ class ErrorHandler
 	 */
 	public function handleError(int $code, string $message, string $file = '', int $line = 0, ?array $context = []): bool
 	{
-		if ($this->handleOnlyReportedErrors && !(error_reporting() & $code)) {
+		if ($this->handleOnlyReportedErrors && !(error_reporting() & $code) && $code !== E_USER_DEPRECATED) {
 			return true;
+		}
+
+		$trace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS);
+
+		array_shift($trace); // Exclude handleError from trace
+
+		if ($code === E_USER_DEPRECATED && $trace[0]['function'] ?? '' === 'trigger_error') {
+			$calledPlace = $trace[1] ?? [];
+
+			$message .= sprintf(
+				' It was called in `%s`%s.',
+				$calledPlace['file'],
+				isset($calledPlace['line']) ? ' in line ' . $calledPlace['line'] : ''
+			);
 		}
 
 		// fatal error codes are ignored if a fatal error handler is present as well to avoid duplicate log entries
@@ -271,8 +271,6 @@ class ErrorHandler
 			$level = $this->errorLevelMap[$code] ?? LogLevel::CRITICAL;
 			$this->logger->log($level, self::codeToString($code).': '.$message, ['code' => $code, 'message' => $message, 'file' => $file, 'line' => $line]);
 		} else {
-			$trace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS);
-			array_shift($trace); // Exclude handleError from trace
 			$this->lastFatalTrace = $trace;
 		}
 

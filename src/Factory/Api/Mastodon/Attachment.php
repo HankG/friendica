@@ -1,28 +1,15 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Factory\Api\Mastodon;
 
 use Friendica\App\BaseURL;
 use Friendica\BaseFactory;
+use Friendica\Model\Attach;
 use Friendica\Model\Photo;
 use Friendica\Network\HTTPException;
 use Friendica\Model\Post;
@@ -143,5 +130,38 @@ class Attachment extends BaseFactory
 
 		$object = new \Friendica\Object\Api\Mastodon\Attachment($attachment, 'image', $url, $preview_url, '');
 		return $object->toArray();
+	}
+
+	/**
+	 * @param int $id id of the attachment
+	 *
+	 * @return array
+	 * @throws HTTPException\InternalServerErrorException
+	 */
+	public function createFromAttach(int $id): array
+	{
+		$media = Attach::selectFirst(['id', 'filetype'], ['id' => $id]);
+		if (empty($media)) {
+			return [];
+		}
+		$attachment = [
+			'id'          => 'attach:' . $media['id'],
+			'description' => null,
+			'blurhash'    => null,
+		];
+
+		$types = [Post\Media::AUDIO => 'audio', Post\Media::VIDEO => 'video', Post\Media::IMAGE => 'image'];
+
+		$type = Post\Media::getType($media['filetype']);
+
+		$url = $this->baseUrl . '/attach/' . $id;
+
+		$object = new \Friendica\Object\Api\Mastodon\Attachment($attachment, $types[$type] ?? 'unknown', $url, '', '');
+		return $object->toArray();
+	}
+
+	public function isAttach(string $id): bool
+	{
+		return substr($id, 0, 7) == 'attach:';
 	}
 }

@@ -1,35 +1,19 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Core;
 
 use Friendica\Database\DBA;
-use Friendica\Model\Item;
+use Friendica\DI;
 use Friendica\Model\User;
 use Friendica\Network\HTTPException;
-use Friendica\Protocol\Activity;
 use Friendica\Protocol\ActivityPub;
+use Friendica\Protocol\ActivityPub\Transmitter;
 use Friendica\Protocol\Diaspora;
-use Friendica\Protocol\OStatus;
-use Friendica\Protocol\Salmon;
 
 /**
  * Manage compatibility with federated networks
@@ -42,38 +26,38 @@ class Protocol
 	const DIASPORA    = 'dspr';    // Diaspora, Hubzilla, Socialhome, Ganggo
 	const FEED        = 'feed';    // RSS/Atom feeds with no known "post/notify" protocol
 	const MAIL        = 'mail';    // IMAP/POP
-	const OSTATUS     = 'stat';    // GNU Social and other OStatus implementations
 
-	const NATIVE_SUPPORT = [self::DFRN, self::DIASPORA, self::OSTATUS, self::FEED, self::MAIL, self::ACTIVITYPUB];
+	const NATIVE_SUPPORT = [self::DFRN, self::DIASPORA, self::FEED, self::MAIL, self::ACTIVITYPUB];
 
-	const FEDERATED = [self::DFRN, self::DIASPORA, self::OSTATUS, self::ACTIVITYPUB];
+	const FEDERATED = [self::DFRN, self::DIASPORA, self::ACTIVITYPUB];
 
 	const SUPPORT_PRIVATE = [self::DFRN, self::DIASPORA, self::MAIL, self::ACTIVITYPUB, self::PUMPIO];
 
 	// Supported through a connector
-	const DIASPORA2 = 'dspc';    // Diaspora connector
-	const PUMPIO    = 'pump';    // pump.io
-	const STATUSNET = 'stac';    // Statusnet connector
-	const TWITTER   = 'twit';    // Twitter
-	const DISCOURSE = 'dscs';    // Discourse
-	const TUMBLR    = 'tmbl';    // Tumblr
 	const BLUESKY   = 'bsky';    // Bluesky
+	const DIASPORA2 = 'dspc';    // Diaspora connector
+	const DISCOURSE = 'dscs';    // Discourse
+	const PNUT      = 'pnut';    // pnut.io
+	const PUMPIO    = 'pump';    // pump.io
+	const TUMBLR    = 'tmbl';    // Tumblr
+	const TWITTER   = 'twit';    // Twitter
 
 	// Dead protocols
 	const APPNET    = 'apdn';    // app.net - Dead protocol
 	const FACEBOOK  = 'face';    // Facebook API - Not working anymore, API is closed
 	const GPLUS     = 'goog';    // Google+ - Dead in 2019
+	const OSTATUS   = 'stat';    // GNU Social and other OStatus implementations
+	const STATUSNET = 'stac';    // Statusnet connector
 
 	// Currently unsupported
 	const ICALENDAR = 'ical';    // iCalendar
-	const MYSPACE   = 'mysp';    // MySpace
 	const LINKEDIN  = 'lnkd';    // LinkedIn
+	const MYSPACE   = 'mysp';    // MySpace
 	const NEWS      = 'nntp';    // Network News Transfer Protocol
-	const PNUT      = 'pnut';    // pnut.io
 	const XMPP      = 'xmpp';    // XMPP
 	const ZOT       = 'zot!';    // Zot!
 
-	const PHANTOM   = 'unkn';    // Place holder
+	const PHANTOM = 'unkn';    // Place holder
 
 	/**
 	 * Returns whether the provided protocol supports following
@@ -90,7 +74,7 @@ class Protocol
 
 		$hook_data = [
 			'protocol' => $protocol,
-			'result' => null
+			'result'   => null
 		];
 		Hook::callAll('support_follow', $hook_data);
 
@@ -112,7 +96,7 @@ class Protocol
 
 		$hook_data = [
 			'protocol' => $protocol,
-			'result' => null
+			'result'   => null
 		];
 		Hook::callAll('support_revoke_follow', $hook_data);
 
@@ -138,27 +122,10 @@ class Protocol
 
 		$protocol = $protocol ?? $contact['protocol'];
 
-		if (in_array($protocol, [Protocol::OSTATUS, Protocol::DFRN])) {
-			// create a follow slap
-			$item = [
-				'verb'    => Activity::FOLLOW,
-				'gravity' => Item::GRAVITY_ACTIVITY,
-				'follow'  => $contact['url'],
-				'body'    => '',
-				'title'   => '',
-				'guid'    => '',
-				'uri-id'  => 0,
-			];
-
-			$slap = OStatus::salmon($item, $owner);
-
-			if (!empty($contact['notify'])) {
-				Salmon::slapper($owner, $contact['notify'], $slap);
-			}
-		} elseif ($protocol == Protocol::DIASPORA) {
+		if ($protocol == self::DIASPORA) {
 			$contact = Diaspora::sendShare($owner, $contact);
-			Logger::notice('share returns: ' . $contact);
-		} elseif ($protocol == Protocol::ACTIVITYPUB) {
+			DI::logger()->notice('share returns: ' . $contact);
+		} elseif (in_array($protocol, [self::ACTIVITYPUB, self::DFRN])) {
 			$activity_id = ActivityPub\Transmitter::activityIDFromContact($contact['id']);
 			if (empty($activity_id)) {
 				// This really should never happen
@@ -166,7 +133,7 @@ class Protocol
 			}
 
 			$success = ActivityPub\Transmitter::sendActivity('Follow', $contact['url'], $owner['uid'], $activity_id);
-			Logger::notice('Follow returns: ' . $success);
+			DI::logger()->notice('Follow returns: ' . $success);
 		}
 
 		return true;
@@ -184,38 +151,18 @@ class Protocol
 	public static function unfollow(array $contact, array $owner): ?bool
 	{
 		if (empty($contact['network'])) {
-			Logger::notice('Contact has got no network, we quit here', ['id' => $contact['id']]);
+			DI::logger()->notice('Contact has got no network, we quit here', ['id' => $contact['id']]);
 			return null;
 		}
 
 		$protocol = $contact['network'];
-		if (($protocol == Protocol::DFRN) && !empty($contact['protocol'])) {
+		if (($protocol == self::DFRN) && !empty($contact['protocol'])) {
 			$protocol = $contact['protocol'];
 		}
 
-		if (in_array($protocol, [Protocol::OSTATUS, Protocol::DFRN])) {
-			// create an unfollow slap
-			$item = [
-				'verb'    => Activity::O_UNFOLLOW,
-				'gravity' => Item::GRAVITY_ACTIVITY,
-				'follow'  => $contact['url'],
-				'body'    => '',
-				'title'   => '',
-				'guid'    => '',
-				'uri-id'  => 0,
-			];
-
-			$slap = OStatus::salmon($item, $owner);
-
-			if (empty($contact['notify'])) {
-				Logger::notice('OStatus/DFRN Contact is missing notify, we quit here', ['id' => $contact['id']]);
-				return null;
-			}
-
-			return Salmon::slapper($owner, $contact['notify'], $slap) === 0;
-		} elseif ($protocol == Protocol::DIASPORA) {
+		if ($protocol == self::DIASPORA) {
 			return Diaspora::sendUnshare($owner, $contact) > 0;
-		} elseif ($protocol == Protocol::ACTIVITYPUB) {
+		} elseif (in_array($protocol, [self::ACTIVITYPUB, self::DFRN])) {
 			return ActivityPub\Transmitter::sendContactUndo($contact['url'], $contact['id'], $owner);
 		}
 
@@ -246,11 +193,11 @@ class Protocol
 		}
 
 		$protocol = $contact['network'];
-		if ($protocol == Protocol::DFRN && !empty($contact['protocol'])) {
+		if ($protocol == self::DFRN && !empty($contact['protocol'])) {
 			$protocol = $contact['protocol'];
 		}
 
-		if ($protocol == Protocol::ACTIVITYPUB) {
+		if ($protocol == self::ACTIVITYPUB) {
 			return ActivityPub\Transmitter::sendContactReject($contact['url'], $contact['hub-verify'], $owner);
 		}
 
@@ -266,7 +213,7 @@ class Protocol
 	}
 
 	/**
-	 * Send a block message to a remote server. Only useful for connector addons.
+	 * Send a block message to a remote server.
 	 *
 	 * @param array $contact Public contact record to block
 	 * @param int   $uid     User issuing the block
@@ -275,11 +222,28 @@ class Protocol
 	 */
 	public static function block(array $contact, int $uid): ?bool
 	{
+		if (empty($contact['network'])) {
+			throw new \InvalidArgumentException('Missing network key in contact array');
+		}
+
+		$protocol = $contact['network'];
+		if ($protocol == self::DFRN && !empty($contact['protocol'])) {
+			$protocol = $contact['protocol'];
+		}
+
+		if ($protocol == self::ACTIVITYPUB) {
+			$activity_id = Transmitter::activityIDFromContact($contact['id'], $uid);
+			if (empty($activity_id)) {
+				return false;
+			}
+			return ActivityPub\Transmitter::sendActivity('Block', $contact['url'], $uid, $activity_id);
+		}
+
 		// Catch-all hook for connector addons
 		$hook_data = [
 			'contact' => $contact,
-			'uid' => $uid,
-			'result' => null,
+			'uid'     => $uid,
+			'result'  => null,
 		];
 		Hook::callAll('block', $hook_data);
 
@@ -287,7 +251,7 @@ class Protocol
 	}
 
 	/**
-	 * Send an unblock message to a remote server. Only useful for connector addons.
+	 * Send an unblock message to a remote server.
 	 *
 	 * @param array $contact Public contact record to unblock
 	 * @param int   $uid     User revoking the block
@@ -296,11 +260,29 @@ class Protocol
 	 */
 	public static function unblock(array $contact, int $uid): ?bool
 	{
+		$owner = User::getOwnerDataById($uid);
+		if (!DBA::isResult($owner)) {
+			return false;
+		}
+
+		if (empty($contact['network'])) {
+			throw new \InvalidArgumentException('Missing network key in contact array');
+		}
+
+		$protocol = $contact['network'];
+		if ($protocol == self::DFRN && !empty($contact['protocol'])) {
+			$protocol = $contact['protocol'];
+		}
+
+		if ($protocol == self::ACTIVITYPUB) {
+			return ActivityPub\Transmitter::sendContactUnblock($contact['url'], $contact['id'], $owner);
+		}
+
 		// Catch-all hook for connector addons
 		$hook_data = [
 			'contact' => $contact,
-			'uid' => $uid,
-			'result' => null,
+			'uid'     => $uid,
+			'result'  => null,
 		];
 		Hook::callAll('unblock', $hook_data);
 
@@ -321,13 +303,13 @@ class Protocol
 			return false;
 		}
 
-		if (in_array($protocol, array_merge(self::NATIVE_SUPPORT, [self::ZOT, self::PHANTOM]))) {
+		if (in_array($protocol, array_merge(self::NATIVE_SUPPORT, [self::ZOT, self::BLUESKY, self::PHANTOM]))) {
 			return true;
 		}
 
 		$hook_data = [
 			'protocol' => $protocol,
-			'result' => null
+			'result'   => null
 		];
 		Hook::callAll('support_probe', $hook_data);
 

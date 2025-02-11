@@ -1,29 +1,16 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Module\Api\Mastodon\Timelines;
 
-use Friendica\App;
+use Friendica\App\Arguments;
+use Friendica\App\BaseURL;
+use Friendica\AppHelper;
 use Friendica\Core\L10n;
-use Friendica\Core\Logger;
 use Friendica\Database\DBA;
 use Friendica\DI;
 use Friendica\Model\Contact;
@@ -48,9 +35,9 @@ class ListTimeline extends BaseApi
 	/** @var Timeline */
 	protected $timeline;
 
-	public function __construct(Timeline $timeline, \Friendica\Factory\Api\Mastodon\Error $errorFactory, App $app, L10n $l10n, App\BaseURL $baseUrl, App\Arguments $args, LoggerInterface $logger, Profiler $profiler, ApiResponse $response, array $server, array $parameters = [])
+	public function __construct(Timeline $timeline, \Friendica\Factory\Api\Mastodon\Error $errorFactory, AppHelper $appHelper, L10n $l10n, BaseURL $baseUrl, Arguments $args, LoggerInterface $logger, Profiler $profiler, ApiResponse $response, array $server, array $parameters = [])
 	{
-		parent::__construct($errorFactory, $app, $l10n, $baseUrl, $args, $logger, $profiler, $response, $server, $parameters);
+		parent::__construct($errorFactory, $appHelper, $l10n, $baseUrl, $args, $logger, $profiler, $response, $server, $parameters);
 		$this->timeline = $timeline;
 	}
 
@@ -85,18 +72,18 @@ class ListTimeline extends BaseApi
 			$items = $this->getStatusesForGroup($uid, $request);
 		} elseif (substr($this->parameters['id'], 0, 8) == 'channel:') {
 			$items = $this->getStatusesForChannel($uid, $request);
-		} else{
+		} else {
 			$items = $this->getStatusesForCircle($uid, $request);
 		}
 
 		$statuses = [];
 		foreach ($items as $item) {
 			try {
-				$status =  DI::mstdnStatus()->createFromUriId($item['uri-id'], $uid, $display_quotes);
+				$status = DI::mstdnStatus()->createFromUriId($item['uri-id'], $uid, $display_quotes);
 				$this->updateBoundaries($status, $item, $request['friendica_order']);
 				$statuses[] = $status;
 			} catch (\Throwable $th) {
-				Logger::info('Post not fetchable', ['uri-id' => $item['uri-id'], 'uid' => $uid, 'error' => $th]);
+				$this->logger->info('Post not fetchable', ['uri-id' => $item['uri-id'], 'uid' => $uid, 'error' => $th]);
 			}
 		}
 
@@ -110,8 +97,7 @@ class ListTimeline extends BaseApi
 
 	private function getStatusesForGroup(int $uid, array $request): array
 	{
-		$cdata = Contact::getPublicAndUserContactID((int)substr($this->parameters['id'], 6), $uid);
-		$cid = $cdata['public'];
+		$cid = Contact::getPublicContactId((int)substr($this->parameters['id'], 6), $uid);
 
 		$condition = ["(`uid` = ? OR (`uid` = ? AND NOT `global`))", 0, $uid];
 
@@ -149,7 +135,7 @@ class ListTimeline extends BaseApi
 		];
 
 		$condition = $this->addPagingConditions($request, $condition);
-		$params = $this->buildOrderAndLimitParams($request);
+		$params    = $this->buildOrderAndLimitParams($request);
 
 		if ($request['only_media']) {
 			$condition = DBA::mergeConditions($condition, [

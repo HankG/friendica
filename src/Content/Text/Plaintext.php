@@ -1,23 +1,9 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Content\Text;
 
@@ -26,6 +12,7 @@ use Friendica\DI;
 use Friendica\Model\Photo;
 use Friendica\Model\Post;
 use Friendica\Util\Network;
+use IntlChar;
 
 class Plaintext
 {
@@ -127,20 +114,18 @@ class Plaintext
 			$post['text'] = trim($item['title']);
 		}
 
+		$abstract = '';
+
 		// Fetch the abstract from the given target network
 		switch ($htmlmode) {
 			case BBCode::TWITTER:
 				$abstract = BBCode::getAbstract($item['body'], Protocol::TWITTER);
 				break;
 
-			case BBCode::OSTATUS:
-				$abstract = BBCode::getAbstract($item['body'], Protocol::STATUSNET);
-				break;
-
 			case BBCode::BLUESKY:
 				$abstract = BBCode::getAbstract($item['body'], Protocol::BLUESKY);
 				break;
-	
+
 			default: // We don't know the exact target.
 				// We fetch an abstract since there is a posting limit.
 				if ($limit > 0) {
@@ -255,39 +240,64 @@ class Plaintext
 	 */
 	private static function getParts(string $message, int $baselimit): array
 	{
-		$parts = [];
-		$part = '';
+		$parts     = [];
+		$part      = '';
+		$break_pos = 0;
+		$comma_pos = 0;
+		$pos       = 0;
+		$word      = '';
 
 		$limit = $baselimit;
 
 		while ($message) {
-			$pos1 = strpos($message, ' ');
-			$pos2 = strpos($message, "\n");
+			$pos_word = mb_strpos($message, ' ');
+			$pos_paragraph = mb_strpos($message, "\n");
 
-			if (($pos1 !== false) && ($pos2 !== false)) {
-				$pos = min($pos1, $pos2) + 1;
-			} elseif ($pos1 !== false) {
-				$pos = $pos1 + 1;
-			} elseif ($pos2 !== false) {
-				$pos = $pos2 + 1;
+			if (($pos_word !== false) && ($pos_paragraph !== false)) {
+				$pos = min($pos_word, $pos_paragraph) + 1;
+			} elseif ($pos_word !== false) {
+				$pos = $pos_word + 1;
+			} elseif ($pos_paragraph !== false) {
+				$pos = $pos_paragraph + 1;
 			} else {
-				$word = $message;
-				$message = '';
+				$word     = $message;
+				$message  = '';
 			}
 
 			if (trim($message)) {
-				$word    = substr($message, 0, $pos);
-				$message = trim(substr($message, $pos));
+				$word    = mb_substr($message, 0, $pos);
+				$message = trim(mb_substr($message, $pos));
 			}
 
 			if (Network::isValidHttpUrl(trim($word))) {
 				$limit += mb_strlen(trim($word)) - self::URL_LENGTH;
 			}
 
+			$break = mb_strrpos($word, "\n") !== false;
+			if (!$break && (mb_strrpos($word, '. ') !== false || mb_strrpos($word, '? ') !== false || mb_strrpos($word, '! ') !== false)) {
+				$break = IntlChar::isupper(mb_substr($message, 0, 1));
+			}
+
+			$comma = (mb_strrpos($word, ', ') !== false) && IntlChar::isalpha(mb_substr($message, 0, 1));
+
 			if ((mb_strlen($part . $word) > $limit - 8) && ($parts || (mb_strlen($part . $word . $message) > $limit))) {
-				$parts[] = trim($part);
-				$part    = '';
-				$limit   = $baselimit;
+				if ($break_pos) {
+					$parts[] = trim(mb_substr($part, 0, $break_pos));
+					$part    = mb_substr($part, $break_pos);
+				} elseif ($comma_pos) {
+					$parts[] = trim(mb_substr($part, 0, $comma_pos));
+					$part    = mb_substr($part, $comma_pos);
+				} else {
+					$parts[] = trim($part);
+					$part    = '';
+				}
+				$limit     = $baselimit;
+				$break_pos = 0;
+				$comma_pos = 0;
+			} elseif ($break) {
+				$break_pos = $pos + mb_strlen($part);
+			} elseif ($comma) {
+				$comma_pos = $pos + mb_strlen($part);
 			}
 			$part .= $word;
 		}

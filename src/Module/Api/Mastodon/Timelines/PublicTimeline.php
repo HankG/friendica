@@ -1,35 +1,29 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Module\Api\Mastodon\Timelines;
 
-use Friendica\Core\Logger;
+use Friendica\App\Arguments;
+use Friendica\App\BaseURL;
+use Friendica\AppHelper;
+use Friendica\Core\Config\Capability\IManageConfigValues;
+use Friendica\Core\L10n;
 use Friendica\Core\Protocol;
 use Friendica\Database\DBA;
 use Friendica\DI;
 use Friendica\Model\Item;
 use Friendica\Model\Post;
+use Friendica\Module\Api\ApiResponse;
 use Friendica\Module\BaseApi;
+use Friendica\Module\Conversation\Community;
 use Friendica\Network\HTTPException;
 use Friendica\Object\Api\Mastodon\TimelineOrderByTypes;
+use Friendica\Util\Profiler;
+use Psr\Log\LoggerInterface;
 
 /**
  * @see https://docs.joinmastodon.org/methods/timelines/
@@ -37,12 +31,20 @@ use Friendica\Object\Api\Mastodon\TimelineOrderByTypes;
 class PublicTimeline extends BaseApi
 {
 	/**
+	 * @var IManageConfigValues
+	 */
+	private $config;
+
+	public function __construct(IManageConfigValues $config, \Friendica\Factory\Api\Mastodon\Error $errorFactory, AppHelper $appHelper, L10n $l10n, BaseURL $baseUrl, Arguments $args, LoggerInterface $logger, Profiler $profiler, ApiResponse $response, array $server, array $parameters = [])
+	{
+		parent::__construct($errorFactory, $appHelper, $l10n, $baseUrl, $args, $logger, $profiler, $response, $server, $parameters);
+		$this->config = $config;
+	}
+	/**
 	 * @throws HTTPException\InternalServerErrorException
 	 */
 	protected function rawContent(array $request = [])
 	{
-		$uid = self::getCurrentUserID();
-
 		$request = $this->getRequest([
 			'max_id'          => null,  // Return results older than id
 			'since_id'        => null,  // Return results newer than id
@@ -56,13 +58,23 @@ class PublicTimeline extends BaseApi
 			'friendica_order' => TimelineOrderByTypes::ID, // Sort order options (defaults to ID)
 		], $request);
 
+		if ($this->config->get('system', 'community_page_style') == Community::DISABLED) {
+			$this->jsonExit([]);
+		}
+
+		if ($this->authRequired($request)) {
+			$this->checkAllowedScope(BaseApi::SCOPE_READ);
+		}
+
+		$uid = self::getCurrentUserID();
+
 		$condition = [
 			'gravity' => [Item::GRAVITY_PARENT, Item::GRAVITY_COMMENT], 'private' => Item::PUBLIC,
 			'network' => Protocol::FEDERATED, 'author-blocked' => false, 'author-hidden' => false
 		];
 
 		$condition = $this->addPagingConditions($request, $condition);
-		$params = $this->buildOrderAndLimitParams($request);
+		$params    = $this->buildOrderAndLimitParams($request);
 
 		if ($request['local']) {
 			$condition = DBA::mergeConditions($condition, ['origin' => true]);
@@ -96,11 +108,11 @@ class PublicTimeline extends BaseApi
 		$statuses = [];
 		while ($item = Post::fetch($items)) {
 			try {
-				$status =  DI::mstdnStatus()->createFromUriId($item['uri-id'], $uid, $display_quotes);
+				$status = DI::mstdnStatus()->createFromUriId($item['uri-id'], $uid, $display_quotes);
 				$this->updateBoundaries($status, $item, $request['friendica_order']);
 				$statuses[] = $status;
 			} catch (\Throwable $th) {
-				Logger::info('Post not fetchable', ['uri-id' => $item['uri-id'], 'uid' => $uid, 'error' => $th]);
+				$this->logger->info('Post not fetchable', ['uri-id' => $item['uri-id'], 'uid' => $uid, 'error' => $th]);
 			}
 		}
 
@@ -112,5 +124,22 @@ class PublicTimeline extends BaseApi
 
 		self::setLinkHeader($request['friendica_order'] != TimelineOrderByTypes::ID);
 		$this->jsonExit($statuses);
+	}
+
+	private function authRequired(array $request): bool
+	{
+		if ($this->config->get('system', 'block_public') || $this->config->get('system', 'community_page_style') == Community::DISABLED_VISITOR) {
+			return true;
+		}
+
+		if ($request['local'] && $this->config->get('system', 'community_page_style') == Community::GLOBAL) {
+			return true;
+		}
+
+		if ($request['remote'] && $this->config->get('system', 'community_page_style') == Community::LOCAL) {
+			return true;
+		}
+
+		return false;
 	}
 }

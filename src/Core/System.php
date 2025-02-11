@@ -1,31 +1,15 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Core;
 
 use Friendica\Content\Text\BBCode;
-use Friendica\Content\Text\HTML;
 use Friendica\Core\Config\Capability\IManageConfigValues;
 use Friendica\DI;
-use Friendica\Model\User;
 use Friendica\Module\Response;
 use Friendica\Network\HTTPException\FoundException;
 use Friendica\Network\HTTPException\InternalServerErrorException;
@@ -180,9 +164,10 @@ class System
 	 * Executes a child process with 'proc_open'
 	 *
 	 * @param string $command The command to execute
-	 * @param array  $args    Arguments to pass to the command ( [ 'key' => value, 'key2' => value2, ... ]
+	 * @param array  $args    Arguments to pass to the command ( ['arg1', 'arg2', ... ] )
+	 * @param array  $options Options to pass to the command ( [ 'key' => value, 'key2' => value2, ... ]
 	 */
-	public function run(string $command, array $args)
+	public function run(string $command, array $args = [], array $options = [])
 	{
 		if (!function_exists('proc_open')) {
 			$this->logger->warning('"proc_open" not available - quitting');
@@ -191,7 +176,11 @@ class System
 
 		$cmdline = $this->config->get('config', 'php_path', 'php') . ' ' . escapeshellarg($command);
 
-		foreach ($args as $key => $value) {
+		foreach ($args as $argumment) {
+			$cmdline .= ' ' . $argumment;
+		}
+
+		foreach ($options as $key => $value) {
 			if (!is_null($value) && is_bool($value) && !$value) {
 				continue;
 			}
@@ -241,7 +230,7 @@ class System
 		$trace = array_slice($trace, 2 + $offset);
 
 		$callstack = [];
-		$previous = ['class' => '', 'function' => '', 'database' => false];
+		$previous  = ['class' => '', 'function' => '', 'database' => false];
 
 		// The ignore list contains all functions that are only wrapper functions
 		$ignore = ['call_user_func_array'];
@@ -261,15 +250,15 @@ class System
 				// Don't show multiple calls from the Database classes to show the essential parts of the callstack
 				$func['database'] = in_array($func['class'], ['Friendica\Database\DBA', 'Friendica\Database\Database']);
 				if ($full || !$previous['database'] || !$func['database']) {
-					$classparts = explode("\\", $func['class']);
+					$classparts  = explode("\\", $func['class']);
 					$callstack[] = array_pop($classparts).'::'.$func['function'] . (isset($func['line']) ? ' (' . $func['line'] . ')' : '');
-					$previous = $func;
+					$previous    = $func;
 				}
 			} elseif (!in_array($func['function'], $ignore)) {
 				$func['database'] = ($func['function'] == 'q');
-				$callstack[] = $func['function'] . (isset($func['line']) ? ' (' . $func['line'] . ')' : '');
-				$func['class'] = '';
-				$previous = $func;
+				$callstack[]      = $func['function'] . (isset($func['line']) ? ' (' . $func['line'] . ')' : '');
+				$func['class']    = '';
+				$previous         = $func;
 			}
 		}
 
@@ -288,10 +277,13 @@ class System
 	 */
 	public static function echoResponse(ResponseInterface $response)
 	{
-		header(sprintf("HTTP/%s %s %s",
+		header(
+			sprintf(
+				"HTTP/%s %s %s",
 				$response->getProtocolVersion(),
 				$response->getStatusCode(),
-				$response->getReasonPhrase())
+				$response->getReasonPhrase()
+			)
 		);
 
 		foreach ($response->getHeaders() as $key => $header) {
@@ -330,7 +322,7 @@ class System
 		}
 
 		if ($status) {
-			Logger::notice('xml_status returning non_zero: ' . $status . " message=" . $message);
+			DI::logger()->notice('xml_status returning non_zero: ' . $status . " message=" . $message);
 		}
 
 		self::httpExit(XML::fromArray(['result' => $result]), Response::TYPE_XML);
@@ -339,16 +331,16 @@ class System
 	/**
 	 * Send HTTP status header and exit.
 	 *
-	 * @param integer $val     HTTP status result value
-	 * @param string  $message Error message. Optional.
-	 * @param string  $content Response body. Optional.
+	 * @param integer $httpCode HTTP status result value
+	 * @param string  $message  Error message. Optional.
+	 * @param string  $content  Response body. Optional.
 	 * @throws \Exception
 	 * @deprecated since 2023.09 Use BaseModule->httpError instead
 	 */
 	public static function httpError($httpCode, $message = '', $content = '')
 	{
 		if ($httpCode >= 400) {
-			Logger::debug('Exit with error', ['code' => $httpCode, 'message' => $message, 'method' => DI::args()->getMethod(), 'agent' => $_SERVER['HTTP_USER_AGENT'] ?? '']);
+			DI::logger()->debug('Exit with error', ['code' => $httpCode, 'message' => $message, 'method' => DI::args()->getMethod(), 'agent' => $_SERVER['HTTP_USER_AGENT'] ?? '']);
 		}
 		DI::apiResponse()->setStatus($httpCode, $message);
 
@@ -381,7 +373,7 @@ class System
 	public static function jsonError($httpCode, $content, $content_type = 'application/json')
 	{
 		if ($httpCode >= 400) {
-			Logger::debug('Exit with error', ['code' => $httpCode, 'content_type' => $content_type, 'method' => DI::args()->getMethod(), 'agent' => $_SERVER['HTTP_USER_AGENT'] ?? '']);
+			DI::logger()->debug('Exit with error', ['code' => $httpCode, 'content_type' => $content_type, 'method' => DI::args()->getMethod(), 'agent' => $_SERVER['HTTP_USER_AGENT'] ?? '']);
 		}
 		DI::apiResponse()->setStatus($httpCode);
 		self::jsonExit($content, $content_type);
@@ -407,6 +399,8 @@ class System
 
 	/**
 	 * Exit the program execution.
+	 *
+	 * @return never
 	 */
 	public static function exit()
 	{
@@ -520,11 +514,13 @@ class System
 	 * @throws TemporaryRedirectException
 	 *
 	 * @throws \Friendica\Network\HTTPException\InternalServerErrorException
+	 *
+	 * @return never
 	 */
 	public static function externalRedirect($url, $code = 302)
 	{
 		if (empty(parse_url($url, PHP_URL_SCHEME))) {
-			Logger::warning('No fully qualified URL provided', ['url' => $url]);
+			DI::logger()->warning('No fully qualified URL provided', ['url' => $url]);
 			DI::baseUrl()->redirect($url);
 		}
 
@@ -568,27 +564,27 @@ class System
 	private static function isDirectoryUsable(string $directory): bool
 	{
 		if (empty($directory)) {
-			Logger::warning('Directory is empty. This shouldn\'t happen.');
+			DI::logger()->warning('Directory is empty. This shouldn\'t happen.');
 			return false;
 		}
 
 		if (!file_exists($directory)) {
-			Logger::info('Path does not exist', ['directory' => $directory, 'user' => static::getUser()]);
+			DI::logger()->info('Path does not exist', ['directory' => $directory, 'user' => static::getUser()]);
 			return false;
 		}
 
 		if (is_file($directory)) {
-			Logger::warning('Path is a file', ['directory' => $directory, 'user' => static::getUser()]);
+			DI::logger()->warning('Path is a file', ['directory' => $directory, 'user' => static::getUser()]);
 			return false;
 		}
 
 		if (!is_dir($directory)) {
-			Logger::warning('Path is not a directory', ['directory' => $directory, 'user' => static::getUser()]);
+			DI::logger()->warning('Path is not a directory', ['directory' => $directory, 'user' => static::getUser()]);
 			return false;
 		}
 
 		if (!is_writable($directory)) {
-			Logger::warning('Path is not writable', ['directory' => $directory, 'user' => static::getUser()]);
+			DI::logger()->warning('Path is not writable', ['directory' => $directory, 'user' => static::getUser()]);
 			return false;
 		}
 
@@ -708,7 +704,7 @@ class System
 
 		if (DI::config()->get('system', 'tosdisplay')) {
 			$rulelist = DI::config()->get('system', 'tosrules') ?: DI::config()->get('system', 'tostext');
-			$msg = BBCode::toPlaintext($rulelist, false);
+			$msg      = BBCode::toPlaintext($rulelist, false);
 			foreach (explode("\n", trim($msg)) as $line) {
 				$line = trim($line);
 				if ($line) {

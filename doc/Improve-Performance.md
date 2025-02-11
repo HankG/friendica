@@ -14,10 +14,6 @@ Please go to /admin/site/ on your system and change the following values:
 
 This value reduces the data that is send from the server to the client. 50 is a value that doesn't influences image quality too much.
 
-    Set "OStatus conversation completion interval" to "never".
-
-If you have many OStatus contacts then completing of conversations can take some time. Since you will miss several comments in OStatus threads, you maybe should consider the option "At post arrival" instead.
-
     Enable "Use MySQL full text engine"
 
 When using MyISAM (default) or InnoDB on MariaDB 10 this speeds up search.

@@ -1,31 +1,15 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Module\WellKnown;
 
 use Friendica\BaseModule;
-use Friendica\Core\System;
 use Friendica\DI;
 use Friendica\Module\Response;
-use Friendica\Protocol\Salmon;
 use Friendica\Util\Crypto;
 use Friendica\Util\XML;
 
@@ -80,15 +64,8 @@ class HostMeta extends BaseModule
 						'href' => $domain . '/amcd'
 					]
 				],
-				'Property' => [
-					'@attributes' => [
-						'type'      => 'http://salmon-protocol.org/ns/magic-key',
-						'mk:key_id' => '1'
-					],
-					Salmon::salmonKey($config->get('system', 'site_pubkey'))
-				]
 			],
-		], $xml, false, ['hm' => 'http://host-meta.net/xrd/1.0', 'mk' => 'http://salmon-protocol.org/ns/magic-key']);
+		], $xml, false, ['hm' => 'http://host-meta.net/xrd/1.0']);
 
 		$this->httpExit($xml->saveXML(), Response::TYPE_XML, 'application/xrd+xml');
 	}

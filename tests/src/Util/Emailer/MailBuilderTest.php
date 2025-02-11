@@ -1,23 +1,9 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Test\src\Util\Emailer;
 
@@ -26,7 +12,7 @@ use Friendica\Core\Config\Capability\IManageConfigValues;
 use Friendica\Core\L10n;
 use Friendica\Network\HTTPException\UnprocessableEntityException;
 use Friendica\Object\EMail\IEmail;
-use Friendica\Test\MockedTest;
+use Friendica\Test\MockedTestCase;
 use Friendica\Test\Util\SampleMailBuilder;
 use Friendica\Test\Util\VFSTrait;
 use Friendica\Util\EMailer\MailBuilder;
@@ -37,7 +23,7 @@ use Psr\Log\NullLogger;
  * This class tests the "MailBuilder" (@see MailBuilder )
  * Since it's an abstract class and every extended class of it has dependencies, we use a "SampleMailBuilder" (@see SampleMailBuilder ) to make this class work
  */
-class MailBuilderTest extends MockedTest
+class MailBuilderTest extends MockedTestCase
 {
 	use VFSTrait;
 

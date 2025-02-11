@@ -1,23 +1,9 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Module\Api\Twitter\Friendships;
 
@@ -42,12 +28,12 @@ class Show extends ContactEndpoint
 		$target_cid = BaseApi::getContactIDForSearchterm($this->getRequestValue($request, 'target_screen_name', ''), '', $this->getRequestValue($request, 'target_id', 0), $uid);
 
 		$source = Contact::getById($source_cid);
-		if (empty($source)) {
+		if ($source === false) {
 			throw new NotFoundException('Source not found');
 		}
 
 		$target = Contact::getById($target_cid);
-		if (empty($source)) {
+		if ($target === false) {
 			throw new NotFoundException('Target not found');
 		}
 
@@ -55,9 +41,9 @@ class Show extends ContactEndpoint
 		$following = false;
 
 		if ($source_cid == Contact::getPublicIdByUserId($uid)) {
-			$cdata = Contact::getPublicAndUserContactID($target_cid, $uid);
-			if (!empty($cdata['user'])) {
-				$usercontact = Contact::getById($cdata['user'], ['rel']);
+			$ucid = Contact::getUserContactId($target_cid, $uid);
+			if ($ucid) {
+				$usercontact = Contact::getById($ucid, ['rel']);
 				switch ($usercontact['rel'] ?? Contact::NOTHING) {
 					case Contact::FOLLOWER:
 						$follower  = true;

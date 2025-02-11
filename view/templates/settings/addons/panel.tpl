@@ -1,3 +1,9 @@
+{{*
+  * Copyright (C) 2010-2024, the Friendica project
+  * SPDX-FileCopyrightText: 2010-2024 the Friendica project
+  *
+  * SPDX-License-Identifier: AGPL-3.0-or-later
+  *}}
 <span id="settings_{{$addon}}_inflated" class="settings-block fakelink" style="display: {{if $open}}none{{else}}block{{/if}};" onclick="openClose('settings_{{$addon}}_expanded'); openClose('settings_{{$addon}}_inflated');">
 	<h3>{{$title}}</h3>
 </span>

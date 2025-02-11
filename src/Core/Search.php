@@ -1,23 +1,9 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Core;
 
@@ -30,7 +16,6 @@ use Friendica\Network\HTTPException;
 use Friendica\Object\Search\ContactResult;
 use Friendica\Object\Search\ResultList;
 use Friendica\Util\Network;
-use Friendica\Util\Strings;
 use GuzzleHttp\Psr7\Uri;
 
 /**
@@ -132,15 +117,15 @@ class Search
 		$results = json_decode($resultJson, true);
 
 		$resultList = new ResultList(
-			($results['page']         ?? 0) ?: 1,
-			$results['count']        ?? 0,
+			($results['page'] ?? 0) ?: 1,
+			$results['count'] ?? 0,
 			($results['itemsperpage'] ?? 0) ?: 30
 		);
 
 		$profiles = $results['profiles'] ?? [];
 
 		foreach ($profiles as $profile) {
-			$profile_url = $profile['profile_url'] ?? '';
+			$profile_url    = $profile['profile_url'] ?? '';
 			$contactDetails = Contact::getByURLForUser($profile_url, DI::userSession()->getLocalUserId());
 
 			$result = new ContactResult(
@@ -152,7 +137,7 @@ class Search
 				Protocol::DFRN,
 				$contactDetails['cid'] ?? 0,
 				$contactDetails['zid'] ?? 0,
-				$profile['tags'] ?? ''
+				$profile['tags']       ?? ''
 			);
 
 			$resultList->addResult($result);
@@ -174,7 +159,7 @@ class Search
 	 */
 	public static function getContactsFromLocalDirectory(string $search, int $type = self::TYPE_ALL, int $start = 0, int $itemPage = 80): ResultList
 	{
-		Logger::info('Searching', ['search' => $search, 'type' => $type, 'start' => $start, 'itempage' => $itemPage]);
+		DI::logger()->info('Searching', ['search' => $search, 'type' => $type, 'start' => $start, 'itempage' => $itemPage]);
 
 		$contacts = Contact::searchByName($search, $type == self::TYPE_GROUP ? 'community' : '', true);
 
@@ -214,7 +199,7 @@ class Search
 	 */
 	public static function searchContact(string $search, string $mode, int $page = 1): array
 	{
-		Logger::info('Searching', ['search' => $search, 'mode' => $mode, 'page' => $page]);
+		DI::logger()->info('Searching', ['search' => $search, 'mode' => $mode, 'page' => $page]);
 
 		if (DI::config()->get('system', 'block_public') && !DI::userSession()->isAuthenticated()) {
 			return [];
@@ -234,14 +219,19 @@ class Search
 			$return = Contact::searchByName($search, $mode, true);
 		} else {
 			$p = $page > 1 ? 'p=' . $page : '';
-			$curlResult = DI::httpClient()->get(self::getGlobalDirectory() . '/search/people?' . $p . '&q=' . urlencode($search), HttpClientAccept::JSON, [HttpClientOptions::REQUEST => HttpClientRequest::CONTACTDISCOVER]);
+			try {
+				$curlResult = DI::httpClient()->get(self::getGlobalDirectory() . '/search/people?' . $p . '&q=' . urlencode($search), HttpClientAccept::JSON, [HttpClientOptions::REQUEST => HttpClientRequest::CONTACTDISCOVER]);
+			} catch (\Throwable $th) {
+				DI::logger()->notice('Got exception', ['code' => $th->getCode(), 'message' => $th->getMessage()]);
+				return [];
+			}
 			if ($curlResult->isSuccess()) {
 				$searchResult = json_decode($curlResult->getBodyString(), true);
 				if (!empty($searchResult['profiles'])) {
 					// Converting Directory Search results into contact-looking records
 					$return = array_map(function ($result) {
 						static $contactType = [
-							'People'       => Contact::TYPE_PERSON,
+							'People' => Contact::TYPE_PERSON,
 							// Kept for backward compatibility
 							'Forum'        => Contact::TYPE_COMMUNITY,
 							'Group'        => Contact::TYPE_COMMUNITY,

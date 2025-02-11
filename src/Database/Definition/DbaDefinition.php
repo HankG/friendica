@@ -1,28 +1,16 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Database\Definition;
 
 use Exception;
+use Friendica\Core\Config\Capability\IManageConfigValues;
 use Friendica\Core\Hook;
+use Friendica\DI;
 
 /**
  * Stores the whole database definition
@@ -79,12 +67,18 @@ class DbaDefinition
 
 		$fields = [];
 
+		$charset = DI::config()->get('database', 'charset') ?? '';
+
 		// Assign all field that are present in the table
 		foreach ($fieldNames as $field) {
 			if (isset($data[$field])) {
 				// Limit the length of varchar, varbinary, char and binary fields
 				if (is_string($data[$field]) && preg_match("/char\((\d*)\)/", $definition[$table]['fields'][$field]['type'], $result)) {
-					$data[$field] = mb_substr($data[$field], 0, $result[1]);
+					if ($charset == 'latin1') {
+						$data[$field] = substr($data[$field], 0, $result[1]);
+					} else {
+						$data[$field] = mb_substr($data[$field], 0, $result[1]);
+					}
 				} elseif (is_string($data[$field]) && preg_match("/binary\((\d*)\)/", $definition[$table]['fields'][$field]['type'], $result)) {
 					$data[$field] = substr($data[$field], 0, $result[1]);
 				} elseif (is_numeric($data[$field]) && $definition[$table]['fields'][$field]['type'] === 'int') {

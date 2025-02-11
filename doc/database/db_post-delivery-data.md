@@ -18,7 +18,6 @@ Fields
 | dfrn         | Number of successful deliveries via DFRN                                                                                                                   | mediumint    | NO   |     | 0       |       |
 | legacy_dfrn  | Number of successful deliveries via legacy DFRN                                                                                                            | mediumint    | NO   |     | 0       |       |
 | diaspora     | Number of successful deliveries via Diaspora                                                                                                               | mediumint    | NO   |     | 0       |       |
-| ostatus      | Number of successful deliveries via OStatus                                                                                                                | mediumint    | NO   |     | 0       |       |
 
 Indexes
 ------------

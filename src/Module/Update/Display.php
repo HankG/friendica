@@ -1,23 +1,9 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Module\Update;
 
@@ -55,23 +41,20 @@ class Display extends DisplayModule
 			throw new HTTPException\NotFoundException($this->t('The requested item doesn\'t exist or has been deleted.'));
 		}
 
-		$this->app->setProfileOwner($item['uid'] ?: $profileUid);
+		$this->appHelper->setProfileOwner($item['uid'] ?: $profileUid);
 		$parentUriId = $item['parent-uri-id'];
 
 		if (empty($force)) {
-			$browserUpdate = intval($this->pConfig->get($profileUid, 'system', 'update_interval') ?? 40000);
-			if ($browserUpdate >= 1000) {
-				$updateDate = date(DateTimeFormat::MYSQL, time() - ($browserUpdate * 2 / 1000));
+			if ($this->pConfig->get($profileUid, 'system', 'update_content')) {
+				$updateDate = date(DateTimeFormat::MYSQL, time() - 120);
 				if (!Post::exists([
 					"`parent-uri-id` = ? AND `uid` IN (?, ?) AND `received` > ?",
 					$parentUriId, 0,
 					$profileUid, $updateDate])) {
-					$this->logger->debug('No updated content. Ending process',
-						['uri-id' => $uriId, 'uid' => $profileUid, 'updated' => $updateDate]);
+					$this->logger->debug('No updated content. Ending process', ['uri-id' => $uriId, 'uid' => $profileUid, 'updated' => $updateDate]);
 					return '';
 				} else {
-					$this->logger->debug('Updated content found.',
-						['uri-id' => $uriId, 'uid' => $profileUid, 'updated' => $updateDate]);
+					$this->logger->debug('Updated content found.', ['uri-id' => $uriId, 'uid' => $profileUid, 'updated' => $updateDate]);
 				}
 			}
 		} else {

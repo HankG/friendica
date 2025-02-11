@@ -1,23 +1,9 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Test\src\Core\Storage\Repository;
 
@@ -35,22 +21,18 @@ use Friendica\Core\Storage\Repository\StorageManager;
 use Friendica\Core\Storage\Type\Filesystem;
 use Friendica\Core\Storage\Type\SystemResource;
 use Friendica\Database\Database;
-use Friendica\Database\Definition\DbaDefinition;
-use Friendica\Database\Definition\ViewDefinition;
 use Friendica\DI;
 use Friendica\Core\Config\Factory\Config;
 use Friendica\Core\Storage\Type;
-use Friendica\Test\DatabaseTest;
+use Friendica\Test\DatabaseTestCase;
 use Friendica\Test\Util\CreateDatabaseTrait;
 use Friendica\Test\Util\Database\StaticDatabase;
-use Friendica\Test\Util\VFSTrait;
-use Friendica\Util\Profiler;
 use org\bovigo\vfs\vfsStream;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
 use Friendica\Test\Util\SampleStorageBackend;
 
-class StorageManagerTest extends DatabaseTest
+class StorageManagerTest extends DatabaseTestCase
 {
 	use CreateDatabaseTrait;
 
@@ -74,12 +56,15 @@ class StorageManagerTest extends DatabaseTest
 
 		vfsStream::newDirectory(Type\FilesystemConfig::DEFAULT_BASE_FOLDER, 0777)->at($this->root);
 
-		$this->logger = new NullLogger();
+		$this->logger   = new NullLogger();
 		$this->database = $this->getDbInstance();
 
 		$configFactory     = new Config();
-		$configFileManager = $configFactory->createConfigFileManager($this->root->url());
-		$configCache       = $configFactory->createCache($configFileManager);
+		$configFileManager = $configFactory->createConfigFileManager(
+			$this->root->url(),
+			$this->root->url() . '/addon',
+		);
+		$configCache = $configFactory->createCache($configFileManager);
 
 		$this->config = new \Friendica\Core\Config\Model\DatabaseConfig($this->database, $configCache);
 		$this->config->set('storage', 'name', 'Database');
@@ -110,21 +95,21 @@ class StorageManagerTest extends DatabaseTest
 	public function dataStorages()
 	{
 		return [
-			'empty'          => [
+			'empty' => [
 				'name'       => '',
 				'valid'      => false,
 				'interface'  => ICanReadFromStorage::class,
 				'assert'     => null,
 				'assertName' => '',
 			],
-			'database'       => [
+			'database' => [
 				'name'       => Type\Database::NAME,
 				'valid'      => true,
 				'interface'  => ICanWriteToStorage::class,
 				'assert'     => Type\Database::class,
 				'assertName' => Type\Database::NAME,
 			],
-			'filesystem'     => [
+			'filesystem' => [
 				'name'       => Filesystem::NAME,
 				'valid'      => true,
 				'interface'  => ICanWriteToStorage::class,
@@ -138,7 +123,7 @@ class StorageManagerTest extends DatabaseTest
 				'assert'     => SystemResource::class,
 				'assertName' => SystemResource::NAME,
 			],
-			'invalid'        => [
+			'invalid' => [
 				'name'        => 'invalid',
 				'valid'       => false,
 				'interface'   => null,

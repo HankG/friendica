@@ -126,14 +126,14 @@ Override the two necessary instances:
 ```php
 use Friendica\Core\Storage\Capability\ICanWriteToStorage;
 
-abstract class StorageTest 
+abstract class StorageTest
 {
 	// returns an instance of your newly created storage class
 	abstract protected function getInstance();
 
 	// Assertion for the option array you return for your new StorageClass
 	abstract protected function assertOption(ICanWriteToStorage $storage);
-} 
+}
 ```
 
 ## Exception handling
@@ -158,7 +158,7 @@ Example:
 ```php
 use Friendica\Core\Storage\Capability\ICanWriteToStorage;
 
-class ExampleStorage implements ICanWriteToStorage 
+class ExampleStorage implements ICanWriteToStorage
 {
 	public function get(string $reference) : string
 	{
@@ -168,7 +168,7 @@ class ExampleStorage implements ICanWriteToStorage
 			throw new \Friendica\Core\Storage\Exception\StorageException(sprintf('The Example Storage throws an exception for reference %s', $reference), 500, $exception);
 		}
 	}
-} 
+}
 ```
 
 ## Example
@@ -200,11 +200,11 @@ class SampleStorageBackend implements ICanWriteToStorage
 
 	/**
 	  * SampleStorageBackend constructor.
- 	  * 
+ 	  *
 	  * You can add here every dynamic class as dependency you like and add them to a private field
-	  * Friendica automatically creates these classes and passes them as argument to the constructor									   
+	  * Friendica automatically creates these classes and passes them as argument to the constructor
 	  */
-	public function __construct(string $filename) 
+	public function __construct(string $filename)
 	{
 		$this->filename = $filename;
 	}
@@ -215,7 +215,7 @@ class SampleStorageBackend implements ICanWriteToStorage
 		// a config key
 		return file_get_contents($this->filename);
 	}
-	
+
 	public function put(string $data, string $reference = '')
 	{
 		if ($reference === '') {
@@ -224,13 +224,13 @@ class SampleStorageBackend implements ICanWriteToStorage
 		// we don't save $data !
 		return $reference;
 	}
-	
+
 	public function delete(string $reference)
 	{
 		// we pretend to delete the data
 		return true;
 	}
-	
+
 	public function __toString()
 	{
 		return self::NAME;
@@ -261,11 +261,11 @@ class SampleStorageBackendConfig implements ICanConfigureStorage
 
 	/**
 	  * SampleStorageBackendConfig constructor.
- 	  * 
+ 	  *
 	  * You can add here every dynamic class as dependency you like and add them to a private field
-	  * Friendica automatically creates these classes and passes them as argument to the constructor									   
+	  * Friendica automatically creates these classes and passes them as argument to the constructor
 	  */
-	public function __construct(IManageConfigValues $config, L10n $l10n) 
+	public function __construct(IManageConfigValues $config, L10n $l10n)
 	{
 		$this->config = $config;
 		$this->l10n   = $l10n;
@@ -289,12 +289,12 @@ class SampleStorageBackendConfig implements ICanConfigureStorage
 			],
 		];
 	}
-	
+
 	public function saveOptions(array $data)
 	{
 		// the keys in $data are the same keys we defined in getOptions()
 		$newfilename = trim($data['filename']);
-		
+
 		// this function should always validate the data.
 		// in this example we check if file exists
 		if (!file_exists($newfilename)) {
@@ -302,9 +302,9 @@ class SampleStorageBackendConfig implements ICanConfigureStorage
 			// ['optionname' => 'error message']
 			return ['filename' => 'The file doesn\'t exists'];
 		}
-		
+
 		$this->config->set('storage', 'samplestorage', $newfilename);
-		
+
 		// no errors, return empty array
 		return [];
 	}
@@ -341,13 +341,13 @@ function samplestorage_storage_uninstall()
 	DI::storageManager()->unregister(SampleStorageBackend::class);
 }
 
-function samplestorage_storage_instance(App $a, array &$data)
+function samplestorage_storage_instance(AppHelper $appHelper, array &$data)
 {
 	$config          = new SampleStorageBackendConfig(DI::l10n(), DI::config());
 	$data['storage'] = new SampleStorageBackendConfig($config->getFileName());
 }
 
-function samplestorage_storage_config(App $a, array &$data)
+function samplestorage_storage_config(AppHelper $appHelper, array &$data)
 {
 	$data['storage_config'] = new SampleStorageBackendConfig(DI::l10n(), DI::config());
 }
@@ -360,7 +360,7 @@ function samplestorage_storage_config(App $a, array &$data)
 use Friendica\Core\Storage\Capability\ICanWriteToStorage;
 use Friendica\Test\src\Core\Storage\StorageTest;
 
-class SampleStorageTest extends StorageTest 
+class SampleStorageTest extends StorageTest
 {
 	// returns an instance of your newly created storage class
 	protected function getInstance()
@@ -382,5 +382,5 @@ class SampleStorageTest extends StorageTest
 			],
 		], $storage->getOptions());
 	}
-} 
+}
 ```

@@ -1,3 +1,9 @@
+{{*
+  * Copyright (C) 2010-2024, the Friendica project
+  * SPDX-FileCopyrightText: 2010-2024 the Friendica project
+  *
+  * SPDX-License-Identifier: AGPL-3.0-or-later
+  *}}
 {{if $pager && ($pager.prev || $pager.next)}}
 <div class="pager">
 	{{if $pager.prev}}<span class="pager_prev {{$pager.prev.class}}"><a href="{{$pager.prev.url}}">{{$pager.prev.text}}</a></span>{{/if}}

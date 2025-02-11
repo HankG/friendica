@@ -1,4 +1,10 @@
 /*
+ * SPDX-FileCopyrightText: 2010-2024 the Friendica project
+ *
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ */
+
+/*
     Created on : 17.02.2016, 23:55:45
     Author     : rabuzarus and contributors
 */
@@ -89,6 +95,9 @@ blockquote {
 .minimize {
 	max-height: 0px !important;
 	overflow: hidden !important;
+}
+.inflated {
+	display: none;
 }
 
 /**
@@ -395,7 +404,7 @@ header #banner {
 	font-family: tahoma, "Lucida Sans", sans;
 	color: #fff;
 	font-weight: bold;
-	whitespace: nowrap;
+	white-space: nowrap;
 	padding-left: 55px;
 }
 header #banner #logo-img,
@@ -731,6 +740,7 @@ nav.navbar .nav > li > button:focus {
 #topbar-first #nav-notifications-menu a {
 	color: $font_color_darker;
 	padding: 0;
+	word-break: break-word;
 }
 #topbar-first #nav-notifications-menu li.notif-entry {
 	color: $font_color_darker;
@@ -1797,19 +1807,24 @@ blockquote.shared_content {
 }
 
 /* wall items contact info */
-.media .media-body h4.media-heading {
+.media .media-body h1.media-heading,
+.media .media-body h2.media-heading {
 	font-size: 14px;
 	font-weight: 500;
 	color: $font_color_darker;
 }
+.contact-info h1.media-heading {
+	font-size: 15px;
+	font-weight: 700;
+}
 .media .contact-info-comment {
 	display: table-cell;
 }
-.media .contact-info-xs h5,
 .media .contact-info-comment {
 	margin: 0 0 5px;
 }
 .media-heading {
+	font-size: 14px;
 	margin: 0px;
 }
 .wall-item-name,
@@ -2147,6 +2162,13 @@ wall-item-comment-wrapper.well hr {
 	width: 100%;
 	border: none;
 	text-align: left;
+}
+
+.network-svg {
+	width: 18px;
+	height: 18px;
+	border-radius: 4px;
+	padding: 2px;
 }
 
 /*
@@ -2588,7 +2610,7 @@ ul.viewcontact_wrapper > li {
 .contact-entry-checkbox {
 	margin-top: -20px;
 }
-.contact-wrapper .media-body .contact-entry-name h4.media-heading a {
+.contact-wrapper .media-body .contact-entry-name h1.media-heading a {
 	font-weight: bold !important;
 	color: $link_color;
 	font-size: 15px !important;
@@ -2804,14 +2826,15 @@ ul li:hover .contact-wrapper .contact-action-link:hover {
 }
 .event-wrapper .event-owner {
 	margin-bottom: 15px;
+	word-break: break-all;
 }
 .event-wrapper .event-owner img {
 	display: block;
 }
 .event-owner img {
-	margin-right: 5px;
 	height: 48px;
-	width: 48;
+	width: 48px;
+	max-width: 48px;
 	border-radius: 3px;
 }
 .event-wrapper .vevent {
@@ -3101,15 +3124,22 @@ details.profile-jot-net[open] summary:before {
 .fakelink > h3:before {
 	padding-right: 10px;
 }
-.widget.fakelink > h3:before {
+span.widget > .fakelink > h3:before {
 	font-family: ForkAwesome;
 	content: "\f0da"; /* Right Plain Pointer */
+	margin-left: 4px;
 }
-.widget > .fakelink > h3:before,
+div.widget > .fakelink > h3:before,
 #sidebar-circle-header > .fakelink > h3:before,
 #sidebar-group-header > .fakelink > h3:before {
 	font-family: ForkAwesome;
 	content: "\f0d7"; /* Bottom Plain Pointer */
+}
+
+.widget button.fakelink {
+	border-style: none;
+	background-color: transparent;
+	padding: 0px;
 }
 
 h3.connector {
@@ -3322,6 +3352,35 @@ li.addon {
 }
 #adminpage .addon .desc {
 	padding-left: 10px;
+}
+#adminpage h2 {
+	word-break: break-all;
+}
+#adminpage .table-logs thead tr {
+	display: grid;
+	grid-auto-flow: row;
+}
+#adminpage .table-logs tbody {
+	display: table;
+	width: 100%;
+	table-layout: fixed;
+}
+#adminpage .table-logs td {
+	word-break: break-word;
+}
+#adminpage .table-logs td.log-message {
+	width: 40%;
+}
+#logdetail td.log-message {
+	width: 80%;
+}
+@media (min-width: 600px) {
+	#adminpage .table-logs thead tr {
+		grid-auto-flow: column;
+	}
+	#adminpage .table-logs td.log-message {
+		width: 60%;
+	}
 }
 #admin-users #users tr.blocked {
 	background-color: #f8efc0;
@@ -3622,9 +3681,8 @@ section .profile-match-wrapper {
 }
 
 .qq-upload-drop-area {
-	background: white !important;
+	background: inherit !important;
 	float: none;
-	border: none;
 	-webkit-box-shadow: none;
 	box-shadow: none;
 	-moz-box-shadow: none;
@@ -3639,7 +3697,7 @@ section .profile-match-wrapper {
 	width: 100% !important;
 	display: block !important;
 	position: relative !important;
-	border: black 1px dashed !important;
+	border: $font_color_darker 1px dashed !important;
 	margin-bottom: 5px !important;
 	margin-top: 15px !important;
 }
@@ -3753,7 +3811,6 @@ section .profile-match-wrapper {
 	color: $font_color;
 	font-size: 13px;
 }
-
 
 .generic-page-wrapper.contact-follow-wrapper {
 	min-height: auto;

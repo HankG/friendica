@@ -1,23 +1,9 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Module\Settings;
 
@@ -76,7 +62,6 @@ class Connectors extends BaseSettings
 			$this->pconfig->set($this->session->getLocalUserId(), 'system', 'api_spoiler_title', intval($request['api_spoiler_title']));
 			$this->pconfig->set($this->session->getLocalUserId(), 'system', 'api_auto_attach', intval($request['api_auto_attach']));
 			$this->pconfig->set($this->session->getLocalUserId(), 'system', 'article_mode', intval($request['article_mode']));
-			$this->pconfig->set($this->session->getLocalUserId(), 'ostatus', 'legacy_contact', $request['legacy_contact']);
 		} elseif (!empty($request['mail-submit']) && function_exists('imap_open') && !$this->config->get('system', 'imap_disabled')) {
 			$mail_server       =                 $request['mail_server'] ?? '';
 			$mail_port         =                 $request['mail_port'] ?? '';
@@ -141,11 +126,6 @@ class Connectors extends BaseSettings
 		$api_spoiler_title       =  intval($this->pconfig->get($this->session->getLocalUserId(), 'system', 'api_spoiler_title', true));
 		$api_auto_attach         =  intval($this->pconfig->get($this->session->getLocalUserId(), 'system', 'api_auto_attach', false));
 		$article_mode            =  intval($this->pconfig->get($this->session->getLocalUserId(), 'system', 'article_mode'));
-		$legacy_contact          =         $this->pconfig->get($this->session->getLocalUserId(), 'ostatus', 'legacy_contact');
-
-		if (!empty($legacy_contact)) {
-			$this->baseUrl->redirect('ostatus/subscribe?url=' . urlencode($legacy_contact));
-		}
 
 		$connector_settings_forms = [];
 		foreach ($this->database->selectToArray('hook', ['file', 'function'], ['hook' => 'connector_settings']) as $hook) {
@@ -168,12 +148,8 @@ class Connectors extends BaseSettings
 			$diasp_enabled = $this->config->get('system', 'diaspora_enabled') ?
 				$this->t('Built-in support for %s connectivity is enabled', $this->t('Diaspora (Socialhome, Hubzilla)')) :
 				$this->t('Built-in support for %s connectivity is disabled', $this->t('Diaspora (Socialhome, Hubzilla)'));
-			$ostat_enabled = $this->config->get('system', 'ostatus_disabled') ?
-				$this->t('Built-in support for %s connectivity is disabled', $this->t('OStatus (GNU Social)')) :
-				$this->t('Built-in support for %s connectivity is enabled', $this->t('OStatus (GNU Social)'));
 		} else {
 			$diasp_enabled = '';
-			$ostat_enabled = '';
 		}
 
 		$mail_enabled = function_exists('imap_open') && !$this->config->get('system', 'imap_disabled');
@@ -213,7 +189,6 @@ class Connectors extends BaseSettings
 			'$title' => $this->t('Social Networks'),
 
 			'$diasp_enabled' => $diasp_enabled,
-			'$ostat_enabled' => $ostat_enabled,
 
 			'$general_settings'   => $this->t('General Social Media Settings'),
 			'$accept_only_sharer' => [
@@ -234,9 +209,6 @@ class Connectors extends BaseSettings
 			'$api_spoiler_title'       => ['api_spoiler_title', $this->t('API: Use spoiler field as title'), $api_spoiler_title, $this->t('When activated, the "spoiler_text" field in the API will be used for the title on standalone posts. When deactivated it will be used for spoiler text. For comments it will always be used for spoiler text.')],
 			'$api_auto_attach'         => ['api_auto_attach', $this->t('API: Automatically links at the end of the post as attached posts'), $api_auto_attach, $this->t('When activated, added links at the end of the post react the same way as added links in the web interface.')],
 			'$article_mode'            => ['article_mode', $this->t('Article Mode'), $article_mode, $this->t("Controls how posts with titles are transmitted. Mastodon and its forks don't display the content of these posts if the post is created in the correct (default) way."), $article_modes],
-			'$legacy_contact'          => ['legacy_contact', $this->t('Your legacy ActivityPub/GNU Social account'), $legacy_contact, $this->t('If you enter your old account name from an ActivityPub based system or your GNU Social/Statusnet account name here (in the format user@domain.tld), your contacts will be added automatically. The field will be emptied when done.')],
-			'$repair_ostatus_url'  => 'ostatus/repair',
-			'$repair_ostatus_text' => $this->t('Repair OStatus subscriptions'),
 
 			'$connector_settings_forms' => $connector_settings_forms,
 

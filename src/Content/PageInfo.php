@@ -1,28 +1,13 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Content;
 
 use Friendica\Core\Hook;
-use Friendica\Core\Logger;
 use Friendica\DI;
 use Friendica\Network\HTTPException;
 use Friendica\Util\ParseUrl;
@@ -42,7 +27,7 @@ class PageInfo
 	 */
 	public static function searchAndAppendToBody(string $body, bool $searchNakedUrls = false, bool $no_photos = false)
 	{
-		Logger::debug('add_page_info_to_body: fetch page info for body', ['body' => $body]);
+		DI::logger()->debug('add_page_info_to_body: fetch page info for body', ['body' => $body]);
 
 		$url = self::getRelevantUrlFromBody($body, $searchNakedUrls);
 		if (!$url) {
@@ -74,7 +59,7 @@ class PageInfo
 			$body = substr_replace($body, "\n[bookmark=" . $data['url'] . ']' . $linkTitle . "[/bookmark]\n", $existingAttachmentPos, 0);
 		} else {
 			$footer = self::getFooterFromData($data, $no_photos);
-			$body = self::stripTrailingUrlFromBody($body, $data['url']);
+			$body   = self::stripTrailingUrlFromBody($body, $data['url']);
 			$body .= "\n" . $footer;
 		}
 
@@ -208,7 +193,7 @@ class PageInfo
 			}
 		}
 
-		Logger::debug('fetch page info for URL', ['url' => $url, 'data' => $data]);
+		DI::logger()->debug('fetch page info for URL', ['url' => $url, 'data' => $data]);
 
 		return $data;
 	}
@@ -230,8 +215,11 @@ class PageInfo
 
 		$taglist = [];
 		foreach ($data['keywords'] as $keyword) {
-			$hashtag = str_replace([' ', '+', '/', '.', '#', "'"],
-				['', '', '', '', '', ''], $keyword);
+			$hashtag = str_replace(
+				[' ', '+', '/', '.', '#', "'"],
+				['', '', '', '', '', ''],
+				$keyword
+			);
 
 			$taglist[] = $hashtag;
 		}
@@ -285,7 +273,7 @@ class PageInfo
 	protected static function stripTrailingUrlFromBody(string $body, string $url): string
 	{
 		$quotedUrl = preg_quote($url, '#');
-		$body = preg_replace_callback("#(?:
+		$body      = preg_replace_callback("#(?:
 			\[url]$quotedUrl\[/url]|
 			\[url=$quotedUrl]$quotedUrl\[/url]|
 			\[url=$quotedUrl]([^[]*?)\[/url]|

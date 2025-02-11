@@ -1,3 +1,9 @@
+{{*
+  * Copyright (C) 2010-2024, the Friendica project
+  * SPDX-FileCopyrightText: 2010-2024 the Friendica project
+  *
+  * SPDX-License-Identifier: AGPL-3.0-or-later
+  *}}
 <div class="video-top-wrapper lframe" id="video-top-wrapper-{{$video.id}}">
 	{{* set preloading to none to lessen the load on the server *}}
 	<video src="{{$video.src}}" controls {{if $video.preview}}preload="none" poster="{{$video.preview}}" {else}preload="metadata" {{/if}}width="{{$video.width}}" height="{{$video.height}}" title="{{$video.description}}">

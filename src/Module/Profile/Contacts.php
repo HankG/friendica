@@ -1,27 +1,15 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Module\Profile;
 
-use Friendica\App;
+use Friendica\App\Arguments;
+use Friendica\App\BaseURL;
+use Friendica\AppHelper;
 use Friendica\Content\Nav;
 use Friendica\Content\Pager;
 use Friendica\Core\Config\Capability\IManageConfigValues;
@@ -43,18 +31,18 @@ class Contacts extends Module\BaseProfile
 	private $config;
 	/** @var IHandleUserSessions */
 	private $userSession;
-	/** @var App */
-	private $app;
+	/** @var AppHelper */
+	private $appHelper;
 	/** @var Database */
 	private $database;
 
-	public function __construct(Database $database, App $app, IHandleUserSessions $userSession, IManageConfigValues $config, L10n $l10n, App\BaseURL $baseUrl, App\Arguments $args, LoggerInterface $logger, Profiler $profiler, Response $response, array $server, array $parameters = [])
+	public function __construct(Database $database, AppHelper $appHelper, IHandleUserSessions $userSession, IManageConfigValues $config, L10n $l10n, BaseURL $baseUrl, Arguments $args, LoggerInterface $logger, Profiler $profiler, Response $response, array $server, array $parameters = [])
 	{
 		parent::__construct($l10n, $baseUrl, $args, $logger, $profiler, $response, $server, $parameters);
 
 		$this->config      = $config;
 		$this->userSession = $userSession;
-		$this->app         = $app;
+		$this->appHelper   = $appHelper;
 		$this->database    = $database;
 	}
 
@@ -67,7 +55,7 @@ class Contacts extends Module\BaseProfile
 		$nickname = $this->parameters['nickname'];
 		$type     = $this->parameters['type'] ?? 'all';
 
-		$profile = Model\Profile::load($this->app, $nickname);
+		$profile = Model\Profile::load($this->appHelper, $nickname);
 		if (empty($profile)) {
 			throw new HTTPException\NotFoundException($this->t('User not found.'));
 		}
@@ -92,7 +80,7 @@ class Contacts extends Module\BaseProfile
 			'archive' => false,
 			'failed'  => false,
 			'self'    => false,
-			'network' => [Protocol::ACTIVITYPUB, Protocol::DFRN, Protocol::DIASPORA, Protocol::OSTATUS]
+			'network' => [Protocol::ACTIVITYPUB, Protocol::DFRN, Protocol::DIASPORA]
 		];
 
 		switch ($type) {

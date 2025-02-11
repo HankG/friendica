@@ -1,27 +1,12 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Worker;
 
-use Friendica\Core\Logger;
 use Friendica\Core\Search;
 use Friendica\DI;
 use Friendica\Model\Contact;
@@ -36,29 +21,29 @@ class PullDirectory
 	public static function execute()
 	{
 		if (!DI::config()->get('system', 'synchronize_directory')) {
-			Logger::info('Synchronization deactivated');
+			DI::logger()->info('Synchronization deactivated');
 			return;
 		}
 
 		$directory = Search::getGlobalDirectory();
 		if (empty($directory)) {
-			Logger::info('No directory configured');
+			DI::logger()->info('No directory configured');
 			return;
 		}
 
 		$now = (int)(DI::keyValue()->get('last-directory-sync') ?? 0);
 
-		Logger::info('Synchronization started.', ['now' => $now, 'directory' => $directory]);
+		DI::logger()->info('Synchronization started.', ['now' => $now, 'directory' => $directory]);
 
 		$result = DI::httpClient()->fetch($directory . '/sync/pull/since/' . $now, HttpClientAccept::JSON, 0, '', HttpClientRequest::CONTACTDISCOVER);
 		if (empty($result)) {
-			Logger::info('Directory server return empty result.', ['directory' => $directory]);
+			DI::logger()->info('Directory server return empty result.', ['directory' => $directory]);
 			return;
 		}
 
 		$contacts = json_decode($result, true);
 		if (empty($contacts['results'])) {
-			Logger::info('No results fetched.', ['directory' => $directory]);
+			DI::logger()->info('No results fetched.', ['directory' => $directory]);
 			return;
 		}
 
@@ -67,6 +52,6 @@ class PullDirectory
 		$now = $contacts['now'] ?? 0;
 		DI::keyValue()->set('last-directory-sync', $now);
 
-		Logger::info('Synchronization ended', ['now' => $now, 'count' => $result['count'], 'added' => $result['added'], 'updated' => $result['updated'], 'unchanged' => $result['unchanged'], 'directory' => $directory]);
+		DI::logger()->info('Synchronization ended', ['now' => $now, 'count' => $result['count'], 'added' => $result['added'], 'updated' => $result['updated'], 'unchanged' => $result['unchanged'], 'directory' => $directory]);
 	}
 }

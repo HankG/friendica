@@ -7,10 +7,16 @@
 		timeoutForMediumTests="900"
 		timeoutForLargeTests="900"
 		xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/9.3/phpunit.xsd">
-	<testsuite name="friendica">
-		<directory suffix=".php">functional/</directory>
-		<directory suffix=".php">src/</directory>
-	</testsuite>
+	<testsuites>
+		<testsuite name="friendica">
+			<directory suffix="Test.php">functional/</directory>
+			<directory suffix="Test.php">src/</directory>
+			<directory suffix="Test.php">Unit/</directory>
+		</testsuite>
+		<testsuite name="unit">
+			<directory suffix="Test.php">Unit/</directory>
+		</testsuite>
+	</testsuites>
 	<!-- Filters for Code Coverage -->
 	<coverage>
 		<include>

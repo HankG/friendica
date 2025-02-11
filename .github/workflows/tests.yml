@@ -1,0 +1,129 @@
+# SPDX-FileCopyrightText: 2010 - 2024 the Friendica project
+#
+# SPDX-License-Identifier: CC0-1.0
+
+name: CI tests
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  unit-tests:
+    name: Unit-Tests (PHP ${{ matrix.php }})
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        operating-system: ['ubuntu-latest']
+        php: ['7.4', '8.0', '8.1', '8.2', '8.3', '8.4', '8.5']
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 2
+
+      - name: Setup PHP with composer and extensions
+        uses: shivammathur/setup-php@v2 #https://github.com/shivammathur/setup-php
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: xdebug
+          tools: none
+
+      - name: Clone addon repository
+        run: git clone -b develop --single-branch https://git.friendi.ca/friendica/friendica-addons.git addon
+
+      - name: Install Composer dependencies
+        uses: "ramsey/composer-install@v2"
+
+      - name: Run Unit tests
+        run: composer run test:unit
+
+  database-tests:
+    name: Database-Tests (PHP ${{ matrix.php-versions }})
+    runs-on: ubuntu-latest
+
+    services:
+      mariadb:
+        image: mariadb:latest
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: true
+          MYSQL_DATABASE: test
+          MYSQL_PASSWORD: test
+          MYSQL_USER: test
+        ports:
+          - 3306/tcp
+        options: --health-cmd="healthcheck.sh --connect --innodb_initialized" --health-interval=10s --health-timeout=5s --health-retries=3
+
+      redis:
+        image: redis
+        ports:
+          - 6379/tcp
+        options: --health-cmd="redis-cli ping" --health-interval=10s --health-timeout=5s --health-retries=3
+
+      memcached:
+        image: memcached
+        ports:
+          - 11211/tcp
+
+    strategy:
+      fail-fast: false
+      matrix:
+        php-versions: ['7.4', '8.0', '8.1', '8.2', '8.3', '8.4', '8.5']
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP, with composer and extensions
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php-versions }}
+          tools: pecl, composer
+          extensions: pdo_mysql, gd, zip, opcache, ctype, pcntl, ldap, apcu, memcached, redis, imagick, memcache
+          coverage: xdebug
+          ini-values: apc.enabled=1, apc.enable_cli=1
+
+      - name: Clone addon repository
+        run: git clone -b develop --single-branch https://git.friendi.ca/friendica/friendica-addons.git addon
+
+      # Install composer dependencies and handle caching in one go.
+      # @link https://github.com/marketplace/actions/install-php-dependencies-with-composer
+      - name: "Install Composer dependencies"
+        uses: "ramsey/composer-install@v2"
+
+      - name: Start mysql service
+        run: sudo /etc/init.d/mysql start
+
+      - name: Copy default Friendica config
+        run: cp config/local-sample.config.php config/local.config.php
+
+      - name: Verify MariaDB connection
+        env:
+          PORT: ${{ job.services.mariadb.ports[3306] }}
+        run: |
+          while ! mysqladmin ping -h"127.0.0.1" -P"$PORT" --silent; do
+            sleep 1
+          done
+
+      - name: Setup MYSQL database
+        env:
+          PORT: ${{ job.services.mariadb.ports[3306] }}
+        run: |
+          mysql -h"127.0.0.1" -P"$PORT" -utest -ptest test < database.sql
+
+      - name: Test with phpunit
+        run: vendor/bin/phpunit --configuration tests/phpunit.xml --coverage-clover clover.xml
+        env:
+          MYSQL_HOST: 127.0.0.1
+          MYSQL_PORT: ${{ job.services.mariadb.ports[3306] }}
+          MYSQL_DATABASE: test
+          MYSQL_PASSWORD: test
+          MYSQL_USER: test
+          REDIS_PORT: ${{ job.services.redis.ports[6379] }}
+          REDIS_HOST: 127.0.0.1
+          MEMCACHED_PORT: ${{ job.services.memcached.ports[11211] }}
+          MEMCACHE_PORT: ${{ job.services.memcached.ports[11211] }}

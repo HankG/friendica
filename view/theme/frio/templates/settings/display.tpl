@@ -1,3 +1,9 @@
+{{*
+  * Copyright (C) 2010-2024, the Friendica project
+  * SPDX-FileCopyrightText: 2010-2024 the Friendica project
+  *
+  * SPDX-License-Identifier: AGPL-3.0-or-later
+  *}}
 <div class="generic-page-wrapper">
 	<h1>{{$ptitle}}</h1>
 	<form action="settings/display" id="settings-form" method="post" autocomplete="off">
@@ -59,8 +65,8 @@
 					<div class="panel-body">
 						{{include file="field_input.tpl" field=$itemspage_network}}
 						{{include file="field_input.tpl" field=$itemspage_mobile_network}}
-						{{include file="field_input.tpl" field=$ajaxint}}
 						{{include file="field_checkbox.tpl" field=$enable_smile}}
+						{{include file="field_checkbox.tpl" field=$update_content}}
 						{{include file="field_checkbox.tpl" field=$infinite_scroll}}
 						{{include file="field_checkbox.tpl" field=$enable_smart_threading}}
 						{{include file="field_checkbox.tpl" field=$enable_dislike}}
@@ -69,6 +75,9 @@
 						{{include file="field_checkbox.tpl" field=$show_page_drop}}
 						{{include file="field_checkbox.tpl" field=$display_eventlist}}
 						{{include file="field_select.tpl" field=$preview_mode}}
+						{{include file="field_checkbox.tpl" field=$hide_empty_descriptions}}
+						{{include file="field_checkbox.tpl" field=$hide_custom_emojis}}
+						{{include file="field_select.tpl" field=$platform_icon_style}}
 					</div>
 					<div class="panel-footer">
 						<button type="submit" name="submit" class="btn btn-primary" value="{{$submit}}">{{$submit}}</button>

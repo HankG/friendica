@@ -1,23 +1,9 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Network\HTTPClient\Client;
 
@@ -75,11 +61,13 @@ class HttpClient implements ICanSendHttpRequests
 
 		$host = parse_url($url, PHP_URL_HOST);
 		if (empty($host)) {
-			throw new \InvalidArgumentException('Unable to retrieve the host in URL: ' . $url);
+			$this->logger->notice('Unable to retrieve the host in URL', ['url' => $url]);
+			$this->profiler->stopRecording();
+			return CurlResult::createErrorCurl($this->logger, $url);
 		}
 
 		if (!filter_var($host, FILTER_VALIDATE_IP) && !@dns_get_record($host . '.', DNS_A) && !@dns_get_record($host . '.', DNS_AAAA)) {
-			$this->logger->debug('URL cannot be resolved.', ['url' => $url]);
+			$this->logger->info('URL cannot be resolved.', ['url' => $url]);
 			$this->profiler->stopRecording();
 			return CurlResult::createErrorCurl($this->logger, $url);
 		}
@@ -89,7 +77,7 @@ class HttpClient implements ICanSendHttpRequests
 		}
 
 		if (strlen($url) > 1000) {
-			$this->logger->debug('URL is longer than 1000 characters.', ['url' => $url]);
+			$this->logger->info('URL is longer than 1000 characters.', ['url' => $url]);
 			$this->profiler->stopRecording();
 			return CurlResult::createErrorCurl($this->logger, substr($url, 0, 200));
 		}
@@ -283,25 +271,21 @@ class HttpClient implements ICanSendHttpRequests
 	 */
 	public function fetch(string $url, string $accept_content = HttpClientAccept::DEFAULT, int $timeout = 0, string $cookiejar = '', string $request = ''): string
 	{
-		$ret = $this->fetchFull($url, $accept_content, $timeout, $cookiejar, $request);
-
-		return $ret->getBodyString();
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	public function fetchFull(string $url, string $accept_content = HttpClientAccept::DEFAULT, int $timeout = 0, string $cookiejar = '', string $request = ''): ICanHandleHttpResponses
-	{
-		return $this->get(
-			$url,
-			$accept_content,
-			[
-				HttpClientOptions::TIMEOUT   => $timeout,
-				HttpClientOptions::COOKIEJAR => $cookiejar,
-				HttpClientOptions::REQUEST   => $request,
-			]
-		);
+		try {
+			$ret = $this->get(
+				$url,
+				$accept_content,
+				[
+					HttpClientOptions::TIMEOUT   => $timeout,
+					HttpClientOptions::COOKIEJAR => $cookiejar,
+					HttpClientOptions::REQUEST   => $request,
+				]
+			);
+			return $ret->getBodyString();
+		} catch (\Throwable $th) {
+			$this->logger->notice('Got exception', ['code' => $th->getCode(), 'message' => $th->getMessage()]);
+			return '';
+		}
 	}
 
 	private function getUserAgent(string $type = ''): string

@@ -1,32 +1,18 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Util;
 
 use Friendica\Core\Cache\Enum\Duration;
-use Friendica\Core\Logger;
 use Exception;
 use Friendica\Core\System;
 use Friendica\DI;
 use Friendica\Protocol\ActivityPub;
+use stdClass;
 
 /**
  * This class contain methods to work with JsonLD data
@@ -71,9 +57,12 @@ class JsonLD
 			case 'http://joinmastodon.org/ns':
 				$url = DI::basePath() . '/static/joinmastodon.jsonld';
 				break;
+			case 'https://purl.archive.org/socialweb/webfinger':
+				$url = DI::basePath() . '/static/socialweb-webfinger.jsonld';
+				break;
 			default:
 				switch (parse_url($url, PHP_URL_PATH)) {
-					case '/schemas/litepub-0.1.jsonld';
+					case '/schemas/litepub-0.1.jsonld':
 						$url = DI::basePath() . '/static/litepub-0.1.jsonld';
 						break;
 					case '/apschema/v1.2':
@@ -82,7 +71,7 @@ class JsonLD
 						$url = DI::basePath() . '/static/apschema.jsonld';
 						break;
 					default:
-						Logger::info('Got url', ['url' =>$url]);
+						DI::logger()->info('Got url', ['url' => $url]);
 						break;
 				}
 		}
@@ -92,14 +81,14 @@ class JsonLD
 		$x = debug_backtrace();
 		if ($x) {
 			foreach ($x as $n) {
-				if ($n['function'] === __FUNCTION__)  {
-					$recursion ++;
+				if ($n['function'] === __FUNCTION__) {
+					$recursion++;
 				}
 			}
 		}
 
 		if ($recursion > 5) {
-			Logger::error('jsonld bomb detected at: ' . $url);
+			DI::logger()->error('jsonld bomb detected at: ' . $url);
 			System::exit();
 		}
 
@@ -128,20 +117,18 @@ class JsonLD
 		$jsonobj = json_decode(json_encode($json, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
 
 		try {
-			$normalized = jsonld_normalize($jsonobj, array('algorithm' => 'URDNA2015', 'format' => 'application/nquads'));
-		}
-		catch (Exception $e) {
-			$normalized = false;
-			$messages = [];
+			$normalized = jsonld_normalize($jsonobj, ['algorithm' => 'URDNA2015', 'format' => 'application/nquads']);
+		} catch (Exception $e) {
+			$normalized       = false;
+			$messages         = [];
 			$currentException = $e;
 			do {
 				$messages[] = $currentException->getMessage();
-			} while($currentException = $currentException->getPrevious());
+			} while ($currentException = $currentException->getPrevious());
 
-			Logger::warning('JsonLD normalize error');
-			Logger::notice('JsonLD normalize error', ['messages' => $messages]);
-			Logger::info('JsonLD normalize error', ['trace' => $e->getTraceAsString()]);
-			Logger::debug('JsonLD normalize error', ['jsonobj' => $jsonobj]);
+			DI::logger()->notice('JsonLD normalize error', ['messages' => $messages]);
+			DI::logger()->info('JsonLD normalize error', ['trace' => $e->getTraceAsString()]);
+			DI::logger()->debug('JsonLD normalize error', ['jsonobj' => $jsonobj]);
 		}
 
 		return $normalized;
@@ -160,26 +147,54 @@ class JsonLD
 	{
 		jsonld_set_document_loader('Friendica\Util\JsonLD::documentLoader');
 
-		$context = (object)['as' => 'https://www.w3.org/ns/activitystreams#',
-			'w3id' => 'https://w3id.org/security#',
-			'ldp' => (object)['@id' => 'http://www.w3.org/ns/ldp#', '@type' => '@id'],
-			'vcard' => (object)['@id' => 'http://www.w3.org/2006/vcard/ns#', '@type' => '@id'],
-			'dfrn' => (object)['@id' => 'http://purl.org/macgirvin/dfrn/1.0/', '@type' => '@id'],
-			'diaspora' => (object)['@id' => 'https://diasporafoundation.org/ns/', '@type' => '@id'],
-			'ostatus' => (object)['@id' => 'http://ostatus.org#', '@type' => '@id'],
-			'dc' => (object)['@id' => 'http://purl.org/dc/terms/', '@type' => '@id'],
-			'toot' => (object)['@id' => 'http://joinmastodon.org/ns#', '@type' => '@id'],
-			'litepub' => (object)['@id' => 'http://litepub.social/ns#', '@type' => '@id'],
-			'sc' => (object)['@id' => 'http://schema.org#', '@type' => '@id'],
-			'pt' => (object)['@id' => 'https://joinpeertube.org/ns#', '@type' => '@id'],
+		$context = (object)[
+			'as'        => 'https://www.w3.org/ns/activitystreams#',
+			'w3id'      => 'https://w3id.org/security#',
+			'ldp'       => (object)['@id' => 'http://www.w3.org/ns/ldp#', '@type' => '@id'],
+			'vcard'     => (object)['@id' => 'http://www.w3.org/2006/vcard/ns#', '@type' => '@id'],
+			'dfrn'      => (object)['@id' => 'http://purl.org/macgirvin/dfrn/1.0/', '@type' => '@id'],
+			'diaspora'  => (object)['@id' => 'https://diasporafoundation.org/ns/', '@type' => '@id'],
+			'ostatus'   => (object)['@id' => 'http://ostatus.org#', '@type' => '@id'],
+			'dc'        => (object)['@id' => 'http://purl.org/dc/terms/', '@type' => '@id'],
+			'toot'      => (object)['@id' => 'http://joinmastodon.org/ns#', '@type' => '@id'],
+			'litepub'   => (object)['@id' => 'http://litepub.social/ns#', '@type' => '@id'],
+			'sc'        => (object)['@id' => 'http://schema.org#', '@type' => '@id'],
+			'pt'        => (object)['@id' => 'https://joinpeertube.org/ns#', '@type' => '@id'],
 			'mobilizon' => (object)['@id' => 'https://joinmobilizon.org/ns#', '@type' => '@id'],
-			'fedibird' => (object)['@id' => 'http://fedibird.com/ns#', '@type' => '@id'],
-			'misskey' => (object)['@id' => 'https://misskey-hub.net/ns#', '@type' => '@id'],
-			'pixelfed' => (object)['@id' => 'http://pixelfed.org/ns#', '@type' => '@id'],
+			'fedibird'  => (object)['@id' => 'http://fedibird.com/ns#', '@type' => '@id'],
+			'misskey'   => (object)['@id' => 'https://misskey-hub.net/ns#', '@type' => '@id'],
+			'pixelfed'  => (object)['@id' => 'http://pixelfed.org/ns#', '@type' => '@id'],
+			'lemmy'     => (object)['@id' => 'https://join-lemmy.org/ns#', '@type' => '@id'],
 		];
 
 		$orig_json = $json;
 
+		$jsonobj = self::fixInvalidJsonLD($json);
+
+		try {
+			$compacted = jsonld_compact($jsonobj, $context);
+		} catch (Exception $e) {
+			$compacted = false;
+			DI::logger()->notice('compacting error', ['msg' => $e->getMessage(), 'previous' => $e->getPrevious(), 'line' => $e->getLine()]);
+			if ($logfailed && DI::config()->get('debug', 'ap_log_failure')) {
+				$tempfile = tempnam(System::getTempPath(), 'failed-jsonld');
+				file_put_contents($tempfile, json_encode(['json' => $orig_json, 'msg' => $e->getMessage(), 'previous' => $e->getPrevious()], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
+				DI::logger()->notice('Failed message stored', ['file' => $tempfile]);
+			}
+		}
+
+		$json = json_decode(json_encode($compacted, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), true);
+
+		if ($json === false) {
+			DI::logger()->notice('JSON encode->decode failed', ['orig_json' => $orig_json, 'compacted' => $compacted]);
+			$json = [];
+		}
+
+		return $json;
+	}
+
+	private static function fixInvalidJsonLD(array $json): stdClass
+	{
 		if (empty($json['@context'])) {
 			$json['@context'] = ActivityPub::CONTEXT;
 		}
@@ -196,42 +211,38 @@ class JsonLD
 			// Workaround for servers with missing context
 			// See issue https://github.com/nextcloud/social/issues/330
 			if (!in_array('https://w3id.org/security/v1', $json['@context'])) {
+				DI::logger()->debug('Missing security context');
 				$json['@context'][] = 'https://w3id.org/security/v1';
 			}
 		}
 
+		// Issue 14448: Peertube transmits an unexpected type and schema URL.
+		array_walk_recursive($json['@context'], function (&$value, $key) {
+			if ($key == '@type' && $value == '@json') {
+				DI::logger()->debug('"@json" converted to "@id"');
+				$value = '@id';
+			}
+			if ($key == 'sc' && $value == 'http://schema.org/') {
+				DI::logger()->debug('schema.org path fixed');
+				$value = 'http://schema.org#';
+			}
+			// Issue 14630: Wordpress Event Bridge uses a URL that cannot be retrieved
+			if (is_int($key) && $value == 'https://schema.org/') {
+				DI::logger()->debug('https schema.org path fixed');
+				$value = 'https://schema.org/docs/jsonldcontext.json#';
+			}
+		});
+
 		// Bookwyrm transmits "id" fields with "null", which isn't allowed.
 		array_walk_recursive($json, function (&$value, $key) {
 			if ($key == 'id' && is_null($value)) {
+				DI::logger()->debug('Fixed null id');
 				$value = '';
 			}
 		});
 
-		$jsonobj = json_decode(json_encode($json, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
-
-		try {
-			$compacted = jsonld_compact($jsonobj, $context);
-		}
-		catch (Exception $e) {
-			$compacted = false;
-			Logger::notice('compacting error', ['msg' => $e->getMessage(), 'previous' => $e->getPrevious(), 'line' => $e->getLine()]);
-			if ($logfailed && DI::config()->get('debug', 'ap_log_failure')) {
-				$tempfile = tempnam(System::getTempPath(), 'failed-jsonld');
-				file_put_contents($tempfile, json_encode(['json' => $orig_json, 'msg' => $e->getMessage(), 'previous' => $e->getPrevious()], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
-				Logger::notice('Failed message stored', ['file' => $tempfile]);
-			}
-		}
-
-		$json = json_decode(json_encode($compacted, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), true);
-
-		if ($json === false) {
-			Logger::notice('JSON encode->decode failed', ['orig_json' => $orig_json, 'compacted' => $compacted]);
-			$json = [];
-		}
-
-		return $json;
+		return json_decode(json_encode($json, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
 	}
-
 	/**
 	 * Fetches an element array from a JSON array
 	 *
@@ -278,7 +289,7 @@ class JsonLD
 	 * @param $type
 	 * @param $type_value
 	 *
-	 * @return string fetched element
+	 * @return string|null fetched element
 	 */
 	public static function fetchElement($array, $element, $key = '@id', $type = null, $type_value = null)
 	{

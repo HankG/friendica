@@ -1,28 +1,13 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Core\Storage\Repository;
 
 use Exception;
-use Friendica\Core\Addon;
 use Friendica\Core\Config\Capability\IManageConfigValues;
 use Friendica\Core\Hook;
 use Friendica\Core\L10n;
@@ -34,6 +19,7 @@ use Friendica\Core\Storage\Capability\ICanConfigureStorage;
 use Friendica\Core\Storage\Capability\ICanWriteToStorage;
 use Friendica\Database\Database;
 use Friendica\Core\Storage\Type;
+use Friendica\DI;
 use Friendica\Network\HTTPException\InternalServerErrorException;
 use Psr\Log\LoggerInterface;
 
@@ -98,7 +84,7 @@ class StorageManager
 		/// @fixme Loading the addons & hooks here is really bad practice, but solves https://github.com/friendica/friendica/issues/11178
 		/// clean solution = Making Addon & Hook dynamic and load them inside the constructor, so there's no custom load logic necessary anymore
 		if ($includeAddon) {
-			Addon::loadAddons();
+			DI::addonHelper()->loadAddons();
 			Hook::loadHooks();
 		}
 
@@ -152,7 +138,7 @@ class StorageManager
 			// Try the filesystem backend
 			case Type\Filesystem::getName():
 				return new Type\FilesystemConfig($this->config, $this->l10n);
-			// try the database backend
+				// try the database backend
 			case Type\Database::getName():
 				return false;
 			default:
@@ -199,11 +185,11 @@ class StorageManager
 					$storageConfig                 = new Type\FilesystemConfig($this->config, $this->l10n);
 					$this->backendInstances[$name] = new Type\Filesystem($storageConfig->getStoragePath());
 					break;
-				// try the database backend
+					// try the database backend
 				case Type\Database::getName():
 					$this->backendInstances[$name] = new Type\Database($this->dba);
 					break;
-				// at least, try if there's an addon for the backend
+					// at least, try if there's an addon for the backend
 				case Type\SystemResource::getName():
 					$this->backendInstances[$name] = new Type\SystemResource();
 					break;
@@ -242,11 +228,13 @@ class StorageManager
 	 */
 	public function isValidBackend(string $name = null, array $validBackends = null): bool
 	{
-		$validBackends = $validBackends ?? array_merge($this->validBackends,
-				[
-					Type\SystemResource::getName(),
-					Type\ExternalResource::getName(),
-				]);
+		$validBackends = $validBackends ?? array_merge(
+			$this->validBackends,
+			[
+				Type\SystemResource::getName(),
+				Type\ExternalResource::getName(),
+			]
+		);
 		return in_array($name, $validBackends);
 	}
 
@@ -288,24 +276,24 @@ class StorageManager
 	 */
 	public function register(string $class): bool
 	{
-		if (is_subclass_of($class, ICanReadFromStorage::class)) {
-			/** @var ICanReadFromStorage $class */
-			if ($this->isValidBackend($class::getName(), $this->validBackends)) {
-				return true;
-			}
-
-			$backends   = $this->validBackends;
-			$backends[] = $class::getName();
-
-			if ($this->config->set('storage', 'backends', $backends)) {
-				$this->validBackends = $backends;
-				return true;
-			} else {
-				return false;
-			}
-		} else {
+		if (!is_subclass_of($class, ICanReadFromStorage::class)) {
 			return false;
 		}
+
+		/** @var class-string<ICanReadFromStorage> $class */
+		if ($this->isValidBackend($class::getName(), $this->validBackends)) {
+			return true;
+		}
+
+		$backends   = $this->validBackends;
+		$backends[] = $class::getName();
+
+		if ($this->config->set('storage', 'backends', $backends)) {
+			$this->validBackends = $backends;
+			return true;
+		}
+
+		return false;
 	}
 
 	/**
@@ -319,30 +307,31 @@ class StorageManager
 	 */
 	public function unregister(string $class): bool
 	{
-		if (is_subclass_of($class, ICanReadFromStorage::class)) {
-			/** @var ICanReadFromStorage $class */
-			if ($this->currentBackend::getName() == $class::getName()) {
-				throw new StorageException(sprintf('Cannot unregister %s, because it\'s currently active.', $class::getName()));
-			}
-
-			$key = array_search($class::getName(), $this->validBackends);
-
-			if ($key !== false) {
-				$backends = $this->validBackends;
-				unset($backends[$key]);
-				$backends = array_values($backends);
-				if ($this->config->set('storage', 'backends', $backends)) {
-					$this->validBackends = $backends;
-					return true;
-				} else {
-					return false;
-				}
-			} else {
-				return true;
-			}
-		} else {
+		if (!is_subclass_of($class, ICanReadFromStorage::class)) {
 			return false;
 		}
+
+		/** @var class-string<ICanReadFromStorage> $class */
+		if ($this->currentBackend::getName() == $class::getName()) {
+			throw new StorageException(sprintf('Cannot unregister %s, because it\'s currently active.', $class::getName()));
+		}
+
+		$key = array_search($class::getName(), $this->validBackends);
+
+		if ($key === false) {
+			return true;
+		}
+
+		$backends = $this->validBackends;
+		unset($backends[$key]);
+		$backends = array_values($backends);
+
+		if ($this->config->set('storage', 'backends', $backends)) {
+			$this->validBackends = $backends;
+			return true;
+		}
+
+		return false;
 	}
 
 	/**

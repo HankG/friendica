@@ -1,3 +1,9 @@
+{{*
+  * Copyright (C) 2010-2024, the Friendica project
+  * SPDX-FileCopyrightText: 2010-2024 the Friendica project
+  *
+  * SPDX-License-Identifier: AGPL-3.0-or-later
+  *}}
 
 <div class="contact-wrapper" id="contact-entry-wrapper-{{$id}}">
 	{{if $contact.ignlnk}}<a href="{{$contact.ignlnk}}" title="{{$contact.ignore}}" class="icon drophide profile-match-ignore" onmouseout="imgdull(this);" onmouseover="imgbright(this);" onclick="return confirmDelete();"></a>{{/if}}

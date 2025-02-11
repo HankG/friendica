@@ -1,23 +1,9 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Object\Api\Twitter;
 
@@ -76,7 +62,7 @@ class User extends BaseDataTransferObject
 	protected $default_profile;
 	/** @var bool */
 	protected $default_profile_image;
-	/** @var Status */
+	/** @var array */
 	protected $status;
 	/** @var array */
 	protected $withheld_in_countries;
@@ -131,12 +117,11 @@ class User extends BaseDataTransferObject
 	 * @param array $publicContact         Full contact table record with uid = 0
 	 * @param array $apcontact             Optional full apcontact table record
 	 * @param array $userContact           Optional full contact table record with uid != 0
-	 * @param null  $status
 	 * @param bool  $include_user_entities Whether to add the entities property
 	 *
 	 * @throws InternalServerErrorException
 	 */
-	public function __construct(array $publicContact, array $apcontact = [], array $userContact = [], $status = null, bool $include_user_entities = true)
+	public function __construct(array $publicContact, array $apcontact = [], array $userContact = [], ?Status $status = null, bool $include_user_entities = true)
 	{
 		$uid = $userContact['uid'] ?? 0;
 
@@ -145,7 +130,7 @@ class User extends BaseDataTransferObject
 		$this->name                    = $publicContact['name'] ?: $publicContact['nick'];
 		$this->screen_name             = $publicContact['nick'] ?: $publicContact['name'];
 		$this->location                = $publicContact['location'] ?:
-			ContactSelector::networkToName($publicContact['network'], $publicContact['url'], $publicContact['protocol']);
+			ContactSelector::networkToName($publicContact['network'], $publicContact['protocol'], $publicContact['gsid']);
 		$this->derived                 = [];
 		$this->url                     = $publicContact['url'];
 		// No entities needed since we don't perform any shortening in the URL or description
@@ -170,10 +155,10 @@ class User extends BaseDataTransferObject
 		$this->default_profile         = false;
 		$this->default_profile_image   = false;
 
-		if (!empty($status)) {
-			$this->status = $status;
-		} else {
+		if ($status === null) {
 			unset($this->status);
+		} else {
+			$this->status = $status->toArray();
 		}
 
 		//  Unused optional fields

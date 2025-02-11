@@ -18,21 +18,25 @@
 	"postCreateCommand": "bash -c '.devcontainer/postCreate.sh && .devcontainer/postCreateApacheSetup.sh && .devcontainer/postCreateFriendicaSetup.sh'",
 	"postStartCommand": "service apache2 start",
 
+	"forwardPorts": [
+		8080
+	],
+
 	// Configure tool-specific properties.
 	"customizations": {
 		"vscode": {
 			"extensions": [
-				"xdebug.php-debug",
+				"bmewburn.vscode-intelephense-client",
 				"ms-azuretools.vscode-docker",
-				"donjayamanne.githistory",
-				"bmewburn.vscode-intelephense-client"
+				"xdebug.php-debug",
+				"donjayamanne.githistory"
 			],
 			"settings": {
 				"php.suggest.basic": false
 			}
 		}
-	},
+	}
 
 	// Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
-	"remoteUser": "vscode"
+	//"remoteUser": "root"
 }

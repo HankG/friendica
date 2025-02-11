@@ -1,3 +1,9 @@
+{{*
+  * Copyright (C) 2010-2024, the Friendica project
+  * SPDX-FileCopyrightText: 2010-2024 the Friendica project
+  *
+  * SPDX-License-Identifier: AGPL-3.0-or-later
+  *}}
 {{* This is the standard template for showing contact lists. It is used e.g.
 at the suggest page and also at many other places *}}
 <div class="generic-page-wrapper">

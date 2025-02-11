@@ -1,23 +1,9 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Module\Contact;
 
@@ -30,6 +16,7 @@ use Friendica\Core\Renderer;
 use Friendica\Database\Database;
 use Friendica\DI;
 use Friendica\Model;
+use Friendica\Model\Contact as ModelContact;
 use Friendica\Module\Contact;
 use Friendica\Module\Response;
 use Friendica\Module\Security\Login;
@@ -58,16 +45,12 @@ class Revoke extends BaseModule
 			return;
 		}
 
-		$data = Model\Contact::getPublicAndUserContactID($this->parameters['id'], DI::userSession()->getLocalUserId());
-		if (!$this->dba->isResult($data)) {
-			throw new HTTPException\NotFoundException($this->t('Unknown contact.'));
-		}
-
-		if (empty($data['user'])) {
+		$ucid = Model\Contact::getUserContactId($this->parameters['id'], DI::userSession()->getLocalUserId());
+		if (!$ucid) {
 			throw new HTTPException\ForbiddenException();
 		}
 
-		$this->contact = Model\Contact::getById($data['user']);
+		$this->contact = Model\Contact::getById($ucid);
 
 		if ($this->contact['deleted']) {
 			throw new HTTPException\NotFoundException($this->t('Contact is deleted.'));
@@ -90,7 +73,7 @@ class Revoke extends BaseModule
 
 		DI::sysmsg()->addNotice($this->t('Follow was successfully revoked.'));
 
-		$this->baseUrl->redirect('contact/' . $this->parameters['id']);
+		$this->baseUrl->redirect('contact/' . ModelContact::getPublicContactId($this->parameters['id'], DI::userSession()->getLocalUserId()));
 	}
 
 	protected function content(array $request = []): string

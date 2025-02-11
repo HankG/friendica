@@ -1,27 +1,12 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Worker;
 
-use Friendica\Core\Logger;
 use Friendica\DI;
 use Friendica\Model\Contact;
 use Friendica\Model\GServer;
@@ -52,17 +37,17 @@ class UpdateServerDirectory
 	{
 		$result = DI::httpClient()->fetch($gserver['poco'] . '?fields=urls', HttpClientAccept::JSON, 0, '', HttpClientRequest::SERVERDISCOVER);
 		if (empty($result)) {
-			Logger::info('Empty result', ['url' => $gserver['url']]);
+			DI::logger()->info('Empty result', ['url' => $gserver['url']]);
 			return;
 		}
 
 		$contacts = json_decode($result, true);
 		if (empty($contacts['entry'])) {
-			Logger::info('No contacts', ['url' => $gserver['url']]);
+			DI::logger()->info('No contacts', ['url' => $gserver['url']]);
 			return;
 		}
 
-		Logger::info('PoCo discovery started', ['poco' => $gserver['poco']]);
+		DI::logger()->info('PoCo discovery started', ['poco' => $gserver['poco']]);
 
 		$urls = [];
 		foreach (array_column($contacts['entry'], 'urls') as $url_entries) {
@@ -78,24 +63,24 @@ class UpdateServerDirectory
 
 		$result = Contact::addByUrls($urls);
 
-		Logger::info('PoCo discovery ended', ['count' => $result['count'], 'added' => $result['added'], 'updated' => $result['updated'], 'unchanged' => $result['unchanged'], 'poco' => $gserver['poco']]);
+		DI::logger()->info('PoCo discovery ended', ['count' => $result['count'], 'added' => $result['added'], 'updated' => $result['updated'], 'unchanged' => $result['unchanged'], 'poco' => $gserver['poco']]);
 	}
 
 	private static function discoverMastodonDirectory(array $gserver)
 	{
 		$result = DI::httpClient()->fetch($gserver['url'] . '/api/v1/directory?order=new&local=true&limit=200&offset=0', HttpClientAccept::JSON, 0, '', HttpClientRequest::SERVERDISCOVER);
 		if (empty($result)) {
-			Logger::info('Empty result', ['url' => $gserver['url']]);
+			DI::logger()->info('Empty result', ['url' => $gserver['url']]);
 			return;
 		}
 
 		$accounts = json_decode($result, true);
-		if (empty($accounts)) {
-			Logger::info('No contacts', ['url' => $gserver['url']]);
+		if (!is_array($accounts)) {
+			DI::logger()->info('No contacts', ['url' => $gserver['url']]);
 			return;
 		}
 
-		Logger::info('Account discovery started', ['url' => $gserver['url']]);
+		DI::logger()->info('Account discovery started', ['url' => $gserver['url']]);
 
 		$urls = [];
 		foreach ($accounts as $account) {
@@ -106,6 +91,6 @@ class UpdateServerDirectory
 
 		$result = Contact::addByUrls($urls);
 
-		Logger::info('Account discovery ended', ['count' => $result['count'], 'added' => $result['added'], 'updated' => $result['updated'], 'unchanged' => $result['unchanged'], 'url' => $gserver['url']]);
+		DI::logger()->info('Account discovery ended', ['count' => $result['count'], 'added' => $result['added'], 'updated' => $result['updated'], 'unchanged' => $result['unchanged'], 'url' => $gserver['url']]);
 	}
 }

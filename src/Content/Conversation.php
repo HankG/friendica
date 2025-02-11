@@ -1,29 +1,17 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Content;
 
-use Friendica\App;
 use Friendica\App\Arguments;
 use Friendica\App\BaseURL;
+use Friendica\App\Mode;
+use Friendica\App\Page;
+use Friendica\AppHelper;
 use Friendica\BaseModule;
 use Friendica\Core\ACL;
 use Friendica\Core\Config\Capability\IManageConfigValues;
@@ -46,13 +34,14 @@ use Friendica\Network\HTTPException\InternalServerErrorException;
 use Friendica\Object\Post as PostObject;
 use Friendica\Object\Thread;
 use Friendica\Protocol\Activity;
-use Friendica\User\Settings\Entity\UserGServer;
-use Friendica\User\Settings\Repository;
+use Friendica\User\Settings\Entity\UserGServer as UserGServerEntity;
+use Friendica\User\Settings\Repository\UserGServer as UserGServerRepository;
 use Friendica\Util\Crypto;
 use Friendica\Util\DateTimeFormat;
 use Friendica\Util\Profiler;
 use Friendica\Util\Strings;
 use Friendica\Util\Temporal;
+use ImagickException;
 use Psr\Log\LoggerInterface;
 
 class Conversation
@@ -78,7 +67,7 @@ class Conversation
 	private $logger;
 	/** @var Item */
 	private $item;
-	/** @var App\Arguments */
+	/** @var Arguments */
 	private $args;
 	/** @var IManagePersonalConfigValues */
 	private $pConfig;
@@ -86,18 +75,18 @@ class Conversation
 	private $baseURL;
 	/** @var IManageConfigValues */
 	private $config;
-	/** @var App */
-	private $app;
-	/** @var App\Page */
+	/** @var AppHelper */
+	private $appHelper;
+	/** @var Page */
 	private $page;
-	/** @var App\Mode */
+	/** @var Mode */
 	private $mode;
 	/** @var IHandleUserSessions */
 	private $session;
-	/** @var Repository\UserGServer */
+	/** @var UserGServerRepository */
 	private $userGServer;
 
-	public function __construct(Repository\UserGServer $userGServer, LoggerInterface $logger, Profiler $profiler, Activity $activity, L10n $l10n, Item $item, Arguments $args, BaseURL $baseURL, IManageConfigValues $config, IManagePersonalConfigValues $pConfig, App\Page $page, App\Mode $mode, App $app, IHandleUserSessions $session)
+	public function __construct(UserGServerRepository $userGServer, LoggerInterface $logger, Profiler $profiler, Activity $activity, L10n $l10n, Item $item, Arguments $args, BaseURL $baseURL, IManageConfigValues $config, IManagePersonalConfigValues $pConfig, Page $page, Mode $mode, AppHelper $appHelper, IHandleUserSessions $session)
 	{
 		$this->activity    = $activity;
 		$this->item        = $item;
@@ -110,7 +99,7 @@ class Conversation
 		$this->args        = $args;
 		$this->pConfig     = $pConfig;
 		$this->page        = $page;
-		$this->app         = $app;
+		$this->appHelper   = $appHelper;
 		$this->session     = $session;
 		$this->userGServer = $userGServer;
 	}
@@ -124,7 +113,7 @@ class Conversation
 	 * @param array &$conv_responses (already created with builtin activity structure)
 	 * @return void
 	 * @throws ImagickException
-	 * @throws \Friendica\Network\HTTPException\InternalServerErrorException
+	 * @throws InternalServerErrorException
 	 */
 	public function builtinActivityPuller(array $activity, array &$conv_responses)
 	{
@@ -218,7 +207,7 @@ class Conversation
 
 		if ($total === 0) {
 			throw new InternalServerErrorException(sprintf('There has to be at least one Liker for verb "%s"', $verb));
-		} else if ($total === 1) {
+		} elseif ($total === 1) {
 			$likerString = $likers[0];
 		} else {
 			if ($total < $this->config->get('system', 'max_likers')) {
@@ -337,7 +326,7 @@ class Conversation
 			'$ispublic'  => $this->l10n->t('Visible to <strong>everybody</strong>'),
 			'$linkurl'   => $this->l10n->t('Please enter a image/video/audio/webpage URL:'),
 			'$term'      => $this->l10n->t('Tag term:'),
-			'$fileas'    => $this->l10n->t('Save to Folder:'),
+			'$fileas'    => $this->l10n->t('Save to Folder'),
 			'$whereareu' => $this->l10n->t('Where are you right now?'),
 			'$delitems'  => $this->l10n->t("Delete item\x28s\x29?"),
 			'$is_mobile' => $this->mode->isMobile(),
@@ -468,7 +457,7 @@ class Conversation
 
 		$userGservers = $this->userGServer->listIgnoredByUser($this->session->getLocalUserId());
 
-		$ignoredGsids = array_map(function (UserGServer $userGServer) {
+		$ignoredGsids = array_map(function (UserGServerEntity $userGServer) {
 			return $userGServer->gsid;
 		}, $userGservers->getArrayCopy());
 
@@ -610,7 +599,7 @@ class Conversation
 	 * @param string $formSecurityToken A 'contact_action' form security token
 	 * @return array
 	 * @throws InternalServerErrorException
-	 * @throws \ImagickException
+	 * @throws ImagickException
 	 */
 	public function getThreadList(array $items, string $mode, bool $preview, bool $pagedrop, string $formSecurityToken): array
 	{
@@ -987,8 +976,8 @@ class Conversation
 		}
 
 		foreach ($items as $key => $row) {
-			$items[$key]['emojis']      = $emojis[$key] ?? [];
-			$items[$key]['counts']      = $counts[$key] ?? 0;
+			$items[$key]['emojis']      = $emojis[$key]      ?? [];
+			$items[$key]['counts']      = $counts[$key]      ?? 0;
 			$items[$key]['quoteshares'] = $quoteshares[$key] ?? [];
 
 			$always_display = in_array($mode, [self::MODE_CONTACTS, self::MODE_CONTACT_POSTS]);
@@ -1031,19 +1020,19 @@ class Conversation
 			$emojis[$count['uri-id']][$count['reaction']]['title'] = [];
 		}
 
-		// @todo The following code should be removed, once that we display activity authors on demand 
-		$activity_emoji = [
-			Activity::LIKE        => '👍',
-			Activity::DISLIKE     => '👎',
-			Activity::ATTEND      => '✔️',
-			Activity::ATTENDMAYBE => '❓',
-			Activity::ATTENDNO    => '❌',
-			Activity::ANNOUNCE    => '♻',
-			Activity::VIEW        => '📺',
-			Activity::READ        => '📖',
+		// @todo The following code should be removed, once that we display activity authors on demand
+		$activity_verbs = [
+			Activity::LIKE,
+			Activity::DISLIKE,
+			Activity::ATTEND,
+			Activity::ATTENDMAYBE,
+			Activity::ATTENDNO,
+			Activity::ANNOUNCE,
+			Activity::VIEW,
+			Activity::READ,
 		];
 
-		$verbs     = array_merge(array_keys($activity_emoji), [Activity::EMOJIREACT, Activity::POST]);
+		$verbs     = array_merge($activity_verbs, [Activity::EMOJIREACT, Activity::POST]);
 		$condition = DBA::mergeConditions(['parent-uri-id' => $uriids, 'gravity' => [ItemModel::GRAVITY_ACTIVITY, ItemModel::GRAVITY_COMMENT], 'verb' => $verbs], ["NOT `deleted`"]);
 		$separator = chr(255) . chr(255) . chr(255);
 
@@ -1052,7 +1041,7 @@ class Conversation
 		$rows = DBA::p($sql, $condition);
 		while ($row = DBA::fetch($rows)) {
 			if ($row['gravity'] == ItemModel::GRAVITY_ACTIVITY) {
-				$emoji = $row['body'] ?: $activity_emoji[$row['verb']];
+				$emoji = $row['body'] ?: $row['verb'];
 			} else {
 				$emoji = '';
 			}
@@ -1442,7 +1431,7 @@ class Conversation
 	public function getContextLessThreadList(array $items, string $mode, bool $preview, bool $pagedrop, string $formSecurityToken): array
 	{
 		$threads = [];
-		$uriids = [];
+		$uriids  = [];
 
 		foreach ($items as $item) {
 			if (in_array($item['uri-id'], $uriids)) {
@@ -1467,7 +1456,7 @@ class Conversation
 
 			$tags = Tag::populateFromItem($item);
 
-			$author       = [
+			$author = [
 				'uid'     => 0,
 				'id'      => $item['author-id'],
 				'network' => $item['author-network'],
@@ -1512,7 +1501,7 @@ class Conversation
 
 			$body_html = ItemModel::prepareBody($item, true, $preview);
 
-			[$categories, $folders] = $this->item->determineCategoriesTerms($item, $this->session->getLocalUserId());
+			list($categories, $folders) = $this->item->determineCategoriesTerms($item, $this->session->getLocalUserId());
 
 			if (!empty($item['featured'])) {
 				$pinned = $this->l10n->t('Pinned item');
@@ -1530,8 +1519,8 @@ class Conversation
 				'uriid'                => $item['uri-id'],
 				'author_gsid'          => $item['author-gsid'],
 				'network'              => $item['network'],
-				'network_name'         => ContactSelector::networkToName($item['author-network'], $item['author-link'], $item['network'], $item['author-gsid']),
-				'network_icon'         => ContactSelector::networkToIcon($item['network'], $item['author-link'], $item['author-gsid']),
+				'network_name'         => ContactSelector::networkToName($item['author-network'], $item['network'], $item['author-gsid']),
+				'network_svg'          => ContactSelector::networkToSVG($item['network'], $item['author-gsid'], '', $this->session->getLocalUserId()),
 				'linktitle'            => $this->l10n->t('View %s\'s profile @ %s', $profile_name, $item['author-link']),
 				'profile_url'          => $profile_link,
 				'item_photo_menu_html' => $this->item->photoMenu($item, $formSecurityToken),

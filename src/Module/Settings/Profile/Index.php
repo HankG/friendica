@@ -1,23 +1,9 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Module\Settings\Profile;
 
@@ -125,18 +111,21 @@ class Index extends BaseSettings
 		$country_name = trim($request['country_name']);
 		$pub_keywords = self::cleanKeywords(trim($request['pub_keywords']));
 		$prv_keywords = self::cleanKeywords(trim($request['prv_keywords']));
-		$xmpp         = trim($request['xmpp']);
-		$matrix       = trim($request['matrix']);
-		$homepage     = trim($request['homepage']);
+		$xmpp         = $this->cleanInput(trim($request['xmpp']));
+		$matrix       = $this->cleanInput(trim($request['matrix']));
+		$homepage     = $this->cleanInput(trim($request['homepage']));
 		if ((strpos($homepage, 'http') !== 0) && (strlen($homepage))) {
 			// neither http nor https in URL, add them
 			$homepage = 'http://' . $homepage;
 		}
 
+		$user  = User::getById($this->session->getLocalUserId());
+		$about = Profile::addResponsibleRelayContact($about, $user['parent-uid'], $user['account-type'], $user['language']);
+
 		$profileFieldsNew = $this->getProfileFieldsFromInput(
 			$this->session->getLocalUserId(),
-			$request['profile_field'],
-			$request['profile_field_order']
+			(array)$request['profile_field'],
+			(array)$request['profile_field_order']
 		);
 
 		$this->profileFieldRepo->saveCollectionForUser($this->session->getLocalUserId(), $profileFieldsNew);
@@ -186,6 +175,8 @@ class Index extends BaseSettings
 		if (!$owner) {
 			throw new HTTPException\NotFoundException();
 		}
+
+		$owner['about'] = Profile::addResponsibleRelayContact($owner['about'], $owner['parent-uid'], $owner['account-type'], $owner['language']);
 
 		$this->page->registerFooterScript('view/asset/es-jquery-sortable/source/js/jquery-sortable-min.js');
 		$this->page->registerFooterScript(Theme::getPathForFile('js/module/settings/profile/index.js'));
@@ -351,6 +342,11 @@ class Index extends BaseSettings
 		}
 
 		return $profileFields;
+	}
+
+	private function cleanInput(string $input): string
+	{
+		return str_replace(['<', '>', '"', ' '], '', $input);
 	}
 
 	private static function cleanKeywords($keywords): string

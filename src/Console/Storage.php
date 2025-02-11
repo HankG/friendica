@@ -1,23 +1,9 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Console;
 
@@ -25,6 +11,9 @@ use Asika\SimpleConsole\CommandArgsException;
 use Friendica\Core\Storage\Repository\StorageManager;
 use Friendica\Core\Storage\Exception\ReferenceStorageException;
 use Friendica\Core\Storage\Exception\StorageException;
+use Friendica\Database\DBA;
+use Friendica\Model\Contact;
+use Friendica\Model\Photo;
 
 /**
  * tool to manage storage backend and stored data from CLI
@@ -53,14 +42,17 @@ console storage - manage storage backend and stored data
 Synopsis
     bin/console storage [-h|--help|-?] [-v]
         Show this help
-    
+
     bin/console storage list
         List available storage backends
-    
+
+    bin/console storage clear
+        Remove the contact avatar cache data
+
     bin/console storage set <name>
         Set current storage backend
             name        storage backend to use. see "list".
-    
+
     bin/console storage move [table] [-n 5000]
         Move stored data to current storage backend.
             table       one of "photo" or "attach". default to both
@@ -87,6 +79,9 @@ HELP;
 			case 'list':
 				return $this->doList();
 				break;
+			case 'clear':
+				return $this->clear();
+				break;
 			case 'set':
 				return $this->doSet();
 				break;
@@ -101,7 +96,7 @@ HELP;
 
 	protected function doList()
 	{
-		$rowfmt = ' %-3s | %-20s';
+		$rowfmt  = ' %-3s | %-20s';
 		$current = $this->storageManager->getBackend();
 		$this->out(sprintf($rowfmt, 'Sel', 'Name'));
 		$this->out('-----------------------');
@@ -109,7 +104,7 @@ HELP;
 		foreach ($this->storageManager->listBackends() as $name) {
 			$issel = ' ';
 			if ($current && $current::getName() == $name) {
-				$issel = '*';
+				$issel       = '*';
 				$isregisterd = true;
 			};
 			$this->out(sprintf($rowfmt, $issel, $name));
@@ -123,6 +118,22 @@ HELP;
 			$this->out();
 			$this->out('The current storage class (' . $current . ') is not registered!');
 		}
+		return 0;
+	}
+
+	protected function clear()
+	{
+		$fields = ['photo' => '', 'thumb' => '', 'micro' => ''];
+		$photos = DBA::select('photo', ['id', 'contact-id'], ['uid' => 0, 'photo-type' => [Photo::CONTACT_AVATAR, Photo::CONTACT_BANNER]]);
+		while ($photo = DBA::fetch($photos)) {
+			if (Photo::delete(['id' => $photo['id']])) {
+				Contact::update($fields, ['id' => $photo['contact-id']]);
+				$this->out('Cleared photo id ' . $photo['id'] . ' - contact id ' . $photo['contact-id']);
+			} else {
+				$this->out('Photo id ' . $photo['id'] . ' was not deleted.');
+			}
+		}
+		DBA::close($photos);
 		return 0;
 	}
 
@@ -165,7 +176,7 @@ HELP;
 		}
 
 		$current = $this->storageManager->getBackend();
-		$total = 0;
+		$total   = 0;
 
 		if (is_null($current)) {
 			throw new StorageException(sprintf("Cannot move to legacy storage. Please select a storage backend."));
@@ -181,5 +192,7 @@ HELP;
 		} while ($moved);
 
 		$this->out(sprintf(date('[Y-m-d H:i:s] ') . 'Moved %d files total', $total));
+
+		return 0;
 	}
 }

@@ -1,23 +1,9 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Module\Search;
 
@@ -65,6 +51,11 @@ class Acl extends BaseModule
 
 		$this->session  = $session;
 		$this->database = $database;
+	}
+
+	protected function post(array $request = [])
+	{
+		$this->rawContent($request);
 	}
 
 	protected function rawContent(array $request = [])
@@ -150,31 +141,26 @@ class Acl extends BaseModule
 
 		switch ($type) {
 			case self::TYPE_MENTION_CONTACT_CIRCLE:
-				$condition = DBA::mergeConditions($condition,
-					["NOT `self` AND NOT `blocked` AND `notify` != ? AND `network` != ?", '', Protocol::OSTATUS
-					]);
-				break;
-
 			case self::TYPE_MENTION_CONTACT:
 				$condition = DBA::mergeConditions($condition,
-					["NOT `self` AND NOT `blocked` AND `notify` != ?", ''
+					["NOT `self` AND NOT `blocked`",
 					]);
 				break;
 
 			case self::TYPE_MENTION_GROUP:
 				$condition = DBA::mergeConditions($condition,
-					["NOT `self` AND NOT `blocked` AND `notify` != ? AND `contact-type` = ?", '', Contact::TYPE_COMMUNITY
+					["NOT `self` AND NOT `blocked` AND (NOT `ap-posting-restricted` OR `ap-posting-restricted` IS NULL) AND `contact-type` = ?", Contact::TYPE_COMMUNITY
 					]);
 				break;
 
 			case self::TYPE_PRIVATE_MESSAGE:
 				$condition = DBA::mergeConditions($condition,
-					["NOT `self` AND NOT `blocked` AND `notify` != ? AND `network` IN (?, ?, ?)", '', Protocol::ACTIVITYPUB, Protocol::DFRN, Protocol::DIASPORA
+					["NOT `self` AND NOT `blocked` AND `network` IN (?, ?, ?)", Protocol::ACTIVITYPUB, Protocol::DFRN, Protocol::DIASPORA
 					]);
 				break;
 		}
 
-		$contact_count = $this->database->count('contact', $condition);
+		$contact_count = $this->database->count('account-user-view', $condition);
 
 		$resultTotal = $circle_count + $contact_count;
 
@@ -215,7 +201,7 @@ class Acl extends BaseModule
 
 		$contacts = [];
 		if ($type != self::TYPE_MENTION_CIRCLE) {
-			$contacts = Contact::selectToArray([], $condition, ['order' => ['name']]);
+			$contacts = Contact::selectAccountToArray([], $condition, ['order' => ['name']]);
 		}
 
 		$groups = [];

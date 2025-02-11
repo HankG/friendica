@@ -1,3 +1,9 @@
+{{*
+  * Copyright (C) 2010-2024, the Friendica project
+  * SPDX-FileCopyrightText: 2010-2024 the Friendica project
+  *
+  * SPDX-License-Identifier: AGPL-3.0-or-later
+  *}}
 <div id="adminpage">
 	<p><a href="{{$baseurl}}/moderation/blocklist/server">{{$l10n.return_list}}</a></p>
 	<h1>{{$l10n.title}} - {{$l10n.page}}</h1>
@@ -32,8 +38,8 @@
             {{foreach $gservers as $gserver}}
 				<tr>
 					<td class="text-center">
-						<span class="network-label icon" alt="{{$gserver.network_name}}" title="{{$gserver.network_name}}">
-							<i class="fa fa-{{$gserver.network_icon}}"></i>
+						<span class="network-label icon">
+							<img class="network-svg" src="{{$gserver.network_svg}}" alt="{{$gserver.network_name}}" title="{{$gserver.network_name}}" loading="lazy"/>
 						</span>
 					</td>
 					<th>{{$gserver.site_name|default:$gserver.domain}}</th>

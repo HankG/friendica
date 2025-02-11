@@ -1,23 +1,9 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Module\Api\Mastodon;
 
@@ -73,28 +59,34 @@ class Apps extends BaseApi
 			$this->logAndJsonError(422, $this->errorFactory->UnprocessableEntity($this->t('Missing parameters')));
 		}
 
-		$client_id     = bin2hex(random_bytes(32));
-		$client_secret = bin2hex(random_bytes(32));
-
-		$fields = ['client_id' => $client_id, 'client_secret' => $client_secret, 'name' => $request['client_name'], 'redirect_uri' => $request['redirect_uris']];
+		$fields = ['name' => $request['client_name'], 'redirect_uri' => $request['redirect_uris']];
 
 		if (!empty($request['scopes'])) {
 			$fields['scopes'] = $request['scopes'];
 		}
 
-		$fields['read']   = (stripos($request['scopes'], self::SCOPE_READ) !== false);
-		$fields['write']  = (stripos($request['scopes'], self::SCOPE_WRITE) !== false);
-		$fields['follow'] = (stripos($request['scopes'], self::SCOPE_FOLLOW) !== false);
-		$fields['push']   = (stripos($request['scopes'], self::SCOPE_PUSH) !== false);
-
 		if (!empty($request['website'])) {
 			$fields['website'] = $request['website'];
 		}
+
+		$application = DBA::selectFirst('application', ['id'], $fields);
+		if (!empty($application['id'])) {
+			$this->logger->debug('Found existing application', ['request' => $request, 'id' => $application['id']]);
+			$this->jsonExit(DI::mstdnApplication()->createFromApplicationId($application['id'])->toArray());
+		}
+
+		$fields['read']          = (stripos($request['scopes'], self::SCOPE_READ) !== false);
+		$fields['write']         = (stripos($request['scopes'], self::SCOPE_WRITE) !== false);
+		$fields['follow']        = (stripos($request['scopes'], self::SCOPE_FOLLOW) !== false);
+		$fields['push']          = (stripos($request['scopes'], self::SCOPE_PUSH) !== false);
+		$fields['client_id']     = bin2hex(random_bytes(32));
+		$fields['client_secret'] = bin2hex(random_bytes(32));
 
 		if (!DBA::insert('application', $fields)) {
 			$this->logAndJsonError(500, $this->errorFactory->InternalError());
 		}
 
+		$this->logger->debug('Create new application', ['request' => $request, 'id' => DBA::lastInsertId()]);
 		$this->jsonExit(DI::mstdnApplication()->createFromApplicationId(DBA::lastInsertId())->toArray());
 	}
 }

@@ -1,23 +1,9 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Module\Contact;
 
@@ -70,11 +56,15 @@ class Follow extends BaseModule
 			throw new ForbiddenException($this->t('Access denied.'));
 		}
 
-		if (isset($request['cancel']) || empty($request['url'])) {
-			$this->baseUrl->redirect('contact');
+		if (!empty($request['follow-url'])) {
+			$this->baseUrl->redirect('contact/follow?binurl=' . bin2hex($request['follow-url']));
 		}
 
-		$url = Probe::cleanURI($request['url']);
+		$url = $this->getUrl($request);
+
+		if (isset($request['cancel']) || empty($url)) {
+			$this->baseUrl->redirect('contact');
+		}
 
 		$this->process($url);
 	}
@@ -91,7 +81,7 @@ class Follow extends BaseModule
 		$uid = $this->session->getLocalUserId();
 
 		// uri is used by the /authorize_interaction Mastodon route
-		$url = Probe::cleanURI(trim($request['uri'] ?? $request['url'] ?? ''));
+		$url = $this->getUrl($request);
 
 		// Issue 6874: Allow remote following from Peertube
 		if (strpos($url, 'acct:') === 0) {
@@ -136,11 +126,6 @@ class Follow extends BaseModule
 
 		if (($protocol == Protocol::DIASPORA) && !$this->config->get('system', 'diaspora_enabled')) {
 			$this->sysMessages->addNotice($this->t('Diaspora support isn\'t enabled. Contact can\'t be added.'));
-			$submit = '';
-		}
-
-		if (($protocol == Protocol::OSTATUS) && $this->config->get('system', 'ostatus_disabled')) {
-			$this->sysMessages->addNotice($this->t("OStatus support is disabled. Contact can't be added."));
 			$submit = '';
 		}
 
@@ -201,7 +186,7 @@ class Follow extends BaseModule
 
 	protected function process(string $url)
 	{
-		$returnPath = 'contact/follow?url=' . urlencode($url);
+		$returnPath = 'contact/follow?binurl=' . bin2hex($url);
 
 		$result = Contact::createFromProbeForUser($this->session->getLocalUserId(), $url);
 
@@ -215,7 +200,7 @@ class Follow extends BaseModule
 
 			$this->baseUrl->redirect($returnPath);
 		} elseif (!empty($result['cid'])) {
-			$this->baseUrl->redirect('contact/' . $result['cid']);
+			$this->baseUrl->redirect('contact/' . Contact::getPublicContactId($result['cid'], $this->session->getLocalUserId()));
 		}
 
 		$this->sysMessages->addNotice($this->t('The contact could not be added.'));
@@ -245,5 +230,15 @@ class Follow extends BaseModule
 		} catch (\InvalidArgumentException $e) {
 			return;
 		}
+	}
+
+	private function getUrl(array $request): string
+	{
+		if (!empty($request['binurl']) && Strings::isHex($request['binurl'])) {
+			$url = hex2bin($request['binurl']);
+		} else {
+			$url = $request['url'] ?? '';
+		}
+		return Probe::cleanURI($url);
 	}
 }

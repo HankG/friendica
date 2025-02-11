@@ -1,29 +1,13 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Module\ActivityPub;
 
 use Friendica\BaseModule;
-use Friendica\Core\Logger;
-use Friendica\Core\System;
 use Friendica\Database\DBA;
 use Friendica\DI;
 use Friendica\Model\Contact;
@@ -53,18 +37,18 @@ class Objects extends BaseModule
 		$itemuri = DBA::selectFirst('item-uri', ['id'], ['guid' => $this->parameters['guid']]);
 
 		if (DBA::isResult($itemuri)) {
-			Logger::info('Provided GUID found.', ['guid' => $this->parameters['guid'], 'uri-id' => $itemuri['id']]);
+			$this->logger->info('Provided GUID found.', ['guid' => $this->parameters['guid'], 'uri-id' => $itemuri['id']]);
 		} else {
 			// The item URI does not always contain the GUID. This means that we have to search the URL instead
-			$url = DI::baseUrl() . '/' . DI::args()->getQueryString();
-			$nurl = Strings::normaliseLink($url);
+			$url     = DI::baseUrl() . '/' . DI::args()->getQueryString();
+			$nurl    = Strings::normaliseLink($url);
 			$ssl_url = str_replace('http://', 'https://', $nurl);
 
 			$itemuri = DBA::selectFirst('item-uri', ['guid', 'id'], ['uri' => [$url, $nurl, $ssl_url]]);
 			if (DBA::isResult($itemuri)) {
-				Logger::info('URL found.', ['url' => $url, 'guid' => $itemuri['guid'], 'uri-id' => $itemuri['id']]);
+				$this->logger->info('URL found.', ['url' => $url, 'guid' => $itemuri['guid'], 'uri-id' => $itemuri['id']]);
 			} else {
-				Logger::info('URL not found.', ['url' => $url]);
+				$this->logger->info('URL not found.', ['url' => $url]);
 				throw new HTTPException\NotFoundException();
 			}
 		}
@@ -79,7 +63,7 @@ class Objects extends BaseModule
 		if (!$validated) {
 			$requester = HTTPSignature::getSigner('', $_SERVER);
 			if (!empty($requester)) {
-				$receivers = Item::enumeratePermissions($item, false);
+				$receivers   = Item::enumeratePermissions($item, false);
 				$receivers[] = $item['contact-id'];
 
 				$validated = in_array(Contact::getIdForURL($requester, $item['uid']), $receivers);
@@ -112,16 +96,18 @@ class Objects extends BaseModule
 
 			$data = ['@context' => ActivityPub::CONTEXT];
 			$data = array_merge($data, $activity['object']);
-		} elseif (empty($this->parameters['activity']) || in_array($this->parameters['activity'],
+		} elseif (empty($this->parameters['activity']) || in_array(
+			$this->parameters['activity'],
 			['Create', 'Announce', 'Update', 'Like', 'Dislike', 'Accept', 'Reject',
-			'TentativeAccept', 'Follow', 'Add'])) {
+				'TentativeAccept', 'Follow', 'Add']
+		)) {
 			$data = ActivityPub\Transmitter::createCachedActivityFromItem($item['id']);
 			if (empty($data)) {
 				throw new HTTPException\NotFoundException();
 			}
 			if (!empty($this->parameters['activity']) && ($this->parameters['activity'] != 'Create')) {
 				$data['type'] = $this->parameters['activity'];
-				$data['id'] = str_replace('/Create', '/' . $this->parameters['activity'], $data['id']);
+				$data['id']   = str_replace('/Create', '/' . $this->parameters['activity'], $data['id']);
 			}
 		} else {
 			throw new HTTPException\NotFoundException();

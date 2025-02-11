@@ -1,30 +1,17 @@
 <?php
-/**
- * @copyright Copyright (C) 2010-2024, the Friendica project
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- */
+
+// Copyright (C) 2010-2024, the Friendica project
+// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Module\ActivityPub;
 
-use Friendica\Core\Logger;
+use Friendica\Core\Protocol;
 use Friendica\Core\System;
 use Friendica\Database\DBA;
 use Friendica\DI;
+use Friendica\Model\Item;
 use Friendica\Model\User;
 use Friendica\Module\BaseApi;
 use Friendica\Module\Special\HTTPException;
@@ -78,7 +65,7 @@ class Inbox extends BaseApi
 		}
 
 		if (!HTTPSignature::isValidContentType($this->server['CONTENT_TYPE'] ?? '')) {
-			Logger::notice('Unexpected content type', ['content-type' => $this->server['CONTENT_TYPE'] ?? '', 'agent' => $this->server['HTTP_USER_AGENT'] ?? '']);
+			$this->logger->notice('Unexpected content type', ['content-type' => $this->server['CONTENT_TYPE'] ?? '', 'agent' => $this->server['HTTP_USER_AGENT'] ?? '']);
 			throw new \Friendica\Network\HTTPException\UnsupportedMediaTypeException();
 		}
 
@@ -90,7 +77,7 @@ class Inbox extends BaseApi
 			}
 			$tempfile = tempnam(System::getTempPath(), $filename);
 			file_put_contents($tempfile, json_encode(['parameters' => $this->parameters, 'header' => $_SERVER, 'body' => $postdata], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
-			Logger::notice('Incoming message stored', ['file' => $tempfile]);
+			$this->logger->notice('Incoming message stored', ['file' => $tempfile]);
 		}
 
 		if (!empty($this->parameters['nickname'])) {
@@ -103,6 +90,7 @@ class Inbox extends BaseApi
 			$uid = 0;
 		}
 
+		Item::incrementInbound(Protocol::ACTIVITYPUB);
 		ActivityPub\Receiver::processInbox($postdata, $_SERVER, $uid);
 
 		throw new \Friendica\Network\HTTPException\AcceptedException();
