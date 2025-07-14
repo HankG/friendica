@@ -14,7 +14,6 @@ use Friendica\Contact\Introduction\Exception\IntroductionNotFoundException;
 use Friendica\Content\Conversation as ConversationContent;
 use Friendica\Content\Pager;
 use Friendica\Content\Text\HTML;
-use Friendica\Core\Hook;
 use Friendica\Core\Protocol;
 use Friendica\Core\Renderer;
 use Friendica\Core\System;
@@ -22,6 +21,7 @@ use Friendica\Core\Worker;
 use Friendica\Database\Database;
 use Friendica\Database\DBA;
 use Friendica\DI;
+use Friendica\Event\ArrayFilterEvent;
 use Friendica\Network\HTTPClient\Client\HttpClientAccept;
 use Friendica\Network\HTTPClient\Client\HttpClientOptions;
 use Friendica\Network\HTTPException\NotFoundException;
@@ -155,6 +155,46 @@ class Contact
 	}
 
 	/**
+	 * Fetch data from the "account-user-view" for a given contact id. Creates missing data if needed.
+	 * @param int   $id     Contact id
+	 * @param array $fields selected fields
+	 * @return array|bool
+	 */
+	public static function selectAccountUserById(int $id, array $fields = [])
+	{
+		$data = self::selectFirstAccountUser($fields, ['id' => $id]);
+		if (!empty($data) || !self::createPublicContactFromUserContact($id)) {
+			return $data;
+		}
+
+		return self::selectFirstAccountUser($fields, ['id' => $id]);
+	}
+
+	/**
+	 * Add missing public contact for a given user contact.
+	 * @param int $cid ID of the user contact
+	 * @return bool true if the public user had been created
+	 */
+	public static function createPublicContactFromUserContact(int $cid): bool
+	{
+		$fields = [
+			'created', 'updated', 'network', 'name', 'nick', 'location', 'about', 'keywords', 'xmpp',
+			'matrix', 'avatar', 'blurhash', 'header', 'url', 'nurl', 'uri-id', 'addr', 'alias', 'pubkey',
+			'batch', 'notify', 'poll', 'subscribe', 'last-update', 'next-update', 'success_update',
+			'failure_update', 'failed', 'term-date', 'last-item', 'last-discovery', 'local-data',
+			'readonly', 'contact-type', 'manually-approve', 'archive', 'unsearchable', 'sensitive',
+			'baseurl', 'gsid', 'bd', 'photo', 'thumb', 'micro', 'name-date', 'uri-date', 'avatar-date',
+			'request', 'confirm', 'poco', 'writable', 'forum', 'prv', 'bdyear'
+		];
+		$contact = self::selectFirst($fields, ['id' => $cid]);
+		if (empty($contact)) {
+			return false;
+		}
+		$contact['uid'] = 0;
+		return (bool)self::insert($contact);
+	}
+
+	/**
 	 * Insert a row into the contact table
 	 * Important: You can't use DBA::lastInsertId() after this call since it will be set to 0.
 	 *
@@ -167,7 +207,7 @@ class Contact
 	public static function insert(array $fields, int $duplicate_mode = Database::INSERT_DEFAULT): int
 	{
 		if (!empty($fields['baseurl']) && empty($fields['gsid'])) {
-			$fields['gsid'] = GServer::getID($fields['baseurl'], true);
+			$fields['gsid'] = GServer::getRealID($fields['baseurl'], true);
 		}
 
 		$fields['uri-id'] = ItemURI::getIdByURI($fields['url']);
@@ -913,7 +953,7 @@ class Contact
 		$fields['unsearchable']     = !$profile['net-publish'];
 		$fields['manually-approve'] = in_array($user['page-flags'], [User::PAGE_FLAGS_NORMAL, User::PAGE_FLAGS_PRVGROUP, User::PAGE_FLAGS_COMM_MAN]);
 		$fields['baseurl']          = DI::baseUrl();
-		$fields['gsid']             = GServer::getID($fields['baseurl'], true);
+		$fields['gsid']             = GServer::getRealID($fields['baseurl'], true);
 
 		$update = false;
 
@@ -1271,9 +1311,17 @@ class Contact
 			}
 		}
 
-		$args = ['contact' => $contact, 'menu' => &$menu];
+		$args = ['contact' => $contact, 'menu' => $menu];
 
-		Hook::callAll('contact_photo_menu', $args);
+		$eventDispatcher = DI::eventDispatcher();
+
+		$args = $eventDispatcher->dispatch(
+			new ArrayFilterEvent(ArrayFilterEvent::CONTACT_PHOTO_MENU, $args),
+		)->getArray();
+
+		if (is_array($args['menu'])) {
+			$menu = $args['menu'];
+		}
 
 		$menucondensed = [];
 
@@ -2156,7 +2204,11 @@ class Contact
 		$avatar['url']     = '';
 		$avatar['success'] = false;
 
-		Hook::callAll('avatar_lookup', $avatar);
+		$eventDispatcher = DI::eventDispatcher();
+
+		$avatar = $eventDispatcher->dispatch(
+			new ArrayFilterEvent(ArrayFilterEvent::AVATAR_LOOKUP, $avatar),
+		)->getArray();
 
 		if ($avatar['success'] && !empty($avatar['url'])) {
 			return $avatar['url'];
@@ -3104,7 +3156,11 @@ class Contact
 
 		$arr = ['url' => $url, 'uid' => $uid, 'contact' => []];
 
-		Hook::callAll('follow', $arr);
+		$eventDispatcher = DI::eventDispatcher();
+
+		$arr = $eventDispatcher->dispatch(
+			new ArrayFilterEvent(ArrayFilterEvent::FOLLOW_CONTACT, $arr),
+		)->getArray();
 
 		if (empty($arr)) {
 			$result['message'] = DI::l10n()->t('The contact could not be added. Please check the relevant network credentials in your Settings -> Social Networks page.');

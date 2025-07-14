@@ -117,7 +117,7 @@ class Actor
 		$name = $profile->displayName ?? $nick;
 
 		$fields = [
-			'alias'   => ATProtocol::WEB . '/profile/' . $nick,
+			'alias'   => ATProtocol::WEB . '/profile/' . $profile->did,
 			'name'    => $name ?: $nick,
 			'nick'    => $nick,
 			'addr'    => $nick,
@@ -133,7 +133,7 @@ class Actor
 		}
 
 		$directory = $this->atprotocol->get(ATProtocol::DIRECTORY . '/' . $profile->did);
-		if (!empty($directory)) {
+		if (!empty($directory->service)) {
 			foreach ($directory->service as $service) {
 				if (($service->id == '#atproto_pds') && ($service->type == 'AtprotoPersonalDataServer') && !empty($service->serviceEndpoint)) {
 					$fields['baseurl'] = $service->serviceEndpoint;
@@ -142,12 +142,14 @@ class Actor
 
 			if (!empty($fields['baseurl'])) {
 				GServer::check($fields['baseurl'], Protocol::BLUESKY);
-				$fields['gsid'] = GServer::getID($fields['baseurl'], true);
+				$fields['gsid'] = GServer::getRealID($fields['baseurl'], true);
 			}
 
-			foreach ($directory->verificationMethod as $method) {
-				if (!empty($method->publicKeyMultibase)) {
-					$fields['pubkey'] = $method->publicKeyMultibase;
+			if (!empty($directory->verificationMethod)) {
+				foreach ($directory->verificationMethod as $method) {
+					if (!empty($method->publicKeyMultibase)) {
+						$fields['pubkey'] = $method->publicKeyMultibase;
+					}
 				}
 			}
 		}

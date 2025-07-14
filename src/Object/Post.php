@@ -9,11 +9,10 @@ namespace Friendica\Object;
 
 use Friendica\Content\ContactSelector;
 use Friendica\Content\Feature;
-use Friendica\Core\Addon;
-use Friendica\Core\Hook;
 use Friendica\Core\Protocol;
 use Friendica\Core\Renderer;
 use Friendica\DI;
+use Friendica\Event\ArrayFilterEvent;
 use Friendica\Model\Contact;
 use Friendica\Model\Conversation;
 use Friendica\Model\Item;
@@ -49,7 +48,7 @@ class Post
 	private $parent   = null;
 
 	/**
-	 * @var Thread
+	 * @var Thread|null
 	 */
 	private $thread       = null;
 	private $redirect_url = null;
@@ -71,7 +70,7 @@ class Post
 		$this->setTemplate('wall');
 		$this->toplevel = $this->getId() == $this->getDataValue('parent');
 
-		if (!empty(DI::userSession()->getUserIDForVisitorContactID($this->getDataValue('contact-id')))) {
+		if (DI::userSession()->getUserIDForVisitorContactID($this->getDataValue('contact-id')) !== 0) {
 			$this->visiting = true;
 		}
 
@@ -314,8 +313,14 @@ class Post
 			$sparkle = ' sparkle';
 		}
 
+		$eventDispatcher = DI::eventDispatcher();
+
 		$locate = ['location' => $item['location'], 'coord' => $item['coord'], 'html' => ''];
-		Hook::callAll('render_location', $locate);
+
+		$locate = $eventDispatcher->dispatch(
+			new ArrayFilterEvent(ArrayFilterEvent::RENDER_LOCATION, $locate),
+		)->getArray();
+
 		$location_html = $locate['html'] ?: Strings::escapeHtml($locate['location'] ?: $locate['coord'] ?: '');
 
 		// process action responses - e.g. like/dislike/attend/agree/whatever
@@ -631,7 +636,10 @@ class Post
 		];
 
 		$arr = ['item' => $item, 'output' => $tmp_item];
-		Hook::callAll('display_item', $arr);
+
+		$arr = $eventDispatcher->dispatch(
+			new ArrayFilterEvent(ArrayFilterEvent::DISPLAY_ITEM, $arr),
+		)->getArray();
 
 		$result = $arr['output'];
 
@@ -816,7 +824,7 @@ class Post
 	 * Get a child by its ID
 	 *
 	 * @param integer $id The child id
-	 * @return Thread|null Thread or NULL if not found
+	 * @return Post|null Post or NULL if not found
 	 */
 	public function getChild(int $id)
 	{
@@ -1109,12 +1117,14 @@ class Post
 		$conv        = $this->getThread();
 
 		if ($conv->isWritable() && $this->isWritable()) {
+			$addonHelper = DI::addonHelper();
+
 			/*
 			 * Hmmm, code depending on the presence of a particular addon?
 			 * This should be better if done by a hook
 			 */
 			$qcomment = null;
-			if (Addon::isEnabled('qcomment')) {
+			if ($addonHelper->isAddonEnabled('qcomment')) {
 				$words    = DI::pConfig()->get(DI::userSession()->getLocalUserId(), 'qcomment', 'words');
 				$qcomment = $words ? explode("\n", $words) : [];
 			}

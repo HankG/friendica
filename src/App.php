@@ -18,7 +18,6 @@ use Friendica\Capabilities\ICanCreateResponses;
 use Friendica\Capabilities\ICanHandleRequests;
 use Friendica\Content\Nav;
 use Friendica\Core\Addon\AddonHelper;
-use Friendica\Core\Addon\Capability\ICanLoadAddons;
 use Friendica\Core\Config\Factory\Config;
 use Friendica\Core\Container;
 use Friendica\Core\Hooks\HookEventBridge;
@@ -278,11 +277,15 @@ class App
 
 	private function setupContainerForAddons(): void
 	{
-		/** @var ICanLoadAddons $addonLoader */
-		$addonLoader = $this->container->create(ICanLoadAddons::class);
+		/** @var AddonHelper $addonHelper */
+		$addonHelper = $this->container->create(AddonHelper::class);
 
-		foreach ($addonLoader->getActiveAddonConfig('dependencies') as $name => $rule) {
-			$this->container->addRule($name, $rule);
+		$addonHelper->loadAddons();
+
+		foreach ($addonHelper->getEnabledAddons() as $addonId) {
+			foreach ($addonHelper->getAddonDependencyConfig($addonId) as $name => $rule) {
+				$this->container->addRule($name, $rule);
+			}
 		}
 	}
 
@@ -573,7 +576,15 @@ class App
 
 			// Processes data from GET requests
 			$httpinput = $httpInput->process();
-			$input     = array_merge($httpinput['variables'], $httpinput['files'], $request);
+
+			if (!is_array($httpinput['variables'])) {
+				$httpinput['variables'] = [];
+			}
+			if (!is_array($httpinput['files'])) {
+				$httpinput['files'] = [];
+			}
+
+			$input = array_merge($httpinput['variables'], $httpinput['files'], $request);
 
 			// Let the module run its internal process (init, get, post, ...)
 			$timestamp = microtime(true);

@@ -11,12 +11,12 @@ use Friendica\Content\Nav;
 use Friendica\Content\Pager;
 use Friendica\Content\Text\BBCode;
 use Friendica\Core\ACL;
-use Friendica\Core\Hook;
 use Friendica\Core\Renderer;
 use Friendica\Core\System;
 use Friendica\Database\DBA;
 use Friendica\Database\DBStructure;
 use Friendica\DI;
+use Friendica\Event\ArrayFilterEvent;
 use Friendica\Model\Contact;
 use Friendica\Model\Item;
 use Friendica\Model\Photo;
@@ -647,7 +647,11 @@ function photos_content()
 			'default_upload' => true
 		];
 
-		Hook::callAll('photo_upload_form', $ret);
+		$eventDispatcher = DI::eventDispatcher();
+
+		$eventDispatcher->dispatch(
+			new ArrayFilterEvent(ArrayFilterEvent::PHOTO_UPLOAD_FORM, $ret)
+		);
 
 		$default_upload_box    = Renderer::replaceMacros(Renderer::getMarkupTemplate('photos_default_uploader_box.tpl'), []);
 		$default_upload_submit = Renderer::replaceMacros(Renderer::getMarkupTemplate('photos_default_uploader_submit.tpl'), [
@@ -1018,7 +1022,7 @@ function photos_content()
 				}
 			}
 			$tags = ['title' => DI::l10n()->t('Tags: '), 'tags' => $tag_arr];
-			if ($cmd === 'edit') {
+			if ($cmd === 'edit' && !empty($tag_arr)) {
 				$tags['removeanyurl'] = 'post/' . $link_item['id'] . '/tag/remove?return=' . urlencode(DI::args()->getCommand());
 				$tags['removetitle']  = DI::l10n()->t('[Select tags to remove]');
 			}

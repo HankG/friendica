@@ -9,6 +9,7 @@ namespace Friendica\Core;
 
 use Friendica\Database\DBA;
 use Friendica\DI;
+use Friendica\Event\ArrayFilterEvent;
 use Friendica\Model\User;
 use Friendica\Network\HTTPException;
 use Friendica\Protocol\ActivityPub;
@@ -76,7 +77,12 @@ class Protocol
 			'protocol' => $protocol,
 			'result'   => null
 		];
-		Hook::callAll('support_follow', $hook_data);
+
+		$eventDispatcher = DI::eventDispatcher();
+
+		$hook_data = $eventDispatcher->dispatch(
+			new ArrayFilterEvent(ArrayFilterEvent::PROTOCOL_SUPPORTS_FOLLOW, $hook_data),
+		)->getArray();
 
 		return $hook_data['result'] === true;
 	}
@@ -98,7 +104,12 @@ class Protocol
 			'protocol' => $protocol,
 			'result'   => null
 		];
-		Hook::callAll('support_revoke_follow', $hook_data);
+
+		$eventDispatcher = DI::eventDispatcher();
+
+		$hook_data = $eventDispatcher->dispatch(
+			new ArrayFilterEvent(ArrayFilterEvent::PROTOCOL_SUPPORTS_REVOKE_FOLLOW, $hook_data),
+		)->getArray();
 
 		return $hook_data['result'] === true;
 	}
@@ -172,7 +183,12 @@ class Protocol
 			'uid'     => $owner['uid'],
 			'result'  => null,
 		];
-		Hook::callAll('unfollow', $hook_data);
+
+		$eventDispatcher = DI::eventDispatcher();
+
+		$hook_data = $eventDispatcher->dispatch(
+			new ArrayFilterEvent(ArrayFilterEvent::UNFOLLOW_CONTACT, $hook_data),
+		)->getArray();
 
 		return $hook_data['result'];
 	}
@@ -207,7 +223,12 @@ class Protocol
 			'uid'     => $owner['uid'],
 			'result'  => null,
 		];
-		Hook::callAll('revoke_follow', $hook_data);
+
+		$eventDispatcher = DI::eventDispatcher();
+
+		$hook_data = $eventDispatcher->dispatch(
+			new ArrayFilterEvent(ArrayFilterEvent::REVOKE_FOLLOW_CONTACT, $hook_data),
+		)->getArray();
 
 		return $hook_data['result'];
 	}
@@ -245,7 +266,12 @@ class Protocol
 			'uid'     => $uid,
 			'result'  => null,
 		];
-		Hook::callAll('block', $hook_data);
+
+		$eventDispatcher = DI::eventDispatcher();
+
+		$hook_data = $eventDispatcher->dispatch(
+			new ArrayFilterEvent(ArrayFilterEvent::BLOCK_CONTACT, $hook_data),
+		)->getArray();
 
 		return $hook_data['result'];
 	}
@@ -284,7 +310,12 @@ class Protocol
 			'uid'     => $uid,
 			'result'  => null,
 		];
-		Hook::callAll('unblock', $hook_data);
+
+		$eventDispatcher = DI::eventDispatcher();
+
+		$hook_data = $eventDispatcher->dispatch(
+			new ArrayFilterEvent(ArrayFilterEvent::UNBLOCK_CONTACT, $hook_data),
+		)->getArray();
 
 		return $hook_data['result'];
 	}
@@ -311,7 +342,12 @@ class Protocol
 			'protocol' => $protocol,
 			'result'   => null
 		];
-		Hook::callAll('support_probe', $hook_data);
+
+		$eventDispatcher = DI::eventDispatcher();
+
+		$hook_data = $eventDispatcher->dispatch(
+			new ArrayFilterEvent(ArrayFilterEvent::PROTOCOL_SUPPORTS_PROBE, $hook_data),
+		)->getArray();
 
 		return $hook_data['result'] === true;
 	}

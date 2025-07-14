@@ -250,7 +250,7 @@ class Receiver
 	 * @param string  $object_id Object ID of the provided object
 	 * @param integer $uid       User ID
 	 *
-	 * @return string with object type or NULL
+	 * @return string|null string with object type or NULL
 	 * @throws \Friendica\Network\HTTPException\InternalServerErrorException
 	 * @throws \ImagickException
 	 */
@@ -644,15 +644,18 @@ class Receiver
 				return true;
 			}
 		} else {
-			$attributed_to = '';
+			$attributed_to = null;
 		}
 
 		// Test the provided signatures against the actor and "attributedTo"
 		if ($trust_source) {
-			if ($attributed_to !== false && $attributed_to !== '') {
+			if (!is_null($attributed_to)) {
 				$trust_source = (in_array($actor, $signer) && in_array($attributed_to, $signer));
 			} else {
 				$trust_source = in_array($actor, $signer);
+			}
+			if (!$trust_source) {
+				DI::logger()->info('Actor missmatch. Activity trust could not be achieved.', ['type' => $type, 'signer' => $signer, 'actor' => $actor, 'attributedTo' => $attributed_to]);
 			}
 		}
 
@@ -2065,7 +2068,7 @@ class Receiver
 		}
 
 		foreach ($object_data['tags'] as $tag) {
-			if (HTTPSignature::isValidContentType($tag['mediaType'] ?? '', $tag['href'])) {
+			if (HTTPSignature::isValidContentType($tag['mediaType'] ?? '', $tag['href'] ?? '')) {
 				$object_data['quote-url'] = $tag['href'];
 			}
 		}

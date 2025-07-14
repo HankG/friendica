@@ -8,7 +8,7 @@
 namespace Friendica\Network;
 
 use DOMDocument;
-use DomXPath;
+use DOMXPath;
 use Exception;
 use Friendica\Content\Text\HTML;
 use Friendica\Core\Hook;
@@ -147,7 +147,7 @@ class Probe
 					$newdata['baseurl'] = $data['networks'][$network]['baseurl'];
 				}
 				if (!empty($newdata['baseurl'])) {
-					$newdata['gsid'] = $data['networks'][$network]['gsid'] = GServer::getID($newdata['baseurl']);
+					$newdata['gsid'] = $data['networks'][$network]['gsid'] = GServer::getRealID($newdata['baseurl']);
 				} else {
 					$newdata['gsid'] = $data['networks'][$network]['gsid'] = null;
 				}
@@ -436,7 +436,7 @@ class Probe
 		}
 
 		if (!empty($data['baseurl']) && empty($data['gsid'])) {
-			$data['gsid'] = GServer::getID($data['baseurl']);
+			$data['gsid'] = GServer::getRealID($data['baseurl']);
 		}
 
 		// Ensure that local connections always are DFRN
@@ -1273,7 +1273,7 @@ class Probe
 			return [];
 		}
 
-		$xpath = new DomXPath($doc);
+		$xpath = new DOMXPath($doc);
 
 		$vcards = $xpath->query("//div[contains(concat(' ', @class, ' '), ' vcard ')]");
 		if (!is_object($vcards)) {
@@ -1729,7 +1729,7 @@ class Probe
 		$data = [
 			'network' => Protocol::BLUESKY,
 			'url'     => $profile->did,
-			'alias'   => ATProtocol::WEB . '/profile/' . $nick,
+			'alias'   => ATProtocol::WEB . '/profile/' . $profile->did,
 			'name'    => $name ?: $nick,
 			'nick'    => $nick,
 			'addr'    => $nick,
@@ -2164,7 +2164,7 @@ class Probe
 			$split_name = Diaspora::splitName($owner['name']);
 
 			if (empty($owner['gsid'])) {
-				$owner['gsid'] = GServer::getID($approfile['generator']['url']);
+				$owner['gsid'] = GServer::getRealID($approfile['generator']['url']);
 			}
 
 			$data = [
