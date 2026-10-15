@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -41,19 +41,19 @@ class ExtendedPDO extends PDO
 	 */
 	protected function hasSavepoint()
 	{
-		return in_array($this->getAttribute(PDO::ATTR_DRIVER_NAME),
-			self::$_supportedDrivers);
+		return in_array(
+			$this->getAttribute(PDO::ATTR_DRIVER_NAME),
+			self::$_supportedDrivers,
+		);
 	}
 
 
 	/**
 	 * Start transaction
-	 *
-	 * @return bool|void
 	 */
-	public function beginTransaction()
+	public function beginTransaction(): bool
 	{
-		if($this->_transactionDepth <= 0 || !$this->hasSavepoint()) {
+		if ($this->_transactionDepth <= 0 || !$this->hasSavepoint()) {
 			parent::beginTransaction();
 			$this->_transactionDepth = 0;
 		} else {
@@ -61,6 +61,8 @@ class ExtendedPDO extends PDO
 		}
 
 		$this->_transactionDepth++;
+
+		return true;
 	}
 
 	/**
@@ -95,7 +97,7 @@ class ExtendedPDO extends PDO
 			$this->_transactionDepth = 0;
 			try {
 				return parent::rollBack();
-			} catch (PDOException $e) {
+			} catch (PDOException) {
 				// this shouldn't happen, but it does ...
 			}
 		} else {

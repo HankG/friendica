@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -26,7 +26,7 @@ class Show extends BaseApi
 		if (empty($this->parameters['id'])) {
 			$cid = BaseApi::getContactIDForSearchterm($this->getRequestValue($request, 'screen_name', ''), $this->getRequestValue($request, 'profileurl', ''), $this->getRequestValue($request, 'user_id', 0), $uid);
 		} else {
-			$cid = (int)$this->parameters['id'];
+			$cid = (int) $this->parameters['id'];
 		}
 
 		$user_info = DI::twitterUser()->createFromContactId($cid, $uid)->toArray();

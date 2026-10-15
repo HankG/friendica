@@ -1,6 +1,6 @@
 {{*
-  * Copyright (C) 2010-2024, the Friendica project
-  * SPDX-FileCopyrightText: 2010-2024 the Friendica project
+  * Copyright (C) 2010-2026, the Friendica project
+  * SPDX-FileCopyrightText: 2010-2026 the Friendica project
   *
   * SPDX-License-Identifier: AGPL-3.0-or-later
   *}}
@@ -21,7 +21,6 @@
 <div class="photo-album-image-wrapper" id="photo-album-image-wrapper-{{$photo.id}}">
 	<a href="{{$photo.link}}" class="photo-album-photo-link" id="photo-album-photo-link-{{$photo.id}}" title="{{$photo.title}}">
 		<img src="{{$photo.src}}" alt="{{if $photo.album.name}}{{$photo.album.name}}{{elseif $photo.desc}}{{$photo.desc}}{{elseif $photo.alt}}{{$photo.alt}}{{else}}{{$photo.unknown}}{{/if}}" title="{{$photo.title}}" class="photo-album-photo lframe resize{{$photo.twist}}" id="photo-album-photo-{{$photo.id}}" />
-		<p class="caption" dir="auto">{{$photo.desc}}</p>		
 	</a>
 </div>
 <div class="photo-album-image-wrapper-end"></div>

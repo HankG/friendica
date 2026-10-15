@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -50,7 +50,7 @@ class Expire
 			Worker::add(
 				['priority' => $appHelper->getQueueValue('priority'), 'created' => $appHelper->getQueueValue('created'), 'dont_fork' => true],
 				'Expire',
-				(int)$row['uid']
+				(int) $row['uid'],
 			);
 		}
 		DBA::close($r);
@@ -62,7 +62,7 @@ class Expire
 				['priority' => $appHelper->getQueueValue('priority'), 'created' => $appHelper->getQueueValue('created'), 'dont_fork' => true],
 				'Expire',
 				'hook',
-				$hook[1]
+				$hook[1],
 			);
 		}
 

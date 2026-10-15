@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -19,14 +19,9 @@ use Psr\Log\LoggerInterface;
 
 class OAuth extends BaseSettings
 {
-	/** @var Database */
-	private $database;
-
-	public function __construct(Database $database, IHandleUserSessions $session, App\Page $page, L10n $l10n, App\BaseURL $baseUrl, App\Arguments $args, LoggerInterface $logger, Profiler $profiler, Response $response, array $server, array $parameters = [])
+	public function __construct(private readonly Database $database, IHandleUserSessions $session, App\Page $page, L10n $l10n, App\BaseURL $baseUrl, App\Arguments $args, LoggerInterface $logger, Profiler $profiler, Response $response, array $server, array $parameters = [])
 	{
 		parent::__construct($session, $page, $l10n, $baseUrl, $args, $logger, $profiler, $response, $server, $parameters);
-
-		$this->database = $database;
 	}
 
 	protected function post(array $request = [])
@@ -50,6 +45,9 @@ class OAuth extends BaseSettings
 		parent::content($request);
 
 		$applications = $this->database->selectToArray('application-view', ['id', 'uid', 'name', 'website', 'scopes', 'created_at'], ['uid' => $this->session->getLocalUserId()]);
+		foreach ($applications as $key => $row) {
+			$applications[$key]['created_at'] = $this->l10n->fullDateTime($row['created_at']);
+		}
 
 		$tpl = Renderer::getMarkupTemplate('settings/oauth.tpl');
 		return Renderer::replaceMacros($tpl, [
@@ -59,6 +57,7 @@ class OAuth extends BaseSettings
 			'$website'             => $this->t('Home Page'),
 			'$created_at'          => $this->t('Created'),
 			'$delete'              => $this->t('Remove authorization'),
+			'$no_connected_apps'   => $this->t('You have no connected apps.'),
 			'$apps'                => $applications,
 		]);
 	}

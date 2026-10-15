@@ -1,13 +1,12 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Module\Api\Mastodon;
 
-use Friendica\Core\System;
 use Friendica\Database\DBA;
 use Friendica\Module\BaseApi;
 
@@ -52,7 +51,7 @@ class FollowedTags extends BaseApi
 		while ($saved_search = DBA::fetch($saved_searches)) {
 			self::setBoundaries($saved_search['id']);
 
-			$hashtag  = new \Friendica\Object\Api\Mastodon\Tag($this->baseUrl, ['name' => ltrim($saved_search['term'], '#')], [], true);
+			$hashtag  = new \Friendica\Object\Api\Mastodon\Tag($this->baseUrl, ['name' => ltrim((string) $saved_search['term'], '#')], [], true);
 			$return[] = $hashtag->toArray();
 		}
 
@@ -62,7 +61,7 @@ class FollowedTags extends BaseApi
 			$return = array_reverse($return);
 		}
 
-		self::setLinkHeader();
-		$this->jsonExit($return);
+		$this->setPaginationLinkHeader();
+		$this->earlyJsonExit($return);
 	}
 }

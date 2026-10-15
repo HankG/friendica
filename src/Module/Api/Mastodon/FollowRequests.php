@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -64,7 +64,7 @@ class FollowRequests extends BaseApi
 				throw new HTTPException\BadRequestException('Unexpected action parameter, expecting "authorize", "ignore" or "reject"');
 		}
 
-		$this->jsonExit($relationship);
+		$this->earlyJsonExit($relationship);
 	}
 
 	/**
@@ -91,15 +91,15 @@ class FollowRequests extends BaseApi
 			try {
 				self::setBoundaries($introduction->id);
 				$return[] = DI::mstdnAccount()->createFromContactId($introduction->cid, $introduction->uid);
-			} catch (HTTPException\InternalServerErrorException
-				| HTTPException\NotFoundException
-				| \ImagickException $exception) {
+			} catch (
+				HTTPException\InternalServerErrorException|HTTPException\NotFoundException|\ImagickException
+			) {
 				DI::intro()->delete($introduction);
 				unset($introductions[$key]);
 			}
 		}
 
-		self::setLinkHeader();
-		$this->jsonExit($return);
+		$this->setPaginationLinkHeader();
+		$this->earlyJsonExit($return);
 	}
 }

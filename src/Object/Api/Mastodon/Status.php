@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -95,17 +95,33 @@ class Status extends BaseDataTransferObject
 	 * @param array   $item
 	 * @throws \Friendica\Network\HTTPException\InternalServerErrorException
 	 */
-	public function __construct(array $item, Account $account, Counts $counts, UserAttributes $userAttributes, bool $sensitive, Application $application, array $mentions, array $tags, Card $card, array $attachments, array $in_reply, array $reblog, FriendicaExtension $friendica, array $quote = null, array $poll = null, array $emojis = null)
-	{
+	public function __construct(
+		array $item,
+		Account $account,
+		Counts $counts,
+		UserAttributes $userAttributes,
+		bool $sensitive,
+		Application $application,
+		array $mentions,
+		array $tags,
+		Card $card,
+		array $attachments,
+		array $in_reply,
+		array $reblog,
+		FriendicaExtension $friendica,
+		?array $quote = null,
+		?array $poll = null,
+		?array $emojis = null,
+	) {
 		$reblogged        = !empty($reblog);
-		$this->id         = (string)$item['uri-id'];
+		$this->id         = (string) $item['uri-id'];
 		$this->created_at = DateTimeFormat::utc($item['created'], DateTimeFormat::JSON);
 		$this->edited_at  = DateTimeFormat::utc($item['edited'], DateTimeFormat::JSON);
 
 		if ($item['gravity'] == Item::GRAVITY_COMMENT) {
-			$this->in_reply_to_id         = (string)$item['thr-parent-id'];
+			$this->in_reply_to_id         = (string) $item['thr-parent-id'];
 			$this->in_reply_to_status     = $in_reply;
-			$this->in_reply_to_account_id = (string)$item['parent-author-id'];
+			$this->in_reply_to_account_id = (string) $item['parent-author-id'];
 		}
 
 		$this->sensitive    = $sensitive;
@@ -116,8 +132,7 @@ class Status extends BaseDataTransferObject
 
 		$languages = json_decode($item['language'] ?? '', true);
 		if (is_array($languages)) {
-			reset($languages);
-			$this->language = key($languages);
+			$this->language = array_key_first($languages);
 		} else {
 			$this->language = null;
 		}

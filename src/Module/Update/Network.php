@@ -1,13 +1,13 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Module\Update;
 
-use Friendica\Content\Conversation;
+use Friendica\Content\Conversation\ConversationRenderer;
 use Friendica\Core\System;
 use Friendica\Module\Conversation\Network as NetworkModule;
 
@@ -40,7 +40,7 @@ class Network extends NetworkModule
 			$items = [];
 		}
 
-		$o = $this->conversation->render($items, Conversation::MODE_NETWORK, true, false, $this->getOrder(), $this->session->getLocalUserId());
+		$o = $this->conversationRenderer->renderThreaded($items, ConversationRenderer::MODE_NETWORK, true, $this->getOrder(), $this->session->getLocalUserId(), $request);
 
 		System::htmlUpdateExit($o);
 	}

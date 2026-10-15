@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -10,6 +10,8 @@ namespace Friendica\Module\Settings;
 use Friendica\App;
 use Friendica\Core\Hook;
 use Friendica\Core\L10n;
+use Friendica\Event\ArrayFilterEvent;
+use Psr\EventDispatcher\EventDispatcherInterface;
 use Friendica\Core\Renderer;
 use Friendica\Core\Session\Capability\IHandleUserSessions;
 use Friendica\Database\Database;
@@ -20,21 +22,28 @@ use Psr\Log\LoggerInterface;
 
 class Addons extends BaseSettings
 {
-	/** @var Database */
-	private $database;
-
-	public function __construct(Database $database, IHandleUserSessions $session, App\Page $page, L10n $l10n, App\BaseURL $baseUrl, App\Arguments $args, LoggerInterface $logger, Profiler $profiler, Response $response, array $server, array $parameters = [])
-	{
+	public function __construct(
+		private readonly Database $database,
+		private readonly EventDispatcherInterface $eventDispatcher,
+		IHandleUserSessions $session,
+		App\Page $page,
+		L10n $l10n,
+		App\BaseURL $baseUrl,
+		App\Arguments $args,
+		LoggerInterface $logger,
+		Profiler $profiler,
+		Response $response,
+		array $server,
+		array $parameters = [],
+	) {
 		parent::__construct($session, $page, $l10n, $baseUrl, $args, $logger, $profiler, $response, $server, $parameters);
-
-		$this->database = $database;
 	}
 
 	protected function post(array $request = [])
 	{
 		BaseSettings::checkFormSecurityTokenRedirectOnError($this->args->getQueryString(), 'settings_addon');
 
-		Hook::callAll('addon_settings_post', $request);
+		$this->eventDispatcher->dispatch(new ArrayFilterEvent(ArrayFilterEvent::ADDON_SETTINGS_POST, $request));
 		$this->baseUrl->redirect($this->args->getQueryString());
 	}
 
@@ -60,7 +69,7 @@ class Addons extends BaseSettings
 					'$addon'  => $data['addon'],
 					'$title'  => $data['title'],
 					'$open'   => ($this->parameters['addon'] ?? '') === $data['addon'],
-					'$html'   => $data['html'] ?? '',
+					'$html'   => $data['html']   ?? '',
 					'$submit' => $data['submit'] ?? $this->t('Save Settings'),
 				]);
 			}
@@ -68,10 +77,10 @@ class Addons extends BaseSettings
 
 		$tpl = Renderer::getMarkupTemplate('settings/addons.tpl');
 		return Renderer::replaceMacros($tpl, [
-			'$form_security_token'           => BaseSettings::getFormSecurityToken('settings_addon'),
-			'$title'                         => $this->t('Addon Settings'),
-			'$no_addons_settings_configured' => $this->t('No Addon settings configured'),
-			'$addon_settings_forms'          => $addon_settings_forms,
+			'$form_security_token'          => BaseSettings::getFormSecurityToken('settings_addon'),
+			'$title'                        => $this->t('Addon Settings'),
+			'$no_addon_settings_configured' => $this->t('None of the addons installed on this server have any settings.'),
+			'$addon_settings_forms'         => $addon_settings_forms,
 		]);
 	}
 }

@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -23,12 +23,9 @@ class Event implements NamedEvent
 
 	public const HOME_INIT = 'friendica.home_init';
 
-	private string $name;
+	public const LOGGING_OUT = 'friendica.logging_out';
 
-	public function __construct(string $name)
-	{
-		$this->name = $name;
-	}
+	public function __construct(private readonly string $name) {}
 
 	public function getName(): string
 	{

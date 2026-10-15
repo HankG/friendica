@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -10,10 +10,8 @@ namespace Friendica\Module\OAuth;
 use Friendica\Database\DBA;
 use Friendica\Model\User;
 use Friendica\Module\BaseApi;
-use Friendica\Module\Special\HTTPException;
 use Friendica\Security\OAuth;
 use Friendica\Util\DateTimeFormat;
-use Psr\Http\Message\ResponseInterface;
 
 /**
  * @see https://docs.joinmastodon.org/methods/oauth/#token
@@ -21,10 +19,10 @@ use Psr\Http\Message\ResponseInterface;
  */
 class Token extends BaseApi
 {
-	public function run(HTTPException $httpException, array $request = [], bool $scopecheck = true): ResponseInterface
-	{
-		return parent::run($httpException, $request, false);
-	}
+	/**
+	 * @internal
+	 */
+	protected function checkScope(): void {}
 
 	protected function post(array $request = [])
 	{
@@ -44,11 +42,11 @@ class Token extends BaseApi
 			$authorization = $_SERVER['REDIRECT_REMOTE_USER'] ?? '';
 		}
 
-		if ((empty($request['client_id']) || empty($request['client_secret'])) && substr($authorization, 0, 6) == 'Basic ') {
+		if ((empty($request['client_id']) || empty($request['client_secret'])) && str_starts_with((string) $authorization, 'Basic ')) {
 			// Per RFC2617, usernames can't contain a colon but password can,
 			// so we cut on the first colon to obtain the username and the password
 			// @see https://www.rfc-editor.org/rfc/rfc2617#section-2
-			$datapair = explode(':', base64_decode(trim(substr($authorization, 6))), 2);
+			$datapair = explode(':', base64_decode(trim(substr((string) $authorization, 6))), 2);
 			if (count($datapair) == 2) {
 				$request['client_id']     = $datapair[0];
 				$request['client_secret'] = $datapair[1];
@@ -83,10 +81,10 @@ class Token extends BaseApi
 				'Bearer',
 				$application['scopes'],
 				$token['created_at'],
-				null
+				null,
 			);
 
-			$this->jsonExit($object->toArray());
+			$this->earlyJsonExit($object->toArray());
 		}
 
 		// now check for $grant_type === 'authorization_code'
@@ -94,7 +92,7 @@ class Token extends BaseApi
 		$redirect_uri = strtok($request['redirect_uri'], '?');
 		$condition    = [
 			"`redirect_uri` LIKE ? AND `id` = ? AND `code` = ? AND `created_at` > ?",
-			$redirect_uri, $application['id'], $request['code'], DateTimeFormat::utc('now - 5 minutes')
+			$redirect_uri, $application['id'], $request['code'], DateTimeFormat::utc('now - 5 minutes'),
 		];
 
 		$token = DBA::selectFirst('application-view', ['access_token', 'created_at', 'uid'], $condition);
@@ -110,9 +108,9 @@ class Token extends BaseApi
 			'Bearer',
 			$application['scopes'],
 			$token['created_at'],
-			$owner['url']
+			$owner['url'],
 		);
 
-		$this->jsonExit($object->toArray());
+		$this->earlyJsonExit($object->toArray());
 	}
 }

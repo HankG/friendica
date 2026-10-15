@@ -1,6 +1,6 @@
 {{*
-  * Copyright (C) 2010-2024, the Friendica project
-  * SPDX-FileCopyrightText: 2010-2024 the Friendica project
+  * Copyright (C) 2010-2026, the Friendica project
+  * SPDX-FileCopyrightText: 2010-2026 the Friendica project
   *
   * SPDX-License-Identifier: AGPL-3.0-or-later
   *}}
@@ -10,7 +10,7 @@
 
 
 <label id="photo-album-edit-name-label" for="photo-album-edit-name">{{$nametext}}</label>
-<input type="text" size="64" name="albumname" value="{{$album}}">
+<input type="text" name="albumname" value="{{$album}}">
 
 <div id="photo-album-edit-name-end"></div>
 

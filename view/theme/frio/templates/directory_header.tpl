@@ -1,6 +1,6 @@
 {{*
-  * Copyright (C) 2010-2024, the Friendica project
-  * SPDX-FileCopyrightText: 2010-2024 the Friendica project
+  * Copyright (C) 2010-2026, the Friendica project
+  * SPDX-FileCopyrightText: 2010-2026 the Friendica project
   *
   * SPDX-License-Identifier: AGPL-3.0-or-later
   *}}
@@ -23,6 +23,7 @@
 					<div class="form-group form-group-search">
 						<input type="text" name="search" id="directory-search" class="search-input form-control form-search" onfocus="this.select();" value="{{$search}}" placeholder="{{$desc}}"/>
 						<button class="btn btn-default btn-sm form-button-search" type="submit" id="directory-search-submit">{{$submit}}</button>
+						<p id="num-results">{{$num_results_text}}</p>
 					</div>
 				</div>
 				<div class="col-md-2"></div>
@@ -38,6 +39,8 @@
 	<ul id="viewcontact_wrapper" class="viewcontact_wrapper media-list">
 	{{foreach $contacts as $contact}}
 		<li>{{include file="contact/entry.tpl"}}</li>
+	{{foreachelse}}
+		<li class="no-results">{{$no_results}}</li>
 	{{/foreach}}
 	</ul>
 

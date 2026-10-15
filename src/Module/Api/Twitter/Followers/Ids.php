@@ -1,13 +1,12 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Module\Api\Twitter\Followers;
 
-use Friendica\Core\System;
 use Friendica\Database\DBA;
 use Friendica\Model\Contact;
 use Friendica\Module\Api\Twitter\ContactEndpoint;
@@ -39,7 +38,7 @@ class Ids extends ContactEndpoint
 
 			$condition = ['uid' => $uid, 'self' => false, 'pending' => false, 'rel' => [Contact::FOLLOWER, Contact::FRIEND]];
 
-			$total_count = (int)DBA::count('contact', $condition);
+			$total_count = (int) DBA::count('contact', $condition);
 
 			if (!empty($max_id)) {
 				$condition = DBA::mergeConditions($condition, ["`pid` < ?", $max_id]);
@@ -66,7 +65,7 @@ class Ids extends ContactEndpoint
 
 			$condition = ['cid' => $cid, 'follows' => true];
 
-			$total_count = (int)DBA::count('contact-relation', $condition);
+			$total_count = (int) DBA::count('contact-relation', $condition);
 
 			if (!empty($max_id)) {
 				$condition = DBA::mergeConditions($condition, ["`relation-cid` < ?", $max_id]);
@@ -98,8 +97,8 @@ class Ids extends ContactEndpoint
 
 		$return = self::ids($ids, $total_count, $cursor, $count, $stringify_ids);
 
-		self::setLinkHeader();
+		$this->setPaginationLinkHeader();
 
-		$this->jsonExit($return);
+		$this->earlyJsonExit($return);
 	}
 }

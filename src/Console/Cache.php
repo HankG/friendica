@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -23,16 +23,6 @@ use RuntimeException;
 class Cache extends \Asika\SimpleConsole\Console
 {
 	protected $helpOptions = ['h', 'help', '?'];
-
-	/**
-	 * @var Mode
-	 */
-	private $appMode;
-
-	/**
-	 * @var ICanCache
-	 */
-	private $cache;
 
 	protected function getHelp()
 	{
@@ -68,19 +58,19 @@ HELP;
 		return $help;
 	}
 
-	public function __construct(Mode $appMode, ICanCache $cache, array $argv = null)
-	{
+	public function __construct(
+		private readonly Mode $appMode,
+		private readonly ICanCache $cache,
+		?array $argv = null,
+	) {
 		parent::__construct($argv);
-
-		$this->appMode = $appMode;
-		$this->cache   = $cache;
 	}
 
 	protected function doExecute(): int
 	{
 		if ($this->getOption('v')) {
 			$this->out('Executable: ' . $this->executable);
-			$this->out('Class: ' . __CLASS__);
+			$this->out('Class: ' . self::class);
 			$this->out('Arguments: ' . var_export($this->args, true));
 			$this->out('Options: ' . var_export($this->options, true));
 		}
@@ -91,7 +81,7 @@ HELP;
 
 		if ($this->getOption('v')) {
 			$this->out('Cache Driver Name: ' . $this->cache->getName());
-			$this->out('Cache Driver Class: ' . get_class($this->cache));
+			$this->out('Cache Driver Class: ' . $this->cache::class);
 		}
 
 		switch ($this->getArgument(0)) {

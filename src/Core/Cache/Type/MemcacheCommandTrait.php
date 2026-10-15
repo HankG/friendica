@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -43,15 +43,14 @@ trait MemcacheCommandTrait
 	protected function getMemcacheKeys(): array
 	{
 		$string = $this->sendMemcacheCommand("stats items");
-		$lines  = explode("\r\n", $string);
+		$lines  = explode("\r\n", (string) $string);
 		$keys   = [];
 
 		foreach ($lines as $line) {
-			if (preg_match("/STAT items:([\d]+):number ([\d]+)/", $line, $matches) &&
-				isset($matches[1]) &&
-				!in_array($matches[1], $keys)) {
+			if (preg_match("/STAT items:([\d]+):number ([\d]+)/", $line, $matches)
+				&& !in_array($matches[1], $keys)) {
 				$string = $this->sendMemcacheCommand("stats cachedump " . $matches[1] . " " . $matches[2]);
-				preg_match_all("/ITEM (.*?) /", $string, $matches);
+				preg_match_all("/ITEM (.*?) /", (string) $string, $matches);
 				$keys = array_merge($keys, $matches[1]);
 			}
 		}
@@ -85,15 +84,15 @@ trait MemcacheCommandTrait
 		while (!feof($s)) {
 			$buf .= fgets($s, 256);
 
-			if (strpos($buf, "END\r\n") !== false) { // stat says end
+			if (str_contains($buf, "END\r\n")) { // stat says end
 				break;
 			}
 
-			if (strpos($buf, "DELETED\r\n") !== false || strpos($buf, "NOT_FOUND\r\n") !== false) { // delete says these
+			if (str_contains($buf, "DELETED\r\n") || str_contains($buf, "NOT_FOUND\r\n")) { // delete says these
 				break;
 			}
 
-			if (strpos($buf, "OK\r\n") !== false) { // flush_all says ok
+			if (str_contains($buf, "OK\r\n")) { // flush_all says ok
 				break;
 			}
 		}

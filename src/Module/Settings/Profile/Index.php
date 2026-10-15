@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -38,28 +38,14 @@ use Psr\Log\LoggerInterface;
 
 class Index extends BaseSettings
 {
-	/** @var ProfileField\Repository\ProfileField */
-	private $profileFieldRepo;
-	/** @var ProfileField\Factory\ProfileField */
-	private $profileFieldFactory;
-	/** @var SystemMessages */
-	private $systemMessages;
-	/** @var PermissionSet\Repository\PermissionSet */
-	private $permissionSetRepo;
-	/** @var PermissionSet\Factory\PermissionSet */
-	private $permissionSetFactory;
-	/** @var ACLFormatter */
-	private $aclFormatter;
-	private EventDispatcherInterface $eventDispatcher;
-
 	public function __construct(
-		ACLFormatter $aclFormatter,
-		PermissionSet\Factory\PermissionSet $permissionSetFactory,
-		PermissionSet\Repository\PermissionSet $permissionSetRepo,
-		SystemMessages $systemMessages,
-		ProfileField\Factory\ProfileField $profileFieldFactory,
-		ProfileField\Repository\ProfileField $profileFieldRepo,
-		EventDispatcherInterface $eventDispatcher,
+		private readonly ACLFormatter $aclFormatter,
+		private readonly PermissionSet\Factory\PermissionSet $permissionSetFactory,
+		private readonly PermissionSet\Repository\PermissionSet $permissionSetRepo,
+		private readonly SystemMessages $systemMessages,
+		private readonly ProfileField\Factory\ProfileField $profileFieldFactory,
+		private readonly ProfileField\Repository\ProfileField $profileFieldRepo,
+		private readonly EventDispatcherInterface $eventDispatcher,
 		IHandleUserSessions $session,
 		Page $page,
 		L10n $l10n,
@@ -69,17 +55,9 @@ class Index extends BaseSettings
 		Profiler $profiler,
 		Response $response,
 		array $server,
-		array $parameters = []
+		array $parameters = [],
 	) {
 		parent::__construct($session, $page, $l10n, $baseUrl, $args, $logger, $profiler, $response, $server, $parameters);
-
-		$this->profileFieldRepo     = $profileFieldRepo;
-		$this->profileFieldFactory  = $profileFieldFactory;
-		$this->systemMessages       = $systemMessages;
-		$this->permissionSetRepo    = $permissionSetRepo;
-		$this->permissionSetFactory = $permissionSetFactory;
-		$this->aclFormatter         = $aclFormatter;
-		$this->eventDispatcher      = $eventDispatcher;
 	}
 
 	protected function post(array $request = [])
@@ -109,13 +87,13 @@ class Index extends BaseSettings
 				$ignore_year = false;
 			}
 
-			if (strpos($dob, '0000-') === 0 || strpos($dob, '0001-') === 0) {
+			if (str_starts_with($dob, '0000-') || str_starts_with($dob, '0001-')) {
 				$ignore_year = true;
 				$dob         = substr($dob, 5);
 			}
 
 			if ($ignore_year) {
-				$dob = '0000-' . DateTimeFormat::utc('1900-' . $dob, 'm-d');
+				$dob = '0000-' . DateTimeFormat::utc('1904-' . $dob, 'm-d');
 			} else {
 				$dob = DateTimeFormat::utc($dob, 'Y-m-d');
 			}
@@ -133,12 +111,12 @@ class Index extends BaseSettings
 		$region       = $this->cleanInputText($request['region']);
 		$postal_code  = $this->cleanInputText($request['postal_code']);
 		$country_name = $this->cleanInputText($request['country_name']);
-		$pub_keywords = self::cleanKeywords(trim($request['pub_keywords']));
-		$prv_keywords = self::cleanKeywords(trim($request['prv_keywords']));
-		$xmpp         = $this->cleanInput(trim($request['xmpp']));
-		$matrix       = $this->cleanInput(trim($request['matrix']));
-		$homepage     = $this->cleanInput(trim($request['homepage']));
-		if ((strpos($homepage, 'http') !== 0) && (strlen($homepage))) {
+		$pub_keywords = self::cleanKeywords(trim((string) $request['pub_keywords']));
+		$prv_keywords = self::cleanKeywords(trim((string) $request['prv_keywords']));
+		$xmpp         = $this->cleanInput(trim((string) $request['xmpp']));
+		$matrix       = $this->cleanInput(trim((string) $request['matrix']));
+		$homepage     = $this->cleanInput(trim((string) $request['homepage']));
+		if ((!str_starts_with($homepage, 'http')) && (strlen($homepage))) {
 			// neither http nor https in URL, add them
 			$homepage = 'http://' . $homepage;
 		}
@@ -148,8 +126,8 @@ class Index extends BaseSettings
 
 		$profileFieldsNew = $this->getProfileFieldsFromInput(
 			$this->session->getLocalUserId(),
-			(array)$request['profile_field'],
-			(array)$request['profile_field_order']
+			(array) $request['profile_field'],
+			(array) $request['profile_field_order'],
 		);
 
 		$this->profileFieldRepo->saveCollectionForUser($this->session->getLocalUserId(), $profileFieldsNew);
@@ -171,7 +149,7 @@ class Index extends BaseSettings
 				'pub_keywords' => $pub_keywords,
 				'prv_keywords' => $prv_keywords,
 			],
-			$this->session->getLocalUserId()
+			$this->session->getLocalUserId(),
 		);
 
 		Worker::add(Worker::PRIORITY_MEDIUM, 'CheckRelMeProfileLink', $this->session->getLocalUserId());
@@ -210,7 +188,7 @@ class Index extends BaseSettings
 		$profileFields = $this->profileFieldRepo->selectByUserId($this->session->getLocalUserId());
 		foreach ($profileFields as $profileField) {
 			$defaultPermissions = $profileField->permissionSet->withAllowedContacts(
-				Contact::pruneUnavailable($profileField->permissionSet->allow_cid)
+				Contact::pruneUnavailable($profileField->permissionSet->allow_cid),
 			);
 
 			$custom_fields[] = [
@@ -225,7 +203,7 @@ class Index extends BaseSettings
 						false,
 						$defaultPermissions->toArray(),
 						['network' => Protocol::DFRN],
-						'profile_field[' . $profileField->id . ']'
+						'profile_field[' . $profileField->id . ']',
 					),
 				],
 
@@ -246,7 +224,7 @@ class Index extends BaseSettings
 					false,
 					['allow_cid' => []],
 					['network'   => Protocol::DFRN],
-					'profile_field[new]'
+					'profile_field[new]',
 				),
 			],
 
@@ -264,31 +242,50 @@ class Index extends BaseSettings
 			$homepage_help_text = $this->t('To verify your homepage, add a rel="me" link to it, pointing to your profile URL (%s).', $owner['url']);
 		}
 
+		// Title text for the BBCode buttons
+		$bb_l10n = [
+			'edbold'   => $this->t('Bold'),
+			'editalic' => $this->t('Italic'),
+			'eduline'  => $this->t('Underline'),
+			'edquote'  => $this->t('Quote'),
+			'edemojis' => $this->t('Add emojis'),
+			'edcode'   => $this->t('Code'),
+			'edimg'    => $this->t('Image'),
+			'edemb'    => $this->t('Image'),
+			'edurl'    => $this->t('Link'),
+			'edattach' => $this->t('Link or Media'),
+		];
+
 		$tpl = Renderer::getMarkupTemplate('settings/profile/index.tpl');
 		$o .= Renderer::replaceMacros($tpl, [
 			'$l10n' => [
 				'profile_action'            => $this->t('Profile Actions'),
 				'banner'                    => $this->t('Edit Profile Details'),
-				'submit'                    => $this->t('Submit'),
-				'profpic'                   => $this->t('Change Profile Photo'),
+				'submit'                    => $this->t('Save Settings'),
+				'profpic_header'            => $this->t('Change profile picture'),
+				'profpic_intro'             => $this->t('To change your profile picture, you can either upload a new picture here, or click to visit your photos to pick among your existing pictures.'),
+				'profpic_upload_new_header' => $this->t('Upload new picture'),
+				'profpic_upload_submit'     => $this->t('Upload selected picture'),
+				'profpic_existing_header'   => $this->t('Pick existing picture from photos'),
+				'yourphotos'                => $this->t('Go to my photos'),
 				'viewprof'                  => $this->t('View Profile'),
 				'personal_section'          => $this->t('Personal'),
 				'picture_section'           => $this->t('Profile picture'),
 				'location_section'          => $this->t('Location'),
 				'miscellaneous_section'     => $this->t('Miscellaneous'),
 				'custom_fields_section'     => $this->t('Custom Profile Fields'),
-				'profile_photo'             => $this->t('Upload Profile Photo'),
 				'custom_fields_description' => $this->t(
 					'<p>Custom fields appear on <a href="%s">your profile page</a>.</p>
 				<p>You can use BBCodes in the field values.</p>
 				<p>Reorder by dragging the field title.</p>
 				<p>Empty the label field to remove a custom field.</p>
 				<p>Non-public fields can only be seen by the selected Friendica contacts or the Friendica contacts in the selected circles.</p>',
-					'profile/' . $owner['nickname'] . '/profile'
+					'profile/' . $owner['nickname'] . '/profile',
 				),
 			],
 
-			'$personal_account' => $personal_account,
+			'$personal_account'       => $personal_account,
+			'$change_profile_picture' => isset($_GET['profilepicture']),
 
 			'$form_security_token'       => self::getFormSecurityToken('settings_profile'),
 			'$form_security_token_photo' => self::getFormSecurityToken('settings_profile_photo'),
@@ -297,7 +294,7 @@ class Index extends BaseSettings
 
 			'$nickname'      => $owner['nickname'],
 			'$username'      => ['username', $this->t('Display name:'), $owner['name']],
-			'$about'         => ['about', $this->t('Description:'), $owner['about']],
+			'$about'         => ['about', $this->t('Description:'), $owner['about'], '', '', 'rows="8"', true, $bb_l10n],
 			'$dob'           => Temporal::getDateofBirthField($owner['dob'], $owner['timezone']),
 			'$address'       => ['address', $this->t('Street Address:'), $owner['address']],
 			'$locality'      => ['locality', $this->t('Locality/City:'), $owner['locality']],
@@ -308,8 +305,8 @@ class Index extends BaseSettings
 			'$xmpp'          => ['xmpp', $this->t('XMPP (Jabber) address:'), $owner['xmpp'], $this->t('The XMPP address will be published so that people can follow you there.')],
 			'$matrix'        => ['matrix', $this->t('Matrix (Element) address:'), $owner['matrix'], $this->t('The Matrix address will be published so that people can follow you there.')],
 			'$homepage'      => ['homepage', $this->t('Homepage URL:'), $owner['homepage'], $homepage_help_text],
-			'$pub_keywords'  => ['pub_keywords', $this->t('Public Keywords:'), $owner['pub_keywords'], $this->t('(Used for suggesting potential friends, can be seen by others)')],
-			'$prv_keywords'  => ['prv_keywords', $this->t('Private Keywords:'), $owner['prv_keywords'], $this->t('(Used for searching profiles, never shown to others)')],
+			'$pub_keywords'  => ['pub_keywords', $this->t('Public Keywords:'), $owner['pub_keywords'], $this->t('Used for suggesting potential friends, can be seen by others.')],
+			'$prv_keywords'  => ['prv_keywords', $this->t('Private Keywords:'), $owner['prv_keywords'], $this->t('Used for searching profiles, never shown to others.')],
 			'$custom_fields' => $custom_fields,
 		]);
 
@@ -341,7 +338,7 @@ class Index extends BaseSettings
 				$this->aclFormatter->toString($profileFieldInputs['new']['contact_allow'] ?? ''),
 				$this->aclFormatter->toString($profileFieldInputs['new']['circle_allow'] ?? ''),
 				$this->aclFormatter->toString($profileFieldInputs['new']['contact_deny'] ?? ''),
-				$this->aclFormatter->toString($profileFieldInputs['new']['circle_deny'] ?? '')
+				$this->aclFormatter->toString($profileFieldInputs['new']['circle_deny'] ?? ''),
 			));
 
 			$profileFields->append($this->profileFieldFactory->createFromValues(
@@ -349,7 +346,7 @@ class Index extends BaseSettings
 				$profileFieldOrder['new'],
 				$profileFieldInputs['new']['label'],
 				$profileFieldInputs['new']['value'],
-				$permissionSet
+				$permissionSet,
 			));
 		}
 
@@ -357,12 +354,17 @@ class Index extends BaseSettings
 		unset($profileFieldOrder['new']);
 
 		foreach ($profileFieldInputs as $id => $profileFieldInput) {
+			// Skip fields with empty labels - they will be deleted by saveCollectionForUser
+			if (empty($profileFieldInput['label'])) {
+				continue;
+			}
+
 			$permissionSet = $this->permissionSetRepo->selectOrCreate($this->permissionSetFactory->createFromString(
 				$uid,
 				$this->aclFormatter->toString($profileFieldInput['contact_allow'] ?? ''),
 				$this->aclFormatter->toString($profileFieldInput['circle_allow'] ?? ''),
 				$this->aclFormatter->toString($profileFieldInput['contact_deny'] ?? ''),
-				$this->aclFormatter->toString($profileFieldInput['circle_deny'] ?? '')
+				$this->aclFormatter->toString($profileFieldInput['circle_deny'] ?? ''),
 			));
 
 			$profileFields->append($this->profileFieldFactory->createFromValues(
@@ -370,7 +372,7 @@ class Index extends BaseSettings
 				$profileFieldOrder[$id],
 				$profileFieldInput['label'],
 				$profileFieldInput['value'],
-				$permissionSet
+				$permissionSet,
 			));
 		}
 

@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -12,7 +12,7 @@ namespace Friendica\Object\Log;
  */
 class ParsedLogLine
 {
-	const REGEXP = '/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[^ ]*) (\w+) \[(\w*)\]: (.*)/';
+	public const REGEXP = '/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[^ ]*) (\w+) \[(\w*)\]: (.*)/';
 
 	/** @var int */
 	public $id = 0;
@@ -57,18 +57,18 @@ class ParsedLogLine
 		$logline = str_replace(' [] - {', ' {""} - {', $logline);
 
 
-		if (strstr($logline, ' - {') === false) {
+		if (!str_contains($logline, ' - {')) {
 			// the log line is not well formed
 			$jsonsource = null;
 		} else {
 			// here we hope that there will not be the string ' - {' inside the $jsonsource value
-			list($logline, $jsonsource) = explode(' - {', $logline);
-			$jsonsource                 = '{' . $jsonsource;
+			[$logline, $jsonsource] = explode(' - {', $logline);
+			$jsonsource             = '{' . $jsonsource;
 		}
 
 		$jsondata = null;
 		if (strpos($logline, '{"') > 0) {
-			list($logline, $jsondata) = explode('{"', $logline, 2);
+			[$logline, $jsondata] = explode('{"', $logline, 2);
 
 			$jsondata = '{"' . $jsondata;
 		}
@@ -88,7 +88,7 @@ class ParsedLogLine
 			$this->tryfixjson();
 		}
 
-		$this->message = trim($this->message);
+		$this->message = trim((string) $this->message);
 	}
 
 	/**
@@ -106,7 +106,7 @@ class ParsedLogLine
 		}
 		try {
 			$d = json_decode($this->data, true, 512, JSON_THROW_ON_ERROR);
-		} catch (\JsonException $e) {
+		} catch (\JsonException) {
 			// try to find next { in $str and move string before to 'message'
 
 			$pos = strpos($this->data, '{', 1);
@@ -129,7 +129,7 @@ class ParsedLogLine
 	 */
 	public function getData()
 	{
-		$data = json_decode($this->data, true);
+		$data = json_decode((string) $this->data, true);
 		if ($data) {
 			foreach ($data as $k => $v) {
 				$data[$k] = print_r($v, true);

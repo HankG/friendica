@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -16,15 +16,7 @@ final class GServer
 {
 	private string $table_name = 'gserver';
 
-	private Database $db;
-
-	private GServerFactory $factory;
-
-	public function __construct(Database $database, GServerFactory $factory)
-	{
-		$this->db      = $database;
-		$this->factory = $factory;
-	}
+	public function __construct(private readonly Database $db, private readonly GServerFactory $factory) {}
 
 	/**
 	 * @param int $gsid

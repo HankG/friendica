@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -23,32 +23,38 @@ use Psr\Log\LoggerInterface;
 
 class Index extends BaseSettings
 {
-	/** @var Repository\UserGServer */
-	private $repository;
-	/** @var SystemMessages */
-	private $systemMessages;
-
-	public function __construct(SystemMessages $systemMessages, Repository\UserGServer $repository, IHandleUserSessions $session, App\Page $page, L10n $l10n, App\BaseURL $baseUrl, App\Arguments $args, LoggerInterface $logger, Profiler $profiler, Response $response, array $server, array $parameters = [])
-	{
+	public function __construct(
+		private readonly SystemMessages $systemMessages,
+		private readonly Repository\UserGServer $repository,
+		IHandleUserSessions $session,
+		App\Page $page,
+		L10n $l10n,
+		App\BaseURL $baseUrl,
+		App\Arguments $args,
+		LoggerInterface $logger,
+		Profiler $profiler,
+		Response $response,
+		array $server,
+		array $parameters = [],
+	) {
 		parent::__construct($session, $page, $l10n, $baseUrl, $args, $logger, $profiler, $response, $server, $parameters);
-
-		$this->repository     = $repository;
-		$this->systemMessages = $systemMessages;
 	}
 
 	protected function post(array $request = [])
 	{
 		self::checkFormSecurityTokenRedirectOnError($this->args->getQueryString(), 'settings-server');
 
-		foreach ($request['delete'] ?? [] as $gsid => $delete) {
-			if ($delete) {
-				unset($request['ignored'][$gsid]);
+		if (array_key_exists('delete', $request) && is_array($request['delete'])) {
+			foreach ($request['delete'] as $gsid => $delete) {
+				if ($delete) {
+					unset($request['ignored'][$gsid]);
 
-				try {
-					$userGServer = $this->repository->selectOneByUserAndServer($this->session->getLocalUserId(), $gsid, false);
-					$this->repository->delete($userGServer);
-				} catch (NotFoundException $e) {
-					// Nothing to delete
+					try {
+						$userGServer = $this->repository->selectOneByUserAndServer($this->session->getLocalUserId(), $gsid, false);
+						$this->repository->delete($userGServer);
+					} catch (NotFoundException) {
+						// Nothing to delete
+					}
 				}
 			}
 		}
@@ -88,7 +94,8 @@ class Index extends BaseSettings
 		return Renderer::replaceMacros($tpl, [
 			'$l10n' => [
 				'title'         => $this->t('Remote server settings'),
-				'desc'          => $this->t('Here you can find all the remote servers you have taken individual moderation actions against. For a list of servers your node has blocked, please check out the <a href="friendica">Information</a> page.'),
+				'desc1'         => $this->t('Here you can find all the remote servers you have taken individual moderation actions against. For a list of servers your node has blocked, please check out the <a href="friendica">Information</a> page.'),
+				'desc2'         => $this->t('This includes ignored servers. You can ignore a server by clicking the "More" options button on a post, and selecting the option to "Ignore" the server the given post is from.'),
 				'siteName'      => $this->t('Server Name'),
 				'ignored'       => $this->t('Ignored'),
 				'ignored_title' => $this->t("You won't see any content from this server including reshares in your Network page, the community pages and individual conversations."),
@@ -97,7 +104,8 @@ class Index extends BaseSettings
 				'submit'        => $this->t('Save changes'),
 			],
 
-			'$count' => $total,
+			'$count'      => $total,
+			'$no_servers' => $this->t('You have not taken individual moderation actions against any servers.'),
 
 			'$servers' => $servers,
 

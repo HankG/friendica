@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -20,14 +20,20 @@ use Psr\Log\LoggerInterface;
 
 class FriendSuggest extends BaseRepository
 {
-	/** @var FriendSuggestFactory */
-	protected $factory;
-
 	protected static $table_name = 'fsuggest';
 
-	public function __construct(Database $database, LoggerInterface $logger, FriendSuggestFactory $factory)
+	public function __construct(
+		Database $database,
+		LoggerInterface $logger,
+		private readonly FriendSuggestFactory $entityFactory,
+	) {
+		parent::__construct($database, $logger, $entityFactory);
+	}
+
+	/** @not-deprecated */
+	protected function getFactory(): FriendSuggestFactory
 	{
-		parent::__construct($database, $logger, $factory);
+		return $this->entityFactory;
 	}
 
 	private function convertToTableRow(FriendSuggestEntity $fsuggest): array
@@ -51,7 +57,7 @@ class FriendSuggest extends BaseRepository
 	{
 		$fields = $this->_selectFirstRowAsArray($condition, $params);
 
-		return $this->factory->createFromTableRow($fields);
+		return $this->getFactory()->createFromTableRow($fields);
 	}
 
 	/**
@@ -69,7 +75,7 @@ class FriendSuggest extends BaseRepository
 	{
 		try {
 			return $this->selectOne(['id' => $id]);
-		} catch (NotFoundException $e) {
+		} catch (NotFoundException) {
 			throw new FriendSuggestNotFoundException(sprintf('No FriendSuggest found for id %d', $id));
 		}
 	}
@@ -81,7 +87,7 @@ class FriendSuggest extends BaseRepository
 	{
 		try {
 			return $this->select(['cid' => $cid]);
-		} catch (\Exception $e) {
+		} catch (\Exception) {
 			throw new FriendSuggestPersistenceException(sprintf('Cannot select FriendSuggestion for contact %d', $cid));
 		}
 	}

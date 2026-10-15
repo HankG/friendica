@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -17,15 +17,21 @@ class PidFile
 	 *
 	 * @param string $file Filename of pid file
 	 *
-	 * @return boolean|string PID or "false" if nonexistent
+	 * @return int|false PID or "false" if nonexistent or invalid
 	 */
-	private static function pidFromFile(string $file)
+	private static function pidFromFile(string $file): int|false
 	{
 		if (!file_exists($file)) {
 			return false;
 		}
 
-		return trim(@file_get_contents($file));
+		$pid = trim((string) @file_get_contents($file));
+
+		if (!ctype_digit($pid)) {
+			return false;
+		}
+
+		return (int) $pid;
 	}
 
 	/**
@@ -39,7 +45,7 @@ class PidFile
 	{
 		$pid = self::pidFromFile($file);
 
-		if (!$pid) {
+		if ($pid === false || $pid === 0) {
 			return false;
 		}
 
@@ -65,7 +71,7 @@ class PidFile
 		$pid = self::pidFromFile($file);
 
 		// We don't have a process id? then we quit
-		if (!$pid) {
+		if ($pid === false || $pid === 0) {
 			return false;
 		}
 
@@ -84,7 +90,7 @@ class PidFile
 	 *
 	 * @param string $file Filename of pid file
 	 *
-	 * @return boolean|string PID or "false" if not created
+	 * @return int|false PID or "false" if not created
 	 */
 	public static function create(string $file)
 	{

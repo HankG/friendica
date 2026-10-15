@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -17,6 +17,7 @@ use Friendica\Model\Post\SearchIndex;
 use Friendica\Model\Tag;
 use Friendica\Module\BaseApi;
 use Friendica\Util\Network;
+use Friendica\Content\Post\Entity\PostMedia;
 
 /**
  * @see https://docs.joinmastodon.org/methods/search/
@@ -50,7 +51,7 @@ class Search extends BaseApi
 
 		$limit = min($request['limit'], 40);
 
-		if (Network::isValidHttpUrl($request['q']) && ($request['offset'] == 0)) {
+		if ((Network::isValidHttpUrl($request['q']) || Network::isValidAtUrl($request['q'])) && ($request['offset'] == 0)) {
 			$this->searchLinks($uid, $request['q'], $request['type']);
 		}
 
@@ -76,11 +77,11 @@ class Search extends BaseApi
 			}
 		}
 
-		if ((empty($request['type']) || ($request['type'] == 'hashtags')) && (strpos($request['q'], '@') == false)) {
+		if ((empty($request['type']) || ($request['type'] == 'hashtags')) && (!str_contains((string) $request['q'], '@'))) {
 			$result['hashtags'] = $this->searchHashtags($request['q'], $request['exclude_unreviewed'], $limit, $request['offset'], $this->parameters['version']);
 		}
 
-		$this->jsonExit($result);
+		$this->earlyJsonExit($result);
 	}
 
 	/**
@@ -94,29 +95,33 @@ class Search extends BaseApi
 	{
 		$result = ['accounts' => [], 'statuses' => [], 'hashtags' => []];
 
-		$data = ['uri-id' => -1, 'type' => Post\Media::UNKNOWN, 'url' => $q];
-		$data = Post\Media::fetchAdditionalData($data);
+		$data = ['uri-id' => -1, 'type' => PostMedia::TYPE_UNKNOWN, 'url' => $q];
+		if (Network::isValidHttpUrl($q)) {
+			$data = Post\Media::fetchAdditionalData($data);
+		}
 
-		if ((empty($type) || ($type == 'statuses')) && in_array($data['type'], [Post\Media::HTML, Post\Media::ACTIVITY, Post\Media::UNKNOWN])) {
-			$q = Network::convertToIdn($q);
+		if ((empty($type) || ($type == 'statuses')) && in_array($data['type'], [PostMedia::TYPE_HTML, PostMedia::TYPE_ACTIVITY, PostMedia::TYPE_UNKNOWN])) {
+			if (Network::isValidHttpUrl($q)) {
+				$q = Network::convertToIdn($q);
+			}
 			// If the user-specific search failed, we search and probe a public post
 			$item_id = Item::fetchByLink($q, $uid) ?: Item::fetchByLink($q);
 			if ($item_id && $item = Post::selectFirst(['uri-id'], ['id' => $item_id])) {
-				$result['statuses'] = [DI::mstdnStatus()->createFromUriId($item['uri-id'], $uid, self::appSupportsQuotes())];
-				$this->jsonExit($result);
+				$result['statuses'] = [DI::mstdnStatus()->createFromUriId($item['uri-id'], $uid)];
+				$this->earlyJsonExit($result);
 			}
 		}
 
-		if ((empty($type) || ($type == 'accounts')) && in_array($data['type'], [Post\Media::HTML, Post\Media::ACCOUNT, Post\Media::UNKNOWN])) {
+		if ((empty($type) || ($type == 'accounts')) && in_array($data['type'], [PostMedia::TYPE_HTML, PostMedia::TYPE_ACCOUNT, PostMedia::TYPE_UNKNOWN])) {
 			$id = Contact::getIdForURL($q, 0, false);
 			if ($id) {
 				$result['accounts'] = [DI::mstdnAccount()->createFromContactId($id, $uid)];
-				$this->jsonExit($result);
+				$this->earlyJsonExit($result);
 			}
 		}
 
-		if (in_array($data['type'], [Post\Media::HTML, Post\Media::TEXT, Post\Media::ACCOUNT, Post\Media::ACTIVITY, Post\Media::UNKNOWN])) {
-			$this->jsonExit($result);
+		if (in_array($data['type'], [PostMedia::TYPE_HTML, PostMedia::TYPE_TEXT, PostMedia::TYPE_ACCOUNT, PostMedia::TYPE_ACTIVITY, PostMedia::TYPE_UNKNOWN])) {
+			$this->earlyJsonExit($result);
 		}
 	}
 
@@ -134,7 +139,8 @@ class Search extends BaseApi
 	 */
 	private function searchAccounts(int $uid, string $q, bool $resolve, int $limit, int $offset, bool $following)
 	{
-		if (($offset == 0) && (strrpos($q, '@') > 0) && $id = Contact::getIdForURL($q, 0, $resolve ? null : false)) {
+		$this->logger->debug('Search', ['q' => $q, 'resolve' => $resolve, 'offset' => $offset]);
+		if (($offset == 0) && (strrpos($q, '@') > 0) && $id = Contact::getIdForURL(ltrim($q, '@'), 0, $resolve ? null : false)) {
 			return DI::mstdnAccount()->createFromContactId($id, $uid);
 		}
 
@@ -154,7 +160,7 @@ class Search extends BaseApi
 	 * @param int    $min_id
 	 * @param int    $limit
 	 * @param int    $offset
-	 * @return array|\Friendica\Object\Api\Mastodon\Status Object is result is absolute (exact post match), list if not
+	 * @return \Friendica\Object\Api\Mastodon\Status[] Object is result is absolute (exact post match), list if not
 	 * @throws \Friendica\Network\HTTPException\InternalServerErrorException
 	 * @throws \Friendica\Network\HTTPException\NotFoundException
 	 * @throws \ImagickException
@@ -163,7 +169,7 @@ class Search extends BaseApi
 	{
 		$params = ['order' => ['uri-id' => true], 'limit' => [$offset, $limit]];
 
-		if (substr($q, 0, 1) == '#') {
+		if (str_starts_with($q, '#')) {
 			$condition = ["`name` = ? AND (`uid` = ? OR (`uid` = ? AND NOT `global`))
 				AND (`network` IN (?, ?, ?) OR (`uid` = ? AND `uid` != ?))",
 				substr($q, 1), 0, $uid, Protocol::ACTIVITYPUB, Protocol::DFRN, Protocol::DIASPORA, $uid, 0];
@@ -173,6 +179,12 @@ class Search extends BaseApi
 			$condition = ["MATCH (`searchtext`) AGAINST (? IN BOOLEAN MODE) AND (NOT `restricted` OR `uri-id` IN (SELECT `uri-id` FROM `post-user` WHERE `uid` = ?))", $q, $uid];
 			$table     = SearchIndex::getSearchTable();
 		}
+
+		$condition = DBA::mergeConditions($condition, ["NOT EXISTS(SELECT `post-thread-user`.`uri-id` FROM `post-thread-user`
+			INNER JOIN `contact` AS `ownercontact` ON `ownercontact`.`id` = `post-thread-user`.`owner-id`
+			INNER JOIN `contact` AS `authorcontact` ON `authorcontact`.`id` = `post-thread-user`.`author-id`
+			WHERE `post-thread-user`.`uri-id` = `$table`.`uri-id`
+			AND (`ownercontact`.`unsearchable` OR `authorcontact`.`unsearchable`))"]);
 
 		if (!empty($account_id)) {
 			$condition = DBA::mergeConditions($condition, ["`author-id` = ?", $account_id]);
@@ -190,13 +202,11 @@ class Search extends BaseApi
 
 		$items = DBA::select($table, ['uri-id'], $condition, $params);
 
-		$display_quotes = self::appSupportsQuotes();
-
 		$statuses = [];
 		while ($item = Post::fetch($items)) {
 			self::setBoundaries($item['uri-id']);
 			try {
-				$statuses[] = DI::mstdnStatus()->createFromUriId($item['uri-id'], $uid, $display_quotes);
+				$statuses[] = DI::mstdnStatus()->createFromUriId($item['uri-id'], $uid);
 			} catch (\Exception $exception) {
 				$this->logger->info('Post not fetchable', ['uri-id' => $item['uri-id'], 'uid' => $uid, 'exception' => $exception]);
 			}
@@ -207,7 +217,7 @@ class Search extends BaseApi
 			$statuses = array_reverse($statuses);
 		}
 
-		self::setLinkHeader();
+		$this->setPaginationLinkHeader();
 		return $statuses;
 	}
 

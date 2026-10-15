@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -170,6 +170,22 @@ class Queue
 	}
 
 	/**
+	 * Process a queue entry by its URI and type.
+	 *
+	 * @param string $url  The URI of the activity (e.g., 'https://example.com/activity/123')
+	 * @param string $type Type of the activity (e.g., 'as:Create', 'as:Follow')
+	 * @return boolean
+	 */
+	public static function processByUri(string $url, string $type): bool
+	{
+		$entry = DBA::selectFirst('inbox-entry', ['id'], ['object-id' => $url, 'type' => $type]);
+		if (empty($entry['id'])) {
+			return false;
+		}
+		return self::process($entry['id'], false);
+	}
+
+	/**
 	 * Process the activity with the given id
 	 *
 	 * @param integer $id
@@ -204,7 +220,7 @@ class Queue
 
 		DI::logger()->debug('Processing queue entry', ['id' => $entry['id'], 'type' => $entry['type'], 'object-type' => $entry['object-type'], 'uri' => $entry['object-id'], 'in-reply-to' => $entry['in-reply-to-id']]);
 
-		$activity = json_decode($entry['activity'], true);
+		$activity = json_decode((string) $entry['activity'], true);
 		$type     = $entry['type'];
 		$push     = $entry['push'];
 
@@ -320,7 +336,7 @@ class Queue
 					return false;
 				}
 				Fetch::add($entry['in-reply-to-id']);
-				$activity = json_decode($entry['activity'], true);
+				$activity = json_decode((string) $entry['activity'], true);
 				if (in_array($entry['in-reply-to-id'], $activity['children'] ?? [])) {
 					DI::logger()->notice('reply-to-id is already in the list of children', ['id' => $entry['in-reply-to-id'], 'children' => $activity['children'], 'depth' => count($activity['children'])]);
 					self::retrial($id);
@@ -393,13 +409,13 @@ class Queue
 
 		$trust_source = $entry['trust'];
 
-		$data     = json_decode($entry['activity'], true);
-		$activity = json_decode($data['raw'], true);
+		$data     = json_decode((string) $entry['activity'], true);
+		$activity = json_decode((string) $data['raw'], true);
 
 		$ldactivity = JsonLD::compact($activity);
 		return [
 			'data'  => Receiver::prepareObjectData($ldactivity, $uid, $entry['push'], $trust_source),
-			'trust' => $trust_source
+			'trust' => $trust_source,
 		];
 	}
 

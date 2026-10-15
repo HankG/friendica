@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -133,6 +133,6 @@ class Notify extends BaseModule
 			$this->logger->notice('xml_status returning non_zero: ' . $status . " message=" . $message);
 		}
 
-		$this->httpExit(XML::fromArray(['result' => $result]), Response::TYPE_XML);
+		$this->earlyHttpExit(XML::fromArray(['result' => $result]), Response::TYPE_XML);
 	}
 }

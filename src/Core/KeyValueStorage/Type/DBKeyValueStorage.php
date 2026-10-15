@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -16,8 +16,8 @@ use Friendica\Database\Database;
  */
 class DBKeyValueStorage extends AbstractKeyValueStorage
 {
-	const NAME = 'database';
-	const DB_KEY_VALUE_TABLE = 'key-value';
+	public const NAME               = 'database';
+	public const DB_KEY_VALUE_TABLE = 'key-value';
 
 	/** @var Database */
 	protected $database;
@@ -67,7 +67,7 @@ class DBKeyValueStorage extends AbstractKeyValueStorage
 			// We store our setting values in a string variable.
 			// So we have to do the conversion here so that the compare below works.
 			// The exception are array values.
-			$compare_value = (!is_array($value) ? (string)$value : $value);
+			$compare_value = (!is_array($value) ? (string) $value : $value);
 			$stored_value  = $this->get($offset);
 
 			if (isset($stored_value) && ($stored_value === $compare_value)) {
@@ -78,7 +78,7 @@ class DBKeyValueStorage extends AbstractKeyValueStorage
 
 			$return = $this->database->update(self::DB_KEY_VALUE_TABLE, [
 				'v'          => $dbValue,
-				'updated_at' => time()
+				'updated_at' => time(),
 			], ['k' => $offset], true);
 
 			if (!$return) {

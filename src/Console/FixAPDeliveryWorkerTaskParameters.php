@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -9,7 +9,6 @@ namespace Friendica\Console;
 
 use Asika\SimpleConsole\CommandArgsException;
 use Friendica\App\Mode;
-use Friendica\Core\L10n;
 use Friendica\Database\Database;
 use Friendica\Model\Contact;
 use RuntimeException;
@@ -20,19 +19,6 @@ use RuntimeException;
 class FixAPDeliveryWorkerTaskParameters extends \Asika\SimpleConsole\Console
 {
 	protected $helpOptions = ['h', 'help', '?'];
-
-	/**
-	 * @var Mode
-	 */
-	private $appMode;
-	/**
-	 * @var Database
-	 */
-	private $dba;
-	/**
-	 * @var L10n
-	 */
-	private $l10n;
 	/**
 	 * @var int
 	 */
@@ -65,19 +51,18 @@ HELP;
 		return $help;
 	}
 
-	public function __construct(Mode $appMode, Database $dba, L10n $l10n, array $argv = null)
-	{
+	public function __construct(
+		private readonly Mode $appMode,
+		private readonly Database $dba,
+		?array $argv = null,
+	) {
 		parent::__construct($argv);
-
-		$this->appMode = $appMode;
-		$this->dba = $dba;
-		$this->l10n = $l10n;
 	}
 
 	protected function doExecute(): int
 	{
 		if ($this->getOption('v')) {
-			$this->out('Class: ' . __CLASS__);
+			$this->out('Class: ' . self::class);
 			$this->out('Arguments: ' . var_export($this->args, true));
 			$this->out('Options: ' . var_export($this->options, true));
 		}
@@ -90,9 +75,9 @@ HELP;
 			throw new RuntimeException('Friendica isn\'t properly installed yet.');
 		}
 
-		$this->examined = 0;
+		$this->examined  = 0;
 		$this->processed = 0;
-		$this->errored = 0;
+		$this->errored   = 0;
 
 		do {
 			$result = $this->dba->select('workerqueue', ['id', 'parameter'], ["`command` = ? AND `parameter` LIKE ?", "APDelivery", "[\"%\",\"\",%"], ['limit' => [$this->examined, 100]]);
@@ -113,7 +98,7 @@ HELP;
 
 	private function processRow(array $workerqueueItem)
 	{
-		$parameters = json_decode($workerqueueItem['parameter'], true);
+		$parameters = json_decode((string) $workerqueueItem['parameter'], true);
 
 		if (!$parameters) {
 			$this->errored++;
@@ -134,7 +119,7 @@ HELP;
 
 		if (is_array($parameters[2])) {
 			$parameters[4] = $parameters[2];
-			$contact = Contact::getById(current($parameters[2]), ['url']);
+			$contact       = Contact::getById(current($parameters[2]), ['url']);
 			$parameters[2] = $contact['url'];
 		}
 

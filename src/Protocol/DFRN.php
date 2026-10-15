@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -14,6 +14,7 @@ use DOMXPath;
 use Friendica\App;
 use Friendica\Content\Text\BBCode;
 use Friendica\Core\Protocol;
+use Friendica\Core\Worker;
 use Friendica\Database\DBA;
 use Friendica\DI;
 use Friendica\Model\Contact;
@@ -39,15 +40,16 @@ use Friendica\Util\Proxy;
 use Friendica\Util\Strings;
 use Friendica\Util\XML;
 use GuzzleHttp\Psr7\Uri;
+use Friendica\Content\Post\Entity\PostMedia;
 
 /**
  * This class contain functions to create and send DFRN XML files
  */
 class DFRN
 {
-	const TOP_LEVEL = 0; // Top level posting
-	const REPLY     = 1; // Regular reply that is stored locally
-	const REPLY_RC  = 2; // Reply that will be relayed
+	public const TOP_LEVEL = 0; // Top level posting
+	public const REPLY     = 1; // Regular reply that is stored locally
+	public const REPLY_RC  = 2; // Reply that will be relayed
 
 	/**
 	 * Generates an array of contact and user for DFRN imports
@@ -117,7 +119,7 @@ class DFRN
 			// These values aren't sent when sending from the queue.
 			/// @todo Check if we can set these values from the queue or if they are needed at all.
 			$item['entry:comment-allow'] = ($item['entry:comment-allow'] ?? '') ?: true;
-			$item['entry:cid']           = $item['entry:cid'] ?? 0;
+			$item['entry:cid'] ??= 0;
 
 			$entry = self::entry($doc, 'text', $item, $owner, $item['entry:comment-allow'], $item['entry:cid']);
 			if (isset($entry)) {
@@ -362,7 +364,7 @@ class DFRN
 
 		// For backward compatibility we keep this element
 		if (in_array($owner['page-flags'], [User::PAGE_FLAGS_COMMUNITY, User::PAGE_FLAGS_COMM_MAN])) {
-			XML::addElement($doc, $root, 'dfrn:community', 1);
+			XML::addElement($doc, $root, 'dfrn:community', '1');
 		}
 
 		// The former element is replaced by this one
@@ -408,7 +410,7 @@ class DFRN
 
 		$profile = DBA::selectFirst('profile', ['dob'], ['uid' => $uid]);
 		if (DBA::isResult($profile)) {
-			$tmp_dob = substr($profile['dob'], 5);
+			$tmp_dob = substr((string) $profile['dob'], 5);
 			if (intval($tmp_dob)) {
 				$y     = DateTimeFormat::timezoneNow($tz, 'Y');
 				$bd    = $y . '-' . $tmp_dob . ' 00:00';
@@ -442,8 +444,8 @@ class DFRN
 
 		$author = $doc->createElement($authorelement);
 
-		$namdate = DateTimeFormat::utc($owner['name-date'].'+00:00', DateTimeFormat::ATOM);
-		$picdate = DateTimeFormat::utc($owner['avatar-date'].'+00:00', DateTimeFormat::ATOM);
+		$namdate = DateTimeFormat::utc($owner['name-date'] . '+00:00', DateTimeFormat::ATOM);
+		$picdate = DateTimeFormat::utc($owner['avatar-date'] . '+00:00', DateTimeFormat::ATOM);
 
 		$attributes = [];
 
@@ -452,7 +454,7 @@ class DFRN
 		}
 
 		XML::addElement($doc, $author, 'name', $owner['name'], $attributes);
-		XML::addElement($doc, $author, 'uri', DI::baseUrl().'/profile/' . $owner['nickname'], $attributes);
+		XML::addElement($doc, $author, 'uri', DI::baseUrl() . '/profile/' . $owner['nickname'], $attributes);
 		XML::addElement($doc, $author, 'dfrn:handle', $owner['addr'], $attributes);
 
 		$attributes = [
@@ -491,14 +493,14 @@ class DFRN
 		$profile = DBA::selectFirst(
 			'owner-view',
 			['about', 'name', 'homepage', 'nickname', 'timezone', 'locality', 'region', 'country-name', 'pub_keywords', 'xmpp', 'dob'],
-			['uid' => $owner['uid'], 'hidewall' => false]
+			['uid' => $owner['uid'], 'hidewall' => false],
 		);
 		if (DBA::isResult($profile)) {
 			XML::addElement($doc, $author, 'poco:displayName', $profile['name']);
 			XML::addElement($doc, $author, 'poco:updated', $namdate);
 
-			if (trim($profile['dob']) > DBA::NULL_DATE) {
-				XML::addElement($doc, $author, 'poco:birthday', '0000-'.date('m-d', strtotime($profile['dob'])));
+			if (trim((string) $profile['dob']) > DBA::NULL_DATE) {
+				XML::addElement($doc, $author, 'poco:birthday', '0000-' . date('m-d', strtotime((string) $profile['dob'])));
 			}
 
 			XML::addElement($doc, $author, 'poco:note', $profile['about']);
@@ -506,7 +508,7 @@ class DFRN
 
 			XML::addElement($doc, $author, 'poco:utcOffset', DateTimeFormat::timezoneNow($profile['timezone'], 'P'));
 
-			if (trim($profile['homepage'])) {
+			if (trim((string) $profile['homepage'])) {
 				$urls = $doc->createElement('poco:urls');
 				XML::addElement($doc, $urls, 'poco:type', 'homepage');
 				XML::addElement($doc, $urls, 'poco:value', $profile['homepage']);
@@ -515,14 +517,14 @@ class DFRN
 			}
 
 			if (trim($profile['pub_keywords'] ?? '')) {
-				$keywords = explode(',', $profile['pub_keywords']);
+				$keywords = explode(',', (string) $profile['pub_keywords']);
 
 				foreach ($keywords as $keyword) {
 					XML::addElement($doc, $author, 'poco:tags', trim($keyword));
 				}
 			}
 
-			if (trim($profile['xmpp'])) {
+			if (trim((string) $profile['xmpp'])) {
 				$ims = $doc->createElement('poco:ims');
 				XML::addElement($doc, $ims, 'poco:type', 'xmpp');
 				XML::addElement($doc, $ims, 'poco:value', $profile['xmpp']);
@@ -535,15 +537,15 @@ class DFRN
 
 				XML::addElement($doc, $element, 'poco:formatted', Profile::formatLocation($profile));
 
-				if (trim($profile['locality']) != '') {
+				if (trim((string) $profile['locality']) != '') {
 					XML::addElement($doc, $element, 'poco:locality', $profile['locality']);
 				}
 
-				if (trim($profile['region']) != '') {
+				if (trim((string) $profile['region']) != '') {
 					XML::addElement($doc, $element, 'poco:region', $profile['region']);
 				}
 
-				if (trim($profile['country-name']) != '') {
+				if (trim((string) $profile['country-name']) != '') {
 					XML::addElement($doc, $element, 'poco:country', $profile['country-name']);
 				}
 
@@ -637,7 +639,7 @@ class DFRN
 		}
 
 		if ($r->link) {
-			if (substr($r->link, 0, 1) == '<') {
+			if (str_starts_with($r->link, '<')) {
 				if (strstr($r->link, '&') && (! strstr($r->link, '&amp;'))) {
 					$r->link = str_replace('&', '&amp;', $r->link);
 				}
@@ -679,7 +681,7 @@ class DFRN
 	 */
 	private static function getAttachment($doc, $root, array $item)
 	{
-		foreach (Post\Media::getByURIId($item['uri-id'], [Post\Media::DOCUMENT, Post\Media::TORRENT]) as $attachment) {
+		foreach (Post\Media::getByURIId($item['uri-id'], [PostMedia::TYPE_DOCUMENT, PostMedia::TYPE_TORRENT]) as $attachment) {
 			$attributes = ['rel' => 'enclosure',
 				'href'              => $attachment['url'],
 				'type'              => $attachment['mimetype']];
@@ -809,14 +811,14 @@ class DFRN
 			[
 				'rel'  => 'alternate',
 				'type' => 'text/html',
-				'href' => DI::baseUrl() . '/display/' . $item['guid']
+				'href' => DI::baseUrl() . '/display/' . $item['guid'],
 			],
 		);
 
 		// "comment-allow" is some old fashioned stuff for old Friendica versions.
 		// It is included in the rewritten code for completeness
 		if ($comment) {
-			XML::addElement($doc, $entry, 'dfrn:comment-allow', 1);
+			XML::addElement($doc, $entry, 'dfrn:comment-allow', '1');
 		}
 
 		if ($item['location']) {
@@ -829,8 +831,8 @@ class DFRN
 
 		if ($item['private']) {
 			// Friendica versions prior to 2020.3 can't handle "unlisted" properly. So we can only transmit public and private
-			XML::addElement($doc, $entry, 'dfrn:private', ($item['private'] == Item::PRIVATE ? Item::PRIVATE : Item::PUBLIC));
-			XML::addElement($doc, $entry, 'dfrn:unlisted', $item['private'] == Item::UNLISTED);
+			XML::addElement($doc, $entry, 'dfrn:private', ($item['private'] == Item::PRIVATE ? (string) Item::PRIVATE : (string) Item::PUBLIC));
+			XML::addElement($doc, $entry, 'dfrn:unlisted', (string) ($item['private'] == Item::UNLISTED));
 		}
 
 		if ($item['extid']) {
@@ -952,7 +954,7 @@ class DFRN
 
 			try {
 				$pubkey = DI::dsprContact()->getByAddr(WebFingerUri::fromString($contact['addr']))->pubKey;
-			} catch (HTTPException\NotFoundException|\InvalidArgumentException $e) {
+			} catch (HTTPException\NotFoundException|\InvalidArgumentException) {
 				DI::logger()->notice('Unable to find contact details for ' . $contact['id'] . ' - ' . $contact['addr']);
 				return -22;
 			}
@@ -964,11 +966,11 @@ class DFRN
 
 		// Create the endpoint for public posts. This is some WIP and should later be added to the probing
 		if ($public_batch && empty($contact['batch'])) {
-			$parts      = parse_url($contact['notify']);
+			$parts      = parse_url((string) $contact['notify']);
 			$path_parts = explode('/', $parts['path']);
 			array_pop($path_parts);
 			$parts['path']    = implode('/', $path_parts);
-			$contact['batch'] = (string)Uri::fromParts($parts);
+			$contact['batch'] = (string) Uri::fromParts($parts);
 		}
 
 		$dest_url = ($public_batch ? $contact['batch'] : $contact['notify']);
@@ -1003,7 +1005,7 @@ class DFRN
 			return -10;
 		}
 
-		if (strpos($xml, '<?xml') === false) {
+		if (!str_contains($xml, '<?xml')) {
 			DI::logger()->notice('No valid XML returned from ' . $contact['id'] . ' - ' . $dest_url);
 			DI::logger()->debug('Returned XML: ' . $xml);
 			return 3;
@@ -1021,7 +1023,7 @@ class DFRN
 		}
 
 		if (!empty($res->message)) {
-			DI::logger()->info('Transmit to ' . $dest_url . ' returned status '.$res->status.' - '.$res->message);
+			DI::logger()->info('Transmit to ' . $dest_url . ' returned status ' . $res->status . ' - ' . $res->message);
 		}
 
 		return intval($res->status);
@@ -1045,8 +1047,8 @@ class DFRN
 	private static function fetchauthor(\DOMXPath $xpath, \DOMNode $context, array $importer, string $element, bool $onlyfetch, string $xml = ''): array
 	{
 		$author         = [];
-		$author["name"] = XML::getFirstNodeValue($xpath, $element."/atom:name/text()", $context);
-		$author["link"] = XML::getFirstNodeValue($xpath, $element."/atom:uri/text()", $context);
+		$author["name"] = XML::getFirstNodeValue($xpath, $element . "/atom:name/text()", $context);
+		$author["link"] = XML::getFirstNodeValue($xpath, $element . "/atom:uri/text()", $context);
 
 		$fields = ['id', 'uid', 'url', 'network', 'avatar-date', 'avatar', 'name-date', 'uri-date', 'addr',
 			'name', 'nick', 'about', 'location', 'keywords', 'xmpp', 'bdyear', 'bd', 'hidden', 'contact-type'];
@@ -1204,7 +1206,7 @@ class DFRN
 				if ($birthday_date > new \DateTime()) {
 					$poco["bdyear"] = $birthday_date->format("Y");
 				}
-			} catch (\Exception $e) {
+			} catch (\Exception) {
 				// Invalid birthday
 			}
 
@@ -1216,7 +1218,7 @@ class DFRN
 				$value  = str_replace(["0000", "0001"], $bdyear, $value);
 
 				if (strtotime($value) < time()) {
-					$value = str_replace($bdyear, $bdyear + 1, $value);
+					$value = str_replace($bdyear, (string) ($bdyear + 1), $value);
 				}
 
 				$poco["bd"] = $value;
@@ -1271,7 +1273,7 @@ class DFRN
 		$obj_doc               = new DOMDocument("1.0", "utf-8");
 		$obj_doc->formatOutput = true;
 
-		$obj_element = $obj_doc->createElementNS( ActivityNamespace::ATOM1, $element);
+		$obj_element = $obj_doc->createElementNS(ActivityNamespace::ATOM1, $element);
 
 		$activity_type = $xpath->query("activity:object-type/text()", $activity)->item(0)->nodeValue;
 		XML::addElement($obj_doc, $obj_element, "type", $activity_type);
@@ -1303,7 +1305,7 @@ class DFRN
 		$objxml = $obj_doc->saveXML($obj_element);
 
 		/// @todo This isn't totally clean. We should find a way to transform the namespaces
-		$objxml = str_replace("<".$element.' xmlns="http://www.w3.org/2005/Atom">', "<".$element.">", $objxml);
+		$objxml = str_replace("<" . $element . ' xmlns="http://www.w3.org/2005/Atom">', "<" . $element . ">", $objxml);
 		return($objxml);
 	}
 
@@ -1393,7 +1395,7 @@ class DFRN
 			$suggest['cid'],
 			$suggest['body'],
 			null,
-			$cid
+			(bool) $cid,
 		));
 
 		DI::notify()->createFromArray([
@@ -1403,7 +1405,7 @@ class DFRN
 			'uid'   => $owner['uid'],
 			'cid'   => $from_contact['uid'],
 			'item'  => $suggest,
-			'link'  => DI::baseUrl().'/notifications/intros',
+			'link'  => DI::baseUrl() . '/notifications/intros',
 		]);
 
 		return true;
@@ -1446,7 +1448,7 @@ class DFRN
 		}
 
 		if ($relocate['addr'] == '') {
-			$relocate['addr'] = preg_replace("=(https?://)(.*)/profile/(.*)=ism", '$3@$2', $relocate['url']);
+			$relocate['addr'] = preg_replace("=(https?://)(.*)/profile/(.*)=ism", '$3@$2', (string) $relocate['url']);
 		}
 
 		// update contact
@@ -1682,7 +1684,7 @@ class DFRN
 						break;
 
 					case 'enclosure':
-						Post\Media::insert(['uri-id' => $item['uri-id'], 'type' => Post\Media::DOCUMENT,
+						Post\Media::insert(['uri-id' => $item['uri-id'], 'type' => PostMedia::TYPE_DOCUMENT,
 							'url'                       => $href, 'mimetype' => $type, 'size' => $length, 'description' => $title]);
 						break;
 				}
@@ -1753,7 +1755,7 @@ class DFRN
 
 		$current = Post::selectFirst(
 			['id', 'uid', 'edited', 'body'],
-			['uri' => $item['uri'], 'uid' => $importer['importer_uid']]
+			['uri' => $item['uri'], 'uid' => $importer['importer_uid']],
 		);
 		// Is there an existing item?
 		if (DBA::isResult($current) && !self::isEditedTimestampNewer($current, $item)) {
@@ -2050,6 +2052,7 @@ class DFRN
 				if ($item['uid'] == 0) {
 					Item::distribute($posted_id);
 				}
+				Item::addPostToChannel($item['uri-id'], $item['uid']);
 
 				return;
 			}
@@ -2062,9 +2065,9 @@ class DFRN
 			// This is my contact on another system, but it's really me.
 			// Turn this into a wall post.
 			$notify       = Item::isRemoteSelf($importer, $item);
-			$item['wall'] = (bool)$notify;
+			$item['wall'] = (bool) $notify;
 
-			$posted_id = Item::insert($item, $notify);
+			$posted_id = Item::insert($item, $notify ? Worker::PRIORITY_HIGH : 0);
 
 			if ($notify) {
 				$posted_id = $notify;
@@ -2075,6 +2078,7 @@ class DFRN
 			if ($item['uid'] == 0) {
 				Item::distribute($posted_id);
 			}
+			Item::addPostToChannel($item['uri-id'], $item['uid']);
 		}
 	}
 
@@ -2133,7 +2137,7 @@ class DFRN
 			return;
 		}
 
-		DI::logger()->info('deleting item '.$item['id'].' uri='.$uri);
+		DI::logger()->info('deleting item ' . $item['id'] . ' uri=' . $uri);
 
 		Item::markForDeletion(['id' => $item['id']]);
 	}

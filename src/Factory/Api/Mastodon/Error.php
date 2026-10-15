@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -14,13 +14,9 @@ use Psr\Log\LoggerInterface;
 /** @todo A Factory shouldn't return something to the frontpage, it's for creating content, not showing it */
 class Error extends BaseFactory
 {
-	/** @var L10n */
-	private $l10n;
-
-	public function __construct(LoggerInterface $logger, L10n $l10n)
+	public function __construct(LoggerInterface $logger, private readonly L10n $l10n)
 	{
 		parent::__construct($logger);
-		$this->l10n   = $l10n;
 	}
 
 	public function RecordNotFound(): \Friendica\Object\Api\Mastodon\Error
@@ -39,7 +35,7 @@ class Error extends BaseFactory
 
 	public function Unauthorized(string $error = '', string $error_description = ''): \Friendica\Object\Api\Mastodon\Error
 	{
-		$error             = $error ?: $this->l10n->t('Unauthorized');
+		$error = $error ?: $this->l10n->t('Unauthorized');
 		return new \Friendica\Object\Api\Mastodon\Error($error, $error_description);
 	}
 

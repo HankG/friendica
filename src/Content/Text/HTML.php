@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -101,7 +101,7 @@ class HTML
 					/** @var \DOMNode $child */
 					foreach ($node->childNodes as $key => $child) {
 						/* Remove empty text nodes at the start or at the end of the children list */
-						if ($key > 0 && $key < $node->childNodes->length - 1 || $child->nodeName != '#text' || trim($child->nodeValue) !== '') {
+						if ($key > 0 && $key < $node->childNodes->length - 1 || $child->nodeName != '#text' || trim((string) $child->nodeValue) !== '') {
 							$newNode = $child->cloneNode(true);
 							$node->parentNode->insertBefore($newNode, $node);
 						}
@@ -153,7 +153,7 @@ class HTML
 					"<li>",
 					"</li>",
 				],
-				$message
+				$message,
 			);
 
 			// remove namespaces
@@ -172,6 +172,7 @@ class HTML
 			@$doc->loadHTML($message, LIBXML_HTML_NODEFDTD);
 
 			XML::deleteNode($doc, 'style');
+			XML::deleteNode($doc, 'script');
 			XML::deleteNode($doc, 'head');
 			XML::deleteNode($doc, 'title');
 			XML::deleteNode($doc, 'meta');
@@ -182,7 +183,7 @@ class HTML
 			$list  = $xpath->query("//pre");
 			foreach ($list as $node) {
 				// Ensure to escape unescaped & - they will otherwise raise a warning
-				$safe_value      = preg_replace('/&(?!\w+;)/', '&amp;', $node->nodeValue);
+				$safe_value      = preg_replace('/&(?!\w+;)/', '&amp;', (string) $node->nodeValue);
 				$node->nodeValue = str_replace("\n", "\r", $safe_value);
 			}
 
@@ -208,7 +209,7 @@ class HTML
 				'div',
 				['style' => 'border:none;border-left:solid blue 1.5pt;padding:0cm 0cm 0cm 4.0pt'],
 				'[quote]',
-				'[/quote]'
+				'[/quote]',
 			);
 
 			// MyBB-Stuff
@@ -243,7 +244,7 @@ class HTML
 
 			$elements = [
 				'b', 'del', 'em', 'i', 'ins', 'kbd', 'mark',
-				's', 'samp', 'strong', 'sub', 'sup', 'u', 'var'
+				's', 'samp', 'strong', 'sub', 'sup', 'u', 'var',
 			];
 			foreach ($elements as $element) {
 				self::tagToBBCode($doc, $element, [], '[' . $element . ']', '[/' . $element . ']');
@@ -324,15 +325,15 @@ class HTML
 
 			$message = $message_data['html2bbcode'] ?? $message;
 
-			$message = strip_tags($message);
+			$message = strip_tags((string) $message);
 
 			$message = html_entity_decode($message, ENT_QUOTES, 'UTF-8');
 
 			// remove quotes if they don't make sense
 			$message = preg_replace('=\[/quote\][\s]*\[quote\]=i', "\n", $message);
 
-			$message = preg_replace('=\[quote\]\s*=i', "[quote]", $message);
-			$message = preg_replace('=\s*\[/quote\]=i', "[/quote]", $message);
+			$message = preg_replace('=\[quote\]\s*=i', "[quote]", (string) $message);
+			$message = preg_replace('=\s*\[/quote\]=i', "[/quote]", (string) $message);
 
 			do {
 				$oldmessage = $message;
@@ -347,7 +348,7 @@ class HTML
 			$message = str_replace(
 				['[b][b]', '[/b][/b]', '[i][i]', '[/i][/i]'],
 				['[b]', '[/b]', '[i]', '[/i]'],
-				$message
+				$message,
 			);
 
 			// Handling Yahoo style of mails
@@ -366,10 +367,10 @@ class HTML
 
 				return $prefix . "\n" . html_entity_decode($matches[2]) . "\n" . '[/code]';
 			},
-			$message
+			$message,
 		);
 
-		$message = trim($message);
+		$message = trim((string) $message);
 
 		if ($basepath != '') {
 			$message = self::qualifyURLs($message, $basepath);
@@ -396,12 +397,12 @@ class HTML
 		$link = $matches[0];
 		$url  = $matches[1];
 
-		if (empty($url) || empty(parse_url($url))) {
+		if (empty($url) || empty(parse_url((string) $url))) {
 			return $matches[0];
 		}
 
-		$parts = array_merge($base, parse_url($url));
-		$url2  = (string)Uri::fromParts((array)$parts);
+		$parts = array_merge($base, parse_url((string) $url));
+		$url2  = (string) Uri::fromParts((array) $parts);
 
 		return str_replace($url, $url2, $link);
 	}
@@ -435,7 +436,7 @@ class HTML
 				function ($match) use ($basepath) {
 					return self::qualifyURLsSub($match, $basepath);
 				},
-				$body
+				(string) $body,
 			);
 		}
 		return $body;
@@ -530,27 +531,27 @@ class HTML
 			// A list of some links that should be ignored
 			$list = [
 				"/user/", "/tag/", "/group/", "/circle/", "/profile/", "/search?search=", "/search?tag=", "mailto:", "/u/", "/node/",
-				"//plus.google.com/", "//twitter.com/"
+				"//plus.google.com/", "//twitter.com/",
 			];
 			foreach ($list as $listitem) {
-				if (strpos($treffer[1], $listitem) !== false) {
+				if (str_contains($treffer[1], $listitem)) {
 					$ignore = true;
 				}
 			}
 
-			if ((strpos($treffer[1], "//twitter.com/") !== false) && (strpos($treffer[1], "/status/") !== false)) {
+			if ((str_contains($treffer[1], "//twitter.com/")) && (str_contains($treffer[1], "/status/"))) {
 				$ignore = false;
 			}
 
-			if ((strpos($treffer[1], "//plus.google.com/") !== false) && (strpos($treffer[1], "/posts") !== false)) {
+			if ((str_contains($treffer[1], "//plus.google.com/")) && (str_contains($treffer[1], "/posts"))) {
 				$ignore = false;
 			}
 
-			if ((strpos($treffer[1], "//plus.google.com/") !== false) && (strpos($treffer[1], "/photos") !== false)) {
+			if ((str_contains($treffer[1], "//plus.google.com/")) && (str_contains($treffer[1], "/photos"))) {
 				$ignore = false;
 			}
 
-			$ignore = $ignore || strpos($treffer[1], '#') === 0;
+			$ignore = $ignore || str_starts_with($treffer[1], '#');
 
 			if (!$ignore) {
 				$urls[$treffer[1]] = $treffer[1];
@@ -574,7 +575,9 @@ class HTML
 		$doc                     = new DOMDocument();
 		$doc->preserveWhiteSpace = false;
 
-		$message = mb_convert_encoding($message, 'HTML-ENTITIES', "UTF-8");
+		// mb_convert_encoding($s, 'HTML-ENTITIES', 'UTF-8') is deprecated since PHP 8.2.
+		// mb_encode_numericentity() produces the same numeric-entity output without the warning.
+		$message = mb_encode_numericentity($message, [0x80, 0x10FFFF, 0, 0x1FFFFF], 'UTF-8');
 
 		if (empty($message)) {
 			DI::profiler()->stopRecording();
@@ -659,7 +662,7 @@ class HTML
 
 		if (!$compact && ($message != '')) {
 			foreach ($urls as $id => $url) {
-				if ($url != '' && strpos($message, $url) === false) {
+				if ($url != '' && !str_contains($message, (string) $url)) {
 					$message .= "\n" . $url . ' ';
 				}
 			}
@@ -707,19 +710,19 @@ class HTML
 		$s = preg_replace(
 			'#<object[^>]+>(.*?)https?://www.youtube.com/((?:v|cp)/[A-Za-z0-9\-_=]+)(.*?)</object>#ism',
 			'[youtube]$2[/youtube]',
-			$s
+			$s,
 		);
 
 		$s = preg_replace(
 			'#<iframe[^>](.*?)https?://www.youtube.com/embed/([A-Za-z0-9\-_=]+)(.*?)</iframe>#ism',
 			'[youtube]$2[/youtube]',
-			$s
+			(string) $s,
 		);
 
 		$s = preg_replace(
 			'#<iframe[^>](.*?)https?://player.vimeo.com/video/([0-9]+)(.*?)</iframe>#ism',
 			'[vimeo]$2[/vimeo]',
-			$s
+			(string) $s,
 		);
 
 		return $s;
@@ -749,16 +752,16 @@ class HTML
 
 		$pattern = "/<a([^>]*) href=\"(?!http|https)([^\"]*)\"/";
 		$replace = "<a\${1} href=\"" . $base . "\${2}\"";
-		$text    = preg_replace($pattern, $replace, $text);
+		$text    = preg_replace($pattern, $replace, (string) $text);
 
 		// Replace images
 		$pattern = "/<img([^>]*) src=\"(?!http|https|\/)([^\"]*)\"/";
 		$replace = "<img\${1} src=\"" . $base2 . "\${2}\"";
-		$text    = preg_replace($pattern, $replace, $text);
+		$text    = preg_replace($pattern, $replace, (string) $text);
 
 		$pattern = "/<img([^>]*) src=\"(?!http|https)([^\"]*)\"/";
 		$replace = "<img\${1} src=\"" . $base . "\${2}\"";
-		$text    = preg_replace($pattern, $replace, $text);
+		$text    = preg_replace($pattern, $replace, (string) $text);
 
 
 		// Done
@@ -771,12 +774,19 @@ class HTML
 	 * @return string html for loader
 	 * @throws \Friendica\Network\HTTPException\InternalServerErrorException
 	 */
-	public static function scrollLoader(): string
+	public static function scrollLoader(array $request = []): string
 	{
+		if (in_array($request['mode'] ?? '', ['minimal', 'raw'])) {
+			return '';
+		}
+
+		$tpl    = Renderer::getMarkupTemplate('infinite_scroll_head.tpl');
+		$loader = Renderer::replaceMacros($tpl, ['$reload_uri' => DI::args()->getQueryString()]);
+
 		$tpl = Renderer::getMarkupTemplate("scroll_loader.tpl");
-		return Renderer::replaceMacros($tpl, [
+		return $loader . Renderer::replaceMacros($tpl, [
 			'wait' => DI::l10n()->t('Loading more entries...'),
-			'end'  => DI::l10n()->t('The end')
+			'end'  => DI::l10n()->t('The end'),
 		]);
 	}
 
@@ -813,7 +823,7 @@ class HTML
 
 		if ($redirect) {
 			$url = Contact::magicLinkByContact($contact);
-			if (strpos($url, 'contact/redir/') === 0) {
+			if (str_starts_with($url, 'contact/redir/')) {
 				$sparkle = ' sparkle';
 			}
 		}
@@ -831,7 +841,7 @@ class HTML
 			'$name'   => $contact['name'],
 			'title'   => $contact['name'] . ' [' . $contact['addr'] . ']',
 			'$parkle' => $sparkle,
-			'$redir'  => $redir
+			'$redir'  => $redir,
 		]);
 	}
 
@@ -849,17 +859,17 @@ class HTML
 	{
 		$mode = 'text';
 
-		if (strpos($s, '#') === 0) {
+		if (str_starts_with($s, '#')) {
 			$mode = 'tag';
 		}
-		$save_label = $mode === 'text' ? DI::l10n()->t('Save') : DI::l10n()->t('Follow');
+		$action_text = DI::l10n()->t('Save search');
 
 		$values = [
 			'$s'            => $s,
 			'$q'            => urlencode($s),
 			'$id'           => $id,
 			'$search_label' => DI::l10n()->t('Search'),
-			'$save_label'   => $save_label,
+			'$action_text'  => $action_text,
 			'$search_hint'  => DI::l10n()->t('@name, !group, #tags, content'),
 			'$mode'         => $mode,
 			'$return_url'   => bin2hex(Search::getSearchPath($s)),
@@ -869,7 +879,7 @@ class HTML
 			$values['$search_options'] = [
 				'fulltext' => DI::l10n()->t('Full Text'),
 				'tags'     => DI::l10n()->t('Tags'),
-				'contacts' => DI::l10n()->t('Contacts')
+				'contacts' => DI::l10n()->t('Contacts'),
 			];
 
 			if (DI::config()->get('system', 'poco_local_search')) {
@@ -898,7 +908,7 @@ class HTML
 				'$reasons'   => $reasons,
 				'$rnd'       => Strings::getRandomHex(8),
 				'$openclose' => DI::l10n()->t('Click to open/close'),
-				'$html'      => $html
+				'$html'      => $html,
 			]);
 		}
 
@@ -935,7 +945,7 @@ class HTML
 
 		$config->set('HTML.SafeIframe', true);
 
-		array_walk($allowedIframeDomains, function (&$domain) {
+		array_walk($allowedIframeDomains, function (&$domain): void {
 			// Allow the domain and all its eventual sub-domains
 			$domain = '(?:(?!-)[A-Za-z0-9-]{1,63}(?<!-)\.)*' . preg_quote(trim($domain, '/'), '%');
 		});
@@ -946,7 +956,7 @@ class HTML
 				' . implode('|', $allowedIframeDomains) . '
 			)
 			(?:/|$) # Prevents bogus domains like youtube.com.fake.tld
-			%xi'
+			%xi',
 		);
 
 		$config->set('Attr.AllowedRel', [
@@ -991,11 +1001,11 @@ class HTML
 	 */
 	public static function xpathQuote(string $value): string
 	{
-		if (false === strpos($value, '"')) {
+		if (!str_contains($value, '"')) {
 			return '"' . $value . '"';
 		}
 
-		if (false === strpos($value, "'")) {
+		if (!str_contains($value, "'")) {
 			return "'" . $value . "'";
 		}
 
@@ -1004,7 +1014,7 @@ class HTML
 		// the quotes, e.g.:
 		//
 		//    concat("'foo'", '"', "bar")
-		return 'concat(' . implode(', \'"\', ', array_map([self::class, 'xpathQuote'], explode('"', $value))) . ')';
+		return 'concat(' . implode(', \'"\', ', array_map(self::xpathQuote(...), explode('"', $value))) . ')';
 	}
 
 	/**
@@ -1039,7 +1049,7 @@ class HTML
 
 		$expression = "string(//meta[@charset]/@charset)";
 		if ($charset = $xpath->evaluate($expression)) {
-			return strtolower($charset);
+			return strtolower((string) $charset);
 		}
 
 		try {
@@ -1050,7 +1060,7 @@ class HTML
 			if (isset($mediaType->parameters['charset'])) {
 				return strtolower($mediaType->parameters['charset']);
 			}
-		} catch (\InvalidArgumentException $e) {
+		} catch (\InvalidArgumentException) {
 		}
 
 		return null;
@@ -1065,5 +1075,39 @@ class HTML
 	public static function isHTML(string $text): bool
 	{
 		return ($text != html_entity_decode($text)) || ($text != strip_tags($text));
+	}
+
+	/**
+	 * Remove HTML elements with a specific class name
+	 *
+	 * @param string $html
+	 * @param string $className
+	 * @return string the HTML without the removed HTML element
+	 */
+	public static function removeElementByClass(string $html, string $className): string
+	{
+		$dom = new DOMDocument();
+		libxml_use_internal_errors(true);
+
+		$dom->loadHTML(mb_convert_encoding('<span>' . $html . '</span>', 'HTML-ENTITIES', "UTF-8"), LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+		libxml_clear_errors();
+
+		$xpath = new DOMXPath($dom);
+
+		$nodes = $xpath->query("//*[contains(@class, '" . $className . "')]");
+		if (!$nodes || $nodes->length == 0) {
+			return $html;
+		}
+
+		foreach ($nodes as $node) {
+			$node->parentNode->removeChild($node);
+		}
+
+		$html = trim($dom->saveHTML());
+		if (str_starts_with($html, '<span>') && str_ends_with($html, '</span>')) {
+			$html = substr($html, 6, -7);
+		}
+
+		return $html;
 	}
 }

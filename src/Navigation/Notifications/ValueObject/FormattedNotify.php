@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -12,15 +12,15 @@ use Friendica\BaseDataTransferObject;
 /**
  * A view-only object for printing item notifications to the frontend
  *
- * @deprecated since 2022.05 Use \Friendica\Navigation\Notifications\ValueObject\FormattedNotification instead
+ * @deprecated 2022.05 Use \Friendica\Navigation\Notifications\ValueObject\FormattedNotification instead
  */
 class FormattedNotify extends BaseDataTransferObject
 {
-	const SYSTEM   = 'system';
-	const PERSONAL = 'personal';
-	const NETWORK  = 'network';
-	const INTRO    = 'intro';
-	const HOME     = 'home';
+	public const SYSTEM   = 'system';
+	public const PERSONAL = 'personal';
+	public const NETWORK  = 'network';
+	public const INTRO    = 'intro';
+	public const HOME     = 'home';
 
 	/** @var string */
 	protected $label = '';

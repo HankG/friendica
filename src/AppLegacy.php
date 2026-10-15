@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -53,62 +53,29 @@ final class AppLegacy implements AppHelper
 	// Allow themes to control internal parameters
 	// by changing App values in theme.php
 	private $theme_info = [
-		'videowidth'  => 425,
-		'videoheight' => 350,
 	];
 
-	/**
-	 * @var Database The Friendica database connection
-	 */
-	private $database;
-
-	/**
-	 * @var IManageConfigValues The config
-	 */
-	private $config;
-
-	/**
-	 * @var Mode The Mode of the Application
-	 */
-	private $mode;
-
-	/**
-	 * @var BaseURL
-	 */
-	private $baseURL;
-
-	/**
-	 * @var L10n The translator
-	 */
-	private $l10n;
-
-	/**
-	 * @var IManagePersonalConfigValues
-	 */
-	private $pConfig;
-
-	/**
-	 * @var IHandleUserSessions
-	 */
-	private $session;
-
 	public function __construct(
-		Database $database,
-		IManageConfigValues $config,
-		Mode $mode,
-		BaseURL $baseURL,
-		L10n $l10n,
-		IManagePersonalConfigValues $pConfig,
-		IHandleUserSessions $session
-	) {
-		$this->database = $database;
-		$this->config   = $config;
-		$this->mode     = $mode;
-		$this->l10n     = $l10n;
-		$this->baseURL  = $baseURL;
-		$this->pConfig  = $pConfig;
-		$this->session  = $session;
-	}
+		/**
+		 * @var Database The Friendica database connection
+		 */
+		private readonly Database $database,
+		/**
+		 * @var IManageConfigValues The config
+		 */
+		private readonly IManageConfigValues $config,
+		/**
+		 * @var Mode The Mode of the Application
+		 */
+		private readonly Mode $mode,
+		private readonly BaseURL $baseURL,
+		/**
+		 * @var L10n The translator
+		 */
+		private readonly L10n $l10n,
+		private readonly IManagePersonalConfigValues $pConfig,
+		private readonly IHandleUserSessions $session,
+	) {}
 
 	/**
 	 * Set the profile owner ID
@@ -372,8 +339,7 @@ final class AppLegacy implements AppHelper
 
 		$mobile_theme_name = Strings::sanitizeFilePathItem($mobile_theme_name);
 		if ($mobile_theme_name == '---'
-			||
-			in_array($mobile_theme_name, Theme::getAllowedList())
+			|| in_array($mobile_theme_name, Theme::getAllowedList())
 			&& (file_exists('view/theme/' . $mobile_theme_name . '/style.css')
 				|| file_exists('view/theme/' . $mobile_theme_name . '/style.php'))
 		) {

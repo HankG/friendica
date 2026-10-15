@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -11,6 +11,7 @@ use DOMDocument;
 use DOMElement;
 use Friendica\Model\Photo;
 use Friendica\Model\Post;
+use Friendica\Content\Post\Entity\PostMedia;
 
 /**
  * Tumblr Neue Post Format
@@ -46,8 +47,11 @@ class NPF
 		self::setHeadingSubStyles($doc);
 
 		$element = $doc->getElementsByTagName('body')->item(0);
+		if (!$element instanceof DOMElement) {
+			return [];
+		}
 
-		list($npf, $text, $formatting) = self::routeChildren($element, $uri_id, true, []);
+		[$npf, $text, $formatting] = self::routeChildren($element, $uri_id, true, []);
 
 		return self::addLinkBlockForUriId($uri_id, 0, $npf);
 	}
@@ -85,9 +89,9 @@ class NPF
 			$bbcode = $shared['shared'];
 		}
 
-		$bbcode = preg_replace("/\[img\=([0-9]*)x([0-9]*)\](.*?)\[\/img\]/ism", '[img]$3[/img]', $bbcode);
+		$bbcode = preg_replace("/\[img\=([0-9]*)x([0-9]*)\](.*?)\[\/img\]/ism", '[img]$3[/img]', (string) $bbcode);
 
-		if (preg_match_all("#\[url=([^\]]+?)\]\s*\[img=([^\[\]]*)\]([^\[\]]*)\[\/img\]\s*\[/url\]#ism", $bbcode, $pictures, PREG_SET_ORDER)) {
+		if (preg_match_all("#\[url=([^\]]+?)\]\s*\[img=([^\[\]]*)\]([^\[\]]*)\[\/img\]\s*\[/url\]#ism", (string) $bbcode, $pictures, PREG_SET_ORDER)) {
 			foreach ($pictures as $picture) {
 				if (preg_match('#/photo/.*-[01]\.#ism', $picture[2]) && (preg_match('#/photo/.*-0\.#ism', $picture[1]) || preg_match('#/photos/.*/image/#ism', $picture[1]))) {
 					$bbcode = str_replace($picture[0], "\n\n[img=" . str_replace('-1.', '-0.', $picture[2]) . "]" . $picture[3] . "[/img]\n\n", $bbcode);
@@ -95,9 +99,9 @@ class NPF
 			}
 		}
 
-		$bbcode = preg_replace("/\[img\=(.*?)\](.*?)\[\/img\]/ism", "\n\n[img=$1]$2[/img]\n\n", $bbcode);
+		$bbcode = preg_replace("/\[img\=(.*?)\](.*?)\[\/img\]/ism", "\n\n[img=$1]$2[/img]\n\n", (string) $bbcode);
 
-		if (preg_match_all("#\[url=([^\]]+?)\]\s*\[img\]([^\[]+?)\[/img\]\s*\[/url\]#ism", $bbcode, $pictures, PREG_SET_ORDER)) {
+		if (preg_match_all("#\[url=([^\]]+?)\]\s*\[img\]([^\[]+?)\[/img\]\s*\[/url\]#ism", (string) $bbcode, $pictures, PREG_SET_ORDER)) {
 			foreach ($pictures as $picture) {
 				if (preg_match('#/photo/.*-[01]\.#ism', $picture[2]) && (preg_match('#/photo/.*-0\.#ism', $picture[1]) || preg_match('#/photos/.*/image/#ism', $picture[1]))) {
 					$bbcode = str_replace($picture[0], "\n\n[img]" . str_replace('-1.', '-0.', $picture[2]) . "[/img]\n\n", $bbcode);
@@ -105,7 +109,7 @@ class NPF
 			}
 		}
 
-		$bbcode = preg_replace("/\[img\](.*?)\[\/img\]/ism", "\n\n[img]$1[/img]\n\n", $bbcode);
+		$bbcode = preg_replace("/\[img\](.*?)\[\/img\]/ism", "\n\n[img]$1[/img]\n\n", (string) $bbcode);
 
 		do {
 			$oldbbcode = $bbcode;
@@ -130,31 +134,38 @@ class NPF
 	private static function routeChildren(DOMElement $element, int $uri_id, bool $parse_structure, array $callstack, array $npf = [], string $text = '', array $formatting = []): array
 	{
 		if ($parse_structure && $text) {
-			list($npf, $text, $formatting) = self::addBlock($text, $formatting, $npf, $callstack);
+			[$npf, $text, $formatting] = self::addBlock($text, $formatting, $npf, $callstack);
 		}
 
 		$callstack[] = $element->nodeName;
 		$level       = self::getLevelByCallstack($callstack);
 
 		foreach ($element->childNodes as $child) {
+			if (!$child instanceof DOMElement) {
+				if ($child->nodeName === '#text') {
+					$text .= $child->textContent;
+				}
+				continue;
+			}
+
 			switch ($child->nodeName) {
 				case 'b':
 				case 'strong':
-					list($npf, $text, $formatting) = self::addFormatting($child, $uri_id, 'bold', $callstack, $npf, $text, $formatting);
+					[$npf, $text, $formatting] = self::addFormatting($child, $uri_id, 'bold', $callstack, $npf, $text, $formatting);
 					break;
 
 				case 'i':
 				case 'em':
-					list($npf, $text, $formatting) = self::addFormatting($child, $uri_id, 'italic', $callstack, $npf, $text, $formatting);
+					[$npf, $text, $formatting] = self::addFormatting($child, $uri_id, 'italic', $callstack, $npf, $text, $formatting);
 					break;
 
 				case 's':
-					list($npf, $text, $formatting) = self::addFormatting($child, $uri_id, 'strikethrough', $callstack, $npf, $text, $formatting);
+					[$npf, $text, $formatting] = self::addFormatting($child, $uri_id, 'strikethrough', $callstack, $npf, $text, $formatting);
 					break;
 
 				case 'u':
 				case 'span':
-					list($npf, $text, $formatting) = self::addFormatting($child, $uri_id, '', $callstack, $npf, $text, $formatting);
+					[$npf, $text, $formatting] = self::addFormatting($child, $uri_id, '', $callstack, $npf, $text, $formatting);
 					break;
 
 				case 'hr':
@@ -164,17 +175,13 @@ class NPF
 					}
 					break;
 
-				case '#text':
-					$text .= $child->textContent;
-					break;
-
 				case 'table':
 				case 'summary':
 					// Ignore tables and spoilers
 					break;
 
 				case 'a':
-					list($npf, $text, $formatting) = self::addInlineLink($child, $uri_id, $callstack, $npf, $text, $formatting);
+					[$npf, $text, $formatting] = self::addInlineLink($child, $uri_id, $callstack, $npf, $text, $formatting);
 					break;
 
 				case 'img':
@@ -187,13 +194,13 @@ class NPF
 					break;
 
 				default:
-					list($npf, $text, $formatting) = self::routeChildren($child, $uri_id, true, $callstack, $npf, $text, $formatting);
+					[$npf, $text, $formatting] = self::routeChildren($child, $uri_id, true, $callstack, $npf, $text, $formatting);
 					break;
 			}
 		}
 
 		if ($parse_structure && $text) {
-			list($npf, $text, $formatting) = self::addBlock($text, $formatting, $npf, $callstack);
+			[$npf, $text, $formatting] = self::addBlock($text, $formatting, $npf, $callstack);
 		}
 		return [$npf, $text, $formatting];
 	}
@@ -291,13 +298,13 @@ class NPF
 	{
 		$start = mb_strlen($text);
 
-		list($npf, $text, $formatting) = self::routeChildren($element, $uri_id, false, $callstack, $npf, $text, $formatting);
+		[$npf, $text, $formatting] = self::routeChildren($element, $uri_id, false, $callstack, $npf, $text, $formatting);
 
 		if (!empty($type)) {
 			$formatting[] = [
 				'start' => $start,
-				'end'   => mb_strlen($text),
-				'type'  => $type
+				'end'   => mb_strlen((string) $text),
+				'type'  => $type,
 			];
 		}
 		return [$npf, $text, $formatting];
@@ -318,18 +325,18 @@ class NPF
 	{
 		$start = mb_strlen($text);
 
-		list($npf, $text, $formatting) = self::routeChildren($element, $uri_id, false, $callstack, $npf, $text, $formatting);
+		[$npf, $text, $formatting] = self::routeChildren($element, $uri_id, false, $callstack, $npf, $text, $formatting);
 
 		$attributes = [];
-		foreach ($element->attributes as $key => $attribute) {
-			$attributes[$key] = trim($attribute->value);
+		foreach ($element->attributes as $attribute) {
+			$attributes[$attribute->name] = trim($attribute->value);
 		}
 		if (!empty($attributes['href'])) {
 			$formatting[] = [
 				'start' => $start,
-				'end'   => mb_strlen($text),
+				'end'   => mb_strlen((string) $text),
 				'type'  => 'link',
-				'url'   => $attributes['href']
+				'url'   => $attributes['href'],
 			];
 		}
 		return [$npf, $text, $formatting];
@@ -407,8 +414,8 @@ class NPF
 	 */
 	private static function addLinkBlockForUriId(int $uri_id, int $level, array $npf): array
 	{
-		foreach (Post\Media::getByURIId($uri_id, [Post\Media::HTML]) as $link) {
-			$host = parse_url($link['url'], PHP_URL_HOST);
+		foreach (Post\Media::getByURIId($uri_id, [PostMedia::TYPE_HTML]) as $link) {
+			$host = parse_url((string) $link['url'], PHP_URL_HOST);
 			if (in_array($host, ['www.youtube.com', 'youtu.be'])) {
 				$block = [
 					'type'     => 'video',
@@ -501,7 +508,7 @@ class NPF
 			if (empty($attributes['alt']) && !empty($photos[0]['desc'])) {
 				$block['alt_text'] = $photos[0]['desc'];
 			}
-		} elseif ($media = Post\Media::getByURL($uri_id, $attributes['src'], [Post\Media::IMAGE])) {
+		} elseif ($media = Post\Media::getByURL($uri_id, $attributes['src'], [PostMedia::TYPE_IMAGE])) {
 			$block['media'][] = [
 				'type'   => $media['mimetype'],
 				'url'    => $media['url'],
@@ -545,16 +552,16 @@ class NPF
 
 		$block = [];
 
-		$media = Post\Media::getByURL($uri_id, $attributes['src'], [Post\Media::AUDIO, Post\Media::VIDEO]);
+		$media = Post\Media::getByURL($uri_id, $attributes['src'], [PostMedia::TYPE_AUDIO, PostMedia::TYPE_VIDEO]);
 		if (!empty($media)) {
 			switch ($media['type']) {
-				case Post\Media::AUDIO:
+				case PostMedia::TYPE_AUDIO:
 					$block = [
 						'type'  => 'audio',
 						'media' => [
 							'type' => $media['mimetype'],
 							'url'  => $media['url'],
-						]
+						],
 					];
 
 					if (!empty($media['name'])) {
@@ -566,13 +573,13 @@ class NPF
 					$block = self::addPoster($media, $block);
 					break;
 
-				case Post\Media::VIDEO:
+				case PostMedia::TYPE_VIDEO:
 					$block = [
 						'type'  => 'video',
 						'media' => [
 							'type' => $media['mimetype'],
 							'url'  => $media['url'],
-						]
+						],
 					];
 
 					$block = self::addPoster($media, $block);
@@ -587,9 +594,9 @@ class NPF
 						'start' => 0,
 						'end'   => mb_strlen($element->textContent),
 						'type'  => 'link',
-						'url'   => $attributes['src']
-					]
-				]
+						'url'   => $attributes['src'],
+					],
+				],
 			];
 		}
 

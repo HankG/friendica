@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -22,6 +22,6 @@ class AppTest extends TestCase
 
 		$app = App::fromContainer($container);
 
-		$this->assertInstanceOf(App::class, $app);
+		$this->assertInstanceOf(App::class, $app); // @phpstan-ignore method.alreadyNarrowedType
 	}
 }

@@ -1,14 +1,13 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Console;
 
 use Asika\SimpleConsole\CommandArgsException;
-use Friendica\App\Mode;
 use Friendica\Core\Config\Capability\IManageConfigValues;
 use RuntimeException;
 
@@ -36,15 +35,6 @@ use RuntimeException;
 class Config extends \Asika\SimpleConsole\Console
 {
 	protected $helpOptions = ['h', 'help', '?'];
-
-	/**
-	 * @var Mode
-	 */
-	private $appMode;
-	/**
-	 * @var IManageConfigValues
-	 */
-	private $config;
 
 	protected function getHelp()
 	{
@@ -80,19 +70,18 @@ HELP;
 		return $help;
 	}
 
-	public function __construct(Mode $appMode, IManageConfigValues $config, array $argv = null)
-	{
+	public function __construct(
+		private readonly IManageConfigValues $config,
+		?array $argv = null,
+	) {
 		parent::__construct($argv);
-
-		$this->appMode = $appMode;
-		$this->config = $config;
 	}
 
 	protected function doExecute(): int
 	{
 		if ($this->getOption('v')) {
 			$this->out('Executable: ' . $this->executable);
-			$this->out('Class: ' . __CLASS__);
+			$this->out('Class: ' . self::class);
 			$this->out('Arguments: ' . var_export($this->args, true));
 			$this->out('Options: ' . var_export($this->options, true));
 		}
@@ -102,8 +91,8 @@ HELP;
 		}
 
 		if (count($this->args) == 3) {
-			$cat = $this->getArgument(0);
-			$key = $this->getArgument(1);
+			$cat   = $this->getArgument(0);
+			$key   = $this->getArgument(1);
 			$value = $this->getArgument(2);
 
 			if (is_array($this->config->get($cat, $key))) {
@@ -116,16 +105,16 @@ HELP;
 
 			$result = $this->config->set($cat, $key, $value);
 			if ($result) {
-				$this->out("{$cat}.{$key} <= " .
-				           $this->config->get($cat, $key));
+				$this->out("{$cat}.{$key} <= "
+						   . $this->config->get($cat, $key));
 			} else {
 				$this->out("Unable to set {$cat}.{$key}");
 			}
 		}
 
 		if (count($this->args) == 2) {
-			$cat = $this->getArgument(0);
-			$key = $this->getArgument(1);
+			$cat   = $this->getArgument(0);
+			$key   = $this->getArgument(1);
 			$value = $this->config->get($this->getArgument(0), $this->getArgument(1));
 
 			if (is_array($value)) {

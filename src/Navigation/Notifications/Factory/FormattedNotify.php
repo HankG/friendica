@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -38,30 +38,13 @@ use Psr\Log\LoggerInterface;
  * - home
  * - personal
  *
- * @deprecated since 2022.05 Use \Friendica\Navigation\Notifications\Factory\FormattedNotification instead
+ * @deprecated 2022.05 Use \Friendica\Navigation\Notifications\Factory\FormattedNotification instead
  */
 class FormattedNotify extends BaseFactory
 {
-	/** @var Database */
-	private $dba;
-	/** @var Repository\Notify */
-	private $notify;
-	/** @var BaseURL */
-	private $baseUrl;
-	/** @var L10n */
-	private $l10n;
-	/** @var IHandleUserSessions */
-	private $userSession;
-
-	public function __construct(LoggerInterface $logger, Database $dba, Repository\Notify $notification, BaseURL $baseUrl, L10n $l10n, IHandleUserSessions $userSession)
+	public function __construct(LoggerInterface $logger, private readonly Database $dba, private readonly Repository\Notify $notify, private readonly BaseURL $baseUrl, private readonly L10n $l10n, private readonly IHandleUserSessions $userSession)
 	{
 		parent::__construct($logger);
-
-		$this->dba         = $dba;
-		$this->notify      = $notification;
-		$this->baseUrl     = $baseUrl;
-		$this->l10n        = $l10n;
-		$this->userSession = $userSession;
 	}
 
 	/**
@@ -82,7 +65,7 @@ class FormattedNotify extends BaseFactory
 					$this->l10n->t("%s liked %s's post", $formattedItem['author-name'], $formattedItem['parent-author-name']),
 					$formattedItem['when'],
 					$formattedItem['ago'],
-					$formattedItem['seen']
+					$formattedItem['seen'],
 				);
 
 			case Activity::DISLIKE:
@@ -94,7 +77,7 @@ class FormattedNotify extends BaseFactory
 					$this->l10n->t("%s disliked %s's post", $formattedItem['author-name'], $formattedItem['parent-author-name']),
 					$formattedItem['when'],
 					$formattedItem['ago'],
-					$formattedItem['seen']
+					$formattedItem['seen'],
 				);
 
 			case Activity::ATTEND:
@@ -106,7 +89,7 @@ class FormattedNotify extends BaseFactory
 					$this->l10n->t("%s is attending %s's event", $formattedItem['author-name'], $formattedItem['parent-author-name']),
 					$formattedItem['when'],
 					$formattedItem['ago'],
-					$formattedItem['seen']
+					$formattedItem['seen'],
 				);
 
 			case Activity::ATTENDNO:
@@ -118,7 +101,7 @@ class FormattedNotify extends BaseFactory
 					$this->l10n->t("%s is not attending %s's event", $formattedItem['author-name'], $formattedItem['parent-author-name']),
 					$formattedItem['when'],
 					$formattedItem['ago'],
-					$formattedItem['seen']
+					$formattedItem['seen'],
 				);
 
 			case Activity::ATTENDMAYBE:
@@ -130,7 +113,7 @@ class FormattedNotify extends BaseFactory
 					$this->l10n->t("%s may attending %s's event", $formattedItem['author-name'], $formattedItem['parent-author-name']),
 					$formattedItem['when'],
 					$formattedItem['ago'],
-					$formattedItem['seen']
+					$formattedItem['seen'],
 				);
 
 			case Activity::FRIEND:
@@ -143,7 +126,7 @@ class FormattedNotify extends BaseFactory
 						$formattedItem['text'],
 						$formattedItem['when'],
 						$formattedItem['ago'],
-						$formattedItem['seen']
+						$formattedItem['seen'],
 					);
 				}
 
@@ -160,19 +143,19 @@ class FormattedNotify extends BaseFactory
 					$this->l10n->t("%s is now friends with %s", $formattedItem['author-name'], $formattedItem['fname']),
 					$formattedItem['when'],
 					$formattedItem['ago'],
-					$formattedItem['seen']
+					$formattedItem['seen'],
 				);
 
 			default:
 				return new ValueObject\FormattedNotify(
 					$formattedItem['label'] ?? '',
-					$formattedItem['link'] ?? '',
+					$formattedItem['link']  ?? '',
 					$formattedItem['image'] ?? '',
-					$formattedItem['url'] ?? '',
-					$formattedItem['text'] ?? '',
-					$formattedItem['when'] ?? '',
-					$formattedItem['ago'] ?? '',
-					$formattedItem['seen'] ?? false
+					$formattedItem['url']   ?? '',
+					$formattedItem['text']  ?? '',
+					$formattedItem['when']  ?? '',
+					$formattedItem['ago']   ?? '',
+					$formattedItem['seen']  ?? false,
 				);
 		}
 	}
@@ -211,7 +194,7 @@ class FormattedNotify extends BaseFactory
 					BBCode::toPlaintext($Notify->msg ?? '', false),
 					DateTimeFormat::local($Notify->date->format(DateTimeFormat::MYSQL), 'r'),
 					Temporal::getRelativeDate($Notify->date->format(DateTimeFormat::MYSQL)),
-					$Notify->seen
+					$Notify->seen,
 				);
 			}
 		} catch (Exception $e) {

@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -54,7 +54,7 @@ class Feed extends BaseModule
 			$import_result = Protocol\Feed::import($xml);
 
 			$result = [
-				'input' => $xml,
+				'input'  => $xml,
 				'output' => var_export($import_result, true),
 			];
 		}
@@ -62,7 +62,7 @@ class Feed extends BaseModule
 		$tpl = Renderer::getMarkupTemplate('feedtest.tpl');
 		return Renderer::replaceMacros($tpl, [
 			'$url'    => ['url', $this->t('Source URL'), $_REQUEST['url'] ?? '', ''],
-			'$result' => $result
+			'$result' => $result,
 		]);
 	}
 }

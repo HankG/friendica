@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -28,22 +28,19 @@ use Psr\Log\LoggerInterface;
 
 class DiasporaContact extends BaseRepository
 {
-	const ALWAYS_UPDATE                 = true;
-	const NEVER_UPDATE                  = false;
-	const UPDATE_IF_MISSING_OR_OUTDATED = null;
+	public const ALWAYS_UPDATE                 = true;
+	public const NEVER_UPDATE                  = false;
+	public const UPDATE_IF_MISSING_OR_OUTDATED = null;
 
 	protected static $table_name = 'diaspora-contact-view';
 
-	/** @var DiasporaContactFactory */
-	protected $factory;
-	/** @var DbaDefinition */
-	private $definition;
-
-	public function __construct(DbaDefinition $definition, Database $database, LoggerInterface $logger, DiasporaContactFactory $factory)
-	{
-		parent::__construct($database, $logger, $factory);
-
-		$this->definition = $definition;
+	public function __construct(
+		private readonly DbaDefinition $definition,
+		Database $database,
+		LoggerInterface $logger,
+		private readonly DiasporaContactFactory $entityFactory,
+	) {
+		parent::__construct($database, $logger, $entityFactory);
 	}
 
 	/**
@@ -51,9 +48,9 @@ class DiasporaContact extends BaseRepository
 	 */
 	public function selectOne(array $condition, array $params = []): DiasporaContactEntity
 	{
-		$fields = $this->_selectFirstRowAsArray( $condition, $params);
+		$fields = $this->_selectFirstRowAsArray($condition, $params);
 
-		return $this->factory->createFromTableRow($fields);
+		return $this->getFactory()->createFromTableRow($fields);
 	}
 
 	/**
@@ -71,12 +68,12 @@ class DiasporaContact extends BaseRepository
 	{
 		try {
 			return $this->selectOne(['url' => (string) $uri]);
-		} catch (NotFoundException $e) {
+		} catch (NotFoundException) {
 		}
 
 		try {
 			return $this->selectOne(['addr' => (string) $uri]);
-		} catch (NotFoundException $e) {
+		} catch (NotFoundException) {
 		}
 
 		return $this->selectOne(['alias' => (string) $uri]);
@@ -105,18 +102,18 @@ class DiasporaContact extends BaseRepository
 		$fields = [
 			'uri-id'            => $uriId,
 			'addr'              => $DiasporaContact->addr,
-			'alias'             => (string)$DiasporaContact->alias,
+			'alias'             => (string) $DiasporaContact->alias,
 			'nick'              => $DiasporaContact->nick,
 			'name'              => $DiasporaContact->name,
 			'given-name'        => $DiasporaContact->givenName,
 			'family-name'       => $DiasporaContact->familyName,
-			'photo'             => (string)$DiasporaContact->photo,
-			'photo-medium'      => (string)$DiasporaContact->photoMedium,
-			'photo-small'       => (string)$DiasporaContact->photoSmall,
-			'batch'             => (string)$DiasporaContact->batch,
-			'notify'            => (string)$DiasporaContact->notify,
-			'poll'              => (string)$DiasporaContact->poll,
-			'subscribe'         => (string)$DiasporaContact->subscribe,
+			'photo'             => (string) $DiasporaContact->photo,
+			'photo-medium'      => (string) $DiasporaContact->photoMedium,
+			'photo-small'       => (string) $DiasporaContact->photoSmall,
+			'batch'             => (string) $DiasporaContact->batch,
+			'notify'            => (string) $DiasporaContact->notify,
+			'poll'              => (string) $DiasporaContact->poll,
+			'subscribe'         => (string) $DiasporaContact->subscribe,
 			'searchable'        => $DiasporaContact->searchable,
 			'pubkey'            => $DiasporaContact->pubKey,
 			'gsid'              => $DiasporaContact->gsid,
@@ -240,13 +237,13 @@ class DiasporaContact extends BaseRepository
 			$post_count        = $this->db->count('post', ['author-id' => $contact['id'], 'gravity' => [Item::GRAVITY_PARENT, Item::GRAVITY_COMMENT]]);
 		}
 
-		$DiasporaContact = $this->factory->createfromProbeData(
+		$DiasporaContact = $this->getFactory()->createfromProbeData(
 			$data,
 			$uriId,
 			new DateTime($contact['created'] ?? 'now', new DateTimeZone('UTC')),
 			$interacting_count ?? 0,
 			$interacted_count  ?? 0,
-			$post_count        ?? 0
+			$post_count        ?? 0,
 		);
 
 		$DiasporaContact = $this->save($DiasporaContact);
@@ -269,5 +266,11 @@ class DiasporaContact extends BaseRepository
 		$diasporaContact = $this->db->selectFirst(self::$table_name, ['url'], ['guid' => $guid]);
 
 		return $diasporaContact['url'] ?? null;
+	}
+
+	/** @not-deprecated */
+	protected function getFactory(): DiasporaContactFactory
+	{
+		return $this->entityFactory;
 	}
 }

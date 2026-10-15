@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -53,8 +53,8 @@ class StatusTest extends FixtureTestCase
 		$emojis = array_fill_keys(['like', 'friendica', 'p', 'embarrassed', 'smileyheart333'], true);
 		$this->assertEquals(count($emojis), count($result['emojis']));
 		foreach ($result['emojis'] as $emoji) {
-			$this->assertTrue(array_key_exists($emoji['shortcode'], $emojis));
-			$this->assertEquals(0, strpos($emoji['url'], 'http'));
+			$this->assertArrayHasKey($emoji['shortcode'], $emojis);
+			$this->assertEquals(0, strpos((string) $emoji['url'], 'http'));
 		}
 	}
 }

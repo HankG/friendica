@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -29,14 +29,15 @@ class StatusTest extends FixtureTestCase
 
 		$this->statusFactory = new Status(
 			DI::logger(),
-			DI::dba(),
 			DI::twitterUser(),
 			new Hashtag(DI::logger()),
-			new Media(DI::logger(), DI::baseUrl()),
+			new Media(DI::logger()),
 			new Url(DI::logger()),
-			new Mention(DI::logger(), DI::baseUrl()),
+			new Mention(DI::logger()),
 			new Activities(DI::logger(), DI::twitterUser()),
-			new Attachment(DI::logger()), DI::contentItem());
+			new Attachment(DI::logger()),
+			DI::contentItem(),
+		);
 	}
 
 	/**
@@ -44,7 +45,7 @@ class StatusTest extends FixtureTestCase
 	 *
 	 * @return void
 	 */
-	public function testApiConvertItem()
+	public function testApiConvertItem(): void
 	{
 		$status = $this->statusFactory
 			->createFromItemId(13, ApiTestCase::SELF_USER['id'])
@@ -57,9 +58,8 @@ class StatusTest extends FixtureTestCase
 	/**
 	 * Test the api_convert_item() function with an empty item body.
 	 *
-	 * @return void
 	 */
-	public function testApiConvertItemWithoutBody()
+	public function testApiConvertItemWithoutBody(): void
 	{
 		self::markTestIncomplete('Needs a dataset first');
 
@@ -81,9 +81,8 @@ class StatusTest extends FixtureTestCase
 	/**
 	 * Test the api_convert_item() function with the title in the body.
 	 *
-	 * @return void
 	 */
-	public function testApiConvertItemWithTitleInBody()
+	public function testApiConvertItemWithTitleInBody(): void
 	{
 		self::markTestIncomplete('Needs a dataset first');
 
@@ -105,7 +104,7 @@ class StatusTest extends FixtureTestCase
 	 *
 	 * @return void
 	 */
-	public function testApiGetEntitiesWithIncludeEntities()
+	public function testApiGetEntitiesWithIncludeEntities(): void
 	{
 		$status = $this->statusFactory
 			->createFromItemId(13, ApiTestCase::SELF_USER['id'], true)
@@ -122,10 +121,10 @@ class StatusTest extends FixtureTestCase
 	/**
 	 * Test the api_format_items() function.
 	 */
-	public function testApiFormatItems()
+	public function testApiFormatItems(): void
 	{
 		// @todo: This call is needed for this test
-		Renderer::registerTemplateEngine('Friendica\Render\FriendicaSmartyEngine');
+		Renderer::registerTemplateEngine(\Friendica\Render\FriendicaSmartyEngine::class);
 
 		$posts = DI::dba()->selectToArray('post-view', ['uri-id']);
 		foreach ($posts as $item) {

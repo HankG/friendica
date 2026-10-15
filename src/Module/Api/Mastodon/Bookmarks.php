@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -54,13 +54,11 @@ class Bookmarks extends BaseApi
 
 		$items = Post::selectThreadForUser($uid, ['uri-id'], $condition, $params);
 
-		$display_quotes = self::appSupportsQuotes();
-
 		$statuses = [];
 		while ($item = Post::fetch($items)) {
 			self::setBoundaries($item['uri-id']);
 			try {
-				$statuses[] = DI::mstdnStatus()->createFromUriId($item['uri-id'], $uid, $display_quotes);
+				$statuses[] = DI::mstdnStatus()->createFromUriId($item['uri-id'], $uid);
 			} catch (\Exception $exception) {
 				$this->logger->info('Post not fetchable', ['uri-id' => $item['uri-id'], 'uid' => $uid, 'exception' => $exception]);
 			}
@@ -71,7 +69,7 @@ class Bookmarks extends BaseApi
 			$statuses = array_reverse($statuses);
 		}
 
-		self::setLinkHeader();
-		$this->jsonExit($statuses);
+		$this->setPaginationLinkHeader();
+		$this->earlyJsonExit($statuses);
 	}
 }

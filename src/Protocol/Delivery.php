@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -19,16 +19,17 @@ use Friendica\Model\Item;
 use Friendica\Model\Post;
 use Friendica\Model\User;
 use Friendica\Util\Network;
+use GuzzleHttp\Psr7\Uri;
 
 class Delivery
 {
-	const MAIL          = 'mail';
-	const SUGGESTION    = 'suggest';
-	const RELOCATION    = 'relocate';
-	const DELETION      = 'drop';
-	const POST          = 'wall-new';
-	const REMOVAL       = 'removeme';
-	const PROFILEUPDATE = 'profileupdate';
+	public const MAIL          = 'mail';
+	public const SUGGESTION    = 'suggest';
+	public const RELOCATION    = 'relocate';
+	public const DELETION      = 'drop';
+	public const POST          = 'wall-new';
+	public const REMOVAL       = 'removeme';
+	public const PROFILEUPDATE = 'profileupdate';
 
 	/**
 	 * Deliver posts to other systems
@@ -59,7 +60,7 @@ class Delivery
 		} elseif ($cmd == self::SUGGESTION) {
 			try {
 				$target_item = DI::fsuggest()->selectOneById($post_uriid)->toArray();
-			} catch (FriendSuggestNotFoundException $e) {
+			} catch (FriendSuggestNotFoundException) {
 				DI::logger()->info('Cannot find FriendSuggestion', ['id' => $post_uriid]);
 				return true;
 			}
@@ -159,7 +160,7 @@ class Delivery
 			 *
 			 */
 
-			if (!$top_level && ($parent['wall'] == 0) && stristr($target_item['uri'], $localhost)) {
+			if (!$top_level && ($parent['wall'] == 0) && stristr((string) $target_item['uri'], $localhost)) {
 				DI::logger()->info('Followup ' . $target_item["guid"]);
 				// local followup to remote post
 				$followup = true;
@@ -188,14 +189,14 @@ class Delivery
 		$contact = DBA::selectFirst(
 			'contact',
 			[],
-			['id' => $contact_id, 'archive' => false, 'blocked' => false, 'pending' => false, 'self' => false]
+			['id' => $contact_id, 'archive' => false, 'blocked' => false, 'pending' => false, 'self' => false],
 		);
 		if (!DBA::isResult($contact)) {
 			self::setFailedQueue($cmd, $target_item);
 			return true;
 		}
 
-		if (Network::isUrlBlocked($contact['url'])) {
+		if (Network::isUriBlocked(new Uri($contact['url']))) {
 			self::setFailedQueue($cmd, $target_item);
 			return true;
 		}
@@ -213,23 +214,12 @@ class Delivery
 
 		DI::logger()->notice('Delivering', ['cmd' => $cmd, 'uri-id' => $post_uriid, 'followup' => $followup, 'network' => $contact['network']]);
 
-		switch ($contact['network']) {
-			case Protocol::DFRN:
-				$success = self::deliverDFRN($cmd, $contact, $owner, $items, $target_item, $public_message, $top_level, $followup, $protocol);
-				break;
-
-			case Protocol::DIASPORA:
-				$success = self::deliverDiaspora($cmd, $contact, $owner, $items, $target_item, $public_message, $top_level, $followup);
-				break;
-
-			case Protocol::MAIL:
-				$success = self::deliverMail($cmd, $contact, $owner, $target_item, $thr_parent);
-				break;
-
-			default:
-				$success = true;
-				break;
-		}
+		$success = match ($contact['network']) {
+			Protocol::DFRN     => self::deliverDFRN($cmd, $contact, $owner, $items, $target_item, $public_message, $top_level, $followup, $protocol),
+			Protocol::DIASPORA => self::deliverDiaspora($cmd, $contact, $owner, $items, $target_item, $public_message, $top_level, $followup),
+			Protocol::MAIL     => self::deliverMail($cmd, $contact, $owner, $target_item, $thr_parent),
+			default            => true,
+		};
 
 		return $success;
 	}
@@ -268,7 +258,7 @@ class Delivery
 	 * @throws \Friendica\Network\HTTPException\InternalServerErrorException
 	 * @throws \ImagickException
 	 */
-	private static function deliverDFRN(string $cmd, array $contact, array $owner, array $items, array $target_item, bool $public_message, bool $top_level, bool $followup, int $server_protocol = null): bool
+	private static function deliverDFRN(string $cmd, array $contact, array $owner, array $items, array $target_item, bool $public_message, bool $top_level, bool $followup, ?int $server_protocol = null): bool
 	{
 		$target_item_id = $target_item['guid'] ?? '' ?: $target_item['id'] ?? null;
 
@@ -493,7 +483,7 @@ class Delivery
 		}
 
 		$addr = $contact['addr'];
-		if (!strlen($addr)) {
+		if (!strlen((string) $addr)) {
 			return true;
 		}
 
@@ -506,7 +496,7 @@ class Delivery
 		}
 
 		if (!empty($thr_parent['object'])) {
-			$data = json_decode($thr_parent['object'], true);
+			$data = json_decode((string) $thr_parent['object'], true);
 			if (!empty($data['reply_to'])) {
 				$addr = $data['reply_to'][0]['mailbox'] . '@' . $data['reply_to'][0]['host'];
 				DI::logger()->info('Use "reply-to" address of the thread parent', ['addr' => $addr]);
@@ -529,7 +519,7 @@ class Delivery
 			$reply_to = $mailacct['reply_to'];
 		}
 
-		$subject = ($target_item['title'] ? Email::encodeHeader($target_item['title'], 'UTF-8') : DI::l10n()->t("\x28no subject\x29"));
+		$subject = ($target_item['title'] ? Email::encodeHeader($target_item['title'], 'UTF-8') : DI::l10n()->t("(no subject)"));
 
 		// only expose our real email address to true friends
 
@@ -542,7 +532,7 @@ class Delivery
 			}
 		} else {
 			$sender  = DI::config()->get('config', 'sender_email', 'noreply@' . DI::baseUrl()->getHost());
-			$headers = 'From: '. Email::encodeHeader($local_user['username'], 'UTF-8') . ' <' . $sender . '>' . "\n";
+			$headers = 'From: ' . Email::encodeHeader($local_user['username'], 'UTF-8') . ' <' . $sender . '>' . "\n";
 		}
 
 		$headers .= 'Message-Id: <' . Email::iri2msgid($target_item['uri']) . '>' . "\n";
@@ -573,7 +563,7 @@ class Delivery
 				}
 			}
 
-			if (strncasecmp($subject, 'RE:', 3)) {
+			if (strncasecmp((string) $subject, 'RE:', 3)) {
 				$subject = 'Re: ' . $subject;
 			}
 		}

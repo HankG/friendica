@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -65,10 +65,10 @@ class Magic extends BaseModule
 
 		$this->logger->debug('Invoked', ['request' => $request]);
 
-		$addr     = (string) $request['addr'] ?? '';
-		$bdest    = (string) $request['bdest'] ?? '';
-		$dest     = (string) $request['dest'] ?? '';
-		$owa      = intval($request['owa'] ?? 0);
+		$addr  = (string) ($request['addr'] ?? '');
+		$bdest = (string) ($request['bdest'] ?? '');
+		$dest  = (string) ($request['dest'] ?? '');
+		$owa   = intval($request['owa'] ?? 0);
 
 		// bdest is preferred as it is hex-encoded and can survive url rewrite and argument parsing
 		if ($bdest !== '') {
@@ -86,7 +86,7 @@ class Magic extends BaseModule
 
 		if ($contact !== []) {
 			// Redirect if the contact is already authenticated on this site.
-			if ($this->appHelper->getContactId() && strpos($contact['nurl'], Strings::normaliseLink($this->baseUrl)) !== false) {
+			if ($this->appHelper->getContactId() && str_contains((string) $contact['nurl'], Strings::normaliseLink($this->baseUrl))) {
 				$this->logger->info('Contact is already authenticated, redirecting to destination.', ['dest' => $dest]);
 				System::externalRedirect($dest);
 			}
@@ -146,14 +146,14 @@ class Magic extends BaseModule
 		$header = HTTPSignature::createSig(
 			$header,
 			$owner['prvkey'],
-			'acct:' . $owner['addr']
+			'acct:' . $owner['addr'],
 		);
 
 		$this->logger->info('Fetch from remote system', ['openwebauth' => $openwebauth, 'headers' => $header]);
 
 		// Try to get an authentication token from the other instance.
 		try {
-			$curlResult = $this->httpClient->request('get', $openwebauth, [HttpClientOptions::HEADERS => $header]);
+			$curlResult = $this->httpClient->request('GET', $openwebauth, [HttpClientOptions::HEADERS => $header]);
 		} catch (Exception $exception) {
 			$this->logger->notice('URL is invalid, redirecting to destination.', ['url' => $openwebauth, 'error' => $exception, 'dest' => $dest]);
 			System::externalRedirect($dest);

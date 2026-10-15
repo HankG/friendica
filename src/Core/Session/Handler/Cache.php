@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -16,16 +16,7 @@ use Psr\Log\LoggerInterface;
  */
 class Cache extends AbstractSessionHandler
 {
-	/** @var ICanCache */
-	private $cache;
-	/** @var LoggerInterface */
-	private $logger;
-
-	public function __construct(ICanCache $cache, LoggerInterface $logger)
-	{
-		$this->cache  = $cache;
-		$this->logger = $logger;
-	}
+	public function __construct(private readonly ICanCache $cache, private readonly LoggerInterface $logger) {}
 
 	public function open($path, $name): bool
 	{
@@ -72,7 +63,8 @@ class Cache extends AbstractSessionHandler
 		}
 
 		if (!$data) {
-			return $this->destroy($id);
+			$this->destroy($id);
+			return true;
 		}
 
 		try {

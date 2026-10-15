@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -15,12 +15,6 @@ use Psr\Log\LoggerInterface;
  */
 class Database extends AbstractSessionHandler
 {
-	/** @var DBA */
-	private $dba;
-	/** @var LoggerInterface */
-	private $logger;
-	/** @var array The $_SERVER variable */
-	private $server;
 	/** @var bool global check, if the current Session exists */
 	private $sessionExists = false;
 
@@ -31,12 +25,7 @@ class Database extends AbstractSessionHandler
 	 * @param LoggerInterface $logger
 	 * @param array           $server
 	 */
-	public function __construct(DBA $dba, LoggerInterface $logger, array $server)
-	{
-		$this->dba    = $dba;
-		$this->logger = $logger;
-		$this->server = $server;
-	}
+	public function __construct(private readonly DBA $dba, private readonly LoggerInterface $logger, private array $server) {}
 
 	public function open($path, $name): bool
 	{
@@ -51,19 +40,13 @@ class Database extends AbstractSessionHandler
 		}
 
 		try {
-			$session = $this->dba->selectFirst('session', ['data'], ['sid' => $id]);
-			if ($this->dba->isResult($session)) {
-				$this->sessionExists = true;
-				return $session['data'];
-			}
+			$session             = $this->dba->selectFirst('session', ['data'], ['sid' => $id]);
+			$this->sessionExists = $this->dba->isResult($session);
+			return $this->sessionExists ? $session['data'] : '';
 		} catch (\Exception $exception) {
-			$this->logger->warning('Cannot read session.', ['id' => $id, 'exception' => $exception]);
+			$this->logger->warning('Cannot read session.', ['id' => $id, 'uri' => $this->server['REQUEST_URI'] ?? '', 'exception' => $exception]);
 			return '';
 		}
-
-		$this->logger->notice('no data for session', ['session_id' => $id, 'uri' => $this->server['REQUEST_URI'] ?? '']);
-
-		return '';
 	}
 
 	/**
@@ -85,7 +68,8 @@ class Database extends AbstractSessionHandler
 		}
 
 		if (!$data) {
-			return $this->destroy($id);
+			$this->destroy($id);
+			return true;
 		}
 
 		$expire         = time() + static::EXPIRE;

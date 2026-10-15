@@ -1,13 +1,12 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Module\Api\Mastodon;
 
-use Friendica\Core\System;
 use Friendica\DI;
 use Friendica\Model\Contact;
 use Friendica\Module\BaseApi;
@@ -36,10 +35,10 @@ class Suggestions extends BaseApi
 		foreach ($suggestions as $suggestion) {
 			$accounts[] = [
 				'source'  => 'past_interactions',
-				'account' => DI::mstdnAccount()->createFromContactId($suggestion['id'], $uid)
+				'account' => DI::mstdnAccount()->createFromContactId($suggestion['id'], $uid),
 			];
 		}
 
-		$this->jsonExit($accounts);
+		$this->earlyJsonExit($accounts);
 	}
 }

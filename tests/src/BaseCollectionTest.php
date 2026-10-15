@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -9,12 +9,11 @@ namespace Friendica\Test\src;
 
 use Friendica\BaseCollection;
 use Friendica\BaseEntity;
-use Mockery\Mock;
 use PHPUnit\Framework\TestCase;
 
 class BaseCollectionTest extends TestCase
 {
-	public function testChunk()
+	public function testChunk(): void
 	{
 		$entity1 = \Mockery::mock(BaseEntity::class);
 		$entity2 = \Mockery::mock(BaseEntity::class);
@@ -39,7 +38,7 @@ class BaseCollectionTest extends TestCase
 		$this->assertEquals([new BaseCollection([$entity1, $entity2, $entity3, $entity4])], $collection->chunk(4));
 	}
 
-	public function testChunkLengthException()
+	public function testChunkLengthException(): void
 	{
 		$this->expectException(\RangeException::class);
 

@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -24,26 +24,21 @@ use Psr\Log\LoggerInterface;
 
 class Unfollow extends \Friendica\BaseModule
 {
-	/** @var IHandleUserSessions */
-	private $userSession;
-
-	/** @var SystemMessages */
-	private $systemMessages;
-
-	/** @var Database */
-	private $database;
-
-	/** @var App\Page */
-	private $page;
-
-	public function __construct(App\Page $page, Database $database, SystemMessages $systemMessages, IHandleUserSessions $userSession, L10n $l10n, App\BaseURL $baseUrl, App\Arguments $args, LoggerInterface $logger, Profiler $profiler, Response $response, array $server, array $parameters = [])
-	{
+	public function __construct(
+		private App\Page $page,
+		private readonly Database $database,
+		private readonly SystemMessages $systemMessages,
+		private readonly IHandleUserSessions $userSession,
+		L10n $l10n,
+		App\BaseURL $baseUrl,
+		App\Arguments $args,
+		LoggerInterface $logger,
+		Profiler $profiler,
+		Response $response,
+		array $server,
+		array $parameters = [],
+	) {
 		parent::__construct($l10n, $baseUrl, $args, $logger, $profiler, $response, $server, $parameters);
-
-		$this->userSession    = $userSession;
-		$this->systemMessages = $systemMessages;
-		$this->database       = $database;
-		$this->page           = $page;
 	}
 
 	protected function post(array $request = [])
@@ -110,13 +105,13 @@ class Unfollow extends \Friendica\BaseModule
 			'$invite_desc'    => '',
 			'$submit'         => $this->t('Submit Request'),
 			'$cancel'         => $this->t('Cancel'),
-			'$url'            => $contact['url'],
+			'$url'            => Contact::getProfileLink($contact),
 			'$zrl'            => Contact::magicLinkByContact($contact),
 			'$url_label'      => $this->t('Profile URL'),
 			'$myaddr'         => $self['url'],
 			'$action'         => $this->baseUrl . '/contact/unfollow',
 			'$keywords'       => '',
-			'$keywords_label' => ''
+			'$keywords_label' => '',
 		]);
 
 		$this->page['aside'] = Widget\VCard::getHTML(Contact::getByURL($contact['url'], false), false, true);
@@ -124,7 +119,7 @@ class Unfollow extends \Friendica\BaseModule
 		$o .= Renderer::replaceMacros(Renderer::getMarkupTemplate('section_title.tpl'), ['$title' => $this->t('Posts and Replies')]);
 
 		// Show last public posts
-		$o .= Contact::getPostsFromUrl($contact['url'], $this->userSession->getLocalUserId());
+		$o .= Contact::getPostsFromUrl($contact['url'], $this->userSession->getLocalUserId(), false, $request);
 
 		return $o;
 	}

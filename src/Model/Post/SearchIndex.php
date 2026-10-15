@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -12,6 +12,7 @@ use Friendica\Core\Protocol;
 use Friendica\Database\Database;
 use Friendica\Database\DBA;
 use Friendica\DI;
+use Friendica\Model\Contact;
 use Friendica\Model\Item;
 use Friendica\Model\Post;
 use Friendica\Util\DateTimeFormat;
@@ -37,11 +38,15 @@ class SearchIndex
 			return;
 		}
 
+		if (Contact::exists(['id' => $item['owner-id'], 'unsearchable' => true])) {
+			return;
+		}
+
 		$search = [
 			'uri-id'     => $uri_id,
 			'owner-id'   => $item['owner-id'],
 			'media-type' => Engagement::getMediaType($uri_id, $item['quote-uri-id']),
-			'language'   => substr(!empty($item['language']) ? (array_key_first(json_decode($item['language'], true)) ?? L10n::UNDETERMINED_LANGUAGE) : L10n::UNDETERMINED_LANGUAGE, 0, 2),
+			'language'   => substr((string) !empty($item['language']) ? (array_key_first(json_decode((string) $item['language'], true)) ?? L10n::UNDETERMINED_LANGUAGE) : L10n::UNDETERMINED_LANGUAGE, 0, 2),
 			'searchtext' => Post\Engagement::getSearchTextForUriId($uri_id, $refresh),
 			'size'       => Engagement::getContentSize($item),
 			'created'    => $item['created'],

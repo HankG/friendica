@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -9,32 +9,10 @@ namespace Friendica\Protocol;
 
 use GuzzleHttp\Psr7\Uri;
 
-class WebFingerUri
+class WebFingerUri implements \Stringable
 {
-	/**
-	 * @var string
-	 */
-	private $user;
-	/**
-	 * @var string
-	 */
-	private $host;
-	/**
-	 * @var int|null
-	 */
-	private $port;
-	/**
-	 * @var string|null
-	 */
-	private $path;
-
-	private function __construct(string $user, string $host, int $port = null, string $path = null)
+	private function __construct(private readonly string $user, private readonly string $host, private readonly ?int $port = null, private readonly ?string $path = null)
 	{
-		$this->user = $user;
-		$this->host = $host;
-		$this->port = $port;
-		$this->path = $path;
-
 		$this->validate();
 	}
 
@@ -73,8 +51,8 @@ class WebFingerUri
 	public function getFullHost(): string
 	{
 		return $this->host
-			. ($this->port ? ':' . $this->port : '') .
-			($this->path ?: '');
+			. ($this->port ? ':' . $this->port : '')
+			. ($this->path ?: '');
 	}
 
 	public function getLongForm(): string

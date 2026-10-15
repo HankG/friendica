@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -37,8 +37,8 @@ class Emoji extends BaseDataTransferObject
 
 	public function __construct(string $shortcode, string $url)
 	{
-		$this->shortcode = $shortcode;
-		$this->url = $url;
+		$this->shortcode  = $shortcode;
+		$this->url        = $url;
 		$this->static_url = $url;
 	}
 
@@ -50,9 +50,9 @@ class Emoji extends BaseDataTransferObject
 	 */
 	public static function createFromPrototype(Emoji $prototype, string $shortcode, string $url)
 	{
-		$emoji = clone $prototype;
-		$emoji->shortcode = $shortcode;
-		$emoji->url = $url;
+		$emoji             = clone $prototype;
+		$emoji->shortcode  = $shortcode;
+		$emoji->url        = $url;
 		$emoji->static_url = $url;
 
 		return $emoji;

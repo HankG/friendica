@@ -1,14 +1,22 @@
 {{*
-  * Copyright (C) 2010-2024, the Friendica project
-  * SPDX-FileCopyrightText: 2010-2024 the Friendica project
+  * Copyright (C) 2010-2026, the Friendica project
+  * SPDX-FileCopyrightText: 2010-2026 the Friendica project
   *
   * SPDX-License-Identifier: AGPL-3.0-or-later
   *}}
-<div id="adminpage">
+<div id="adminpage" class="adminpage">
 	<h1>{{$title}} - {{$page}} ({{$count}})</h1>
 	
 	<p>{{$info}}</p>
 	<table class="table">
+		<colgroup>
+			<col style="width: 80px;">
+			<col style="width: 120px;">
+			<col style="width: auto;">
+			<col style="width: 100px;">
+			{{if ($status == "deferred") }}<col style="width: 100px;">{{/if}}
+			<col style="width: 60px;">
+		</colgroup>
 		<tr>
 			<th>{{$id_header}}</th>
 			<th>{{$command_header}}</th>

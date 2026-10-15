@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -24,21 +24,23 @@ use Psr\Log\LoggerInterface;
 class PermissionSet extends BaseRepository
 {
 	/** @var int Virtual permission set id for public permission */
-	const PUBLIC = 0;
-
-	/** @var PermissionSetFactory */
-	protected $factory;
+	public const PUBLIC = 0;
 
 	protected static $table_name = 'permissionset';
 
-	/** @var ACLFormatter */
-	private $aclFormatter;
+	public function __construct(
+		Database $database,
+		LoggerInterface $logger,
+		private readonly PermissionSetFactory $entityFactory,
+		private readonly ACLFormatter $aclFormatter,
+	) {
+		parent::__construct($database, $logger, $entityFactory);
+	}
 
-	public function __construct(Database $database, LoggerInterface $logger, PermissionSetFactory $factory, ACLFormatter $aclFormatter)
+	/** @not-deprecated */
+	protected function getFactory(): PermissionSetFactory
 	{
-		parent::__construct($database, $logger, $factory);
-
-		$this->aclFormatter = $aclFormatter;
+		return $this->entityFactory;
 	}
 
 	/**
@@ -49,7 +51,7 @@ class PermissionSet extends BaseRepository
 	{
 		$fields = parent::_selectFirstRowAsArray($condition, $params);
 
-		return $this->factory->createFromTableRow($fields);
+		return $this->getFactory()->createFromTableRow($fields);
 	}
 
 	/**
@@ -84,7 +86,7 @@ class PermissionSet extends BaseRepository
 	public function selectOneById(int $id, int $uid): PermissionSetEntity
 	{
 		if ($id === self::PUBLIC) {
-			return $this->factory->createFromString($uid);
+			return $this->getFactory()->createFromString($uid);
 		}
 
 		try {
@@ -121,14 +123,14 @@ class PermissionSet extends BaseRepository
 			if (!empty($user_contact_str) && $this->db->exists('contact', [
 				'id'      => $cid,
 				'uid'     => $uid,
-				'blocked' => false
+				'blocked' => false,
 			])) {
 				$circle_ids = Circle::getIdsByContactId($cid);
 			}
 
 			$circle_str = '<<>>'; // should be impossible to match
 			foreach ($circle_ids as $circle_id) {
-				$circle_str .= '|<' . preg_quote($circle_id) . '>';
+				$circle_str .= '|<' . preg_quote((string) $circle_id) . '>';
 			}
 
 			if (!empty($user_contact_str)) {
@@ -167,9 +169,9 @@ class PermissionSet extends BaseRepository
 			throw new PermissionSetPersistenceException(sprintf('No "self" contact found for user %d', $uid));
 		}
 
-		return $this->selectOrCreate($this->factory->createFromString(
+		return $this->selectOrCreate($this->getFactory()->createFromString(
 			$uid,
-			$this->aclFormatter->toString($self_contact['id'])
+			$this->aclFormatter->toString((string) $self_contact['id']),
 		));
 	}
 
@@ -180,7 +182,7 @@ class PermissionSet extends BaseRepository
 	 */
 	public function selectPublicForUser(int $uid): PermissionSetEntity
 	{
-		return $this->factory->createFromString($uid, '', '', '', '', self::PUBLIC);
+		return $this->getFactory()->createFromString($uid, '', '', '', '', self::PUBLIC);
 	}
 
 	/**
@@ -201,7 +203,7 @@ class PermissionSet extends BaseRepository
 
 		try {
 			return $this->selectOne($this->convertToTableRow($permissionSet));
-		} catch (NotFoundException $exception) {
+		} catch (NotFoundException) {
 			return $this->save($permissionSet);
 		} catch (Exception $exception) {
 			throw new PermissionSetPersistenceException(sprintf('Cannot select PermissionSet %d', $permissionSet->id ?? 0), $exception);

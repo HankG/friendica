@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -65,7 +65,7 @@ class DiasporaContact extends \Friendica\BaseFactory implements ICanCreateFromTa
 			$alias ? new Uri($alias) : null,
 			$data['nick'],
 			$data['name'],
-			$data['given-name'] ?? '',
+			$data['given-name']  ?? '',
 			$data['family-name'] ?? '',
 			$data['photo'] ? new Uri($data['photo']) : null,
 			!empty($data['photo_medium']) ? new Uri($data['photo_medium']) : null,

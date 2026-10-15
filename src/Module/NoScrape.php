@@ -1,14 +1,13 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Module;
 
 use Friendica\BaseModule;
-use Friendica\Core\System;
 use Friendica\DI;
 use Friendica\Model\APContact;
 use Friendica\Model\User;
@@ -29,13 +28,13 @@ class NoScrape extends BaseModule
 			// view infos about a known profile (needs a login)
 			$which = DI::userSession()->getLocalUserNickname();
 		} else {
-			$this->jsonError(403, 'Authentication required');
+			$this->earlyJsonError(403, 'Authentication required');
 		}
 
 		$owner = User::getOwnerDataByNick($which);
 
 		if (empty($owner['uid'])) {
-			$this->jsonError(404, 'Profile not found');
+			$this->earlyJsonError(404, 'Profile not found');
 		}
 
 		$json_info = [
@@ -55,7 +54,7 @@ class NoScrape extends BaseModule
 
 		if (!$owner['net-publish']) {
 			$json_info['hide'] = true;
-			$this->jsonExit($json_info);
+			$this->earlyJsonExit($json_info);
 		}
 
 		$keywords = $owner['pub_keywords'] ?? '';
@@ -68,18 +67,18 @@ class NoScrape extends BaseModule
 		$json_info['language'] = $owner['language'];
 
 		if (!empty($owner['last-item'])) {
-			$json_info['updated'] = date("c", strtotime($owner['last-item']));
+			$json_info['updated'] = date("c", strtotime((string) $owner['last-item']));
 		}
 
 		if (!($owner['hide-friends'] ?? false)) {
-			$apcontact = APContact::getByURL($owner['url']);
+			$apcontact             = APContact::getByURL($owner['url']);
 			$json_info['contacts'] = max($apcontact['following_count'], $apcontact['followers_count']);
 		}
 
 		// We display the last activity (post or login), reduced to year and week number
-		$last_active = strtotime($owner['last-item']);
-		if ($owner['last-activity'] && $last_active < strtotime($owner['last-activity'])) {
-			$last_active = strtotime($owner['last-activity']);
+		$last_active = strtotime((string) $owner['last-item']);
+		if ($owner['last-activity'] && $last_active < strtotime((string) $owner['last-activity'])) {
+			$last_active = strtotime((string) $owner['last-activity']);
 		}
 		$json_info['last-activity'] = date('o-W', $last_active);
 
@@ -91,6 +90,6 @@ class NoScrape extends BaseModule
 			}
 		}
 
-		$this->jsonExit($json_info);
+		$this->earlyJsonExit($json_info);
 	}
 }

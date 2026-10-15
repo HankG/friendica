@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -14,8 +14,15 @@ class SerializableObjectDouble implements \Serializable
 		return '\'serialized\'';
 	}
 
-	public function unserialize($data)
+	public function unserialize($data) {}
+
+	public function __serialize(): array
 	{
-		return '\'unserialized\'';
+		return ['data' => 'serialized'];
+	}
+
+	public function __unserialize(array $data): void
+	{
+		return;
 	}
 }

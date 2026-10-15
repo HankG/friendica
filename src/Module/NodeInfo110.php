@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -37,17 +37,17 @@ class NodeInfo110 extends BaseModule
 	protected function rawContent(array $request = [])
 	{
 		$nodeinfo = [
-			'version'           => '1.0',
-			'software'          => [
+			'version'  => '1.0',
+			'software' => [
 				'name'    => 'friendica',
 				'version' => App::VERSION . '-' . DB_UPDATE_VERSION,
 			],
-			'protocols'         => [
-				'inbound'  => [
-					'friendica'
+			'protocols' => [
+				'inbound' => [
+					'friendica',
 				],
 				'outbound' => [
-					'friendica'
+					'friendica',
 				],
 			],
 			'services'          => Nodeinfo::getServices(),

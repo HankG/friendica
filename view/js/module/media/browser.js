@@ -2,7 +2,7 @@
 /**
  * Filebrowser - Friendica Communications Server
  *
- * SPDX-FileCopyrightText: 2010-2024, the Friendica project
+ * SPDX-FileCopyrightText: 2010-2026, the Friendica project
  *
  * SPDX-License-Identifier: AGPL-3.0-or-later
  *
@@ -72,7 +72,6 @@ const Browser = {
 		$('.folders a, .path a').on('click', function (e) {
 			e.preventDefault();
 			location.href = Browser._getUrl("minimal", location['hash'], this.dataset.folder);
-			location.reload();
 		});
 
 		$(".photo-album-photo-link").on('click', function (e) {
@@ -88,7 +87,8 @@ const Browser = {
 			parent.$('body').trigger(Browser.event, [
 				this.dataset.filename,
 				embed,
-				Browser.id
+				Browser.id,
+				this.dataset.img
 			]);
 
 		});

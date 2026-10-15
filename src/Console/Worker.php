@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -21,23 +21,19 @@ use Friendica\Util\BasePath;
  */
 final class Worker extends Console
 {
-	private Mode $mode;
-	private BasePath $basePath;
-	private ProcessRepository $processRepo;
-
 	/**
 	 * @param Mode              $mode
 	 * @param BasePath          $basePath
 	 * @param ProcessRepository $processRepo
 	 * @param array|null        $argv
 	 */
-	public function __construct(Mode $mode, BasePath $basePath, ProcessRepository $processRepo, array $argv = null)
-	{
+	public function __construct(
+		private readonly Mode $mode,
+		private readonly BasePath $basePath,
+		private readonly ProcessRepository $processRepo,
+		?array $argv = null,
+	) {
 		parent::__construct($argv);
-
-		$this->mode        = $mode;
-		$this->basePath    = $basePath;
-		$this->processRepo = $processRepo;
 	}
 
 	protected function getHelp(): string

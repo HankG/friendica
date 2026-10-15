@@ -1,19 +1,16 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Module\Api\Mastodon;
 
-use Friendica\Core\System;
 use Friendica\Database\DBA;
 use Friendica\DI;
 use Friendica\Module\BaseApi;
-use Friendica\Module\Special\HTTPException;
 use Friendica\Util\Network;
-use Psr\Http\Message\ResponseInterface;
 
 /**
  * Apps class to register new OAuth clients
@@ -21,10 +18,10 @@ use Psr\Http\Message\ResponseInterface;
  */
 class Apps extends BaseApi
 {
-	public function run(HTTPException $httpException, array $request = [], bool $scopecheck = true): ResponseInterface
-	{
-		return parent::run($httpException, $request, false);
-	}
+	/**
+	 * @internal
+	 */
+	protected function checkScope(): void {}
 
 	/**
 	 * @throws \Friendica\Network\HTTPException\InternalServerErrorException
@@ -72,13 +69,13 @@ class Apps extends BaseApi
 		$application = DBA::selectFirst('application', ['id'], $fields);
 		if (!empty($application['id'])) {
 			$this->logger->debug('Found existing application', ['request' => $request, 'id' => $application['id']]);
-			$this->jsonExit(DI::mstdnApplication()->createFromApplicationId($application['id'])->toArray());
+			$this->earlyJsonExit(DI::mstdnApplication()->createFromApplicationId($application['id'])->toArray());
 		}
 
-		$fields['read']          = (stripos($request['scopes'], self::SCOPE_READ) !== false);
-		$fields['write']         = (stripos($request['scopes'], self::SCOPE_WRITE) !== false);
-		$fields['follow']        = (stripos($request['scopes'], self::SCOPE_FOLLOW) !== false);
-		$fields['push']          = (stripos($request['scopes'], self::SCOPE_PUSH) !== false);
+		$fields['read']          = (stripos((string) $request['scopes'], self::SCOPE_READ) !== false);
+		$fields['write']         = (stripos((string) $request['scopes'], self::SCOPE_WRITE) !== false);
+		$fields['follow']        = (stripos((string) $request['scopes'], self::SCOPE_FOLLOW) !== false);
+		$fields['push']          = (stripos((string) $request['scopes'], self::SCOPE_PUSH) !== false);
 		$fields['client_id']     = bin2hex(random_bytes(32));
 		$fields['client_secret'] = bin2hex(random_bytes(32));
 
@@ -87,6 +84,6 @@ class Apps extends BaseApi
 		}
 
 		$this->logger->debug('Create new application', ['request' => $request, 'id' => DBA::lastInsertId()]);
-		$this->jsonExit(DI::mstdnApplication()->createFromApplicationId(DBA::lastInsertId())->toArray());
+		$this->earlyJsonExit(DI::mstdnApplication()->createFromApplicationId(DBA::lastInsertId())->toArray());
 	}
 }

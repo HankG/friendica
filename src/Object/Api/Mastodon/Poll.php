@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -47,12 +47,18 @@ class Poll extends BaseDataTransferObject
 	 * @param int   $votes    Number of total votes
 	 * @param array $ownvotes Own vote
 	 */
-	public function __construct(array $question, array $options, bool $expired, int $votes, array $ownvotes = null, bool $voted = null)
-	{
-		$this->id           = (string)$question['id'];
+	public function __construct(
+		array $question,
+		array $options,
+		bool $expired,
+		int $votes,
+		?array $ownvotes = null,
+		?bool $voted = null,
+	) {
+		$this->id           = (string) $question['id'];
 		$this->expires_at   = !empty($question['end-time']) ? DateTimeFormat::utc($question['end-time'], DateTimeFormat::JSON) : null;
 		$this->expired      = $expired;
-		$this->multiple     = (bool)$question['multiple'];
+		$this->multiple     = (bool) $question['multiple'];
 		$this->votes_count  = $votes;
 		$this->voters_count = $this->multiple ? $question['voters'] : null;
 		$this->voted        = $voted;

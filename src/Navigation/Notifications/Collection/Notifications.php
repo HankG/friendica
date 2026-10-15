@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -19,7 +19,7 @@ class Notifications extends BaseCollection
 
 	public function setSeen(): Notifications
 	{
-		$notifications = $this->map(function (NotificationEntity $notification) {
+		$notifications = $this->map(function (NotificationEntity $notification): void {
 			$notification->setSeen();
 		});
 
@@ -28,7 +28,7 @@ class Notifications extends BaseCollection
 			throw new \Exception(sprintf(
 				'BaseCollection::map() should return instance of %s, but returns %s instead.',
 				Notifications::class,
-				get_class($notifications),
+				$notifications::class,
 			));
 		}
 
@@ -37,7 +37,7 @@ class Notifications extends BaseCollection
 
 	public function setDismissed(): Notifications
 	{
-		$notifications = $this->map(function (NotificationEntity $notification) {
+		$notifications = $this->map(function (NotificationEntity $notification): void {
 			$notification->setDismissed();
 		});
 
@@ -46,7 +46,7 @@ class Notifications extends BaseCollection
 			throw new \Exception(sprintf(
 				'BaseCollection::map() should return instance of %s, but returns %s instead.',
 				Notifications::class,
-				get_class($notifications),
+				$notifications::class,
 			));
 		}
 

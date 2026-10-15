@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -32,7 +32,7 @@ class DisplayNotFound extends \Friendica\BaseModule
 				'desc1'   => $this->t("Unfortunately, the requested conversation isn't available to you."),
 				'desc2'   => $this->t('Possible reasons include:'),
 				'reasons' => $reasons,
-			]
+			],
 		]);
 	}
 }

@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -66,8 +66,8 @@ class ViewDefinitionSqlWriter
 				$sql_rows[] = "`" . static::escape($origin[0]) . "`.`" . static::escape($origin[1]) . "` AS `" . static::escape($fieldname) . "`";
 			}
 		}
-		return sprintf("CREATE VIEW `%s` AS SELECT \n\t", static::escape($viewName)) .
-			   implode(",\n\t", $sql_rows) . "\n\t" . $viewStructure['query'] . ";\n\n";
+		return sprintf("CREATE VIEW `%s` AS SELECT\n\t", static::escape($viewName))
+			   . implode(",\n\t", $sql_rows) . "\n\t" . $viewStructure['query'] . ";\n\n";
 	}
 
 	/**

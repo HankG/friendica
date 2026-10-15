@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -29,6 +29,9 @@ trait FixtureTestTrait
 	/** @var Dice */
 	protected $dice;
 
+	/** @var string Database class to use for the test connection */
+	protected string $databaseClass = StaticDatabase::class;
+
 	/**
 	 * Create variables used by tests.
 	 */
@@ -45,7 +48,7 @@ trait FixtureTestTrait
 			->addRule(ConfigFileManager::class, [
 				'instanceOf' => Config::class,
 				'call'       => [['createConfigFileManager', [$this->root->url(), $this->root->url() . '/addon', $server,], Dice::CHAIN_CALL]]])
-			->addRule(Database::class, ['instanceOf' => StaticDatabase::class, 'shared' => true])
+			->addRule(Database::class, ['instanceOf' => $this->databaseClass, 'shared' => true])
 			->addRule(IHandleSessions::class, ['instanceOf' => Memory::class, 'shared' => true, 'call' => null])
 			->addRule(Arguments::class, [
 				'instanceOf' => Arguments::class,
@@ -65,7 +68,7 @@ trait FixtureTestTrait
 		DBStructure::checkInitialValues();
 
 		// Load the API dataset for the whole API
-		$this->loadFixture(__DIR__ . '/datasets/api.fixture.php', $dba);
+		$this->loadFixture(__DIR__ . '/Fixtures/api.fixture.php', $dba);
 	}
 
 	protected function tearDownFixtures(): void

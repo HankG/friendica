@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -60,8 +60,24 @@ class Timeline extends \Friendica\BaseEntity
 	/** @var bool */
 	protected $valid;
 
-	public function __construct(string $code = null, string $label = null, string $description = null, string $accessKey = null, string $path = null, int $uid = null, string $includeTags = null, string $excludeTags = null, string $fullTextSearch = null, int $mediaType = null, int $circle = null, array $languages = null, bool $publish = null, bool $valid = null, int $minSize = null, int $maxSize = null)
-	{
+	public function __construct(
+		?string $code = null,
+		?string $label = null,
+		?string $description = null,
+		?string $accessKey = null,
+		?string $path = null,
+		?int $uid = null,
+		?string $includeTags = null,
+		?string $excludeTags = null,
+		?string $fullTextSearch = null,
+		?int $mediaType = null,
+		?int $circle = null,
+		?array $languages = null,
+		?bool $publish = null,
+		?bool $valid = null,
+		?int $minSize = null,
+		?int $maxSize = null,
+	) {
 		$this->code           = $code;
 		$this->label          = $label;
 		$this->description    = $description;

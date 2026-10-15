@@ -1,13 +1,12 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Factory\Api\Twitter;
 
-use Friendica\App\BaseURL;
 use Friendica\BaseFactory;
 use Friendica\Model\Contact;
 use Friendica\Model\Tag;
@@ -16,14 +15,9 @@ use Psr\Log\LoggerInterface;
 
 class Mention extends BaseFactory
 {
-	/** @var BaseURL */
-	private $baseUrl;
-
-	public function __construct(LoggerInterface $logger, BaseURL $baseURL)
+	public function __construct(LoggerInterface $logger)
 	{
 		parent::__construct($logger);
-
-		$this->baseUrl = $baseURL;
 	}
 
 	/**

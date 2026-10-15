@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -33,14 +33,14 @@ use Friendica\Model\Contact;
 class LocalRelationship extends \Friendica\BaseEntity
 {
 	// Fetch Further Information options, not a binary flag
-	const FFI_NONE        = 0;
-	const FFI_INFORMATION = 1;
-	const FFI_KEYWORD     = 3;
-	const FFI_BOTH        = 2;
+	public const FFI_NONE        = 0;
+	public const FFI_INFORMATION = 1;
+	public const FFI_KEYWORD     = 3;
+	public const FFI_BOTH        = 2;
 
-	const MIRROR_DEACTIVATED    = 0;
-	const MIRROR_OWN_POST       = 2;
-	const MIRROR_NATIVE_RESHARE = 3;
+	public const MIRROR_DEACTIVATED    = 0;
+	public const MIRROR_OWN_POST       = 2;
+	public const MIRROR_NATIVE_RESHARE = 3;
 
 	/** @var int */
 	protected $userId;

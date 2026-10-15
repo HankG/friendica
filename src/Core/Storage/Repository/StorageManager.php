@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -34,11 +34,11 @@ use Psr\Log\LoggerInterface;
 class StorageManager
 {
 	// Default tables to look for data
-	const TABLES = ['photo', 'attach'];
+	public const TABLES = ['photo', 'attach'];
 
 	// Default storage backends
 	/** @var string[]  */
-	const DEFAULT_BACKENDS = [
+	public const DEFAULT_BACKENDS = [
 		Type\Filesystem::NAME,
 		Type\Database::NAME,
 	];
@@ -50,16 +50,6 @@ class StorageManager
 	 * @var ICanReadFromStorage[] A local cache for storage instances
 	 */
 	private $backendInstances = [];
-
-	/** @var Database */
-	private $dba;
-	/** @var IManageConfigValues */
-	private $config;
-	/** @var LoggerInterface */
-	private $logger;
-	private EventDispatcherInterface $eventDispatcher;
-	/** @var L10n */
-	private $l10n;
 
 	/** @var ICanWriteToStorage */
 	private $currentBackend;
@@ -74,14 +64,15 @@ class StorageManager
 	 * @throws InvalidClassStorageException in case the active backend class is invalid
 	 * @throws StorageException in case of unexpected errors during the active backend class loading
 	 */
-	public function __construct(Database $dba, IManageConfigValues $config, LoggerInterface $logger, EventDispatcherInterface $eventDispatcher, L10n $l10n, bool $includeAddon = true)
-	{
-		$this->dba             = $dba;
-		$this->config          = $config;
-		$this->logger          = $logger;
-		$this->eventDispatcher = $eventDispatcher;
-		$this->l10n            = $l10n;
-		$this->validBackends   = $config->get('storage', 'backends', self::DEFAULT_BACKENDS);
+	public function __construct(
+		private readonly Database $dba,
+		private readonly IManageConfigValues $config,
+		private readonly LoggerInterface $logger,
+		private readonly EventDispatcherInterface $eventDispatcher,
+		private readonly L10n $l10n,
+		bool $includeAddon = true,
+	) {
+		$this->validBackends = $this->config->get('storage', 'backends', self::DEFAULT_BACKENDS);
 
 		$currentName = $this->config->get('storage', 'name');
 
@@ -162,7 +153,7 @@ class StorageManager
 
 					return $data['storage_config'];
 				} catch (InternalServerErrorException $exception) {
-					throw new StorageException(sprintf('Failed calling hook::storage_config for backend %s', $name), $exception->__toString());
+					throw new StorageException(sprintf('Failed calling hook::storage_config for backend %s', $name), $exception->getCode(), $exception);
 				}
 		}
 	}
@@ -178,7 +169,7 @@ class StorageManager
 	 * @throws InvalidClassStorageException in case there's no backend class for the name
 	 * @throws StorageException in case of an unexpected failure during the hook call
 	 */
-	public function getByName(string $name, array $validBackends = null): ICanReadFromStorage
+	public function getByName(string $name, ?array $validBackends = null): ICanReadFromStorage
 	{
 		// If there's no cached instance create a new instance
 		if (!isset($this->backendInstances[$name])) {
@@ -221,7 +212,7 @@ class StorageManager
 
 						$this->backendInstances[$data['name'] ?? $name] = $data['storage'];
 					} catch (InternalServerErrorException $exception) {
-						throw new StorageException(sprintf('Failed calling hook::storage_instance for backend %s', $name), $exception->__toString());
+						throw new StorageException(sprintf('Failed calling hook::storage_instance for backend %s', $name), $exception->getCode(), $exception);
 					}
 					break;
 			}
@@ -238,14 +229,14 @@ class StorageManager
 	 *
 	 * @return boolean True, if the backend is a valid backend
 	 */
-	public function isValidBackend(string $name = null, array $validBackends = null): bool
+	public function isValidBackend(?string $name = null, ?array $validBackends = null): bool
 	{
-		$validBackends = $validBackends ?? array_merge(
+		$validBackends ??= array_merge(
 			$this->validBackends,
 			[
 				Type\SystemResource::getName(),
 				Type\ExternalResource::getName(),
-			]
+			],
 		);
 		return in_array($name, $validBackends);
 	}
@@ -373,7 +364,7 @@ class StorageManager
 				$table,
 				['id', 'data', 'backend-class', 'backend-ref'],
 				['`backend-class` IS NULL or `backend-class` != ?', $destination::getName()],
-				['limit' => $limit]
+				['limit' => $limit],
 			);
 
 			while ($resource = $this->dba->fetch($resources)) {
@@ -385,10 +376,10 @@ class StorageManager
 					$source = $this->getWritableStorageByName($resource['backend-class'] ?? '');
 					$this->logger->info('Get data from old backend.', ['oldBackend' => $source, 'oldReference' => $sourceRef]);
 					$data = $source->get($sourceRef);
-				} catch (InvalidClassStorageException $exception) {
+				} catch (InvalidClassStorageException) {
 					$this->logger->info('Get data from DB resource field.', ['oldReference' => $sourceRef]);
 					$data = $resource['data'];
-				} catch (ReferenceStorageException $exception) {
+				} catch (ReferenceStorageException) {
 					$this->logger->info('Invalid source reference.', ['oldBackend' => $source, 'oldReference' => $sourceRef]);
 					continue;
 				}

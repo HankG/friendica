@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -32,7 +32,7 @@ class OpenWebAuthToken
 			'uid'     => $uid,
 			'token'   => $token,
 			'meta'    => $meta,
-			'created' => DateTimeFormat::utcNow()
+			'created' => DateTimeFormat::utcNow(),
 		];
 		return DBA::insert('openwebauth-token', $fields);
 	}

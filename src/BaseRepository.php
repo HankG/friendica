@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -26,7 +26,7 @@ use Psr\Log\LoggerInterface;
  */
 abstract class BaseRepository
 {
-	const LIMIT = 30;
+	public const LIMIT = 30;
 
 	/**
 	 * @var string This should be set to the main database table name the depository is using
@@ -39,14 +39,30 @@ abstract class BaseRepository
 	/** @var LoggerInterface */
 	protected $logger;
 
-	/** @var ICanCreateFromTableRow */
+	/**
+	 * @var ICanCreateFromTableRow
+	 *
+	 * @deprecated 2026.08 Implement getFactory() instead
+	 */
 	protected $factory;
 
 	public function __construct(Database $database, LoggerInterface $logger, ICanCreateFromTableRow $factory)
 	{
 		$this->db      = $database;
 		$this->logger  = $logger;
-		$this->factory = $factory;
+		$this->factory = $factory; // @phpstan-ignore property.deprecated (self-call in deprecated flow)
+	}
+
+	/**
+	 * Returns the TableRowFactory
+	 *
+	 * @deprecated 2026.08 This method will become abstract in a future release, implement it in your child class instead.
+	 */
+	protected function getFactory(): ICanCreateFromTableRow
+	{
+		@trigger_error('`' . __METHOD__ . '()` is deprecated since 2026.08 and will be removed after 5 months, implement it in your child class instead.', E_USER_DEPRECATED);
+
+		return $this->factory;
 	}
 
 	/**
@@ -73,9 +89,9 @@ abstract class BaseRepository
 	protected function _selectByBoundaries(
 		array $condition = [],
 		array $params = [],
-		int $min_id = null,
-		int $max_id = null,
-		int $limit = self::LIMIT
+		?int $min_id = null,
+		?int $max_id = null,
+		int $limit = self::LIMIT,
 	): BaseCollection {
 		$totalCount = $this->count($condition);
 
@@ -123,7 +139,7 @@ abstract class BaseRepository
 
 		$Entities = new BaseCollection();
 		foreach ($rows as $fields) {
-			$Entities[] = $this->factory->createFromTableRow($fields);
+			$Entities[] = $this->getFactory()->createFromTableRow($fields); // @phpstan-ignore method.deprecated (BC: keep until getFactory() becomes abstract)
 		}
 
 		return $Entities;
@@ -145,20 +161,6 @@ abstract class BaseRepository
 		}
 
 		return $fields;
-	}
-
-	/**
-	 * @deprecated 2025.05 Use `\Friendica\BaseRepository::_selectFirstRowAsArray()` instead
-	 *
-	 * @throws NotFoundException
-	 */
-	protected function _selectOne(array $condition, array $params = []): BaseEntity
-	{
-		@trigger_error('`' . __METHOD__ . '()` is deprecated since 2025.05 and will be removed after 5 months, use `\Friendica\BaseRepository::_selectFirstRowAsArray()` instead.', E_USER_DEPRECATED);
-
-		$fields = $this->_selectFirstRowAsArray( $condition, $params);
-
-		return $this->factory->createFromTableRow($fields);
 	}
 
 	/**

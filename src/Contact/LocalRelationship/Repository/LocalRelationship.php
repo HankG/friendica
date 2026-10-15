@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -20,12 +20,12 @@ class LocalRelationship extends BaseRepository
 {
 	protected static $table_name = 'user-contact';
 
-	/** @var LocalRelationshipFactory */
-	protected $factory;
-
-	public function __construct(Database $database, LoggerInterface $logger, LocalRelationshipFactory $factory)
-	{
-		parent::__construct($database, $logger, $factory);
+	public function __construct(
+		Database $database,
+		LoggerInterface $logger,
+		private readonly LocalRelationshipFactory $entityFactory,
+	) {
+		parent::__construct($database, $logger, $entityFactory);
 	}
 
 	/**
@@ -35,7 +35,7 @@ class LocalRelationship extends BaseRepository
 	{
 		$fields = $this->_selectFirstRowAsArray(['uid' => $uid, 'cid' => $cid]);
 
-		return $this->factory->createFromTableRow($fields);
+		return $this->getFactory()->createFromTableRow($fields);
 	}
 
 	/**
@@ -48,8 +48,8 @@ class LocalRelationship extends BaseRepository
 	{
 		try {
 			return $this->selectForUserContact($uid, $cid);
-		} catch (NotFoundException $e) {
-			return $this->factory->createFromTableRow(['uid' => $uid, 'cid' => $cid]);
+		} catch (NotFoundException) {
+			return $this->getFactory()->createFromTableRow(['uid' => $uid, 'cid' => $cid]);
 		}
 	}
 
@@ -59,6 +59,12 @@ class LocalRelationship extends BaseRepository
 	public function existsForUserContact(int $uid, int $cid): bool
 	{
 		return $this->exists(['uid' => $uid, 'cid' => $cid]);
+	}
+
+	/** @not-deprecated */
+	protected function getFactory(): LocalRelationshipFactory
+	{
+		return $this->entityFactory;
 	}
 
 	/**

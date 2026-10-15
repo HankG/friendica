@@ -1,6 +1,6 @@
 {{*
-  * Copyright (C) 2010-2024, the Friendica project
-  * SPDX-FileCopyrightText: 2010-2024 the Friendica project
+  * Copyright (C) 2010-2026, the Friendica project
+  * SPDX-FileCopyrightText: 2010-2026 the Friendica project
   *
   * SPDX-License-Identifier: AGPL-3.0-or-later
   *}}
@@ -32,24 +32,6 @@
 <div id="photo-photo"><a href="{{$photo.href}}" title="{{$photo.title}}"><img src="{{$photo.src}}" /></a></div>
 {{if $nextlink}}<div id="photo-next-link"><a href="{{$nextlink.0}}">{{$nextlink.1 nofilter}}</a></div>{{/if}}
 <div id="photo-photo-end"></div>
-<div id="photo-caption">{{$desc nofilter}}</div>
-{{if $tags}}
-<div id="in-this-photo-text">{{$tags.0}}</div>
-<div id="in-this-photo">{{$tags.1}}</div>
-{{/if}}
-{{if $tags.2}}<div id="tag-remove"><a href="{{$tags.2}}">{{$tags.3}}</a></div>{{/if}}
-
+<div id="photo-caption">{{$desc}}</div>
 {{if $edit}}{{$edit nofilter}}{{/if}}
-
-{{if $likebuttons}}
-<div id="photo-like-div">
-	{{$likebuttons nofilter}}
-	{{$like nofilter}}
-	{{$dislike nofilter}}
-</div>
-{{/if}}
-
-{{$comments nofilter}}
-
-{{$paginate nofilter}}
 

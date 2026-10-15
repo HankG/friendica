@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -15,13 +15,9 @@ use Psr\Log\LoggerInterface;
 
 class ListEntity extends BaseFactory
 {
-	/** @var Database */
-	private $dba;
-
-	public function __construct(LoggerInterface $logger, Database $dba)
+	public function __construct(LoggerInterface $logger, private readonly Database $dba)
 	{
 		parent::__construct($logger);
-		$this->dba = $dba;
 	}
 
 	/**
@@ -30,7 +26,7 @@ class ListEntity extends BaseFactory
 	public function createFromCircleId(int $id): \Friendica\Object\Api\Mastodon\ListEntity
 	{
 		$circle = $this->dba->selectFirst('group', ['name'], ['id' => $id, 'deleted' => false]);
-		return new \Friendica\Object\Api\Mastodon\ListEntity($id, $circle['name'] ?? '', 'list');
+		return new \Friendica\Object\Api\Mastodon\ListEntity((string) $id, $circle['name'] ?? '', 'list');
 	}
 
 	public function createFromChannel(Timeline $channel): \Friendica\Object\Api\Mastodon\ListEntity

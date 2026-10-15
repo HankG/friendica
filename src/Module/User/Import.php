@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -21,6 +21,7 @@ use Friendica\Database\DBA;
 use Friendica\Database\DBStructure;
 use Friendica\Model\Photo;
 use Friendica\Model\Profile;
+use Friendica\Model\User;
 use Friendica\Module\Response;
 use Friendica\Navigation\SystemMessages;
 use Friendica\Network\HTTPException;
@@ -33,36 +34,27 @@ use Psr\Log\LoggerInterface;
 
 class Import extends \Friendica\BaseModule
 {
-	const IMPORT_DEBUG = false;
+	public const MEMORY_LIMIT = 67108864;
 
-	/** @var IManageConfigValues */
-	private $config;
+	private bool $dryRun = false;
 
-	/** @var IManagePersonalConfigValues */
-	private $pconfig;
-
-	/** @var SystemMessages */
-	private $systemMessages;
-
-	/** @var Database */
-	private $database;
-
-	/** @var PermissionSet */
-	private $permissionSet;
-
-	/** @var UserSession */
-	private $session;
-
-	public function __construct(UserSession $session, PermissionSet $permissionSet, IManagePersonalConfigValues $pconfig, Database $database, SystemMessages $systemMessages, IManageConfigValues $config, L10n $l10n, App\BaseURL $baseUrl, App\Arguments $args, LoggerInterface $logger, Profiler $profiler, Response $response, array $server, array $parameters = [])
-	{
+	public function __construct(
+		private readonly UserSession $session,
+		private readonly PermissionSet $permissionSet,
+		private readonly IManagePersonalConfigValues $pconfig,
+		private readonly Database $database,
+		private readonly SystemMessages $systemMessages,
+		private readonly IManageConfigValues $config,
+		L10n $l10n,
+		App\BaseURL $baseUrl,
+		App\Arguments $args,
+		LoggerInterface $logger,
+		Profiler $profiler,
+		Response $response,
+		array $server,
+		array $parameters = [],
+	) {
 		parent::__construct($l10n, $baseUrl, $args, $logger, $profiler, $response, $server, $parameters);
-
-		$this->config         = $config;
-		$this->pconfig        = $pconfig;
-		$this->systemMessages = $systemMessages;
-		$this->database       = $database;
-		$this->permissionSet  = $permissionSet;
-		$this->session        = $session;
 	}
 
 	protected function post(array $request = [])
@@ -114,7 +106,7 @@ class Import extends \Friendica\BaseModule
 
 	private function lastInsertId(): int
 	{
-		if (self::IMPORT_DEBUG) {
+		if ($this->dryRun) {
 			return 1;
 		}
 
@@ -169,7 +161,7 @@ class Import extends \Friendica\BaseModule
 
 		$this->checkCols($table, $arr);
 
-		if (self::IMPORT_DEBUG) {
+		if ($this->dryRun) {
 			return true;
 		}
 
@@ -199,6 +191,13 @@ class Import extends \Friendica\BaseModule
 		5. send message to dfrn contacts
 		*/
 
+		$available_memory = Strings::getBytesFromShorthand(ini_get('memory_limit'));
+		$available_memory = $available_memory > 0 ? ($available_memory / 2) : self::MEMORY_LIMIT;
+		if ($file['size'] > $available_memory) {
+			$this->systemMessages->addNotice($this->t('Account file size is too high'));
+			return;
+		}
+
 		$account = json_decode(file_get_contents($file['tmp_name']), true);
 		if ($account === null) {
 			$this->systemMessages->addNotice($this->t('Error decoding account file'));
@@ -218,12 +217,17 @@ class Import extends \Friendica\BaseModule
 			return;
 		}
 
+		if (in_array(strtolower((string) $account['user']['email']), User::getAdminEmailList())) {
+			$this->systemMessages->addNotice($this->t('Cannot use that email.'));
+			return;
+		}
+
 		// Backward compatibility
-		$account['circle'] = $account['circle'] ?? $account['group'];
-		$account['circle_member'] = $account['circle_member'] ?? $account['group_member'];
+		$account['circle'] ??= $account['group'];
+		$account['circle_member'] ??= $account['group_member'];
 
 		$oldBaseUrl = $account['baseurl'];
-		$newBaseUrl = (string)$this->baseUrl;
+		$newBaseUrl = (string) $this->baseUrl;
 
 		$oldAddr = str_replace('http://', '@', Strings::normaliseLink($oldBaseUrl));
 		$newAddr = str_replace('http://', '@', Strings::normaliseLink($newBaseUrl));
@@ -244,7 +248,7 @@ class Import extends \Friendica\BaseModule
 		unset($account['user']['account_expires_on']);
 		unset($account['user']['expire_notification_sent']);
 
-		array_walk($account['user'], function (&$user) use ($oldBaseUrl, $oldAddr, $newBaseUrl, $newAddr) {
+		array_walk($account['user'], function (&$user) use ($oldBaseUrl, $oldAddr, $newBaseUrl, $newAddr): void {
 			$user = str_replace([$oldBaseUrl, $oldAddr], [$newBaseUrl, $newAddr], $user);
 		});
 
@@ -261,9 +265,9 @@ class Import extends \Friendica\BaseModule
 
 		$errorCount = 0;
 
-		array_walk($account['contact'], function (&$contact) use (&$errorCount, $oldUid, $oldBaseUrl, $oldAddr, $newUid, $newBaseUrl, $newAddr) {
+		array_walk($account['contact'], function (&$contact) use (&$errorCount, $oldUid, $oldBaseUrl, $oldAddr, $newUid, $newBaseUrl, $newAddr): void {
 			if ($contact['uid'] == $oldUid && $contact['self'] == '1') {
-				array_walk($contact, function (&$field) use ($oldUid, $oldBaseUrl, $oldAddr, $newUid, $newBaseUrl, $newAddr) {
+				array_walk($contact, function (&$field) use ($oldUid, $oldBaseUrl, $oldAddr, $newUid, $newBaseUrl, $newAddr): void {
 					$field = str_replace([$oldBaseUrl, $oldAddr], [$newBaseUrl, $newAddr], $field);
 					foreach (['profile', 'avatar', 'micro'] as $key) {
 						$field = str_replace($oldBaseUrl . '/photo/' . $key . '/' . $oldUid . '.jpg', $newBaseUrl . '/photo/' . $key . '/' . $newUid . '.jpg', $field);
@@ -303,7 +307,7 @@ class Import extends \Friendica\BaseModule
 			$this->systemMessages->addNotice($this->tt('%d contact not imported', '%d contacts not imported', $errorCount));
 		}
 
-		array_walk($account['circle'], function (&$circle) use ($newUid) {
+		array_walk($account['circle'], function (&$circle) use ($newUid): void {
 			$circle['uid'] = $newUid;
 			if ($this->dbImportAssoc('group', $circle) === false) {
 				$this->logger->warning('Error inserting circle', ['name' => $circle['name'], 'error' => $this->database->errorMessage()]);
@@ -339,7 +343,7 @@ class Import extends \Friendica\BaseModule
 			unset($profile['id']);
 			$profile['uid'] = $newUid;
 
-			array_walk($profile, function (&$field) use ($oldUid, $oldBaseUrl, $oldAddr, $newUid, $newBaseUrl, $newAddr) {
+			array_walk($profile, function (&$field) use ($oldUid, $oldBaseUrl, $oldAddr, $newUid, $newBaseUrl, $newAddr): void {
 				$field = str_replace([$oldBaseUrl, $oldAddr], [$newBaseUrl, $newAddr], $field);
 				foreach (['profile', 'avatar'] as $key) {
 					$field = str_replace($oldBaseUrl . '/photo/' . $key . '/' . $oldUid . '.jpg', $newBaseUrl . '/photo/' . $key . '/' . $newUid . '.jpg', $field);
@@ -376,13 +380,21 @@ class Import extends \Friendica\BaseModule
 
 		foreach ($account['photo'] as $photo) {
 			$photo['uid']  = $newUid;
-			$photo['data'] = hex2bin($photo['data']);
+			$photo['data'] = hex2bin((string) $photo['data']);
 
 			$r = Photo::store(
 				new Image($photo['data'], $photo['type'], $photo['filename']),
-				$photo['uid'], $photo['contact-id'], //0
-				$photo['resource-id'], $photo['filename'], $photo['album'], $photo['scale'], $photo['profile'], //1
-				$photo['allow_cid'], $photo['allow_gid'], $photo['deny_cid'], $photo['deny_gid']
+				$photo['uid'],
+				$photo['contact-id'],
+				$photo['resource-id'],
+				$photo['filename'],
+				$photo['album'],
+				$photo['scale'],
+				$photo['profile'],
+				$photo['allow_cid'],
+				$photo['allow_gid'],
+				$photo['deny_cid'],
+				$photo['deny_gid'],
 			);
 
 			if ($r === false) {

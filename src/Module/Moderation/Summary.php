@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -24,14 +24,9 @@ use Psr\Log\LoggerInterface;
 
 class Summary extends BaseModeration
 {
-	/** @var Database */
-	private $database;
-
-	public function __construct(Database $database, Page $page, AppHelper $appHelper, SystemMessages $systemMessages, IHandleUserSessions $session, L10n $l10n, BaseURL $baseUrl, Arguments $args, LoggerInterface $logger, Profiler $profiler, Response $response, array $server, array $parameters = [])
+	public function __construct(private readonly Database $database, Page $page, AppHelper $appHelper, SystemMessages $systemMessages, IHandleUserSessions $session, L10n $l10n, BaseURL $baseUrl, Arguments $args, LoggerInterface $logger, Profiler $profiler, Response $response, array $server, array $parameters = [])
 	{
 		parent::__construct($page, $appHelper, $systemMessages, $session, $l10n, $baseUrl, $args, $logger, $profiler, $response, $server, $parameters);
-
-		$this->database = $database;
 	}
 
 	protected function content(array $request = []): string
@@ -61,12 +56,13 @@ class Summary extends BaseModeration
 
 		$t = Renderer::getMarkupTemplate('moderation/summary.tpl');
 		return Renderer::replaceMacros($t, [
-			'$title'       => $this->t('Moderation'),
-			'$page'        => $this->t('Summary'),
-			'$users'       => [$this->t('Registered users'), $users],
-			'$accounts'    => $accounts,
-			'$pending'     => [$this->t('Pending registrations'), $pending],
-			'$warningtext' => [],
+			'$title'               => $this->t('Moderation'),
+			'$page'                => $this->t('Summary'),
+			'$users'               => [$this->t('Registered users'), $users],
+			'$accounts'            => $accounts,
+			'$pending'             => [$this->t('Pending registrations'), $pending],
+			'$warningtext'         => [],
+			'$account_type_header' => $this->t('Registered accounts by type'),
 		]);
 	}
 }

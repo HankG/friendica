@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -14,6 +14,7 @@ use Friendica\Core\Cache\Enum\Duration;
 use Friendica\Core\Protocol;
 use Friendica\Core\System;
 use Friendica\Core\Worker;
+use Friendica\Database\Database;
 use Friendica\Database\DBA;
 use Friendica\DI;
 use Friendica\Model\APContact;
@@ -37,14 +38,22 @@ use Friendica\Util\HTTPSignature;
 use Friendica\Util\JsonLD;
 use Friendica\Util\Network;
 use Friendica\Util\Strings;
+use Friendica\Worker\FetchMissingActivity;
+use GuzzleHttp\Psr7\Uri;
+use Friendica\Content\Post\Entity\PostMedia;
 
 /**
  * ActivityPub Processor Protocol class
  */
 class Processor
 {
-	const CACHEKEY_FETCH_ACTIVITY = 'processor:fetchMissingActivity:';
-	const CACHEKEY_JUST_FETCHED   = 'processor:isJustFetched:';
+	public const CACHEKEY_FETCH_ACTIVITY = 'processor:fetchMissingActivity:';
+	public const CACHEKEY_JUST_FETCHED   = 'processor:isJustFetched:';
+
+	public const FETCH_REPLIES_ALL         = 0;
+	public const FETCH_REPLIES_NONE        = 1;
+	public const FETCH_REPLIES_FOLLOWED    = 2;
+	public const FETCH_REPLIES_INTERACTION = 3;
 
 	/**
 	 * Add an object id to the list of processed ids
@@ -56,7 +65,7 @@ class Processor
 	private static function addActivityId(string $id)
 	{
 		DBA::delete('fetched-activity', ["`received` < ?", DateTimeFormat::utc('now - 5 minutes')]);
-		DBA::insert('fetched-activity', ['object-id' => $id, 'received' => DateTimeFormat::utcNow()]);
+		DBA::insert('fetched-activity', ['object-id' => $id, 'received' => DateTimeFormat::utcNow()], Database::INSERT_IGNORE);
 	}
 
 	/**
@@ -80,7 +89,7 @@ class Processor
 	public static function normalizeMentionLinks(string $body): string
 	{
 		$body = preg_replace('%\[url=([^\[\]]*)]([#@!])(.*?)\[/url]%ism', '$2[url=$1]$3[/url]', $body);
-		$body = preg_replace('%([#@!])\[zrl=([^\[\]]*)](.*?)\[/zrl]%ism', '$1[url=$2]$3[/url]', $body);
+		$body = preg_replace('%([#@!])\[zrl=([^\[\]]*)](.*?)\[/zrl]%ism', '$1[url=$2]$3[/url]', (string) $body);
 		return $body;
 	}
 
@@ -121,8 +130,8 @@ class Processor
 				array_column($emojis, 'name'),
 				array_map(function ($emoji) {
 					return '[emoji=' . $emoji['href'] . ']' . $emoji['name'] . '[/emoji]';
-				}, $emojis)
-			)
+				}, $emojis),
+			),
 		);
 
 		// We store the emoji here to be able to avoid storing it in the media
@@ -145,15 +154,23 @@ class Processor
 			return;
 		}
 
-		$data                = ['uri-id' => $uriid];
-		$data['type']        = Post\Media::UNKNOWN;
-		$data['url']         = $attachment['url'];
-		$data['mimetype']    = $attachment['mediaType'] ?? null;
-		$data['height']      = $attachment['height']    ?? null;
-		$data['width']       = $attachment['width']     ?? null;
-		$data['size']        = $attachment['size']      ?? null;
-		$data['preview']     = $attachment['image']     ?? null;
-		$data['description'] = $attachment['name']      ?? null;
+		$data                  = ['uri-id' => $uriid];
+		$data['type']          = PostMedia::TYPE_UNKNOWN;
+		$data['url']           = $attachment['url'];
+		$data['mimetype']      = $attachment['mediaType']     ?? null;
+		$data['height']        = $attachment['height']        ?? null;
+		$data['width']         = $attachment['width']         ?? null;
+		$data['size']          = $attachment['size']          ?? null;
+		$data['blurhash']      = $attachment['blurhash']      ?? null;
+		$data['preview']       = $attachment['image']         ?? null;
+		$data['description']   = $attachment['name']          ?? null;
+		$data['player-url']    = $attachment['player-url']    ?? null;
+		$data['player-height'] = $attachment['player-height'] ?? null;
+		$data['player-width']  = $attachment['player-width']  ?? null;
+		$data['embed-type']    = $attachment['embed-type']    ?? null;
+		$data['embed-html']    = $attachment['embed-html']    ?? null;
+		$data['embed-width']   = $attachment['embed-width']   ?? null;
+		$data['embed-height']  = $attachment['embed-height']  ?? null;
 
 		Post\Media::insert($data);
 	}
@@ -215,7 +232,7 @@ class Processor
 	 */
 	public static function updateItem(array $activity)
 	{
-		$item = Post::selectFirst(['uri', 'uri-id', 'guid', 'thr-parent', 'gravity', 'post-type', 'private'], ['uri' => $activity['id']]);
+		$item = Post::selectFirst(['uri', 'uri-id', 'guid', 'thr-parent', 'gravity', 'post-type', 'private', 'author-id', 'owner-id', 'author-link', 'owner-link', 'parent-uri-id', 'thr-parent-id', 'replies'], ['uri' => $activity['id']]);
 		if (!DBA::isResult($item)) {
 			DI::logger()->notice('No existing item, item will be created', ['uri' => $activity['id']]);
 			$item = self::createItem($activity, false);
@@ -231,7 +248,7 @@ class Processor
 		$item['changed'] = DateTimeFormat::utcNow();
 		$item['edited']  = DateTimeFormat::utc($activity['updated']);
 
-		Post\Media::deleteByURIId($item['uri-id'], [Post\Media::AUDIO, Post\Media::VIDEO, Post\Media::IMAGE, Post\Media::HTML]);
+		Post\Media::deleteByURIId($item['uri-id'], [PostMedia::TYPE_AUDIO, PostMedia::TYPE_VIDEO, PostMedia::TYPE_IMAGE, PostMedia::TYPE_HTML, PostMedia::TYPE_HLS, PostMedia::TYPE_TORRENT]);
 		$item = self::processContent($activity, $item);
 		if (empty($item)) {
 			Queue::remove($activity);
@@ -252,7 +269,67 @@ class Processor
 				self::updateEvent($post['event-id'], $activity);
 			}
 		}
-		self::processReplies($activity, $item);
+
+		if (self::shouldCompleteThread($item)) {
+			if (Worker::isInWorkerMode()) {
+				self::processReplies($activity, $item);
+			} else {
+				Worker::add(Worker::PRIORITY_MEDIUM, 'FetchMissingReplies', $item['uri-id'], $activity);
+			}
+		}
+	}
+
+	private static function shouldCompleteThread(array $item): bool
+	{
+		if (!isset($item['parent-uri-id'])) {
+			DI::logger()->debug('No parent-uri-id set, no replies will be fetched');
+			return false;
+		}
+
+		switch (DI::config()->get('system', 'fetch_replies')) {
+			case self::FETCH_REPLIES_ALL:
+				DI::logger()->debug('Fetch all replies is enabled');
+				return true;
+
+			case self::FETCH_REPLIES_FOLLOWED:
+				DI::logger()->debug('Fetch replies from followed users is enabled');
+				return Post::exists(["`parent-uri-id` = ? AND `gravity` IN (?, ?) AND `uid` != ?", $item['parent-uri-id'], Item::GRAVITY_PARENT, Item::GRAVITY_COMMENT, 0]);
+
+			case self::FETCH_REPLIES_INTERACTION:
+				DI::logger()->debug('Fetch replies with interaction is enabled');
+				return Post::exists(["`parent-uri-id` = ? AND `origin`", $item['parent-uri-id']]);
+		}
+
+		DI::logger()->debug('No reply fetching is enabled');
+		return false;
+	}
+
+	/**
+	 * Fetch replies for a given uri id
+	 *
+	 * @param int   $uriId Uri-id of the parent item
+	 * @param array $child Child activity data
+	 */
+	public static function fetchRepliesByUriId(int $uriId, array $child = [])
+	{
+		$item = Post::selectFirstPost(['thr-parent', 'parent-uri', 'replies'], ['uri-id' => $uriId, 'private' => [Item::PUBLIC, Item::UNLISTED]]);
+		if (!$item) {
+			return;
+		}
+
+		if (!$child) {
+			$activity = DBA::selectFirst('post-activity', [], ['uri-id' => $uriId]);
+			$data     = json_decode($activity['activity'] ?? '', true);
+			if ($data) {
+				$activity = JsonLD::compact($data);
+
+				$trust_source = true;
+				$child        = Receiver::prepareObjectData($activity, 0, false, $trust_source);
+			}
+		}
+
+		DI::logger()->debug('Process replies', ['uri-id' => $uriId, 'replies' => !$item['replies']]);
+		self::processReplies($child, $item);
 	}
 
 	/**
@@ -422,12 +499,9 @@ class Processor
 				$item['causer-id']   = $item['owner-id'];
 				DI::logger()->info('Use actor as causer.', ['id' => $item['owner-id'], 'actor' => $item['owner-link']]);
 			}
-
-			$item['owner-link'] = $item['author-link'];
-			$item['owner-id']   = $item['author-id'];
 		}
 
-		if (!$item['isGroup'] && !empty($activity['receiver_urls']['as:audience'])) {
+		if (isset($activity['receiver_urls']) && isset($activity['receiver_urls']['as:audience']) && is_array($activity['receiver_urls']['as:audience'])) {
 			foreach ($activity['receiver_urls']['as:audience'] as $audience) {
 				$actor = APContact::getByURL($audience, false);
 				if (($actor['type'] ?? 'Person') == 'Group') {
@@ -515,29 +589,28 @@ class Processor
 
 	private static function processReplies(array $activity, array $item)
 	{
-		// @todo fetch replies not only in the decoupled mode
-		if (!DI::config()->get('system', 'decoupled_receiver')) {
+		if (isset($item['parent-uri-id'])) {
+			$condition = ['parent-uri-id' => $item['parent-uri-id']];
+		} elseif (isset($item['thr-parent-id'])) {
+			$parent = Post::selectFirstPost(['parent-uri-id'], ['uri-id' => $item['thr-parent-id']]);
+			if (isset($parent['parent-uri-id'])) {
+				$condition = ['parent-uri-id' => $parent['parent-uri-id']];
+			} else {
+				$condition = ['uri-id' => [$item['thr-parent-id'], $item['uri-id']]];
+			}
+		} elseif (isset($item['replies'])) {
+			self::fetchReplies($item['replies'], $activity);
+			return;
+		} else {
 			return;
 		}
 
-		$replies = [$item['thr-parent']];
-		if (!empty($item['parent-uri'])) {
-			$replies[] = $item['parent-uri'];
-		}
-		$condition = DBA::mergeConditions(['uri' => $replies], ["`replies-id` IS NOT NULL"]);
+		$condition = DBA::mergeConditions($condition, ["`replies-id` IS NOT NULL"]);
 		$posts     = Post::select(['replies', 'replies-id'], $condition);
 		while ($post = Post::fetch($posts)) {
-			$cachekey = 'Processor-CreateItem-Replies-' . $post['replies-id'];
-			if (!DI::cache()->get($cachekey)) {
-				self::fetchReplies($post['replies'], $activity);
-				DI::cache()->set($cachekey, true);
-			}
+			self::fetchReplies($post['replies'], $activity);
 		}
-		DBA::close($replies);
-
-		if (!empty($item['replies'])) {
-			self::fetchReplies($item['replies'], $activity);
-		}
+		DBA::close($posts);
 	}
 
 	/**
@@ -632,7 +705,7 @@ class Processor
 	 */
 	public static function isActivityGone(string $url): bool
 	{
-		if (Network::isUrlBlocked($url)) {
+		if (Network::isUriBlocked(new Uri($url))) {
 			return true;
 		}
 
@@ -830,7 +903,7 @@ class Processor
 	 */
 	public static function createEvent(array $activity, array $item): int
 	{
-		$event['summary'] = HTML::toBBCode($activity['name'] ?: $activity['summary']);
+		$event['summary'] = HTML::toBBCode($activity['name'] ?: $activity['summary'] ?? '');
 		$event['desc']    = HTML::toBBCode($activity['content'] ?? '');
 		if (!empty($activity['start-time'])) {
 			$event['start'] = DateTimeFormat::utc($activity['start-time']);
@@ -902,19 +975,25 @@ class Processor
 		$content = self::addMentionLinks($content, $activity['tags']);
 
 		if (!empty($activity['quote-url'])) {
-			$id = Item::fetchByLink($activity['quote-url'], 0, ActivityPub\Receiver::COMPLETION_ASYNC);
+			$id = Item::searchByLink($activity['quote-url']);
 			if ($id) {
 				$shared_item          = Post::selectFirst(['uri-id'], ['id' => $id]);
 				$item['quote-uri-id'] = $shared_item['uri-id'];
-				DI::logger()->debug('Quote is found', ['uri' => $item['uri'], 'uri-id' => $item['uri-id'], 'quote' => $activity['quote-url'], 'quote-uri-id' => $item['quote-uri-id']]);
-			} elseif ($uri_id = ItemURI::getIdByURI($activity['quote-url'], false)) {
-				DI::logger()->info('Quote was not fetched but the uri-id existed', ['uri' => $item['uri'], 'uri-id' => $item['uri-id'], 'quote' => $activity['quote-url'], 'quote-uri-id' => $uri_id]);
-				$item['quote-uri-id'] = $uri_id;
+				DI::logger()->debug('Quoted post exists', ['uri' => $item['uri'], 'uri-id' => $item['uri-id'], 'quote' => $activity['quote-url'], 'quote-uri-id' => $item['quote-uri-id']]);
 			} elseif (Queue::exists($activity['quote-url'], 'as:Create')) {
 				$item['quote-uri-id'] = ItemURI::getIdByURI($activity['quote-url']);
-				DI::logger()->info('Quote is queued but not processed yet', ['uri' => $item['uri'], 'uri-id' => $item['uri-id'], 'quote' => $activity['quote-url'], 'quote-uri-id' => $item['quote-uri-id']]);
+				DI::logger()->info('Quoted post is queued but not processed yet', ['uri' => $item['uri'], 'uri-id' => $item['uri-id'], 'quote' => $activity['quote-url'], 'quote-uri-id' => $item['quote-uri-id']]);
+			} elseif (Fetch::hasWorker($activity['quote-url'])) {
+				$item['quote-uri-id'] = ItemURI::getIdByURI($activity['quote-url']);
+				DI::logger()->info('Quoted post will be fetched via a worker.', ['uri' => $item['uri'], 'uri-id' => $item['uri-id'], 'quote' => $activity['quote-url'], 'quote-uri-id' => $item['quote-uri-id']]);
+			} elseif ($uri_id = ItemURI::getIdByURI($activity['quote-url'], false)) {
+				DI::logger()->info('Quoted post was not fetched but the uri-id exists', ['uri' => $item['uri'], 'uri-id' => $item['uri-id'], 'quote' => $activity['quote-url'], 'quote-uri-id' => $uri_id]);
+				$item['quote-uri-id'] = $uri_id;
+				FetchMissingActivity::add(Worker::PRIORITY_HIGH, $activity['quote-url'], [], '', Receiver::COMPLETION_ASYNC);
 			} else {
-				DI::logger()->notice('Quote was not fetched', ['uri' => $item['uri'], 'uri-id' => $item['uri-id'], 'quote' => $activity['quote-url']]);
+				$item['quote-uri-id'] = ItemURI::getIdByURI($activity['quote-url']);
+				DI::logger()->notice('Quoted post was not fetched by now, a worker will be raised to fetch it.', ['uri' => $item['uri'], 'uri-id' => $item['uri-id'], 'quote' => $activity['quote-url']]);
+				FetchMissingActivity::add(Worker::PRIORITY_HIGH, $activity['quote-url'], [], '', Receiver::COMPLETION_ASYNC);
 			}
 		}
 
@@ -959,30 +1038,10 @@ class Processor
 
 		self::storeReceivers($item['uri-id'], $activity['receiver_urls'] ?? []);
 
-		if (!empty($activity['capabilities'])) {
-			$restrictions = self::storeCapabilities($item['uri-id'], $activity['capabilities']);
-		} elseif (!is_null($activity['can-comment']) && !$activity['can-comment']) {
-			$restrictions = [Tag::CAN_REPLY];
-		} else {
-			$restrictions = [];
-		}
-
-		$item['restrictions'] = null;
-		foreach ($restrictions as $restriction) {
-			if ($restriction == Tag::CAN_REPLY) {
-				$item['restrictions'] = $item['restrictions'] | Item::CANT_REPLY;
-			} elseif ($restriction == Tag::CAN_LIKE) {
-				$item['restrictions'] = $item['restrictions'] | Item::CANT_LIKE;
-			} elseif ($restriction == Tag::CAN_ANNOUNCE) {
-				$item['restrictions'] = $item['restrictions'] | Item::CANT_ANNOUNCE;
-			}
-		}
-
-		if (!empty($item['author-id'])) {
-			$author = Contact::selectFirstAccount(['ap-posting-restricted'], ['id' => $item['author-id']]);
-			if (!empty($author['ap-posting-restricted'])) {
-				$item['restrictions'] = $item['restrictions'] | Item::CANT_REPLY;
-			}
+		if (!empty($activity['interaction'])) {
+			self::storeInteractions($item['uri-id'], $activity['interaction']);
+		} elseif (!empty($activity['capabilities'])) {
+			self::storeCapabilities($item['uri-id'], $activity['capabilities'], $item['author-id']);
 		}
 
 		$item['location'] = $activity['location'];
@@ -1038,6 +1097,11 @@ class Processor
 	 */
 	private static function isSolicitedMessage(array $activity, array $item): bool
 	{
+		if (Post\Quote::existsQuote($item['uri-id'])) {
+			DI::logger()->debug('Message is used in a quote - accepted', ['uri-id' => $item['uri-id'], 'guid' => $item['guid'], 'url' => $item['uri']]);
+			return true;
+		}
+
 		// The checks are split to improve the support when searching why a message was accepted.
 		if (count($activity['receiver']) != 1) {
 			// The message has more than one receiver, so it is wanted.
@@ -1120,35 +1184,18 @@ class Processor
 
 			$item['uid'] = $receiver;
 
-			$type = $activity['reception_type'][$receiver] ?? Receiver::TARGET_UNKNOWN;
-			switch ($type) {
-				case Receiver::TARGET_TO:
-					$item['post-reason'] = Item::PR_TO;
-					break;
-				case Receiver::TARGET_CC:
-					$item['post-reason'] = Item::PR_CC;
-					break;
-				case Receiver::TARGET_BTO:
-					$item['post-reason'] = Item::PR_BTO;
-					break;
-				case Receiver::TARGET_BCC:
-					$item['post-reason'] = Item::PR_BCC;
-					break;
-				case Receiver::TARGET_AUDIENCE:
-					$item['post-reason'] = Item::PR_AUDIENCE;
-					break;
-				case Receiver::TARGET_FOLLOWER:
-					$item['post-reason'] = Item::PR_FOLLOWER;
-					break;
-				case Receiver::TARGET_ANSWER:
-					$item['post-reason'] = Item::PR_COMMENT;
-					break;
-				case Receiver::TARGET_GLOBAL:
-					$item['post-reason'] = Item::PR_GLOBAL;
-					break;
-				default:
-					$item['post-reason'] = Item::PR_NONE;
-			}
+			$type                = $activity['reception_type'][$receiver] ?? Receiver::TARGET_UNKNOWN;
+			$item['post-reason'] = match ($type) {
+				Receiver::TARGET_TO       => Item::PR_TO,
+				Receiver::TARGET_CC       => Item::PR_CC,
+				Receiver::TARGET_BTO      => Item::PR_BTO,
+				Receiver::TARGET_BCC      => Item::PR_BCC,
+				Receiver::TARGET_AUDIENCE => Item::PR_AUDIENCE,
+				Receiver::TARGET_FOLLOWER => Item::PR_FOLLOWER,
+				Receiver::TARGET_ANSWER   => Item::PR_COMMENT,
+				Receiver::TARGET_GLOBAL   => Item::PR_GLOBAL,
+				default                   => Item::PR_NONE,
+			};
 
 			$item['post-reason'] = Item::getPostReason($item);
 
@@ -1196,7 +1243,7 @@ class Processor
 						&& in_array($activity['thread-children-type'] ?? '', Receiver::ACTIVITY_TYPES)) {
 						DI::logger()->info(
 							'Top level post from thread completion from a non sharer had been initiated via an activity, ignoring',
-							['type' => $activity['thread-children-type'], 'user' => $item['uid'], 'causer' => $item['causer-link'], 'author' => $activity['author'], 'url' => $item['uri']]
+							['type' => $activity['thread-children-type'], 'user' => $item['uid'], 'causer' => $item['causer-link'], 'author' => $activity['author'], 'url' => $item['uri']],
 						);
 						continue;
 					}
@@ -1261,9 +1308,14 @@ class Processor
 			}
 		}
 
-		if ($success) {
-			self::processReplies($activity, $item);
+		if ($success && self::shouldCompleteThread($item)) {
+			if (Worker::isInWorkerMode()) {
+				self::processReplies($activity, $item);
+			} else {
+				Worker::add(Worker::PRIORITY_MEDIUM, 'FetchMissingReplies', $item['uri-id'], $activity);
+			}
 		}
+		Item::addPostToChannel($item['uri-id'], $item['uid'] ?? 0);
 	}
 
 	/**
@@ -1313,7 +1365,7 @@ class Processor
 				$has_parents = true;
 			} elseif ($add_parent && Post::exists(['uri-id' => $item['parent-uri-id'], 'uid' => 0])) {
 				$stored      = Item::storeForUserByUriId($item['parent-uri-id'], $receiver, $fields);
-				$has_parents = (bool)$stored;
+				$has_parents = (bool) $stored;
 				if ($stored) {
 					DI::logger()->notice('Inserted missing parent post', ['stored' => $stored, 'uid' => $receiver, 'parent' => $item['parent-uri']]);
 				} else {
@@ -1332,7 +1384,7 @@ class Processor
 				$has_parents = true;
 			} elseif (($has_parents || $add_parent) && Post::exists(['uri-id' => $item['thr-parent-id'], 'uid' => 0])) {
 				$stored      = Item::storeForUserByUriId($item['thr-parent-id'], $receiver, $fields);
-				$has_parents = $has_parents || (bool)$stored;
+				$has_parents = $has_parents || (bool) $stored;
 				if ($stored) {
 					DI::logger()->notice('Inserted missing thread parent post', ['stored' => $stored, 'uid' => $receiver, 'thread-parent' => $item['thr-parent']]);
 				} else {
@@ -1354,21 +1406,21 @@ class Processor
 	 * @param integer $uriid
 	 * @param array $tags
 	 */
-	private static function storeTags(int $uriid, array $tags = null)
+	private static function storeTags(int $uriid, ?array $tags = null)
 	{
 		foreach ($tags as $tag) {
 			if (empty($tag['name']) || empty($tag['type']) || !in_array($tag['type'], ['Mention', 'Hashtag'])) {
 				continue;
 			}
 
-			$hash = substr($tag['name'], 0, 1);
+			$hash = substr((string) $tag['name'], 0, 1);
 			$type = 0;
 
 			if ($tag['type'] == 'Mention') {
 				if (in_array($hash, [Tag::TAG_CHARACTER[Tag::MENTION],
 					Tag::TAG_CHARACTER[Tag::EXCLUSIVE_MENTION],
 					Tag::TAG_CHARACTER[Tag::IMPLICIT_MENTION]])) {
-					$tag['name'] = substr($tag['name'], 1);
+					$tag['name'] = substr((string) $tag['name'], 1);
 				}
 				$type = Tag::IMPLICIT_MENTION;
 
@@ -1380,7 +1432,7 @@ class Processor
 				}
 			} elseif ($tag['type'] == 'Hashtag') {
 				if ($hash == Tag::TAG_CHARACTER[Tag::HASHTAG]) {
-					$tag['name'] = substr($tag['name'], 1);
+					$tag['name'] = substr((string) $tag['name'], 1);
 				}
 				$type = Tag::HASHTAG;
 			}
@@ -1399,9 +1451,9 @@ class Processor
 			foreach ($receivers[$element] ?? [] as $receiver) {
 				if ($receiver == ActivityPub::PUBLIC_COLLECTION) {
 					$name = Receiver::PUBLIC_COLLECTION;
-				} elseif ($path = parse_url($receiver, PHP_URL_PATH)) {
+				} elseif ($path = parse_url((string) $receiver, PHP_URL_PATH)) {
 					$name = trim($path, '/');
-				} elseif ($host = parse_url($receiver, PHP_URL_HOST)) {
+				} elseif ($host = parse_url((string) $receiver, PHP_URL_HOST)) {
 					$name = $host;
 				} else {
 					DI::logger()->warning('Unable to coerce name from receiver', ['element' => $element, 'type' => $type, 'receiver' => $receiver]);
@@ -1415,32 +1467,101 @@ class Processor
 		}
 	}
 
-	private static function storeCapabilities(int $uriid, array $capabilities): array
+	public static function getRestrictions(int $uriid, int $author_id, int $uid): ?int
 	{
-		$restrictions = [];
+		$author = Contact::getAccountById($author_id, ['ap-following', 'ap-followers', 'ap-posting-restricted']);
+		if ($author['ap-posting-restricted']) {
+			return Item::CANT_REPLY;
+		}
+
+		$tags = Tag::getByURIId($uriid, [Tag::CAN_ANNOUNCE, Tag::CAN_LIKE, Tag::CAN_REPLY, Tag::CAN_QUOTE]);
+		if (!is_array($tags) || sizeof($tags) == 0) {
+			return null;
+		}
+
+		$restrictions = 0;
+		foreach ($tags as $tag) {
+			if ($tag['url'] == ActivityPub::PUBLIC_COLLECTION) {
+				continue;
+			}
+
+			if ($uid != 0) {
+				if (User::getIdForURL($tag['url']) == $uid) {
+					continue;
+				}
+				if ($tag['url'] == $author['ap-following'] && Contact::isSharing($author_id, $uid, true)) {
+					continue;
+				}
+				if ($tag['url'] == $author['ap-followers'] && Contact::isFollower($author_id, $uid, true)) {
+					continue;
+				}
+			}
+			if ($tag['type'] == Tag::CAN_REPLY) {
+				$restrictions = $restrictions | Item::CANT_REPLY;
+			} elseif ($tag['type'] == Tag::CAN_LIKE) {
+				$restrictions = $restrictions | Item::CANT_LIKE;
+			} elseif ($tag['type'] == Tag::CAN_ANNOUNCE) {
+				$restrictions = $restrictions | Item::CANT_ANNOUNCE;
+			} elseif ($tag['type'] == Tag::CAN_QUOTE) {
+				$restrictions = $restrictions | Item::CANT_QUOTE;
+			}
+		}
+		DI::logger()->debug('Calculated restrictions', ['uri-id' => $uriid, 'author-id' => $author_id, 'uid' => $uid, 'restrictions' => $restrictions]);
+		return $restrictions;
+	}
+
+	private static function storeInteractions(int $uriid, array $interactions)
+	{
+		foreach ($interactions as $key => $key_interaction) {
+			foreach ($key_interaction as $interaction) {
+				if ($interaction == ActivityPub::PUBLIC_COLLECTION) {
+					$name = Receiver::PUBLIC_COLLECTION;
+				} elseif ($path = parse_url((string) $interaction, PHP_URL_PATH)) {
+					$name = trim($path, '/');
+				} elseif ($host = parse_url((string) $interaction, PHP_URL_HOST)) {
+					$name = $host;
+				} else {
+					DI::logger()->warning('Unable to coerce name from interaction', ['key' => $key, 'interaction' => $interaction]);
+					$name = '';
+				}
+				DI::logger()->debug('Storing interaction', ['uri-id' => $uriid, 'key' => $key, 'name' => $name, 'interaction' => $interaction]);
+				Tag::store($uriid, $key, $name, $interaction);
+			}
+		}
+	}
+
+	private static function storeCapabilities(int $uriid, array $capabilities, int $author_id)
+	{
 		foreach (['pixelfed:canAnnounce' => Tag::CAN_ANNOUNCE, 'pixelfed:canLike' => Tag::CAN_LIKE, 'pixelfed:canReply' => Tag::CAN_REPLY] as $element => $type) {
-			$restricted = true;
+			if (!isset($capabilities[$element])) {
+				$author = Contact::getAccountById($author_id, ['nick', 'url']);
+				if (!$author) {
+					continue;
+				}
+				Tag::store($uriid, $type, $author['nick'] ?: $author['url'], $author['url']);
+				continue;
+			}
 			foreach ($capabilities[$element] ?? [] as $capability) {
 				if ($capability == ActivityPub::PUBLIC_COLLECTION) {
 					$name = Receiver::PUBLIC_COLLECTION;
 				} elseif (empty($capability) || ($capability == '[]')) {
-					continue;
-				} elseif ($path = parse_url($capability, PHP_URL_PATH)) {
+					$author = Contact::getAccountById($author_id, ['nick', 'url']);
+					if (!$author) {
+						continue;
+					}
+					$name       = $author['nick'] ?: $author['url'];
+					$capability = $author['url'];
+				} elseif ($path = parse_url((string) $capability, PHP_URL_PATH)) {
 					$name = trim($path, '/');
-				} elseif ($host = parse_url($capability, PHP_URL_HOST)) {
+				} elseif ($host = parse_url((string) $capability, PHP_URL_HOST)) {
 					$name = $host;
 				} else {
 					DI::logger()->warning('Unable to coerce name from capability', ['element' => $element, 'type' => $type, 'capability' => $capability]);
 					$name = '';
 				}
-				$restricted = false;
 				Tag::store($uriid, $type, $name, $capability);
 			}
-			if ($restricted) {
-				$restrictions[] = $type;
-			}
 		}
-		return $restrictions;
 	}
 
 	/**
@@ -1492,7 +1613,7 @@ class Processor
 				// Trying to generate a title out of the body
 				$title = $item['body'];
 
-				while (preg_match('#^(@\[url=([^\]]+)].*?\[\/url]\s)(.*)#is', $title, $matches)) {
+				while (preg_match('#^(@\[url=([^\]]+)].*?\[\/url]\s)(.*)#is', (string) $title, $matches)) {
 					$title = $matches[3];
 				}
 
@@ -1643,7 +1764,7 @@ class Processor
 	 */
 	public static function fetchMissingActivity(string $url, array $child = [], string $relay_actor = '', int $completion = Receiver::COMPLETION_MANUAL, int $uid = 0): ?string
 	{
-		if (Network::isUrlBlocked($url)) {
+		if (Network::isUriBlocked(new Uri($url))) {
 			return null;
 		}
 
@@ -1673,7 +1794,7 @@ class Processor
 			$object = self::refetchObjectOnHostDifference($object, $url);
 		}
 
-		if (empty($object) || !is_array($object)) {
+		if (empty($object)) {
 			DI::logger()->notice('Invalid JSON data', ['url' => $url, 'content-type' => $curlResult->getContentType()]);
 			return null;
 		}
@@ -1721,7 +1842,11 @@ class Processor
 		$object_id = JsonLD::fetchElement($ldobject, 'as:object', '@id');
 
 		if (!in_array($type, Receiver::CONTENT_TYPES) && !empty($object_id)) {
-			if (($type == 'as:Announce') && !empty($relay_actor) && ($completion = Receiver::COMPLETION_RELAY)) {
+			if (
+				$type == 'as:Announce'
+				&& !empty($relay_actor)
+				&& $completion === Receiver::COMPLETION_RELAY
+			) {
 				if (Item::searchByLink($object_id)) {
 					return $object_id;
 				}
@@ -1796,6 +1921,16 @@ class Processor
 
 	private static function fetchReplies(string $url, array $child)
 	{
+		if (DI::baseUrl()->isLocalUrl($url)) {
+			return;
+		}
+
+		if (self::isFetched($url)) {
+			DI::logger()->debug('Url is already processed', ['url' => $url]);
+			return;
+		}
+		self::addActivityId($url);
+
 		$callstack_count = 0;
 		foreach ($child['callstack'] ?? [] as $function) {
 			if ($function == __FUNCTION__) {
@@ -1832,14 +1967,14 @@ class Processor
 			if (is_array($reply)) {
 				$ldobject = JsonLD::compact($reply);
 				$id       = JsonLD::fetchElement($ldobject, '@id');
-				if (Processor::alreadyKnown($id, $child['id'] ?? '')) {
+				if (is_null($id) || self::alreadyKnown($id, $child['id'] ?? '')) {
 					continue;
 				}
 				if (!empty($child['children']) && in_array($id, $child['children'])) {
 					DI::logger()->debug('Replies id is already in the list of children', ['depth' => count($child['children']), 'children' => $child['children'], 'id' => $id]);
 					continue;
 				}
-				if (parse_url($id, PHP_URL_HOST) == parse_url($url, PHP_URL_HOST)) {
+				if (parse_url((string) $id, PHP_URL_HOST) == parse_url($url, PHP_URL_HOST)) {
 					DI::logger()->debug('Incluced activity will be processed', ['replies' => $url, 'id' => $id]);
 					self::processActivity($reply, $id, $child, '', Receiver::COMPLETION_REPLIES);
 					++$fetched;
@@ -1849,6 +1984,7 @@ class Processor
 				$id = $reply;
 			}
 			if (!self::alreadyKnown($id, $child['id'] ?? '')) {
+				DI::logger()->debug('Fetch missing activity', ['url' => $url, 'id' => $id]);
 				self::fetchMissingActivity($id, $child, '', Receiver::COMPLETION_REPLIES);
 				++$fetched;
 			}
@@ -1887,7 +2023,7 @@ class Processor
 		}
 
 		$url_host = parse_url($url, PHP_URL_HOST);
-		$id_host  = parse_url($id, PHP_URL_HOST);
+		$id_host  = parse_url((string) $id, PHP_URL_HOST);
 
 		if ($id_host == $url_host) {
 			return $object;
@@ -1917,25 +2053,25 @@ class Processor
 		$actor         = JsonLD::fetchElement($ldobject, 'as:actor', '@id');
 		$attributed_to = JsonLD::fetchElement($ldobject, 'as:attributedTo', '@id');
 
-		$id_host = parse_url($id, PHP_URL_HOST);
+		$id_host = parse_url((string) $id, PHP_URL_HOST);
 
 		if (!empty($actor) && !in_array($type, Receiver::CONTENT_TYPES) && !empty($object_id)) {
-			$actor_host = parse_url($actor, PHP_URL_HOST);
+			$actor_host = parse_url((string) $actor, PHP_URL_HOST);
 			if ($actor_host != $id_host) {
 				DI::logger()->notice('Host mismatch between received id and actor', ['id-host' => $id_host, 'actor-host' => $actor_host, 'id' => $id, 'type' => $type, 'object-id' => $object_id, 'object_type' => $object_type, 'actor' => $actor, 'attributed_to' => $attributed_to]);
 				return false;
 			}
 			if (!empty($object_type)) {
 				$object_attributed_to = JsonLD::fetchElement($ldobject['as:object'], 'as:attributedTo', '@id');
-				$attributed_to_host   = parse_url($object_attributed_to, PHP_URL_HOST);
-				$object_id_host       = parse_url($object_id, PHP_URL_HOST);
+				$attributed_to_host   = parse_url((string) $object_attributed_to, PHP_URL_HOST);
+				$object_id_host       = parse_url((string) $object_id, PHP_URL_HOST);
 				if (!empty($attributed_to_host) && ($attributed_to_host != $object_id_host)) {
 					DI::logger()->notice('Host mismatch between received object id and attributed actor', ['id-object-host' => $object_id_host, 'attributed-host' => $attributed_to_host, 'id' => $id, 'type' => $type, 'object-id' => $object_id, 'object_type' => $object_type, 'actor' => $actor, 'object_attributed_to' => $object_attributed_to]);
 					return false;
 				}
 			}
 		} elseif (!empty($attributed_to)) {
-			$attributed_to_host = parse_url($attributed_to, PHP_URL_HOST);
+			$attributed_to_host = parse_url((string) $attributed_to, PHP_URL_HOST);
 			if ($attributed_to_host != $id_host) {
 				DI::logger()->notice('Host mismatch between received id and attributed actor', ['id-host' => $id_host, 'attributed-host' => $attributed_to_host, 'id' => $id, 'type' => $type, 'object-id' => $object_id, 'object_type' => $object_type, 'actor' => $actor, 'attributed_to' => $attributed_to]);
 				return false;
@@ -1994,8 +2130,8 @@ class Processor
 		$attributed_to = JsonLD::fetchElement($activity['as:object'], 'as:attributedTo', '@id');
 		$authorid      = Contact::getIdForURL($attributed_to);
 
-		$content = JsonLD::fetchElement($activity['as:object'], 'as:name', '@value')           ?? '';
-		$content .= ' ' . JsonLD::fetchElement($activity['as:object'], 'as:summary', '@value') ?? '';
+		$content = (string) JsonLD::fetchElement($activity['as:object'], 'as:name', '@value');
+		$content .= ' ' . (string) JsonLD::fetchElement($activity['as:object'], 'as:summary', '@value');
 		$content .= ' ' . HTML::toBBCode(JsonLD::fetchElement($activity['as:object'], 'as:content', '@value') ?? '');
 
 		$attachments = JsonLD::fetchElementArray($activity['as:object'], 'as:attachment') ?? [];
@@ -2012,10 +2148,10 @@ class Processor
 		$tags        = Receiver::processTags(JsonLD::fetchElementArray($activity['as:object'], 'as:tag') ?? []);
 		if (!empty($tags)) {
 			foreach ($tags as $tag) {
-				if (($tag['type'] != 'Hashtag') && !strpos($tag['type'], ':Hashtag') || empty($tag['name'])) {
+				if (($tag['type'] != 'Hashtag') && !strpos((string) $tag['type'], ':Hashtag') || empty($tag['name'])) {
 					continue;
 				}
-				$messageTags[] = ltrim(mb_strtolower($tag['name']), '#');
+				$messageTags[] = ltrim(mb_strtolower((string) $tag['name']), '#');
 			}
 		}
 
@@ -2036,7 +2172,7 @@ class Processor
 		}
 
 		$searchtext = Engagement::getSearchTextForActivity($content, $authorid, $messageTags, $receivers);
-		$languages  = Item::getLanguageArray($content, 1, 0, $authorid);
+		$languages  = DI::contentItem()->getLanguageArray($content, 1, 0, $authorid);
 		$language   = !empty($languages) ? array_key_first($languages) : '';
 		return DI::userDefinedChannel()->match($searchtext, $language);
 	}
@@ -2123,6 +2259,46 @@ class Processor
 		Contact::update(['hub-verify' => $activity['id'], 'protocol' => Protocol::ACTIVITYPUB], ['id' => $cid]);
 
 		DI::logger()->notice('Follow user ' . $uid . ' from contact ' . $cid . ' with id ' . $activity['id']);
+		Queue::remove($activity);
+	}
+
+	/**
+	 * process a "quote" request
+	 *
+	 * @param array $activity
+	 * @return void
+	 * @throws \Friendica\Network\HTTPException\InternalServerErrorException
+	 * @throws \ImagickException
+	 */
+	public static function processQuoteRequest(array $activity)
+	{
+		if (!($post = Post::selectFirst(['author-link', 'uid'], ['uri' => $activity['object_id'], 'origin' => true, 'private' => [Item::PUBLIC, Item::UNLISTED]]))) {
+			DI::logger()->info('Quoted post not found locally or it is not public', ['uri' => $activity['object_id']]);
+			Queue::remove($activity);
+			return;
+		}
+		if (!($contact = Contact::getByURL($activity['actor'], null, ['url']))) {
+			DI::logger()->info('Actor is not a known contact', ['actor' => $activity['actor']]);
+			return;
+		}
+
+		$owner = User::getOwnerDataById($post['uid']);
+		if (!DBA::isResult($owner)) {
+			return;
+		}
+
+		$quote = Post::selectFirst(['guid'], ['uri' => $activity['target_id']]);
+		if (!isset($quote['guid'])) {
+			if (Processor::fetchMissingActivity($activity['target_id'], $activity, '', Receiver::COMPLETION_ANNOUNCE)) {
+				$quote = Post::selectFirst(['guid'], ['uri' => $activity['target_id']]);
+			}
+		}
+		if (!isset($quote['guid'])) {
+			DI::logger()->debug('Remote quote was not found', ['uri' => $activity['target_id']]);
+			return;
+		}
+
+		ActivityPub\Transmitter::acceptQuoteRequest($contact['url'], $activity['target_id'], $quote['guid'], $post['author-link'], $activity['object_id'], $activity['id'], $owner);
 		Queue::remove($activity);
 	}
 
@@ -2342,6 +2518,7 @@ class Processor
 			$check_id = true;
 		}
 
+		// @todo this is triggered by follow request done by the system user. Question is if we should care.
 		if (empty($uid)) {
 			DI::logger()->notice('User could not be detected', ['activity' => $activity]);
 			Queue::remove($activity);
@@ -2586,8 +2763,8 @@ class Processor
 					continue;
 				}
 
-				$hash = substr($tag['name'], 0, 1);
-				$name = substr($tag['name'], 1);
+				$hash = substr((string) $tag['name'], 0, 1);
+				$name = substr((string) $tag['name'], 1);
 				if (!in_array($hash, Tag::TAG_CHARACTER)) {
 					$hash = '';
 					$name = $tag['name'];

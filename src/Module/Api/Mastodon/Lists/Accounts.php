@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -102,7 +102,7 @@ class Accounts extends BaseApi
 			self::setBoundaries($member['contact-id']);
 			try {
 				$accounts[] = DI::mstdnAccount()->createFromContactId($member['contact-id'], $uid);
-			} catch (\Exception $exception) {
+			} catch (\Exception) {
 			}
 		}
 		DBA::close($members);
@@ -111,7 +111,7 @@ class Accounts extends BaseApi
 			$accounts = array_reverse($accounts);
 		}
 
-		self::setLinkHeader();
-		$this->jsonExit($accounts);
+		$this->setPaginationLinkHeader();
+		$this->earlyJsonExit($accounts);
 	}
 }

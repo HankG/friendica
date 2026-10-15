@@ -1,4 +1,4 @@
-REM SPDX-FileCopyrightText: 2010 - 2024 the Friendica project
+REM SPDX-FileCopyrightText: 2010-2026 the Friendica project
 REM
 REM SPDX-License-Identifier: CC0-1.0
 

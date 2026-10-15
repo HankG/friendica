@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -77,7 +77,7 @@ class Authorize extends BaseApi
 		}
 
 		if ($application['redirect_uri'] != 'urn:ietf:wg:oauth:2.0:oob') {
-			DI::appHelper()->redirect($request['redirect_uri'] . (strpos($request['redirect_uri'], '?') ? '&' : '?') . http_build_query(['code' => $token['code'], 'state' => $request['state']]));
+			DI::appHelper()->redirect($request['redirect_uri'] . (strpos((string) $request['redirect_uri'], '?') ? '&' : '?') . http_build_query(['code' => $token['code'], 'state' => $request['state']]));
 		}
 
 		self::$oauth_code = $token['code'];

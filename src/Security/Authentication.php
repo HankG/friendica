@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -14,8 +14,8 @@ use Friendica\App\Request;
 use Friendica\AppHelper;
 use Friendica\Core\Config\Capability\IManageConfigValues;
 use Friendica\Core\PConfig\Capability\IManagePersonalConfigValues;
-use Friendica\Core\Hook;
 use Friendica\Core\Session\Capability\IHandleUserSessions;
+use Friendica\Event\ArrayFilterEvent;
 use Friendica\Core\System;
 use Friendica\Database\Database;
 use Friendica\Database\DBA;
@@ -37,26 +37,6 @@ use Psr\Log\LoggerInterface;
  */
 class Authentication
 {
-	/** @var IManageConfigValues */
-	private $config;
-	/** @var Mode */
-	private $mode;
-	/** @var BaseURL */
-	private $baseUrl;
-	/** @var L10n */
-	private $l10n;
-	/** @var Database */
-	private $dba;
-	/** @var LoggerInterface */
-	private $logger;
-	/** @var Cookie */
-	private $cookie;
-	/** @var IHandleUserSessions */
-	private $session;
-	/** @var IManagePersonalConfigValues */
-	private $pConfig;
-	/** @var AppHelper */
-	private $appHelper;
 	/** @var string */
 	private $remoteAddress;
 
@@ -87,28 +67,18 @@ class Authentication
 	 * @param Request                     $request
 	 */
 	public function __construct(
-		IManageConfigValues $config,
-		Mode $mode,
-		BaseURL $baseUrl,
-		L10n $l10n,
-		Database $dba,
-		LoggerInterface $logger,
-		Cookie $cookie,
-		IHandleUserSessions $session,
-		IManagePersonalConfigValues $pConfig,
-		AppHelper $appHelper,
-		Request $request
+		private readonly IManageConfigValues $config,
+		private readonly Mode $mode,
+		private readonly BaseURL $baseUrl,
+		private readonly L10n $l10n,
+		private readonly Database $dba,
+		private readonly LoggerInterface $logger,
+		private readonly Cookie $cookie,
+		private readonly IHandleUserSessions $session,
+		private readonly IManagePersonalConfigValues $pConfig,
+		private readonly AppHelper $appHelper,
+		Request $request,
 	) {
-		$this->config        = $config;
-		$this->mode          = $mode;
-		$this->baseUrl       = $baseUrl;
-		$this->l10n          = $l10n;
-		$this->dba           = $dba;
-		$this->logger        = $logger;
-		$this->cookie        = $cookie;
-		$this->session       = $session;
-		$this->pConfig       = $pConfig;
-		$this->appHelper     = $appHelper;
 		$this->remoteAddress = $request->getRemoteAddress();
 	}
 
@@ -131,12 +101,14 @@ class Authentication
 					'account_expired' => false,
 					'account_removed' => false,
 					'verified'        => true,
-				]
+				],
 			);
 			if ($this->dba->isResult($user)) {
-				if (!$this->cookie->comparePrivateDataHash($this->cookie->get('hash'),
+				if (!$this->cookie->comparePrivateDataHash(
+					$this->cookie->get('hash'),
 					$user['password'] ?? '',
-					$user['prvkey'] ?? '')
+					$user['prvkey']   ?? '',
+				)
 				) {
 					$this->logger->notice("Hash doesn't fit.", ['user' => $this->cookie->get('uid')]);
 					$this->session->clear();
@@ -170,10 +142,12 @@ class Authentication
 			$check = $this->config->get('system', 'paranoia');
 			// extra paranoia - if the IP changed, log them out
 			if ($check && ($this->session->get('addr') != $this->remoteAddress)) {
-				$this->logger->notice('Session address changed. Paranoid setting in effect, blocking session. ', [
-					'addr'        => $this->session->get('addr'),
-					'remote_addr' => $this->remoteAddress
-				]
+				$this->logger->notice(
+					'Session address changed. Paranoid setting in effect, blocking session. ',
+					[
+						'addr'        => $this->session->get('addr'),
+						'remote_addr' => $this->remoteAddress,
+					],
 				);
 				$this->session->clear();
 				$this->baseUrl->redirect();
@@ -188,7 +162,7 @@ class Authentication
 					'account_expired' => false,
 					'account_removed' => false,
 					'verified'        => true,
-				]
+				],
 			);
 			if (!$this->dba->isResult($user)) {
 				$this->session->clear();
@@ -219,7 +193,7 @@ class Authentication
 
 		// Otherwise it's probably an openid.
 		try {
-			$openid           = new LightOpenID($this->baseUrl->getHost());
+			$openid = new LightOpenID($this->baseUrl->getHost());
 			/** @phpstan-ignore-next-line $openid->identity is private, but will be set via magic setter */
 			$openid->identity = $openid_url;
 			$this->session->set('openid', $openid_url);
@@ -254,9 +228,9 @@ class Authentication
 			$record = $this->dba->selectFirst(
 				'user',
 				[],
-				['uid' => User::getIdFromPasswordAuthentication($username, $password, false, true)]
+				['uid' => User::getIdFromPasswordAuthentication($username, $password, false, true)],
 			);
-		} catch (Exception $e) {
+		} catch (Exception) {
 			$this->logger->warning('authenticate: failed login attempt', ['action' => 'login', 'username' => $username, 'ip' => $this->remoteAddress]);
 			DI::sysmsg()->addNotice($this->l10n->t('Login failed. Please check your credentials.'));
 			$this->baseUrl->redirect();
@@ -289,6 +263,7 @@ class Authentication
 		/**
 		 * @see User::getPasswordRegExp()
 		 */
+		/** @phpstan-ignore identical.alwaysTrue(value of PASSWORD_DEFAULT will be change in a future PHP version) */
 		if (PASSWORD_DEFAULT === PASSWORD_BCRYPT && strlen($password) > 72) {
 			$return_path = '/security/password_too_long?' . http_build_query(['return_path' => $return_path]);
 		}
@@ -310,7 +285,7 @@ class Authentication
 	 * @throws HTTPException\MovedPermanentlyException
 	 * @throws HTTPException\TemporaryRedirectException
 	 * @throws HTTPException\ForbiddenException
-
+	 *
 	 * @throws HTTPException\InternalServerErrorException In case of Friendica specific exceptions
 	 *
 	 */
@@ -332,11 +307,12 @@ class Authentication
 
 		$this->session->setVisitorsContacts($my_url);
 
-		$member_since = strtotime($user_record['register_date']);
+		$member_since = strtotime((string) $user_record['register_date']);
 		$this->session->set('new_member', time() < ($member_since + (60 * 60 * 24 * 14)));
 
-		if (strlen($user_record['timezone'])) {
+		if (strlen((string) $user_record['timezone'])) {
 			$this->appHelper->setTimeZone($user_record['timezone']);
+			$this->session->set('timezone', $user_record['timezone']);
 		}
 
 		$contact = $this->dba->selectFirst('contact', ['id'], ['uid' => $user_record['uid'], 'self' => true]);
@@ -384,7 +360,7 @@ class Authentication
 		}
 
 		if ($login_initial) {
-			Hook::callAll('logged_in', $user_record);
+			DI::eventDispatcher()->dispatch(new ArrayFilterEvent(ArrayFilterEvent::LOGGED_IN, $user_record));
 		}
 	}
 
@@ -439,7 +415,7 @@ class Authentication
 					// Invalid trusted cookie value, removing it
 					$this->cookie->unset('trusted');
 				}
-			} catch (\Throwable $e) {
+			} catch (\Throwable) {
 				// Local trusted browser record was probably removed by the user, we carry on with 2FA
 			}
 		}

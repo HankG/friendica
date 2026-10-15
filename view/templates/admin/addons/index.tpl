@@ -1,6 +1,6 @@
 {{*
-  * Copyright (C) 2010-2024, the Friendica project
-  * SPDX-FileCopyrightText: 2010-2024 the Friendica project
+  * Copyright (C) 2010-2026, the Friendica project
+  * SPDX-FileCopyrightText: 2010-2026 the Friendica project
   *
   * SPDX-License-Identifier: AGPL-3.0-or-later
   *}}
@@ -12,7 +12,7 @@
 	{{$noplugshint}}
 	</div>
 {{else}}
-	<a class="btn" href="{{$baseurl}}/admin/{{$function}}?action=reload&amp;t={{$form_security_token}}">{{$reload}}</a>
+	<p><a class="btn btn-primary" href="{{$baseurl}}/admin/{{$function}}?action=reload&amp;t={{$form_security_token}}">{{$reload}}</a></p>
 	<ul id="addonslist">
 	{{foreach $addons as $p}}
 		<li class="addon {{$p.1}}">

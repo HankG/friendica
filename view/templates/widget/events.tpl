@@ -1,12 +1,15 @@
 {{*
-  * Copyright (C) 2010-2024, the Friendica project
-  * SPDX-FileCopyrightText: 2010-2024 the Friendica project
+  * Copyright (C) 2010-2026, the Friendica project
+  * SPDX-FileCopyrightText: 2010-2026 the Friendica project
   *
   * SPDX-License-Identifier: AGPL-3.0-or-later
   *}}
 
 <nav id="sidebar-calendar" class="widget">
-  <h3>{{$etitle}}</h3>
+  <h3>
+    <i class="ri ri-upload-line" aria-hidden="true"></i>
+    {{$etitle}}
+  </h3>
 
   <ul class="sidebar-calendar-export-ul">
     <li class="sidebar-calendar-export-li"><a href="calendar/export/{{$user}}/ical">{{$export_ical}}</a></li>

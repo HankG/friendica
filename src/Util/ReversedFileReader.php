@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -14,8 +14,8 @@ namespace Friendica\Util;
  */
 class ReversedFileReader implements \Iterator
 {
-	const BUFFER_SIZE = 4096;
-	const SEPARATOR   = "\n";
+	public const BUFFER_SIZE = 4096;
+	public const SEPARATOR   = "\n";
 
 	/** @var resource */
 	private $fh = null;

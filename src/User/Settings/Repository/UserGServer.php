@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -23,14 +23,16 @@ class UserGServer extends BaseRepository
 {
 	protected static $table_name = 'user-gserver';
 
-	/** @var UserGServerFactory */
-	protected $factory;
 	/** @var GServer */
 	protected $gserverRepository;
 
-	public function __construct(GServer $gserverRepository, Database $database, LoggerInterface $logger, UserGServerFactory $factory)
-	{
-		parent::__construct($database, $logger, $factory);
+	public function __construct(
+		GServer $gserverRepository,
+		Database $database,
+		LoggerInterface $logger,
+		private readonly UserGServerFactory $entityFactory,
+	) {
+		parent::__construct($database, $logger, $entityFactory);
 
 		$this->gserverRepository = $gserverRepository;
 	}
@@ -44,8 +46,8 @@ class UserGServer extends BaseRepository
 	{
 		try {
 			return $this->selectOneByUserAndServer($uid, $gsid, $hydrate);
-		} catch (NotFoundException $e) {
-			return $this->factory->createFromUserAndServer($uid, $gsid, $hydrate ? $this->gserverRepository->selectOneById($gsid) : null);
+		} catch (NotFoundException) {
+			return $this->getFactory()->createFromUserAndServer($uid, $gsid, $hydrate ? $this->gserverRepository->selectOneById($gsid) : null);
 		}
 	}
 
@@ -98,6 +100,13 @@ class UserGServer extends BaseRepository
 		}
 	}
 
+	/** @not-deprecated */
+	protected function getFactory(): UserGServerFactory
+	{
+		return $this->entityFactory;
+	}
+
+	/** @not-deprecated */
 	protected function _selectOne(array $condition, array $params = [], bool $hydrate = true): UserGServerEntity
 	{
 		$fields = $this->db->selectFirst(static::$table_name, [], $condition, $params);
@@ -105,7 +114,7 @@ class UserGServer extends BaseRepository
 			throw new NotFoundException();
 		}
 
-		return $this->factory->createFromTableRow($fields, $hydrate ? $this->gserverRepository->selectOneById($fields['gsid']) : null);
+		return $this->getFactory()->createFromTableRow($fields, $hydrate ? $this->gserverRepository->selectOneById($fields['gsid']) : null);
 	}
 
 	/**
@@ -117,7 +126,7 @@ class UserGServer extends BaseRepository
 
 		$Entities = new UserGServersCollection();
 		foreach ($rows as $fields) {
-			$Entities[] = $this->factory->createFromTableRow($fields, $hydrate ? $this->gserverRepository->selectOneById($fields['gsid']) : null);
+			$Entities[] = $this->getFactory()->createFromTableRow($fields, $hydrate ? $this->gserverRepository->selectOneById($fields['gsid']) : null);
 		}
 
 		return $Entities;

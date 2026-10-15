@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -33,11 +33,16 @@ class Token extends BaseDataTransferObject
 	 * @param string $access_token Token string
 	 * @param string $token_type   Always "Bearer"
 	 * @param string $scope        Combination of "read write follow push"
-	 * @param string $created_at   Creation date of the token 
+	 * @param string $created_at   Creation date of the token
 	 * @param string $me           Actor profile of the token owner
 	 */
-	public function __construct(string $access_token, string $token_type, string $scope, string $created_at, string $me = null)
-	{
+	public function __construct(
+		string $access_token,
+		string $token_type,
+		string $scope,
+		string $created_at,
+		?string $me = null,
+	) {
 		$this->access_token = $access_token;
 		$this->token_type   = $token_type;
 		$this->scope        = $scope;

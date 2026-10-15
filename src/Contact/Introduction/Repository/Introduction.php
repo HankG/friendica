@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -20,14 +20,20 @@ use Psr\Log\LoggerInterface;
 
 class Introduction extends BaseRepository
 {
-	/** @var IntroductionFactory */
-	protected $factory;
-
 	protected static $table_name = 'intro';
 
-	public function __construct(Database $database, LoggerInterface $logger, IntroductionFactory $factory)
+	public function __construct(
+		Database $database,
+		LoggerInterface $logger,
+		private readonly IntroductionFactory $entityFactory,
+	) {
+		parent::__construct($database, $logger, $entityFactory);
+	}
+
+	/** @not-deprecated */
+	protected function getFactory(): IntroductionFactory
 	{
-		parent::__construct($database, $logger, $factory);
+		return $this->entityFactory;
 	}
 
 	/**
@@ -35,9 +41,9 @@ class Introduction extends BaseRepository
 	 */
 	private function selectOne(array $condition, array $params = []): IntroductionEntity
 	{
-		$fields = $this->_selectFirstRowAsArray( $condition, $params);
+		$fields = $this->_selectFirstRowAsArray($condition, $params);
 
-		return $this->factory->createFromTableRow($fields);
+		return $this->getFactory()->createFromTableRow($fields);
 	}
 
 	/**
@@ -85,7 +91,7 @@ class Introduction extends BaseRepository
 				['order' => ['id' => 'DESC']],
 				$min_id,
 				$max_id,
-				$limit
+				$limit,
 			);
 		} catch (\Exception $e) {
 			throw new IntroductionPersistenceException(sprintf('Cannot select Introductions for used %d', $uid), $e);
@@ -160,7 +166,7 @@ class Introduction extends BaseRepository
 
 			if ($introduction->id) {
 				$this->db->update(self::$table_name, $fields, ['id' => $introduction->id]);
-				return $this->factory->createFromTableRow($fields);
+				return $this->getFactory()->createFromTableRow($fields);
 			} else {
 				$this->db->insert(self::$table_name, $fields);
 				return $this->selectOneById($this->db->lastInsertId(), $introduction->uid);

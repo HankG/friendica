@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -33,6 +33,15 @@ $(document).ready(function () {
 
 	// Click event listener for the album drop link/button.
 	$("body").on("click", "#album-drop-link", function () {
+		var modalUrl = $(this).attr("data-modal-url");
+
+		if (typeof modalUrl !== "undefined") {
+			addToModal(modalUrl);
+		}
+	});
+
+	// Click event listener for the photo delete link/button.
+	$("body").on("click", "#photo-delete-link", function () {
 		var modalUrl = $(this).attr("data-modal-url");
 
 		if (typeof modalUrl !== "undefined") {

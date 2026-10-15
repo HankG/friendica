@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -37,12 +37,12 @@ class CalendarExport
 			return '';
 		}
 
-		$tpl = Renderer::getMarkupTemplate('widget/events.tpl');
+		$tpl    = Renderer::getMarkupTemplate('widget/events.tpl');
 		$return = Renderer::replaceMacros($tpl, [
 			'$etitle'      => DI::l10n()->t('Export'),
 			'$export_ical' => DI::l10n()->t('Export calendar as ical'),
 			'$export_csv'  => DI::l10n()->t('Export calendar as csv'),
-			'$user'        => $user['nickname']
+			'$user'        => $user['nickname'],
 		]);
 
 		return $return;

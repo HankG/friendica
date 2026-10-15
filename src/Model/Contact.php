@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -11,11 +11,10 @@ use Exception;
 use Friendica\Contact\Avatar;
 use Friendica\Contact\Header;
 use Friendica\Contact\Introduction\Exception\IntroductionNotFoundException;
-use Friendica\Content\Conversation as ConversationContent;
+use Friendica\Content\Conversation\ConversationRenderer;
 use Friendica\Content\Pager;
 use Friendica\Content\Text\HTML;
 use Friendica\Core\Protocol;
-use Friendica\Core\Renderer;
 use Friendica\Core\System;
 use Friendica\Core\Worker;
 use Friendica\Database\Database;
@@ -36,22 +35,27 @@ use Friendica\Util\Images;
 use Friendica\Util\Network;
 use Friendica\Util\Proxy;
 use Friendica\Util\Strings;
+use Friendica\Worker\AddContact;
+use Friendica\Worker\ContactDiscovery;
+use Friendica\Worker\ContactDiscoveryForUser;
 use Friendica\Worker\UpdateContact;
+use GuzzleHttp\Psr7\Uri;
+use Friendica\Content\Post\Entity\PostMedia;
 
 /**
  * functions for interacting with a contact
  */
 class Contact
 {
-	const DEFAULT_AVATAR_PHOTO = '/images/person-300.jpg';
-	const DEFAULT_AVATAR_THUMB = '/images/person-80.jpg';
-	const DEFAULT_AVATAR_MICRO = '/images/person-48.jpg';
+	public const DEFAULT_AVATAR_PHOTO = '/images/person-300.jpg';
+	public const DEFAULT_AVATAR_THUMB = '/images/person-80.jpg';
+	public const DEFAULT_AVATAR_MICRO = '/images/person-48.jpg';
 
 	/**
 	 * @}
 	 */
 
-	const LOCK_INSERT = 'contact-insert';
+	public const LOCK_INSERT = 'contact-insert';
 
 	/**
 	 * Account types
@@ -74,12 +78,12 @@ class Contact
 	 *      This will only be assigned to contacts, not to user accounts
 	 * @{
 	 */
-	const TYPE_UNKNOWN      = -1;
-	const TYPE_PERSON       = User::ACCOUNT_TYPE_PERSON;
-	const TYPE_ORGANISATION = User::ACCOUNT_TYPE_ORGANISATION;
-	const TYPE_NEWS         = User::ACCOUNT_TYPE_NEWS;
-	const TYPE_COMMUNITY    = User::ACCOUNT_TYPE_COMMUNITY;
-	const TYPE_RELAY        = User::ACCOUNT_TYPE_RELAY;
+	public const TYPE_UNKNOWN      = -1;
+	public const TYPE_PERSON       = User::ACCOUNT_TYPE_PERSON;
+	public const TYPE_ORGANISATION = User::ACCOUNT_TYPE_ORGANISATION;
+	public const TYPE_NEWS         = User::ACCOUNT_TYPE_NEWS;
+	public const TYPE_COMMUNITY    = User::ACCOUNT_TYPE_COMMUNITY;
+	public const TYPE_RELAY        = User::ACCOUNT_TYPE_RELAY;
 	/**
 	 * @}
 	 */
@@ -90,11 +94,11 @@ class Contact
 	 * Relationship types
 	 * @{
 	 */
-	const NOTHING  = 0; // There is no relationship between the contact and the user
-	const FOLLOWER = 1; // The contact is following this user (the contact is the subscriber)
-	const SHARING  = 2; // The contact shares their content with this user (the user is the subscriber)
-	const FRIEND   = 3; // There is a mutual relationship between the contact and the user
-	const SELF     = 4; // This is the user theirself
+	public const NOTHING  = 0; // There is no relationship between the contact and the user
+	public const FOLLOWER = 1; // The contact is following this user (the contact is the subscriber)
+	public const SHARING  = 2; // The contact shares their content with this user (the user is the subscriber)
+	public const FRIEND   = 3; // There is a mutual relationship between the contact and the user
+	public const SELF     = 4; // This is the user theirself
 	/**
 	 * @}
 	 */
@@ -184,14 +188,16 @@ class Contact
 			'failure_update', 'failed', 'term-date', 'last-item', 'last-discovery', 'local-data',
 			'readonly', 'contact-type', 'manually-approve', 'archive', 'unsearchable', 'sensitive',
 			'baseurl', 'gsid', 'bd', 'photo', 'thumb', 'micro', 'name-date', 'uri-date', 'avatar-date',
-			'request', 'confirm', 'poco', 'writable', 'forum', 'prv', 'bdyear'
+			'request', 'confirm', 'poco', 'writable', 'forum', 'prv', 'bdyear',
 		];
 		$contact = self::selectFirst($fields, ['id' => $cid]);
 		if (empty($contact)) {
 			return false;
 		}
-		$contact['uid'] = 0;
-		return (bool)self::insert($contact);
+		$contact['uid']     = 0;
+		$contact['blocked'] = false;
+		$contact['pending'] = false;
+		return (bool) self::insert($contact);
 	}
 
 	/**
@@ -218,7 +224,13 @@ class Contact
 
 		$fields = DI::dbaDefinition()->truncateFieldsForTable('contact', $fields);
 		DBA::insert('contact', $fields, $duplicate_mode);
-		$contact = DBA::selectFirst('contact', [], ['id' => DBA::lastInsertId()]);
+		$id = DBA::lastInsertId();
+		if ($id == 0) {
+			DI::logger()->warning('Contact was not created', ['fields' => $fields]);
+			return 0;
+		}
+
+		$contact = DBA::selectFirst('contact', [], ['id' => $id]);
 		if (!DBA::isResult($contact)) {
 			// Shouldn't happen
 			DI::logger()->warning('Created contact could not be found', ['fields' => $fields]);
@@ -234,7 +246,7 @@ class Contact
 			$duplicate = DBA::selectFirst('contact', [], ['id' => $account_user['id'], 'deleted' => false]);
 			if (!empty($duplicate['id'])) {
 				$ret = Contact::deleteById($contact['id']);
-				DI::logger()->notice('Deleted duplicated contact', ['ret' => $ret, 'account-user' => $account_user, 'cid' => $duplicate['id'], 'uid' => $duplicate['uid'], 'uri-id' => $duplicate['uri-id'], 'url' => $duplicate['url']]);
+				DI::logger()->notice('Deleted duplicated contact', ['ret' => $ret, 'id' => $contact['id'], 'account-user' => $account_user, 'cid' => $duplicate['id'], 'uid' => $duplicate['uid'], 'uri-id' => $duplicate['uri-id'], 'url' => $duplicate['url']]);
 				$contact = $duplicate;
 			} else {
 				$ret = DBA::update('account-user', ['id' => $contact['id']], ['uid' => $contact['uid'], 'uri-id' => $contact['uri-id']]);
@@ -245,7 +257,7 @@ class Contact
 		Contact\User::insertForContactArray($contact);
 
 		if ((empty($contact['baseurl']) || empty($contact['gsid'])) && Probe::isProbable($contact['network'])) {
-			DI::logger()->debug('Update missing baseurl', ['id' => $contact['id'], 'url' => $contact['url'], 'callstack' => System::callstack(4, 0, true)]);
+			DI::logger()->debug('Update missing baseurl', ['id' => $contact['id'], 'url' => $contact['url'], 'callstack' => System::callstack(4, 0)]);
 			UpdateContact::add(['priority' => Worker::PRIORITY_MEDIUM, 'dont_fork' => true], $contact['id']);
 		}
 
@@ -403,7 +415,7 @@ class Contact
 		}
 
 		// Update the contact in the background if needed
-		if (UpdateContact::isUpdatable($contact['id'])) {
+		if (UpdateContact::isUpdatable($contact['id']) && !UpdateContact::workerLimitReached()) {
 			try {
 				UpdateContact::add(['priority' => Worker::PRIORITY_LOW, 'dont_fork' => true], $contact['id']);
 			} catch (\InvalidArgumentException $e) {
@@ -425,7 +437,7 @@ class Contact
 	 *
 	 * @param string  $url    profile url
 	 * @param integer $uid    User ID of the contact
-	 * @param boolean $update true = always update, false = never update, null = update when not found or outdated
+	 * @param boolean|null $update true = always update, false = never update, null = update when not found or outdated
 	 * @param array   $fields Field list
 	 * @return array contact array
 	 */
@@ -815,7 +827,7 @@ class Contact
 		$user = DBA::selectFirst(
 			'user',
 			['uid', 'username', 'nickname', 'pubkey', 'prvkey'],
-			['uid' => $uid, 'account_removed' => false, 'account_expired' => false]
+			['uid' => $uid, 'account_removed' => false, 'account_expired' => false],
 		);
 		if (!DBA::isResult($user)) {
 			return false;
@@ -843,14 +855,14 @@ class Contact
 			'uri-date'    => DateTimeFormat::utcNow(),
 			'avatar-date' => DateTimeFormat::utcNow(),
 			'baseurl'     => DI::baseUrl(),
-			'closeness'   => 0
+			'closeness'   => 0,
 		];
 
 		$return = true;
 
 		// Only create the entry if it doesn't exist yet
 		if (!DBA::exists('contact', ['uid' => $uid, 'self' => true])) {
-			$return = (bool)self::insert($contact);
+			$return = (bool) self::insert($contact);
 		}
 
 		// Create the public contact
@@ -878,7 +890,7 @@ class Contact
 		$fields = [
 			'id', 'uri-id', 'name', 'nick', 'location', 'about', 'keywords', 'avatar', 'prvkey', 'pubkey', 'manually-approve',
 			'xmpp', 'matrix', 'contact-type', 'forum', 'prv', 'avatar-date', 'url', 'nurl', 'unsearchable',
-			'photo', 'thumb', 'micro', 'header', 'addr', 'request', 'notify', 'poll', 'confirm', 'poco', 'network', 'baseurl', 'gsid'
+			'photo', 'thumb', 'micro', 'header', 'addr', 'request', 'notify', 'poll', 'confirm', 'poco', 'network', 'baseurl', 'gsid',
 		];
 		$self = DBA::selectFirst('contact', $fields, ['uid' => $uid, 'self' => true]);
 		if (!DBA::isResult($self)) {
@@ -893,7 +905,7 @@ class Contact
 
 		$fields = [
 			'name', 'photo', 'thumb', 'about', 'address', 'locality', 'region',
-			'country-name', 'pub_keywords', 'xmpp', 'matrix', 'net-publish'
+			'country-name', 'pub_keywords', 'xmpp', 'matrix', 'net-publish',
 		];
 		$profile = DBA::selectFirst('profile', $fields, ['uid' => $uid]);
 		if (!DBA::isResult($profile)) {
@@ -931,7 +943,7 @@ class Contact
 			}
 
 			// We are adding a timestamp value so that other systems won't use cached content
-			$timestamp = strtotime($fields['avatar-date']);
+			$timestamp = strtotime((string) $fields['avatar-date']);
 
 			$prefix = DI::baseUrl() . '/photo/' . $avatar['resource-id'] . '-';
 			$suffix = Images::getExtensionByMimeType($avatar['type']) . '?ts=' . $timestamp;
@@ -978,7 +990,7 @@ class Contact
 			// Update the profile
 			$fields = [
 				'photo' => User::getAvatarUrl($user),
-				'thumb' => User::getAvatarUrl($user, Proxy::SIZE_THUMB)
+				'thumb' => User::getAvatarUrl($user, Proxy::SIZE_THUMB),
 			];
 
 			DBA::update('profile', $fields, ['uid' => $uid]);
@@ -1255,11 +1267,11 @@ class Contact
 		if ($contact['contact-type'] == Contact::TYPE_COMMUNITY) {
 			$mention_label = DI::l10n()->t('Post to group');
 			$mention_url   = 'compose/0?body=!' . $contact['addr'];
-			$network_label = DI::l10n()->t('View group');
+			$network_label = DI::l10n()->t('Group posts');
 		} else {
 			$mention_label = DI::l10n()->t('Mention');
 			$mention_url   = 'compose/0?body=@' . $contact['addr'];
-			$network_label = DI::l10n()->t('Network Posts');
+			$network_label = DI::l10n()->t('Posts');
 		}
 		$network_url = 'contact/' . $contact['id'] . '/conversations';
 
@@ -1267,9 +1279,9 @@ class Contact
 		$unfollow_link = '';
 		if (!$contact['self'] && Protocol::supportsFollow($contact['network'])) {
 			if ($contact['uid'] && in_array($contact['rel'], [self::SHARING, self::FRIEND])) {
-				$unfollow_link = 'contact/unfollow?url=' . urlencode($contact['url']) . '&auto=1';
+				$unfollow_link = 'contact/unfollow?url=' . urlencode((string) $contact['url']) . '&auto=1';
 			} elseif (!$contact['pending']) {
-				$follow_link = 'contact/follow?binurl=' . bin2hex($contact['url']) . '&auto=1';
+				$follow_link = 'contact/follow?binurl=' . bin2hex((string) $contact['url']) . '&auto=1';
 			}
 		}
 
@@ -1295,7 +1307,7 @@ class Contact
 				'photos'   => [DI::l10n()->t('View Photos'), $photos_link, true],
 				'network'  => [$network_label, $network_url, false],
 				'edit'     => [DI::l10n()->t('View Contact'), $contact_url, false],
-				'pm'       => [DI::l10n()->t('Send PM'), $pm_url, false],
+				'pm'       => [DI::l10n()->t('Message'), $pm_url, false],
 				'follow'   => [DI::l10n()->t('Connect/Follow'), $follow_link, true],
 				'unfollow' => [DI::l10n()->t('Unfollow'), $unfollow_link, true],
 				'mention'  => [$mention_label, $mention_url, false],
@@ -1361,7 +1373,7 @@ class Contact
 	 * @throws InternalServerErrorException
 	 * @throws \ImagickException
 	 */
-	public static function getIdForURL(string $url = null, int $uid = 0, $update = null, array $default = []): int
+	public static function getIdForURL(?string $url = null, int $uid = 0, $update = null, array $default = []): int
 	{
 		$contact_id = 0;
 
@@ -1375,7 +1387,7 @@ class Contact
 		if (!empty($contact)) {
 			$contact_id = $contact['id'];
 
-			if (UpdateContact::isUpdatable($contact['id'])) {
+			if (UpdateContact::isUpdatable($contact['id']) && !UpdateContact::workerLimitReached()) {
 				try {
 					UpdateContact::add(['priority' => Worker::PRIORITY_LOW, 'dont_fork' => true], $contact['id']);
 				} catch (\InvalidArgumentException $e) {
@@ -1414,7 +1426,7 @@ class Contact
 			$fields = [
 				'name', 'nick', 'url', 'addr', 'alias', 'avatar', 'header', 'contact-type',
 				'keywords', 'location', 'about', 'unsearchable', 'batch', 'notify', 'poll',
-				'request', 'confirm', 'poco', 'subscribe', 'network', 'baseurl', 'gsid'
+				'request', 'confirm', 'poco', 'subscribe', 'network', 'baseurl', 'gsid',
 			];
 
 			$personal_contact = DBA::selectFirst('contact', $fields, ["`addr` = ? AND `uid` != 0", $url]);
@@ -1497,17 +1509,13 @@ class Contact
 		if ($data['network'] == Protocol::DIASPORA) {
 			try {
 				DI::dsprContact()->updateFromProbeArray($data);
-			} catch (NotFoundException $e) {
-				DI::logger()->notice($e->getMessage(), ['url' => $url, 'data' => $data]);
-			} catch (\InvalidArgumentException $e) {
+			} catch (NotFoundException|\InvalidArgumentException $e) {
 				DI::logger()->notice($e->getMessage(), ['url' => $url, 'data' => $data]);
 			}
 		} elseif (!empty($data['networks'][Protocol::DIASPORA])) {
 			try {
 				DI::dsprContact()->updateFromProbeArray($data['networks'][Protocol::DIASPORA]);
-			} catch (NotFoundException $e) {
-				DI::logger()->notice($e->getMessage(), ['url' => $url, 'data' => $data['networks'][Protocol::DIASPORA]]);
-			} catch (\InvalidArgumentException $e) {
+			} catch (NotFoundException|\InvalidArgumentException $e) {
 				DI::logger()->notice($e->getMessage(), ['url' => $url, 'data' => $data['networks'][Protocol::DIASPORA]]);
 			}
 		}
@@ -1586,7 +1594,7 @@ class Contact
 			return false;
 		}
 
-		if (Network::isUrlBlocked($blocked['url'])) {
+		if (Network::isUriBlocked(new Uri($blocked['url']))) {
 			return true;
 		}
 
@@ -1616,29 +1624,29 @@ class Contact
 	/**
 	 * Returns posts from a given contact url
 	 *
-	 * @param string $contact_url  Contact URL
-	 * @param int    $uid          User ID
-	 * @param bool   $only_media   Only display media content
-	 * @param string $last_created Newest creation date, used for paging
+	 * @param string $contact_url Contact URL
+	 * @param int    $uid         User ID
+	 * @param bool   $only_media  Only display media content
+	 * @param array  $request     Request variables
 	 * @return string posts in HTML
 	 * @throws Exception
 	 */
-	public static function getPostsFromUrl(string $contact_url, int $uid, bool $only_media = false, string $last_created = null): string
+	public static function getPostsFromUrl(string $contact_url, int $uid, bool $only_media = false, array $request = []): string
 	{
-		return self::getPostsFromId(self::getIdForURL($contact_url), $uid, $only_media, $last_created);
+		return self::getPostsFromId(self::getIdForURL($contact_url), $uid, $only_media, $request);
 	}
 
 	/**
 	 * Returns posts from a given contact id
 	 *
-	 * @param int    $cid          Contact ID
-	 * @param int    $uid          User ID
-	 * @param bool   $only_media   Only display media content
-	 * @param string $last_created Newest creation date, used for paging
+	 * @param int  $cid        Contact ID
+	 * @param int  $uid        User ID
+	 * @param bool $only_media Only display media content
+	 * @param array $request   Request variables
 	 * @return string posts in HTML
 	 * @throws Exception
 	 */
-	public static function getPostsFromId(int $cid, int $uid, bool $only_media = false, string $last_created = null): string
+	public static function getPostsFromId(int $cid, int $uid, bool $only_media = false, array $request = []): string
 	{
 		$contact = DBA::selectFirst('contact', ['contact-type', 'network', 'name', 'nick'], ['id' => $cid]);
 		if (!DBA::isResult($contact)) {
@@ -1659,14 +1667,14 @@ class Contact
 
 		$condition = DBA::mergeConditions($condition, ["`$contact_field` = ? AND `gravity` IN (?, ?)", $cid, Item::GRAVITY_PARENT, Item::GRAVITY_COMMENT]);
 
-		if (!empty($last_created)) {
-			$condition = DBA::mergeConditions($condition, ["`created` < ?", $last_created]);
+		if (!empty($request['last_created'])) {
+			$condition = DBA::mergeConditions($condition, ["`created` < ?", $request['last_created']]);
 		}
 
 		if ($only_media) {
 			$condition = DBA::mergeConditions($condition, [
-				"`uri-id` IN (SELECT `uri-id` FROM `post-media` WHERE `type` IN (?, ?, ?))",
-				Post\Media::AUDIO, Post\Media::IMAGE, Post\Media::VIDEO
+				"`uri-id` IN (SELECT `uri-id` FROM `post-media` WHERE `type` IN (?, ?, ?, ?))",
+				PostMedia::TYPE_AUDIO, PostMedia::TYPE_IMAGE, PostMedia::TYPE_VIDEO, PostMedia::TYPE_HLS,
 			]);
 		}
 
@@ -1679,21 +1687,13 @@ class Contact
 		$pager = new Pager(DI::l10n(), DI::args()->getQueryString(), $itemsPerPage);
 
 		$params = ['order' => ['created' => true], 'limit' => [$pager->getStart(), $pager->getItemsPerPage()]];
-
-		if (DI::pConfig()->get($uid, 'system', 'infinite_scroll')) {
-			$tpl = Renderer::getMarkupTemplate('infinite_scroll_head.tpl');
-			$o   = Renderer::replaceMacros($tpl, ['$reload_uri' => DI::args()->getQueryString()]);
-		} else {
-			$o = '';
-		}
-
 		$fields = array_merge(Item::DISPLAY_FIELDLIST, ['featured']);
 		$items  = Post::toArray(Post::selectForUser($uid, $fields, $condition, $params));
 
-		$o .= DI::conversation()->render($items, ConversationContent::MODE_CONTACT_POSTS);
+		$o = DI::conversationRenderer()->renderFlat($items, ConversationRenderer::MODE_CONTACT_POSTS, false, $uid);
 
-		if (DI::pConfig()->get($uid, 'system', 'infinite_scroll')) {
-			$o .= HTML::scrollLoader();
+		if (DI::pConfig()->get($uid, 'system', 'infinite_scroll', true)) {
+			$o .= HTML::scrollLoader($request);
 		} else {
 			$o .= $pager->renderMinimal(count($items));
 		}
@@ -1704,13 +1704,14 @@ class Contact
 	/**
 	 * Returns threads from a given contact id
 	 *
-	 * @param int  $cid         Contact ID
-	 * @param int  $update      Update mode
-	 * @param int  $parent      Item parent ID for the update mode
+	 * @param int   $cid     Contact ID
+	 * @param int   $update  Update mode
+	 * @param int   $parent  Item parent ID for the update mode
+	 * @param array $request Request variables
 	 * @return string posts in HTML
 	 * @throws Exception
 	 */
-	public static function getThreadsFromId(int $cid, int $uid, int $update = 0, int $parent = 0, string $last_created = ''): string
+	public static function getThreadsFromId(int $cid, int $uid, int $update = 0, int $parent = 0, array $request = []): string
 	{
 		$contact = DBA::selectFirst('contact', ['contact-type', 'network', 'name', 'nick'], ['id' => $cid]);
 		if (!DBA::isResult($contact)) {
@@ -1729,8 +1730,8 @@ class Contact
 
 		if (!empty($parent)) {
 			$condition = DBA::mergeConditions($condition, ['parent' => $parent]);
-		} elseif (!empty($last_created)) {
-			$condition = DBA::mergeConditions($condition, ["`created` < ?", $last_created]);
+		} elseif (isset($request['last_created'])) {
+			$condition = DBA::mergeConditions($condition, ["`created` < ?", $request['last_created']]);
 		}
 
 		$contact_field = ((($contact["contact-type"] == self::TYPE_COMMUNITY) || ($contact['network'] == Protocol::MAIL)) ? 'owner-id' : 'author-id');
@@ -1743,18 +1744,11 @@ class Contact
 
 		$pager = new Pager(DI::l10n(), DI::args()->getQueryString(), $itemsPerPage);
 
-		if (DI::pConfig()->get($uid, 'system', 'infinite_scroll')) {
-			$tpl = Renderer::getMarkupTemplate('infinite_scroll_head.tpl');
-			$o   = Renderer::replaceMacros($tpl, ['$reload_uri' => DI::args()->getQueryString()]);
-		} else {
-			$o = '';
-		}
-
 		$condition1 = DBA::mergeConditions($condition, ["`$contact_field` = ? AND `gravity` = ?", $cid, Item::GRAVITY_PARENT]);
 
 		$condition2 = DBA::mergeConditions($condition, [
 			"`author-id` = ? AND `gravity` = ? AND `vid` = ? AND `protocol` != ? AND `thr-parent-id` = `parent-uri-id`",
-			$cid, Item::GRAVITY_ACTIVITY, Verb::getID(Activity::ANNOUNCE), Conversation::PARCEL_DIASPORA
+			$cid, Item::GRAVITY_ACTIVITY, Verb::getID(Activity::ANNOUNCE), Conversation::PARCEL_DIASPORA,
 		]);
 
 		$sql1 = "SELECT `uri-id`, `created` FROM `post-thread-user-view` WHERE " . array_shift($condition1);
@@ -1767,17 +1761,19 @@ class Contact
 		$union = array_merge($union, [$pager->getStart(), $pager->getItemsPerPage()]);
 		$items = Post::toArray(DBA::p($sql, $union));
 
-		if (empty($last_created) && ($pager->getStart() == 0)) {
-			$fields = ['uri-id', 'thr-parent-id', 'gravity', 'author-id', 'created'];
+		$raw = isset($request['mode']) && ($request['mode'] == 'raw');
+
+		if (!$raw && !$update && ($pager->getStart() == 0)) {
+			$fields = ['uri-id', 'created'];
 			$pinned = Post\Collection::selectToArrayForContact($cid, Post\Collection::FEATURED, $fields);
 			$items  = array_merge($items, $pinned);
 		}
 
-		$o .= DI::conversation()->render($items, ConversationContent::MODE_CONTACTS, $update, false, 'pinned_created', $uid);
+		$o = DI::conversationRenderer()->renderThreaded($items, ConversationRenderer::MODE_CONTACTS, $update || $raw, ConversationRenderer::ORDER_PINNED_CREATED, $uid, $request);
 
 		if (!$update) {
-			if (DI::pConfig()->get($uid, 'system', 'infinite_scroll')) {
-				$o .= HTML::scrollLoader();
+			if (DI::pConfig()->get($uid, 'system', 'infinite_scroll', true)) {
+				$o .= HTML::scrollLoader($request);
 			} else {
 				$o .= $pager->renderMinimal(count($items));
 			}
@@ -1796,27 +1792,13 @@ class Contact
 	 */
 	public static function getAccountType(int $type): string
 	{
-		switch ($type) {
-			case self::TYPE_ORGANISATION:
-				$account_type = DI::l10n()->t("Organisation");
-				break;
-
-			case self::TYPE_NEWS:
-				$account_type = DI::l10n()->t('News');
-				break;
-
-			case self::TYPE_COMMUNITY:
-				$account_type = DI::l10n()->t("Group");
-				break;
-
-			case self::TYPE_RELAY:
-				$account_type = DI::l10n()->t("Relay");
-				break;
-
-			default:
-				$account_type = "";
-				break;
-		}
+		$account_type = match ($type) {
+			self::TYPE_ORGANISATION => DI::l10n()->t("Organisation"),
+			self::TYPE_NEWS         => DI::l10n()->t('News'),
+			self::TYPE_COMMUNITY    => DI::l10n()->t("Group"),
+			self::TYPE_RELAY        => DI::l10n()->t("Relay"),
+			default                 => "",
+		};
 
 		return $account_type;
 	}
@@ -1828,7 +1810,7 @@ class Contact
 	 * @param string $reason Block reason
 	 * @return bool Whether it was successful
 	 */
-	public static function block(int $cid, string $reason = null): bool
+	public static function block(int $cid, ?string $reason = null): bool
 	{
 		$return = self::update(['blocked' => true, 'block_reason' => $reason], ['id' => $cid]);
 
@@ -1844,6 +1826,32 @@ class Contact
 	public static function unblock(int $cid): bool
 	{
 		$return = self::update(['blocked' => false, 'block_reason' => null], ['id' => $cid]);
+
+		return $return;
+	}
+
+	/**
+	 * Hides a contact
+	 *
+	 * @param int $cid Contact id to hide
+	 * @return bool Whether it was successful
+	 */
+	public static function hide(int $cid): bool
+	{
+		$return = self::update(['hidden' => true], ['id' => $cid]);
+
+		return $return;
+	}
+
+	/**
+	 * Unhide a contact
+	 *
+	 * @param int $cid Contact id to unhide
+	 * @return bool Whether it was successful
+	 */
+	public static function unhide(int $cid): bool
+	{
+		$return = self::update(['hidden' => false], ['id' => $cid]);
 
 		return $return;
 	}
@@ -2025,29 +2033,22 @@ class Contact
 			$platform = '';
 		}
 
-		switch ($platform) {
-			case 'friendica':
-			case 'friendika':
-				$header = DI::baseUrl() . (new Header(DI::config()))->getMastodonBannerPath();
-				break;
-			case 'diaspora':
-				/**
-				 * Picture credits
-				 * @author  John Liu <https://www.flickr.com/photos/8047705@N02/>
-				 * @license CC BY 2.0 https://creativecommons.org/licenses/by/2.0/
-				 * @link    https://www.flickr.com/photos/8047705@N02/5572197407
-				 */
-				$header = DI::baseUrl() . '/images/diaspora-banner.jpg';
-				break;
-			default:
-				/**
-				 * Use a random picture.
-				 * The service provides random pictures from Unsplash.
-				 * @license https://unsplash.com/license
-				 */
-				$header = 'https://picsum.photos/seed/' . hash('ripemd128', $contact['url']) . '/960/300';
-				break;
-		}
+		$header = match ($platform) {
+			'friendica', 'friendika' => DI::baseUrl() . (new Header(DI::config()))->getMastodonBannerPath(),
+			/**
+			 * Picture credits
+			 * @author  John Liu <https://www.flickr.com/photos/8047705@N02/>
+			 * @license CC BY 2.0 https://creativecommons.org/licenses/by/2.0/
+			 * @link    https://www.flickr.com/photos/8047705@N02/5572197407
+			 */
+			'diaspora' => DI::baseUrl() . '/images/diaspora-banner.jpg',
+			/**
+			 * Use a random picture.
+			 * The service provides random pictures from Unsplash.
+			 * @license https://unsplash.com/license
+			 */
+			default => 'https://picsum.photos/seed/' . hash('ripemd128', (string) $contact['url']) . '/960/300',
+		};
 
 		return $header;
 	}
@@ -2258,7 +2259,7 @@ class Contact
 		}
 		$query_params = [];
 		if ($updated) {
-			$query_params['ts'] = strtotime($updated);
+			$query_params['ts'] = strtotime((string) $updated);
 		}
 		if ($static) {
 			$query_params['static'] = true;
@@ -2279,7 +2280,7 @@ class Contact
 	{
 		$condition = [
 			"`nurl` = ? AND ((`uid` = ? AND `network` IN (?, ?)) OR `uid` = ?)",
-			Strings::normaliseLink($url), $uid, Protocol::FEED, Protocol::MAIL, 0
+			Strings::normaliseLink($url), $uid, Protocol::FEED, Protocol::MAIL, 0,
 		];
 		$contact = self::selectFirst(['id', 'updated'], $condition, ['order' => ['uid' => true]]);
 		return self::getAvatarUrlForId($contact['id'] ?? 0, $size, $contact['updated'] ?? '');
@@ -2304,7 +2305,7 @@ class Contact
 			$guid    = $account['guid']    ?? '';
 		}
 
-		$guid = urlencode($guid);
+		$guid = urlencode((string) $guid);
 
 		$url = DI::baseUrl() . '/photo/header/';
 		switch ($size) {
@@ -2327,7 +2328,7 @@ class Contact
 
 		$query_params = [];
 		if ($updated) {
-			$query_params['ts'] = strtotime($updated);
+			$query_params['ts'] = strtotime((string) $updated);
 		}
 		if ($static) {
 			$query_params['static'] = true;
@@ -2354,7 +2355,7 @@ class Contact
 		$contact = DBA::selectFirst(
 			'contact',
 			['uid', 'avatar', 'photo', 'thumb', 'micro', 'blurhash', 'xmpp', 'addr', 'nurl', 'url', 'network', 'uri-id'],
-			['id' => $cid, 'self' => false]
+			['id' => $cid, 'self' => false],
 		);
 		if (!DBA::isResult($contact)) {
 			return;
@@ -2436,7 +2437,7 @@ class Contact
 					'avatar-date' => DateTimeFormat::utcNow(),
 					'photo'       => $avatar,
 					'thumb'       => self::getDefaultAvatar($contact, Proxy::SIZE_THUMB),
-					'micro'       => self::getDefaultAvatar($contact, Proxy::SIZE_MICRO)
+					'micro'       => self::getDefaultAvatar($contact, Proxy::SIZE_MICRO),
 				];
 				DI::logger()->debug('Use default avatar', ['id' => $cid, 'uid' => $uid]);
 			}
@@ -2508,7 +2509,7 @@ class Contact
 			$personal_contacts = DBA::select(
 				'contact',
 				['id', 'uid'],
-				["`nurl` = ? AND `id` != ? AND NOT `self`", $contact['nurl'], $cid]
+				["`nurl` = ? AND `id` != ? AND NOT `self`", $contact['nurl'], $cid],
 			);
 			while ($personal_contact = DBA::fetch($personal_contacts)) {
 				$cids[] = $personal_contact['id'];
@@ -2705,9 +2706,9 @@ class Contact
 			return true;
 		}
 
-		$stamp = (float)microtime(true);
+		$stamp = (float) microtime(true);
 		self::updateFromProbe($id);
-		DI::logger()->debug('Contact data is updated.', ['duration' => round((float)microtime(true) - $stamp, 3), 'id' => $id, 'url' => $contact['url']]);
+		DI::logger()->debug('Contact data is updated.', ['duration' => round((float) microtime(true) - $stamp, 3), 'id' => $id, 'url' => $contact['url']]);
 		return true;
 	}
 
@@ -2723,7 +2724,7 @@ class Contact
 		if (!empty($id)) {
 			return self::updateByIdIfNeeded($id);
 		}
-		return (bool)self::getIdForURL($url);
+		return (bool) self::getIdForURL($url);
 	}
 
 	/**
@@ -2744,10 +2745,10 @@ class Contact
 
 		$data = Probe::uri($contact['url'], $network, $contact['uid']);
 
-		if (in_array($data['network'], Protocol::FEDERATED) && (parse_url($data['url'], PHP_URL_SCHEME) == 'http')) {
+		if (in_array($data['network'], Protocol::FEDERATED) && (parse_url((string) $data['url'], PHP_URL_SCHEME) == 'http')) {
 			$ssl_url  = str_replace('http://', 'https://', $contact['url']);
 			$ssl_data = Probe::uri($ssl_url, $network, $contact['uid']);
-			if (($ssl_data['network'] == $data['network']) && (parse_url($ssl_data['url'], PHP_URL_SCHEME) != 'http')) {
+			if (($ssl_data['network'] == $data['network']) && (parse_url((string) $ssl_data['url'], PHP_URL_SCHEME) != 'http')) {
 				$data = $ssl_data;
 			}
 		}
@@ -2755,17 +2756,13 @@ class Contact
 		if ($data['network'] == Protocol::DIASPORA) {
 			try {
 				DI::dsprContact()->updateFromProbeArray($data);
-			} catch (NotFoundException $e) {
-				DI::logger()->notice($e->getMessage(), ['id' => $id, 'network' => $network, 'contact' => $contact, 'data' => $data]);
-			} catch (\InvalidArgumentException $e) {
+			} catch (NotFoundException|\InvalidArgumentException $e) {
 				DI::logger()->notice($e->getMessage(), ['id' => $id, 'network' => $network, 'contact' => $contact, 'data' => $data]);
 			}
 		} elseif (!empty($data['networks'][Protocol::DIASPORA])) {
 			try {
 				DI::dsprContact()->updateFromProbeArray($data['networks'][Protocol::DIASPORA]);
-			} catch (NotFoundException $e) {
-				DI::logger()->notice($e->getMessage(), ['id' => $id, 'network' => $network, 'contact' => $contact, 'data' => $data]);
-			} catch (\InvalidArgumentException $e) {
+			} catch (NotFoundException|\InvalidArgumentException $e) {
 				DI::logger()->notice($e->getMessage(), ['id' => $id, 'network' => $network, 'contact' => $contact, 'data' => $data]);
 			}
 		}
@@ -2836,7 +2833,7 @@ class Contact
 			'uid', 'uri-id', 'avatar', 'header', 'name', 'nick', 'location', 'keywords', 'about', 'subscribe',
 			'manually-approve', 'unsearchable', 'url', 'addr', 'batch', 'notify', 'poll', 'request', 'confirm', 'poco',
 			'network', 'alias', 'baseurl', 'gsid', 'forum', 'prv', 'contact-type', 'pubkey', 'last-item', 'xmpp', 'matrix',
-			'created', 'last-update'
+			'created', 'last-update',
 		];
 
 		/** @var array<string,mixed> */
@@ -2910,8 +2907,8 @@ class Contact
 		// We must not try to update relay contacts via probe. They are no real contacts.
 		// See Relay::updateContact() for more details.
 		// We check after the probing to be able to correct falsely detected contact types.
-		if (($contact['contact-type'] == self::TYPE_RELAY) && Strings::compareLink($contact['url'], $contact['baseurl'] ?? '') &&
-			(!Strings::compareLink($ret['url'], $contact['url']) || in_array($ret['network'], [Protocol::FEED, Protocol::PHANTOM]))
+		if (($contact['contact-type'] == self::TYPE_RELAY) && Strings::compareLink($contact['url'], $contact['baseurl'] ?? '')
+			&& (!Strings::compareLink($ret['url'], $contact['url']) || in_array($ret['network'], [Protocol::FEED, Protocol::PHANTOM]))
 		) {
 			if (GServer::reachable($contact)) {
 				self::updateContact($id, $uid, $uriid, $contact['url'], ['failed' => false, 'local-data' => $has_local_data, 'last-update' => $updated, 'next-update' => $success_next_update, 'success_update' => $updated, 'unsearchable' => true]);
@@ -2946,8 +2943,8 @@ class Contact
 			$ret['prv']          = false;
 			$ret['contact-type'] = $ret['account-type'];
 			if (($ret['contact-type'] == User::ACCOUNT_TYPE_COMMUNITY) && isset($ret['manually-approve'])) {
-				$ret['forum'] = (bool)!$ret['manually-approve'];
-				$ret['prv']   = (bool)!$ret['forum'];
+				$ret['forum'] = (bool) !$ret['manually-approve'];
+				$ret['prv']   = (bool) !$ret['forum'];
 			}
 		}
 
@@ -2966,7 +2963,7 @@ class Contact
 		}
 
 		$update = false;
-		$guid   = ($ret['guid'] ?? '') ?: Item::guidFromUri($ret['url'], $ret['baseurl'] ?? $ret['alias'] ?? '');
+		$guid   = ($ret['guid'] ?? '') ?: DI::postUriGenerator()->guidFromUri($ret['url'], $ret['baseurl'] ?? $ret['alias'] ?? '');
 
 		// make sure to not overwrite existing values with blank entries except some technical fields
 		$keep = ['batch', 'notify', 'poll', 'request', 'confirm', 'poco', 'baseurl'];
@@ -2997,8 +2994,8 @@ class Contact
 		if (!$update) {
 			self::updateContact($id, $uid, $uriid, $contact['url'], ['failed' => false, 'local-data' => $has_local_data, 'last-update' => $updated, 'next-update' => $success_next_update, 'success_update' => $updated]);
 
-			if (Contact\Relation::isDiscoverable($ret['url'])) {
-				Worker::add(Worker::PRIORITY_LOW, 'ContactDiscovery', $ret['url']);
+			if (Contact\Relation::isDiscoverable($ret['url']) && !ContactDiscovery::workerLimitReached()) {
+				ContactDiscovery::add(Worker::PRIORITY_LOW, $ret['url']);
 			}
 
 			// Update the public contact
@@ -3041,8 +3038,8 @@ class Contact
 
 		self::updateContact($id, $uid, $ret['uri-id'], $ret['url'], $ret);
 
-		if (Contact\Relation::isDiscoverable($ret['url'])) {
-			Worker::add(Worker::PRIORITY_LOW, 'ContactDiscovery', $ret['url']);
+		if (Contact\Relation::isDiscoverable($ret['url']) && !ContactDiscovery::workerLimitReached()) {
+			ContactDiscovery::add(Worker::PRIORITY_LOW, $ret['url']);
 		}
 
 		return true;
@@ -3144,7 +3141,7 @@ class Contact
 			return $result;
 		}
 
-		if (Network::isUrlBlocked($url)) {
+		if (Network::isUriBlocked(new Uri($url))) {
 			$result['message'] = DI::l10n()->t('Blocked domain');
 			return $result;
 		}
@@ -3205,7 +3202,7 @@ class Contact
 
 		// do we have enough information?
 		if (empty($protocol) || ($protocol == Protocol::PHANTOM) || (empty($ret['url']) && empty($ret['addr']))) {
-			$result['message'] .= DI::l10n()->t('The profile address specified does not provide adequate information.') . '<br />';
+			$result['message'] .= DI::l10n()->t('The handle specified does not provide adequate information.') . '<br />';
 			if (empty($ret['poll'])) {
 				$result['message'] .= DI::l10n()->t('No compatible communication protocols or feeds were discovered.') . '<br />';
 			}
@@ -3215,7 +3212,7 @@ class Contact
 			if (empty($ret['url'])) {
 				$result['message'] .= DI::l10n()->t('No browser URL could be matched to this address.') . '<br />';
 			}
-			if (strpos($ret['url'], '@') !== false) {
+			if (str_contains((string) $ret['url'], '@')) {
 				$result['message'] .= DI::l10n()->t('Unable to match @-style Identity Address with a known protocol or email contact.') . '<br />';
 				$result['message'] .= DI::l10n()->t('Use mailto: in front of address to force email check.') . '<br />';
 			}
@@ -3230,7 +3227,7 @@ class Contact
 
 		$pending = false;
 		if (($protocol == Protocol::ACTIVITYPUB) && isset($ret['manually-approve'])) {
-			$pending = (bool)$ret['manually-approve'];
+			$pending = (bool) $ret['manually-approve'];
 		}
 
 		$writeable = in_array($protocol, [Protocol::MAIL, Protocol::DIASPORA, Protocol::ACTIVITYPUB]);
@@ -3365,8 +3362,8 @@ class Contact
 
 			// Contact is blocked at user-level
 			if (
-				!empty($contact['id']) && !empty($importer['id']) &&
-				Contact\User::isBlocked($contact['id'], $importer['id'])
+				!empty($contact['id']) && !empty($importer['id'])
+				&& Contact\User::isBlocked($contact['id'], $importer['id'])
 			) {
 				return false;
 			}
@@ -3379,7 +3376,7 @@ class Contact
 			) {
 				self::update(
 					['rel' => self::FRIEND, 'writable' => true, 'pending' => false],
-					['id' => $contact['id'], 'uid' => $importer['uid']]
+					['id' => $contact['id'], 'uid' => $importer['uid']],
 				);
 			}
 
@@ -3441,7 +3438,7 @@ class Contact
 					$intro = DI::introFactory()->createNew(
 						$importer['uid'],
 						$contact_record['id'],
-						$note
+						$note,
 					);
 					DI::intro()->save($intro);
 				}
@@ -3506,7 +3503,7 @@ class Contact
 			return;
 		}
 
-		Worker::add(Worker::PRIORITY_LOW, 'ContactDiscoveryForUser', $contact['uid']);
+		ContactDiscoveryForUser::add(Worker::PRIORITY_LOW, $contact['uid']);
 
 		self::clearFollowerFollowingEndpointCache($contact['uid']);
 
@@ -3538,7 +3535,7 @@ class Contact
 			self::update(['rel' => self::FOLLOWER, 'pending' => false], ['id' => $contact['id']]);
 		}
 
-		Worker::add(Worker::PRIORITY_LOW, 'ContactDiscoveryForUser', $contact['uid']);
+		ContactDiscoveryForUser::add(Worker::PRIORITY_LOW, $contact['uid']);
 	}
 
 	/**
@@ -3558,7 +3555,7 @@ class Contact
 			AND NOT `contact`.`deleted`',
 			DBA::NULL_DATE,
 			self::SHARING,
-			self::FRIEND
+			self::FRIEND,
 		];
 
 		$contacts = DBA::select('contact', ['id', 'uid', 'name', 'url', 'bd'], $condition);
@@ -3566,14 +3563,14 @@ class Contact
 		while ($contact = DBA::fetch($contacts)) {
 			DI::logger()->notice('update_contact_birthday: ' . $contact['bd']);
 
-			$nextbd = DateTimeFormat::utcNow('Y') . substr($contact['bd'], 4);
+			$nextbd = DateTimeFormat::utcNow('Y') . substr((string) $contact['bd'], 4);
 
 			if (Event::createBirthday($contact, $nextbd)) {
 				// update bdyear
 				DBA::update(
 					'contact',
 					['bdyear' => substr($nextbd, 0, 4), 'bd' => $nextbd],
-					['id'     => $contact['id']]
+					['id'     => $contact['id']],
 				);
 			}
 		}
@@ -3604,13 +3601,18 @@ class Contact
 	}
 
 	/**
-	 * Return the link to the profile
+	 * Return the profile link for a given contact array
 	 *
-	 * @param array $contact
-	 * @return string
+	 * Returns the alias if it is set, otherwise returns the URL
+	 *
+	 * @param array $contact Contact record
+	 * @return string The profile link (alias or url)
 	 */
 	public static function getProfileLink(array $contact): string
 	{
+		if ($contact['network'] === Protocol::ATPROTO) {
+			return DI::atpActor()->getProfileLink($contact['url'], DI::userSession()->getLocalUserId()) ?: $contact['alias'];
+		}
 		if (!empty($contact['alias']) && Network::isValidHttpUrl($contact['alias']) && (($contact['network'] ?? '') != Protocol::DFRN)) {
 			return $contact['alias'];
 		} else {
@@ -3659,7 +3661,7 @@ class Contact
 	 */
 	public static function magicLinkById(int $cid, string $url = ''): string
 	{
-		if (($url == '') && DI::userSession()->isAuthenticated() && DI::pConfig()->get(DI::userSession()->getLocalUserId(), 'system', 'stay_local')) {
+		if (($url == '') && DI::userSession()->isAuthenticated() && DI::pConfig()->get(DI::userSession()->getLocalUserId(), 'system', 'stay_local', true)) {
 			return 'contact/' . $cid . '/conversations';
 		}
 
@@ -3689,7 +3691,7 @@ class Contact
 			return $destination;
 		}
 
-		if (DI::pConfig()->get(DI::userSession()->getLocalUserId(), 'system', 'stay_local') && ($url == '')) {
+		if (DI::pConfig()->get(DI::userSession()->getLocalUserId(), 'system', 'stay_local', true) && ($url == '')) {
 			return 'contact/' . $contact['id'] . '/conversations';
 		}
 
@@ -3698,7 +3700,7 @@ class Contact
 		}
 
 		// Only redirections to the same host do make sense
-		if (($url != '') && (parse_url($url, PHP_URL_HOST) != parse_url($contact['url'], PHP_URL_HOST))) {
+		if (($url != '') && (parse_url($url, PHP_URL_HOST) != parse_url((string) $contact['url'], PHP_URL_HOST))) {
 			return $url;
 		}
 
@@ -3747,10 +3749,11 @@ class Contact
 	 */
 	public static function canReceivePrivateMessages(array $contact): bool
 	{
-		$protocol = $contact['network'] ?? $contact['protocol'] ?? Protocol::PHANTOM;
-		$self     = $contact['self']    ?? false;
+		$protocol = $contact['network']      ?? $contact['protocol'] ?? Protocol::PHANTOM;
+		$self     = $contact['self']         ?? false;
+		$type     = $contact['contact-type'] ?? Contact::TYPE_UNKNOWN;
 
-		return in_array($protocol, [Protocol::DFRN, Protocol::DIASPORA, Protocol::ACTIVITYPUB]) && !$self;
+		return in_array($protocol, [Protocol::DFRN, Protocol::DIASPORA, Protocol::ACTIVITYPUB]) && !$self && ($type != Contact::TYPE_COMMUNITY);
 	}
 
 	/**
@@ -3784,7 +3787,7 @@ class Contact
 			'failed'        => false,
 			'deleted'       => false,
 			'unsearchable'  => false,
-			'uid'           => $uid
+			'uid'           => $uid,
 		];
 
 		if (!$show_blocked) {
@@ -3814,7 +3817,7 @@ class Contact
 
 		$condition = DBA::mergeConditions(
 			$condition,
-			["(`addr` LIKE ? OR `name` LIKE ? OR `nick` LIKE ?)", $search, $search, $search]
+			["(`addr` LIKE ? OR `name` LIKE ? OR `nick` LIKE ?)", $search, $search, $search],
 		);
 
 		return DBA::selectToArray('account-user-view', [], $condition, $params);
@@ -3839,7 +3842,7 @@ class Contact
 			}
 			$contact = self::getByURL($url, false, ['id', 'network', 'next-update']);
 			if (empty($contact['id']) && Network::isValidHttpUrl($url)) {
-				Worker::add(Worker::PRIORITY_LOW, 'AddContact', 0, $url);
+				AddContact::add(Worker::PRIORITY_LOW, 0, $url);
 				++$added;
 			} elseif (!empty($contact['network']) && Protocol::supportsProbe($contact['network']) && ($contact['next-update'] < DateTimeFormat::utcNow())) {
 				try {
@@ -3888,5 +3891,38 @@ class Contact
 	public static function exists(array $condition): bool
 	{
 		return DBA::exists('contact', $condition);
+	}
+
+	/**
+	 * Returns the type of the given contact
+	 *
+	 * @param int    $id  The contact id
+	 * @param string $url The contact url
+	 * @return bool[] [administrator, moderator]
+	 * @throws \Exception
+	 */
+	public static function getType(int $id, string $url): array
+	{
+		$administrator = false;
+		$moderator     = false;
+		if (Contact::isLocalById($id)) {
+			$local_id = User::getIdForURL($url);
+			// check if contact is a Moderator
+			if (User::isModerator($local_id)) {
+				$moderator = true;
+			}
+			// check if contact is an Admin
+			if (User::isSiteAdmin($local_id)) {
+				$administrator = true;
+				$moderator     = false;
+				// do not show as Admin if this is a subaccount of an Admin
+				$check = User::getById($local_id, ['parent-uid']);
+				if ($check['parent-uid']) {
+					$administrator = false;
+				}
+			}
+		}
+
+		return [$administrator, $moderator];
 	}
 }

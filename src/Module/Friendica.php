@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -32,21 +32,12 @@ use Psr\Log\LoggerInterface;
  */
 class Friendica extends BaseModule
 {
-	private AddonHelper $addonHelper;
-	private EventDispatcherInterface $eventDispatcher;
-	/** @var IManageConfigValues */
-	private $config;
-	/** @var IManageKeyValuePairs */
-	private $keyValue;
-	/** @var IHandleUserSessions */
-	private $session;
-
 	public function __construct(
-		AddonHelper $addonHelper,
-		EventDispatcherInterface $eventDispatcher,
-		IHandleUserSessions $session,
-		IManageKeyValuePairs $keyValue,
-		IManageConfigValues $config,
+		private readonly AddonHelper $addonHelper,
+		private readonly EventDispatcherInterface $eventDispatcher,
+		private readonly IHandleUserSessions $session,
+		private readonly IManageKeyValuePairs $keyValue,
+		private readonly IManageConfigValues $config,
 		L10n $l10n,
 		BaseURL $baseUrl,
 		Arguments $args,
@@ -54,15 +45,9 @@ class Friendica extends BaseModule
 		Profiler $profiler,
 		Response $response,
 		array $server,
-		array $parameters = []
+		array $parameters = [],
 	) {
 		parent::__construct($l10n, $baseUrl, $args, $logger, $profiler, $response, $server, $parameters);
-
-		$this->config          = $config;
-		$this->keyValue        = $keyValue;
-		$this->session         = $session;
-		$this->eventDispatcher = $eventDispatcher;
-		$this->addonHelper     = $addonHelper;
 	}
 
 	protected function content(array $request = []): string
@@ -93,9 +78,9 @@ class Friendica extends BaseModule
 			];
 		}
 
-		$tos = ($this->config->get('system', 'tosdisplay')) ?
-			$this->t('Read about the <a href="%1$s/tos">Terms of Service</a> of this node.', $this->baseUrl) :
-			'';
+		$tos = ($this->config->get('system', 'tosdisplay'))
+			? $this->t('Read about the <a href="%1$s/tos">Terms of Service</a> of this node.', $this->baseUrl)
+			: '';
 
 		$blockList = $this->config->get('system', 'blocklist') ?? [];
 
@@ -127,7 +112,7 @@ class Friendica extends BaseModule
 				'<strong>' . App::VERSION . '</strong>',
 				$this->baseUrl,
 				'<strong>' . $this->config->get('system', 'build') . '/' . DB_UPDATE_VERSION . '</strong>',
-				'<strong>' . $this->keyValue->get('post_update_version') . '/' . PostUpdate::VERSION . '</strong>'
+				'<strong>' . $this->keyValue->get('post_update_version') . '/' . PostUpdate::VERSION . '</strong>',
 			),
 			'friendica' => $this->t('Please visit <a href="https://friendi.ca">Friendi.ca</a> to learn more about the Friendica project.'),
 			'bugs'      => $this->t('Bug reports and issues: please visit') . ' ' . '<a href="https://github.com/friendica/friendica/issues?state=open">' . $this->t('the bugtracker at github') . '</a>',
@@ -151,16 +136,16 @@ class Friendica extends BaseModule
 				$data = ActivityPub\Transmitter::getProfile(0);
 				header('Access-Control-Allow-Origin: *');
 				header('Cache-Control: max-age=23200, stale-while-revalidate=23200');
-				$this->jsonExit($data, 'application/activity+json');
-			} catch (HTTPException\NotFoundException $e) {
-				$this->jsonError(404, ['error' => 'Record not found']);
+				$this->earlyJsonExit($data, 'application/activity+json');
+			} catch (HTTPException\NotFoundException) {
+				$this->earlyJsonError(404, ['error' => 'Record not found']);
 			}
 		}
 
 		$register_policies = [
 			Register::CLOSED  => 'REGISTER_CLOSED',
 			Register::APPROVE => 'REGISTER_APPROVE',
-			Register::OPEN    => 'REGISTER_OPEN'
+			Register::OPEN    => 'REGISTER_OPEN',
 		];
 
 		$register_policy_int = Register::getPolicy();
@@ -196,7 +181,7 @@ class Friendica extends BaseModule
 
 		$data = [
 			'version'          => App::VERSION,
-			'url'              => (string)$this->baseUrl,
+			'url'              => (string) $this->baseUrl,
 			'addons'           => $visible_addons,
 			'locked_features'  => $locked_features,
 			'explicit_content' => intval($this->config->get('system', 'explicit_content', 0)),
@@ -209,6 +194,6 @@ class Friendica extends BaseModule
 			'no_scrape_url'    => $this->baseUrl . '/noscrape',
 		];
 
-		$this->jsonExit($data);
+		$this->earlyJsonExit($data);
 	}
 }

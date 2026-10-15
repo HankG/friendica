@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -48,11 +48,11 @@ class Network
 		}
 
 		// no naked subdomains (allow localhost for tests)
-		if (strpos($url, '.') === false && strpos($url, '/localhost/') === false) {
+		if (!str_contains($url, '.') && !str_contains($url, '/localhost/')) {
 			return false;
 		}
 
-		if (substr($url, 0, 4) != 'http') {
+		if (!str_starts_with($url, 'http')) {
 			$url = 'http://' . $url;
 		}
 
@@ -148,22 +148,21 @@ class Network
 		$host = strtolower($h['host']);
 
 		// always allow our own site
-		if ($host == strtolower($_SERVER['SERVER_NAME'])) {
+		if ($host == strtolower((string) $_SERVER['SERVER_NAME'])) {
 			return true;
 		}
 
 		$fnmatch = function_exists('fnmatch');
-		$allowed = explode(',', $str_allowed);
+		$allowed = explode(',', (string) $str_allowed);
 
-		if (count($allowed)) {
-			foreach ($allowed as $a) {
-				$pat = strtolower(trim($a));
-				if (($fnmatch && fnmatch($pat, $host)) || ($pat == $host)) {
-					$found = true;
-					break;
-				}
+		foreach ($allowed as $a) {
+			$pat = strtolower(trim($a));
+			if (($fnmatch && fnmatch($pat, $host)) || ($pat == $host)) {
+				$found = true;
+				break;
 			}
 		}
+
 		return $found;
 	}
 
@@ -175,13 +174,13 @@ class Network
 	 *
 	 * @return boolean
 	 *
-	 * @deprecated since 2023.03 Use isUriBlocked instead
+	 * @deprecated 2023.03 Use isUriBlocked instead
 	 */
 	public static function isUrlBlocked(string $url): bool
 	{
 		try {
 			return self::isUriBlocked(new Uri($url));
-		} catch (\Throwable $e) {
+		} catch (\Throwable) {
 			DI::logger()->warning('Invalid URL', ['url' => $url]);
 			return false;
 		}
@@ -205,7 +204,7 @@ class Network
 		}
 
 		foreach ($domain_blocklist as $domain_block) {
-			if (!empty($domain_block['domain']) && fnmatch(strtolower($domain_block['domain']), strtolower($uri->getHost()))) {
+			if (!empty($domain_block['domain']) && fnmatch(strtolower((string) $domain_block['domain']), strtolower($uri->getHost()))) {
 				return true;
 			}
 		}
@@ -234,7 +233,7 @@ class Network
 		}
 
 		foreach ($no_redirect_list as $no_redirect) {
-			if (fnmatch(strtolower($no_redirect), strtolower($host))) {
+			if (fnmatch(strtolower((string) $no_redirect), strtolower($host))) {
 				return true;
 			}
 		}
@@ -260,12 +259,12 @@ class Network
 		}
 
 		$allowed = DI::config()->get('system', 'allowed_email');
-		if (!empty($allowed) && self::isDomainMatch($domain, explode(',', $allowed))) {
+		if (!empty($allowed) && self::isDomainMatch($domain, explode(',', (string) $allowed))) {
 			return true;
 		}
 
 		$disallowed = DI::config()->get('system', 'disallowed_email');
-		if (!empty($disallowed) && self::isDomainMatch($domain, explode(',', $disallowed))) {
+		if (!empty($disallowed) && self::isDomainMatch($domain, explode(',', (string) $disallowed))) {
 			return false;
 		}
 
@@ -285,7 +284,7 @@ class Network
 		$found = false;
 
 		foreach ($domain_list as $item) {
-			$pat = strtolower(trim($item));
+			$pat = strtolower(trim((string) $item));
 			if (fnmatch($pat, $domain) || ($pat == $domain)) {
 				$found = true;
 				break;
@@ -331,37 +330,35 @@ class Network
 			$query = $urldata['query'];
 			parse_str($query, $querydata);
 
-			if (is_array($querydata)) {
-				foreach ($querydata as $param => $value) {
-					if (in_array(
-						$param,
-						[
-							'utm_source', 'utm_medium', 'utm_term', 'utm_content', 'utm_campaign',
-							// As seen from Purism
-							'mtm_source', 'mtm_medium', 'mtm_term', 'mtm_content', 'mtm_campaign',
-							'wt_mc', 'pk_campaign', 'pk_kwd', 'mc_cid', 'mc_eid',
-							'fb_action_ids', 'fb_action_types', 'fb_ref',
-							'awesm', 'wtrid',
-							'woo_campaign', 'woo_source', 'woo_medium', 'woo_content', 'woo_term']
-					)
-					) {
-						$pair = $param . '=' . urlencode($value);
-						$url  = str_replace($pair, '', $url);
+			foreach ($querydata as $param => $value) {
+				if (in_array(
+					$param,
+					[
+						'utm_source', 'utm_medium', 'utm_term', 'utm_content', 'utm_campaign',
+						// As seen from Purism
+						'mtm_source', 'mtm_medium', 'mtm_term', 'mtm_content', 'mtm_campaign',
+						'wt_mc', 'pk_campaign', 'pk_kwd', 'mc_cid', 'mc_eid',
+						'fb_action_ids', 'fb_action_types', 'fb_ref',
+						'awesm', 'wtrid',
+						'woo_campaign', 'woo_source', 'woo_medium', 'woo_content', 'woo_term'],
+				)
+				) {
+					$pair = $param . '=' . urlencode($value);
+					$url  = str_replace($pair, '', $url);
 
-						// Second try: if the url isn't encoded completely
-						$pair = $param . '=' . str_replace(' ', '+', $value);
-						$url  = str_replace($pair, '', $url);
+					// Second try: if the url isn't encoded completely
+					$pair = $param . '=' . str_replace(' ', '+', $value);
+					$url  = str_replace($pair, '', $url);
 
-						// Third try: Maybe the url isn't encoded at all
-						$pair = $param . '=' . $value;
-						$url  = str_replace($pair, '', $url);
+					// Third try: Maybe the url isn't encoded at all
+					$pair = $param . '=' . $value;
+					$url  = str_replace($pair, '', $url);
 
-						$url = str_replace(['?&', '&&'], ['?', ''], $url);
-					}
+					$url = str_replace(['?&', '&&'], ['?', ''], $url);
 				}
 			}
 
-			if (substr($url, -1, 1) == '?') {
+			if (str_ends_with($url, '?')) {
 				$url = substr($url, 0, -1);
 			}
 		}
@@ -390,7 +387,7 @@ class Network
 		];
 
 		$parts = array_merge($base, parse_url('/' . ltrim($url, '/')));
-		return (string)Uri::fromParts((array)$parts);
+		return (string) Uri::fromParts((array) $parts);
 	}
 
 	/**
@@ -494,7 +491,7 @@ class Network
 		$parts = parse_url($uri);
 		if (!empty($parts['scheme']) && !empty($parts['host'])) {
 			$parts['host'] = self::idnToAscii($parts['host']);
-			$uri           = (string)Uri::fromParts($parts);
+			$uri           = (string) Uri::fromParts($parts);
 		} else {
 			$parts = explode('@', $uri);
 			if (count($parts) == 2) {
@@ -560,7 +557,7 @@ class Network
 
 		$parsed['query'] = http_build_query($params);
 
-		return (string)Uri::fromParts((array)$parsed);
+		return (string) Uri::fromParts((array) $parsed);
 	}
 
 	/**
@@ -590,7 +587,7 @@ class Network
 			preg_match('/^(?:W\/")?([^"]+)"?$/i', $etag, $result);
 			$etagTrimmed = $result[1];
 			// Lazy exact ETag match, could check weak/strong ETags
-			$flag_not_modified = $if_none_match == '*' || strpos($if_none_match, $etagTrimmed) !== false;
+			$flag_not_modified = $if_none_match == '*' || str_contains($if_none_match, $etagTrimmed);
 		}
 
 		if ($if_modified_since && (!$if_none_match || $flag_not_modified)) {
@@ -616,6 +613,17 @@ class Network
 	{
 		$scheme = parse_url($url, PHP_URL_SCHEME);
 		return !empty($scheme) && in_array($scheme, ['http', 'https']) && parse_url($url, PHP_URL_HOST);
+	}
+
+	/**
+	 * Check if the given URL is a valid AT Protocol URL
+	 *
+	 * @param string $url
+	 * @return bool
+	 */
+	public static function isValidAtUrl(string $url): bool
+	{
+		return is_object(DI::atProtocol()->getUriObject($url));
 	}
 
 	/**
@@ -647,7 +655,7 @@ class Network
 	 * @param string|null $uri
 	 * @return UriInterface|null
 	 */
-	public static function createUriFromString(string $uri = null): ?UriInterface
+	public static function createUriFromString(?string $uri): ?UriInterface
 	{
 		if (empty($uri)) {
 			return null;
@@ -682,7 +690,7 @@ class Network
 
 		$parts['query'] = http_build_query($data);
 
-		return (string)Uri::fromParts($parts);
+		return (string) Uri::fromParts($parts);
 	}
 
 	/**

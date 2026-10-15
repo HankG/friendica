@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -45,19 +45,19 @@ class Markers extends BaseApi
 
 		$fields = ['last_read_id' => $last_read_id, 'version' => $version, 'updated_at' => DateTimeFormat::utcNow()];
 		DBA::update('application-marker', $fields, $condition, true);
-		$this->jsonExit($this->fetchTimelines($application['id'], $uid));
+		$this->earlyJsonExit($this->fetchTimelines($application['id'], $uid));
 	}
 
 	/**
 	 * @throws \Friendica\Network\HTTPException\InternalServerErrorException
 	 */
-	protected function get(array $request = [])
+	protected function get(array $request = []): never
 	{
 		$this->checkAllowedScope(self::SCOPE_READ);
 		$uid         = self::getCurrentUserID();
 		$application = self::getCurrentApplication();
 
-		$this->jsonExit($this->fetchTimelines($application['id'], $uid));
+		$this->earlyJsonExit($this->fetchTimelines($application['id'], $uid));
 	}
 
 	private function fetchTimelines(int $application_id, int $uid): \stdClass
@@ -68,7 +68,7 @@ class Markers extends BaseApi
 			$values->{$marker['timeline']} = [
 				'last_read_id' => $marker['last_read_id'],
 				'version'      => $marker['version'],
-				'updated_at'   => DateTimeFormat::utc($marker['updated_at'], DateTimeFormat::JSON)
+				'updated_at'   => DateTimeFormat::utc($marker['updated_at'], DateTimeFormat::JSON),
 			];
 		}
 		return $values;

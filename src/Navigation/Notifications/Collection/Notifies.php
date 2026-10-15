@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -19,7 +19,7 @@ class Notifies extends BaseCollection
 
 	public function setSeen(): Notifies
 	{
-		$notifies = $this->map(function (NotifyEntity $notify) {
+		$notifies = $this->map(function (NotifyEntity $notify): void {
 			$notify->setSeen();
 		});
 
@@ -28,7 +28,7 @@ class Notifies extends BaseCollection
 			throw new \Exception(sprintf(
 				'BaseCollection::map() should return instance of %s, but returns %s instead.',
 				Notifies::class,
-				get_class($notifies),
+				$notifies::class,
 			));
 		}
 

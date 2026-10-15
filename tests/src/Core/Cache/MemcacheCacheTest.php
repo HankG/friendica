@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -13,10 +13,8 @@ use Friendica\Core\Config\Capability\IManageConfigValues;
 use Friendica\Test\MemoryCacheTestCase;
 use Mockery;
 
-/**
- * @requires extension memcache
- * @group MEMCACHE
- */
+#[\PHPUnit\Framework\Attributes\RequiresPhpExtension('memcache')]
+#[\PHPUnit\Framework\Attributes\Group('MEMCACHE')]
 class MemcacheCacheTest extends MemoryCacheTestCase
 {
 	protected function getInstance()
@@ -37,7 +35,7 @@ class MemcacheCacheTest extends MemoryCacheTestCase
 
 		try {
 			$this->cache = new MemcacheCache($host, $configMock);
-		} catch (Exception $e) {
+		} catch (Exception) {
 			static::markTestSkipped('Memcache is not available');
 		}
 		return $this->cache;
@@ -49,21 +47,14 @@ class MemcacheCacheTest extends MemoryCacheTestCase
 		parent::tearDown();
 	}
 
-	/**
-	 * @small
-	 *
-	 * @dataProvider dataSimple
-	 * @doesNotPerformAssertions
-	 */
-	public function testGetAllKeys($value1, $value2, $value3)
+	#[\PHPUnit\Framework\Attributes\DataProvider('dataSimple')]
+	#[\PHPUnit\Framework\Attributes\DoesNotPerformAssertions]
+	public function testGetAllKeys($value1, $value2, $value3, $value4): void
 	{
 		static::markTestIncomplete('Race condition because of too fast getAllKeys() which uses a workaround');
 	}
 
-	/**
-	 * @small
-	 */
-	public function testStats()
+	public function testStats(): void
 	{
 		$stats = $this->instance->getStats();
 

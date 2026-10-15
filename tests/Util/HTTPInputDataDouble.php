@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -19,6 +19,8 @@ class HTTPInputDataDouble extends HTTPInputData
 	protected $injectedStream = false;
 	/** @var false|string */
 	protected $injectedContent = false;
+	/** @var false|string */
+	protected $injectedContentType = false;
 
 	/**
 	 * injects the PHP input stream for a test

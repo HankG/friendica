@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -20,10 +20,11 @@ class StatusesTest extends ApiTestCase
 	 *
 	 * @return void
 	 */
-	public function testApiListsStatuses()
+	public function testApiListsStatuses(): void
 	{
 		$this->expectException(BadRequestException::class);
 
+		// @phpstan-ignore method.deprecated
 		(new Statuses(DI::dba(), DI::twitterStatus(), DI::mstdnError(), DI::appHelper(), DI::l10n(), DI::baseUrl(), DI::args(), DI::logger(), DI::profiler(), DI::apiResponse(), []))
 			->run($this->httpExceptionMock);
 	}
@@ -31,16 +32,17 @@ class StatusesTest extends ApiTestCase
 	/**
 	 * Test the api_lists_statuses() function with a list ID.
 	 */
-	public function testApiListsStatusesWithListId()
+	public function testApiListsStatusesWithListId(): void
 	{
 		// @todo: This call is needed for this test
-		Renderer::registerTemplateEngine('Friendica\Render\FriendicaSmartyEngine');
+		Renderer::registerTemplateEngine(\Friendica\Render\FriendicaSmartyEngine::class);
 
+		// @phpstan-ignore method.deprecated
 		$response = (new Statuses(DI::dba(), DI::twitterStatus(), DI::mstdnError(), DI::appHelper(), DI::l10n(), DI::baseUrl(), DI::args(), DI::logger(), DI::profiler(), DI::apiResponse(), []))
 			->run($this->httpExceptionMock, [
 				'list_id' => 1,
 				'page'    => -1,
-				'max_id'  => 10
+				'max_id'  => 10,
 			]);
 
 		$json = $this->toJson($response);
@@ -54,30 +56,17 @@ class StatusesTest extends ApiTestCase
 	/**
 	 * Test the api_lists_statuses() function with a list ID and a RSS result.
 	 */
-	public function testApiListsStatusesWithListIdAndRss()
+	public function testApiListsStatusesWithListIdAndRss(): void
 	{
 		// @todo: This call is needed for this test
-		Renderer::registerTemplateEngine('Friendica\Render\FriendicaSmartyEngine');
+		Renderer::registerTemplateEngine(\Friendica\Render\FriendicaSmartyEngine::class);
 
+		// @phpstan-ignore method.deprecated
 		$response = (new Statuses(DI::dba(), DI::twitterStatus(), DI::mstdnError(), DI::appHelper(), DI::l10n(), DI::baseUrl(), DI::args(), DI::logger(), DI::profiler(), DI::apiResponse(), [], ['extension' => 'rss']))
 			->run($this->httpExceptionMock, [
-				'list_id' => 1
+				'list_id' => 1,
 			]);
 
-		self::assertXml((string)$response->getBody());
-	}
-
-	/**
-	 * Test the api_lists_statuses() function with an unallowed user.
-	 *
-	 * @return void
-	 */
-	public function testApiListsStatusesWithUnallowedUser()
-	{
-		self::markTestIncomplete('Needs BasicAuth as dynamic method for overriding first');
-
-		// $this->expectException(\Friendica\Network\HTTPException\UnauthorizedException::class);
-		// BasicAuth::setCurrentUserID();
-		// api_lists_statuses('json');
+		self::assertXml((string) $response->getBody());
 	}
 }

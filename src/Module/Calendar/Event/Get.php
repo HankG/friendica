@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -46,12 +46,12 @@ class Get extends \Friendica\BaseModule
 		$owner = Event::getOwnerForNickname($nickname);
 
 		if (!empty($request['id'])) {
-			$events = [Event::getByIdAndUid($owner['uid'], $request['id'])];
+			$events = [Event::getByIdAndUid($owner['uid'], (int) $request['id'])];
 		} else {
 			$events = Event::getListByDate($owner['uid'], $request['start'] ?? '', $request['end'] ?? '');
 		}
 
-		$this->jsonExit($events ? self::map($events) : []);
+		$this->earlyJsonExit($events ? self::map($events) : []);
 	}
 
 	private static function map(array $events): array

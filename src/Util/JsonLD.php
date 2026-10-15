@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -60,8 +60,14 @@ class JsonLD
 			case 'https://purl.archive.org/socialweb/webfinger':
 				$url = DI::basePath() . '/static/socialweb-webfinger.jsonld';
 				break;
+			case 'https://www.w3.org/ns/cid/v1':
+				$url = DI::basePath() . '/static/cid-v1.jsonld';
+				break;
+			case 'https://w3id.org/security/data-integrity/v2':
+				$url = DI::basePath() . '/static/data-integrity-v2.jsonld';
+				break;
 			default:
-				switch (parse_url($url, PHP_URL_PATH)) {
+				switch (parse_url((string) $url, PHP_URL_PATH)) {
 					case '/schemas/litepub-0.1.jsonld':
 						$url = DI::basePath() . '/static/litepub-0.1.jsonld';
 						break;
@@ -103,6 +109,28 @@ class JsonLD
 	}
 
 	/**
+	 * Checks if the given data contains suspicious commands that could be used in a malicious way, like @graph, @included or @reverse.
+	 * If such commands are found, a warning is logged and false is returned.
+	 *
+	 * @param array $data
+	 * @return boolean
+	 */
+	private static function isValidObject(array $data): bool
+	{
+		$valid = true;
+
+		array_walk_recursive($data, function (&$value, $key) use ($data, &$valid): void {
+			$suspicious = ['@graph', '@included', '@reverse'];
+			if (in_array((string) $key, $suspicious) || in_array((string) $value, $suspicious)) {
+				DI::logger()->warning('Document with suspicious commands.', ['key' => $key, 'value' => $value, 'document' => $data]);
+				$valid = false;
+			}
+		});
+
+		return $valid;
+	}
+
+	/**
 	 * Normalises a given JSON array
 	 *
 	 * @param array $json
@@ -112,6 +140,10 @@ class JsonLD
 	 */
 	public static function normalize($json)
 	{
+		if (!is_array($json) || !self::isValidObject($json)) {
+			return [];
+		}
+
 		jsonld_set_document_loader('Friendica\Util\JsonLD::documentLoader');
 
 		$jsonobj = json_decode(json_encode($json, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
@@ -147,24 +179,26 @@ class JsonLD
 	{
 		jsonld_set_document_loader('Friendica\Util\JsonLD::documentLoader');
 
-		$context = (object)[
+		$context = (object) [
 			'as'        => 'https://www.w3.org/ns/activitystreams#',
 			'w3id'      => 'https://w3id.org/security#',
-			'ldp'       => (object)['@id' => 'http://www.w3.org/ns/ldp#', '@type' => '@id'],
-			'vcard'     => (object)['@id' => 'http://www.w3.org/2006/vcard/ns#', '@type' => '@id'],
-			'dfrn'      => (object)['@id' => 'http://purl.org/macgirvin/dfrn/1.0/', '@type' => '@id'],
-			'diaspora'  => (object)['@id' => 'https://diasporafoundation.org/ns/', '@type' => '@id'],
-			'ostatus'   => (object)['@id' => 'http://ostatus.org#', '@type' => '@id'],
-			'dc'        => (object)['@id' => 'http://purl.org/dc/terms/', '@type' => '@id'],
-			'toot'      => (object)['@id' => 'http://joinmastodon.org/ns#', '@type' => '@id'],
-			'litepub'   => (object)['@id' => 'http://litepub.social/ns#', '@type' => '@id'],
-			'sc'        => (object)['@id' => 'http://schema.org#', '@type' => '@id'],
-			'pt'        => (object)['@id' => 'https://joinpeertube.org/ns#', '@type' => '@id'],
-			'mobilizon' => (object)['@id' => 'https://joinmobilizon.org/ns#', '@type' => '@id'],
-			'fedibird'  => (object)['@id' => 'http://fedibird.com/ns#', '@type' => '@id'],
-			'misskey'   => (object)['@id' => 'https://misskey-hub.net/ns#', '@type' => '@id'],
-			'pixelfed'  => (object)['@id' => 'http://pixelfed.org/ns#', '@type' => '@id'],
-			'lemmy'     => (object)['@id' => 'https://join-lemmy.org/ns#', '@type' => '@id'],
+			'ldp'       => (object) ['@id' => 'http://www.w3.org/ns/ldp#', '@type' => '@id'],
+			'vcard'     => (object) ['@id' => 'http://www.w3.org/2006/vcard/ns#', '@type' => '@id'],
+			'dfrn'      => (object) ['@id' => 'http://purl.org/macgirvin/dfrn/1.0/', '@type' => '@id'],
+			'diaspora'  => (object) ['@id' => 'https://diasporafoundation.org/ns/', '@type' => '@id'],
+			'ostatus'   => (object) ['@id' => 'http://ostatus.org#', '@type' => '@id'],
+			'dc'        => (object) ['@id' => 'http://purl.org/dc/terms/', '@type' => '@id'],
+			'toot'      => (object) ['@id' => 'http://joinmastodon.org/ns#', '@type' => '@id'],
+			'litepub'   => (object) ['@id' => 'http://litepub.social/ns#', '@type' => '@id'],
+			'sc'        => (object) ['@id' => 'http://schema.org#', '@type' => '@id'],
+			'pt'        => (object) ['@id' => 'https://joinpeertube.org/ns#', '@type' => '@id'],
+			'mobilizon' => (object) ['@id' => 'https://joinmobilizon.org/ns#', '@type' => '@id'],
+			'fedibird'  => (object) ['@id' => 'http://fedibird.com/ns#', '@type' => '@id'],
+			'misskey'   => (object) ['@id' => 'https://misskey-hub.net/ns#', '@type' => '@id'],
+			'pixelfed'  => (object) ['@id' => 'http://pixelfed.org/ns#', '@type' => '@id'],
+			'lemmy'     => (object) ['@id' => 'https://join-lemmy.org/ns#', '@type' => '@id'],
+			'quote'     => (object) ['@id' => 'https://w3id.org/fep/044f#', '@type' => '@id'],
+			'gts'       => (object) ['@id' => 'https://gotosocial.org/ns#', '@type' => '@id'],
 		];
 
 		$orig_json = $json;
@@ -184,10 +218,8 @@ class JsonLD
 		}
 
 		$json = json_decode(json_encode($compacted, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), true);
-
-		if ($json === false) {
-			DI::logger()->notice('JSON encode->decode failed', ['orig_json' => $orig_json, 'compacted' => $compacted]);
-			$json = [];
+		if (!is_array($json) || !self::isValidObject($json)) {
+			return [];
 		}
 
 		return $json;
@@ -200,11 +232,11 @@ class JsonLD
 		}
 
 		// Preparation for adding possibly missing content to the context
-		if (!empty($json['@context']) && is_string($json['@context'])) {
+		if (is_string($json['@context'])) {
 			$json['@context'] = [$json['@context']];
 		}
 
-		if (!empty($json['@context']) && is_array($json['@context'])) {
+		if (is_array($json['@context'])) {
 			// Remove empty entries from the context (a problem with WriteFreely)
 			$json['@context'] = array_filter($json['@context']);
 
@@ -217,7 +249,7 @@ class JsonLD
 		}
 
 		// Issue 14448: Peertube transmits an unexpected type and schema URL.
-		array_walk_recursive($json['@context'], function (&$value, $key) {
+		array_walk_recursive($json['@context'], function (&$value, $key): void {
 			if ($key == '@type' && $value == '@json') {
 				DI::logger()->debug('"@json" converted to "@id"');
 				$value = '@id';
@@ -234,7 +266,7 @@ class JsonLD
 		});
 
 		// Bookwyrm transmits "id" fields with "null", which isn't allowed.
-		array_walk_recursive($json, function (&$value, $key) {
+		array_walk_recursive($json, function (&$value, $key): void {
 			if ($key == 'id' && is_null($value)) {
 				DI::logger()->debug('Fixed null id');
 				$value = '';

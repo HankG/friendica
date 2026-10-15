@@ -1,7 +1,8 @@
 <?php
+
 /*
- * Copyright (C) 2010-2024, the Friendica project
- * SPDX-FileCopyrightText: 2010-2024 the Friendica project
+ * Copyright (C) 2010-2026, the Friendica project
+ * SPDX-FileCopyrightText: 2010-2026 the Friendica project
  *
  * SPDX-License-Identifier: AGPL-3.0-or-later
  *
@@ -21,22 +22,22 @@ switch ($scheme_accent) {
 	default:
 		$link_color = '#' . $accentColor->lighten(25);
 }
-$nav_icon_color = '#' . $accentColor->lighten(40);
+$nav_icon_color       = '#' . $accentColor->lighten(40);
 $nav_icon_hover_color = '#' . $accentColor->darken(20);
 
 switch ($scheme_accent) {
 	case FRIO_SCHEME_ACCENT_GREEN:
 	case FRIO_SCHEME_ACCENT_RED:
-		$nav_bg = '#' . $accentColor->darken(27);
+		$nav_bg           = '#' . $accentColor->darken(27);
 		$background_color = '#' . $accentColor->darken(29);
 		break;
 	default:
-		$nav_bg = '#' . $accentColor->darken(30);
+		$nav_bg           = '#' . $accentColor->darken(30);
 		$background_color = '#' . $accentColor->darken(33);
 }
 
-$contentbg_transp = 4;
-$font_color = '#e4e4e4';
-$font_color_darker = '#dcdcdc';
+$contentbg_transp   = 4;
+$font_color         = '#e4e4e4';
+$font_color_darker  = '#dcdcdc';
 $font_color_lighter = '#555555';
-$background_image = '';
+$background_image   = '';

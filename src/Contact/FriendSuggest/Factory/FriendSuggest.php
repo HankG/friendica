@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -19,15 +19,15 @@ class FriendSuggest extends BaseFactory implements ICanCreateFromTableRow
 	public function createFromTableRow(array $row): Entity\FriendSuggest
 	{
 		return new Entity\FriendSuggest(
-			$row['uid'] ?? 0,
-			$row['cid'] ?? 0,
-			$row['name'] ?? '',
-			$row['url'] ?? '',
+			$row['uid']     ?? 0,
+			$row['cid']     ?? 0,
+			$row['name']    ?? '',
+			$row['url']     ?? '',
 			$row['request'] ?? '',
-			$row['photo'] ?? '',
-			$row['note'] ?? '',
+			$row['photo']   ?? '',
+			$row['note']    ?? '',
 			new \DateTime($row['created'] ?? 'now', new \DateTimeZone('UTC')),
-			$row['id'] ?? null
+			$row['id'] ?? null,
 		);
 	}
 
@@ -38,7 +38,7 @@ class FriendSuggest extends BaseFactory implements ICanCreateFromTableRow
 		string $url = '',
 		string $request = '',
 		string $photo = '',
-		string $note = ''
+		string $note = '',
 	): Entity\FriendSuggest {
 		return $this->createFromTableRow([
 			'uid'     => $uid,

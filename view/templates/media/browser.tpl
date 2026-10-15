@@ -1,6 +1,6 @@
 {{*
-  * Copyright (C) 2010-2024, the Friendica project
-  * SPDX-FileCopyrightText: 2010-2024 the Friendica project
+  * Copyright (C) 2010-2026, the Friendica project
+  * SPDX-FileCopyrightText: 2010-2026 the Friendica project
   *
   * SPDX-License-Identifier: AGPL-3.0-or-later
   *}}
@@ -36,18 +36,17 @@
 	{{/if}}
 
 	<div class="list">
+		<div class="upload">
+			<button id="upload-{{$type}}"><img id="profile-rotator" src="images/rotator.gif" alt="{{$wait}}" title="{{$wait}}" style="display: none;" /> {{$upload}}</button>
+		</div>
 		{{foreach $files as $f}}
 		<div class="photo-album-image-wrapper">
 			<a href="#" class="photo-album-photo-link" data-link="{{$f.0}}" data-filename="{{$f.1}}" data-img="{{$f.2}}" data-alt="{{$f.3}}">
-				<img alt="{{$f.3}}" src="{{$f.2}}">
+				<img src="{{$f.2}}" alt="{{if $f.3}}{{$f.3}}{{else}}{{$f.1}}{{/if}}" {{if $f.3}}class="has-alt-description" title="{{$f.3}}"{{else}}class="empty-description" title="{{$f.1}}"{{/if}}/>
 				<p>{{$f.1}}</p>
 			</a>
 		</div>
 		{{/foreach}}
-	</div>
-
-	<div class="upload">
-		<button id="upload-{{$type}}"><img id="profile-rotator" src="images/rotator.gif" alt="{{$wait}}" title="{{$wait}}" style="display: none;" /> {{$upload}}</button>
 	</div>
 </div>
 

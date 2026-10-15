@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -15,6 +15,7 @@ use Friendica\Model\Post;
 use Friendica\Module\BaseApi;
 use Friendica\Network\HTTPException\InternalServerErrorException;
 use Friendica\Util\Strings;
+use Friendica\Content\Post\Entity\PostMedia;
 
 /**
  * @see https://docs.joinmastodon.org/methods/statuses/media/
@@ -42,7 +43,7 @@ class Media extends BaseApi
 
 		$type = Post\Media::getType($request['file']['type']);
 
-		if (in_array($type, [Post\Media::IMAGE, Post\Media::UNKNOWN, Post\Media::APPLICATION])) {
+		if (in_array($type, [PostMedia::TYPE_IMAGE, PostMedia::TYPE_UNKNOWN, PostMedia::TYPE_APPLICATION])) {
 			$media = Photo::upload($uid, $request['file'], '', null, null, '', '', $request['description']);
 
 			if (empty($media)) {
@@ -50,11 +51,11 @@ class Media extends BaseApi
 			}
 
 			$this->logger->info('Uploaded photo', ['media' => $media]);
-			$this->jsonExit(DI::mstdnAttachment()->createFromPhoto($media['id']));
+			$this->earlyJsonExit(DI::mstdnAttachment()->createFromPhoto($media['id']));
 		}
 
 		$tempFileName = $request['file']['tmp_name'];
-		$fileName     = basename($request['file']['name']);
+		$fileName     = basename((string) $request['file']['name']);
 		$fileSize     = intval($request['file']['size']);
 		$maxFileSize  = Strings::getBytesFromShorthand(DI::config()->get('system', 'maxfilesize'));
 
@@ -73,7 +74,7 @@ class Media extends BaseApi
 		$id = Attach::storeFile($tempFileName, self::getCurrentUserID(), $fileName, $request['file']['type'], '<' . Contact::getPublicIdByUserId(self::getCurrentUserID()) . '>');
 		@unlink($tempFileName);
 		$this->logger->info('Uploaded media', ['id' => $id]);
-		$this->jsonExit(DI::mstdnAttachment()->createFromAttach($id));
+		$this->earlyJsonExit(DI::mstdnAttachment()->createFromAttach($id));
 	}
 
 	public function put(array $request = [])
@@ -92,8 +93,8 @@ class Media extends BaseApi
 			$this->logAndJsonError(422, $this->errorFactory->UnprocessableEntity());
 		}
 
-		if (DI::mstdnAttachment()->isAttach($this->parameters['id']) && Attach::exists(['id' => substr($this->parameters['id'], 7)])) {
-			$this->jsonExit(DI::mstdnAttachment()->createFromAttach(substr($this->parameters['id'], 7)));
+		if (DI::mstdnAttachment()->isAttach($this->parameters['id']) && Attach::exists(['id' => substr((string) $this->parameters['id'], 7)])) {
+			$this->earlyJsonExit(DI::mstdnAttachment()->createFromAttach((int) substr((string) $this->parameters['id'], 7)));
 		}
 
 		$photo = Photo::selectFirst(['resource-id'], ['id' => $this->parameters['id'], 'uid' => $uid]);
@@ -111,17 +112,17 @@ class Media extends BaseApi
 			Post\Media::updateById(['description' => $request['description']], $this->parameters['id']);
 
 			try {
-				$attachment = DI::mstdnAttachment()->createFromId($this->parameters['id'] . '1');
-			} catch (InternalServerErrorException $th) {
+				$attachment = DI::mstdnAttachment()->createFromId((int) ($this->parameters['id'] . '1'));
+			} catch (InternalServerErrorException) {
 				$this->logAndJsonError(404, $this->errorFactory->RecordNotFound());
 			}
 
-			$this->jsonExit($attachment);
+			$this->earlyJsonExit($attachment);
 		}
 
 		Photo::update(['desc' => $request['description']], ['resource-id' => $photo['resource-id']]);
 
-		$this->jsonExit(DI::mstdnAttachment()->createFromPhoto($this->parameters['id']));
+		$this->earlyJsonExit(DI::mstdnAttachment()->createFromPhoto($this->parameters['id']));
 	}
 
 	/**
@@ -139,11 +140,11 @@ class Media extends BaseApi
 		$id = $this->parameters['id'];
 
 		if (Photo::exists(['id' => $id, 'uid' => $uid])) {
-			$this->jsonExit(DI::mstdnAttachment()->createFromPhoto($id));
+			$this->earlyJsonExit(DI::mstdnAttachment()->createFromPhoto($id));
 		}
 
-		if (DI::mstdnAttachment()->isAttach($id) && Attach::exists(['id' => substr($id, 7)])) {
-			$this->jsonExit(DI::mstdnAttachment()->createFromAttach(substr($id, 7)));
+		if (DI::mstdnAttachment()->isAttach($id) && Attach::exists(['id' => substr((string) $id, 7)])) {
+			$this->earlyJsonExit(DI::mstdnAttachment()->createFromAttach((int) substr((string) $id, 7)));
 		}
 
 		$this->logAndJsonError(404, $this->errorFactory->RecordNotFound());

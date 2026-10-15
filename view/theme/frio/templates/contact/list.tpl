@@ -1,6 +1,6 @@
 {{*
-  * Copyright (C) 2010-2024, the Friendica project
-  * SPDX-FileCopyrightText: 2010-2024 the Friendica project
+  * Copyright (C) 2010-2026, the Friendica project
+  * SPDX-FileCopyrightText: 2010-2026 the Friendica project
   *
   * SPDX-License-Identifier: AGPL-3.0-or-later
   *}}
@@ -10,6 +10,8 @@ at the suggest page and also at many other places *}}
 	{{include file="section_title.tpl"}}
 
 	{{$tab_str nofilter}}
+
+	{{$additional_text}}
 
 	<ul id="viewcontact_wrapper{{if $id}}-{{$id}}{{/if}}" class="viewcontact_wrapper media-list">
 {{foreach $contacts as $contact}}

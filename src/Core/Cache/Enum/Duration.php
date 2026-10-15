@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -12,13 +12,13 @@ namespace Friendica\Core\Cache\Enum;
  */
 abstract class Duration
 {
-	const MONTH        = 2592000;
-	const HOUR         = 3600;
-	const HALF_HOUR    = 1800;
-	const QUARTER_HOUR = 900;
-	const MINUTE       = 60;
-	const WEEK         = 604800;
-	const INFINITE     = 0;
-	const DAY          = 86400;
-	const FIVE_MINUTES = 300;
+	public const MONTH        = 2592000;
+	public const HOUR         = 3600;
+	public const HALF_HOUR    = 1800;
+	public const QUARTER_HOUR = 900;
+	public const MINUTE       = 60;
+	public const WEEK         = 604800;
+	public const INFINITE     = 0;
+	public const DAY          = 86400;
+	public const FIVE_MINUTES = 300;
 }

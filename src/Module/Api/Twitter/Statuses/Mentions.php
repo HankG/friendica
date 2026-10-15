@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -44,9 +44,9 @@ class Mentions extends BaseApi
 		$condition = [
 			Item::GRAVITY_PARENT, Item::GRAVITY_COMMENT,
 			$uid,
-			Post\UserNotification::TYPE_EXPLICIT_TAGGED | Post\UserNotification::TYPE_IMPLICIT_TAGGED |
-			Post\UserNotification::TYPE_THREAD_COMMENT | Post\UserNotification::TYPE_DIRECT_COMMENT |
-			Post\UserNotification::TYPE_DIRECT_THREAD_COMMENT,
+			Post\UserNotification::TYPE_EXPLICIT_TAGGED | Post\UserNotification::TYPE_IMPLICIT_TAGGED
+			| Post\UserNotification::TYPE_THREAD_COMMENT | Post\UserNotification::TYPE_DIRECT_COMMENT
+			| Post\UserNotification::TYPE_DIRECT_THREAD_COMMENT,
 			$uid, $since_id,
 		];
 

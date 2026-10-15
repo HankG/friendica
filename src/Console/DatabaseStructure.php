@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -25,18 +25,6 @@ use RuntimeException;
 class DatabaseStructure extends \Asika\SimpleConsole\Console
 {
 	protected $helpOptions = ['h', 'help', '?'];
-
-	/** @var Database */
-	private $dba;
-
-	/** @var IManageConfigValues */
-	private $config;
-
-	/** @var DbaDefinition */
-	private $dbaDefinition;
-
-	/** @var ViewDefinition */
-	private $viewDefinition;
 
 	/** @var string */
 	private $basePath;
@@ -69,21 +57,16 @@ HELP;
 		return $help;
 	}
 
-	public function __construct(Database $dba, DbaDefinition $dbaDefinition, ViewDefinition $viewDefinition, BasePath $basePath, IManageConfigValues $config, $argv = null)
+	public function __construct(private readonly Database $dba, private readonly DbaDefinition $dbaDefinition, private readonly ViewDefinition $viewDefinition, BasePath $basePath, private readonly IManageConfigValues $config, $argv = null)
 	{
 		parent::__construct($argv);
-
-		$this->dba = $dba;
-		$this->dbaDefinition = $dbaDefinition;
-		$this->viewDefinition = $viewDefinition;
-		$this->config = $config;
 		$this->basePath = $basePath->getPath();
 	}
 
 	protected function doExecute(): int
 	{
 		if ($this->getOption('v')) {
-			$this->out('Class: ' . __CLASS__);
+			$this->out('Class: ' . self::class);
 			$this->out('Arguments: ' . var_export($this->args, true));
 			$this->out('Options: ' . var_export($this->options, true));
 		}
@@ -112,7 +95,7 @@ HELP;
 			case "update":
 				$force    = $this->getOption(['f', 'force'], false);
 				$override = $this->getOption(['o', 'override'], false);
-				$output = Update::run($basePath, $force, $override,true, false);
+				$output   = Update::run($basePath, $force, $override, true, false);
 				break;
 			case "drop":
 				$execute = $this->getOption(['e', 'execute'], false);

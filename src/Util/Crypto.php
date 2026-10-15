@@ -1,14 +1,14 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Util;
 
-use Friendica\Core\Hook;
 use Friendica\DI;
+use Friendica\Event\ArrayFilterEvent;
 use phpseclib3\Crypt\PublicKeyLoader;
 
 /**
@@ -39,12 +39,13 @@ class Crypto
 	 * @param string $alg  algorithm
 	 * @return boolean
 	 */
-	public static function rsaVerify($data, $sig, $key, $alg = 'sha256')
+	public static function rsaVerify($data, $sig, $key, $alg = 'sha256'): bool
 	{
 		if (empty($key)) {
 			DI::logger()->warning('Empty key parameter');
+			return false;
 		}
-		return openssl_verify($data, $sig, $key, (($alg == 'sha1') ? OPENSSL_ALGO_SHA1 : $alg));
+		return openssl_verify($data, $sig, $key, (($alg == 'sha1') ? OPENSSL_ALGO_SHA1 : $alg)) === 1;
 	}
 
 	/**
@@ -56,7 +57,7 @@ class Crypto
 	 */
 	public static function rsaToPem(string $key)
 	{
-		return (string)PublicKeyLoader::load($key);
+		return (string) PublicKeyLoader::load($key);
 	}
 
 	/**
@@ -69,7 +70,7 @@ class Crypto
 		$openssl_options = [
 			'digest_alg'       => 'sha1',
 			'private_key_bits' => $bits,
-			'encrypt_key'      => false
+			'encrypt_key'      => false,
 		];
 
 		$conf = DI::config()->get('system', 'openssl_conf_file');
@@ -160,10 +161,10 @@ class Crypto
 	private static function encapsulateOther($data, $pubkey, $alg)
 	{
 		if (!$pubkey) {
-			DI::logger()->notice('no key. data: '.$data);
+			DI::logger()->notice('no key. data: ' . $data);
 		}
 		$fn = 'encrypt' . strtoupper($alg);
-		if (method_exists(__CLASS__, $fn)) {
+		if (method_exists(self::class, $fn)) {
 			$result         = ['encrypted' => true];
 			$key            = random_bytes(256);
 			$iv             = random_bytes(256);
@@ -183,7 +184,7 @@ class Crypto
 			return $result;
 		} else {
 			$x = ['data' => $data, 'pubkey' => $pubkey, 'alg' => $alg, 'result' => $data];
-			Hook::callAll('other_encapsulate', $x);
+			$x = DI::eventDispatcher()->dispatch(new ArrayFilterEvent(ArrayFilterEvent::OTHER_ENCAPSULATE, $x))->getArray();
 
 			return $x['result'];
 		}
@@ -262,14 +263,14 @@ class Crypto
 	{
 		$fn = 'decrypt' . strtoupper($alg);
 
-		if (method_exists(__CLASS__, $fn)) {
+		if (method_exists(self::class, $fn)) {
 			openssl_private_decrypt(Strings::base64UrlDecode($data['key']), $k, $prvkey);
 			openssl_private_decrypt(Strings::base64UrlDecode($data['iv']), $i, $prvkey);
 
 			return self::$fn(Strings::base64UrlDecode($data['data']), $k, $i);
 		} else {
 			$x = ['data' => $data, 'prvkey' => $prvkey, 'alg' => $alg, 'result' => $data];
-			Hook::callAll('other_unencapsulate', $x);
+			$x = DI::eventDispatcher()->dispatch(new ArrayFilterEvent(ArrayFilterEvent::OTHER_UNENCAPSULATE, $x))->getArray();
 
 			return $x['result'];
 		}
@@ -297,7 +298,7 @@ class Crypto
 	/**
 	 * Creates cryptographic secure random digits
 	 *
-	 * @param string $digits The count of digits
+	 * @param int $digits The count of digits
 	 * @return string The random Digits
 	 *
 	 * @throws \Exception In case 'random_int' isn't usable

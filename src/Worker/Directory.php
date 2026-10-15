@@ -1,14 +1,14 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Worker;
 
-use Friendica\Core\Hook;
 use Friendica\Core\Search;
+use Friendica\Event\ArrayFilterEvent;
 use Friendica\Core\Worker;
 use Friendica\Database\DBA;
 use Friendica\DI;
@@ -37,11 +37,13 @@ class Directory
 
 		$arr = ['url' => $url];
 
-		Hook::callAll('globaldir_update', $arr);
+		$arr = DI::eventDispatcher()->dispatch(
+			new ArrayFilterEvent(ArrayFilterEvent::GLOBAL_DIR_UPDATE, $arr),
+		)->getArray();
 
 		DI::logger()->info('Updating directory: ' . $arr['url']);
-		if (strlen($arr['url'])) {
-			DI::httpClient()->fetch($dir . '?url=' . bin2hex($arr['url']), HttpClientAccept::HTML, 0, '', HttpClientRequest::CONTACTDISCOVER);
+		if (strlen((string) $arr['url'])) {
+			DI::httpClient()->fetch($dir . '?url=' . bin2hex((string) $arr['url']), HttpClientAccept::HTML, 0, '', HttpClientRequest::CONTACTDISCOVER);
 		}
 
 		return;

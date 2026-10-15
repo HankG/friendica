@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -28,7 +28,7 @@ class DiceContainerTest extends TestCase
 
 		$container = DiceContainer::fromBasePath($root->url());
 
-		$this->assertInstanceOf(Container::class, $container);
+		$this->assertInstanceOf(Container::class, $container); // @phpstan-ignore method.alreadyNarrowedType
 	}
 
 	public function testCreateReturnsObject(): void

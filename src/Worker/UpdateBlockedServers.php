@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -11,6 +11,7 @@ use Friendica\Database\DBA;
 use Friendica\DI;
 use Friendica\Model\GServer;
 use Friendica\Util\Network;
+use GuzzleHttp\Psr7\Uri;
 
 class UpdateBlockedServers
 {
@@ -24,7 +25,7 @@ class UpdateBlockedServers
 		$changed   = 0;
 		$unchanged = 0;
 		while ($gserver = DBA::fetch($gservers)) {
-			$blocked = Network::isUrlBlocked($gserver['url']);
+			$blocked = Network::isUriBlocked(new Uri($gserver['url']));
 			if (!is_null($gserver['blocked']) && ($blocked == $gserver['blocked'])) {
 				$unchanged++;
 				continue;

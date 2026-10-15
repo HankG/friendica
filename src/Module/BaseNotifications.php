@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -28,7 +28,7 @@ use Psr\Log\LoggerInterface;
 abstract class BaseNotifications extends BaseModule
 {
 	/** @var array Array of URL parameters */
-	const URL_TYPES = [
+	public const URL_TYPES = [
 		FormattedNotify::NETWORK  => 'network',
 		FormattedNotify::SYSTEM   => 'system',
 		FormattedNotify::HOME     => 'home',
@@ -37,7 +37,7 @@ abstract class BaseNotifications extends BaseModule
 	];
 
 	/** @var array Array of the allowed notifications and their printable name */
-	const PRINT_TYPES = [
+	public const PRINT_TYPES = [
 		FormattedNotify::NETWORK  => 'Network',
 		FormattedNotify::SYSTEM   => 'System',
 		FormattedNotify::HOME     => 'Home',
@@ -46,7 +46,7 @@ abstract class BaseNotifications extends BaseModule
 	];
 
 	/** @var array The array of access keys for notification pages */
-	const ACCESS_KEYS = [
+	public const ACCESS_KEYS = [
 		FormattedNotify::NETWORK  => 'w',
 		FormattedNotify::SYSTEM   => 'y',
 		FormattedNotify::HOME     => 'h',
@@ -55,9 +55,9 @@ abstract class BaseNotifications extends BaseModule
 	];
 
 	/** @var int The default count of items per page */
-	const ITEMS_PER_PAGE = 20;
+	public const ITEMS_PER_PAGE = 20;
 	/** @var int The default limit of notifications per page */
-	const DEFAULT_PAGE_LIMIT = 80;
+	public const DEFAULT_PAGE_LIMIT = 80;
 
 	/** @var boolean True, if ALL entries should get shown */
 	protected $showAll;
@@ -106,7 +106,7 @@ abstract class BaseNotifications extends BaseModule
 			'page'          => $pager->getPage(),
 		];
 
-		$this->jsonExit($notifications);
+		$this->earlyJsonExit($notifications);
 	}
 
 	/**
@@ -136,7 +136,7 @@ abstract class BaseNotifications extends BaseModule
 			'$notifications' => $notifications,
 			'$noContent'     => $noContent,
 			'$showLink'      => $showLink,
-			'$paginate'      => $pager->renderMinimal(count($notifications))
+			'$paginate'      => $pager->renderMinimal(count($notifications)),
 		]);
 	}
 
@@ -155,7 +155,7 @@ abstract class BaseNotifications extends BaseModule
 		foreach (self::URL_TYPES as $type => $url) {
 			$tabs[] = [
 				'label'     => $this->t(self::PRINT_TYPES[$type]),
-				'url'       => 'notifications/' . $url,
+				'url'       => 'notifications/' . $url . (($url == "personal") ? "?show=all" : ""),
 				'sel'       => (($selected == $url) ? 'active' : ''),
 				'id'        => $type . '-tab',
 				'accesskey' => self::ACCESS_KEYS[$type],

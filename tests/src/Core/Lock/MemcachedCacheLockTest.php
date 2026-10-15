@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -16,10 +16,8 @@ use Friendica\Test\CacheLockTestCase;
 use Mockery;
 use Psr\Log\NullLogger;
 
-/**
- * @requires extension memcached
- * @group MEMCACHED
- */
+#[\PHPUnit\Framework\Attributes\RequiresPhpExtension('memcached')]
+#[\PHPUnit\Framework\Attributes\Group('MEMCACHED')]
 class MemcachedCacheLockTest extends CacheLockTestCase
 {
 	private MemcachedCache $cache;
@@ -42,7 +40,7 @@ class MemcachedCacheLockTest extends CacheLockTestCase
 		try {
 			$this->cache = new MemcachedCache($host, $configMock, $logger);
 			$this->lock  = new CacheLock($this->cache);
-		} catch (Exception $e) {
+		} catch (Exception) {
 			static::markTestSkipped('Memcached is not available');
 		}
 
@@ -59,18 +57,14 @@ class MemcachedCacheLockTest extends CacheLockTestCase
 		return $this->cache;
 	}
 
-	/**
-	 * @doesNotPerformAssertions
-	 */
-	public function testGetLocks()
+	#[\PHPUnit\Framework\Attributes\DoesNotPerformAssertions]
+	public function testGetLocks(): void
 	{
 		static::markTestIncomplete('Race condition because of too fast getLocks() which uses a workaround');
 	}
 
-	/**
-	 * @doesNotPerformAssertions
-	 */
-	public function testGetLocksWithPrefix()
+	#[\PHPUnit\Framework\Attributes\DoesNotPerformAssertions]
+	public function testGetLocksWithPrefix(): void
 	{
 		static::markTestIncomplete('Race condition because of too fast getLocks() which uses a workaround');
 	}

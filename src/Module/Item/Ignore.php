@@ -1,14 +1,13 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Module\Item;
 
 use Friendica\BaseModule;
-use Friendica\Core\System;
 use Friendica\DI;
 use Friendica\Model\Item;
 use Friendica\Model\Post;
@@ -43,7 +42,7 @@ class Ignore extends BaseModule
 		$ignored = !Post\ThreadUser::getIgnored($thread['uri-id'], DI::userSession()->getLocalUserId());
 
 		if (in_array($thread['uid'], [0, DI::userSession()->getLocalUserId()])) {
-			Post\ThreadUser::setIgnored($thread['uri-id'], DI::userSession()->getLocalUserId(), $ignored);
+			Post\ThreadUser::setIgnored($thread['uri-id'], DI::userSession()->getLocalUserId(), (int) $ignored);
 		} else {
 			throw new HTTPException\BadRequestException();
 		}
@@ -52,7 +51,7 @@ class Ignore extends BaseModule
 		$return_path = $_REQUEST['return'] ?? '';
 		if (!empty($return_path)) {
 			$rand = '_=' . time();
-			if (strpos($return_path, '?')) {
+			if (strpos((string) $return_path, '?')) {
 				$rand = "&$rand";
 			} else {
 				$rand = "?$rand";
@@ -68,6 +67,6 @@ class Ignore extends BaseModule
 			'state'   => $ignored,
 		];
 
-		$this->jsonExit($return);
+		$this->earlyJsonExit($return);
 	}
 }

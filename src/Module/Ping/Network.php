@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -12,13 +12,17 @@ use Friendica\App\BaseURL;
 use Friendica\App\Mode;
 use Friendica\App\Page;
 use Friendica\AppHelper;
-use Friendica\Content\Conversation;
+use Friendica\Content\Conversation\ConversationRenderer;
+use Friendica\Content\Conversation\StatusEditor;
 use Friendica\Content\Conversation\Factory\Timeline as TimelineFactory;
+use Friendica\Content\Conversation\Factory\Activity as ActivityFactory;
 use Friendica\Content\Conversation\Repository\UserDefinedChannel;
 use Friendica\Content\Conversation\Factory\Channel as ChannelFactory;
 use Friendica\Content\Conversation\Factory\UserDefinedChannel as UserDefinedChannelFactory;
 use Friendica\Content\Conversation\Factory\Community as CommunityFactory;
 use Friendica\Content\Conversation\Factory\Network as NetworkFactory;
+use Friendica\Content\GroupManager;
+use Friendica\Content\PagesManager;
 use Friendica\Core\Cache\Capability\ICanCache;
 use Friendica\Core\Config\Capability\IManageConfigValues;
 use Friendica\Core\L10n;
@@ -36,13 +40,8 @@ use Psr\Log\LoggerInterface;
 
 class Network extends NetworkModule
 {
-	/**
-	 * @var ICanLock
-	 */
-	private $lock;
-
 	public function __construct(
-		ICanLock $lock,
+		private readonly ICanLock $lock,
 		UserDefinedChannelFactory $userDefinedChannel,
 		NetworkFactory $network,
 		CommunityFactory $community,
@@ -53,13 +52,17 @@ class Network extends NetworkModule
 		TimelineFactory $timeline,
 		SystemMessages $systemMessages,
 		Mode $mode,
-		Conversation $conversation,
+		ConversationRenderer $conversationRenderer,
+		StatusEditor $statusEditor,
+		private readonly GroupManager $groupManager,
+		private readonly PagesManager $pagesManager,
 		Page $page,
 		IHandleUserSessions $session,
 		Database $database,
 		IManagePersonalConfigValues $pConfig,
 		IManageConfigValues $config,
 		ICanCache $cache,
+		ActivityFactory $ActivityFactory,
 		L10n $l10n,
 		BaseURL $baseUrl,
 		Arguments $args,
@@ -67,7 +70,7 @@ class Network extends NetworkModule
 		Profiler $profiler,
 		Response $response,
 		array $server,
-		array $parameters = []
+		array $parameters = [],
 	) {
 		parent::__construct(
 			$userDefinedChannel,
@@ -80,13 +83,17 @@ class Network extends NetworkModule
 			$timeline,
 			$systemMessages,
 			$mode,
-			$conversation,
+			$conversationRenderer,
+			$statusEditor,
+			$groupManager,
+			$pagesManager,
 			$page,
 			$session,
 			$database,
 			$pConfig,
 			$config,
 			$cache,
+			$ActivityFactory,
 			$l10n,
 			$baseUrl,
 			$args,
@@ -94,10 +101,8 @@ class Network extends NetworkModule
 			$profiler,
 			$response,
 			$server,
-			$parameters
+			$parameters,
 		);
-
-		$this->lock = $lock;
 	}
 
 	protected function rawContent(array $request = [])
@@ -117,13 +122,13 @@ class Network extends NetworkModule
 		$this->parseRequest($request);
 
 		if ($this->force || !is_null($this->maxId)) {
-			System::httpExit('');
+			$this->earlyHttpExit('');
 		}
 
 		$lockkey = 'network-ping-' . $this->session->getLocalUserId();
 		if (!$this->lock->acquire($lockkey, 0)) {
 			$this->logger->debug('Ping-1-lock', ['uid' => $this->session->getLocalUserId()]);
-			System::httpExit('');
+			$this->earlyHttpExit('');
 		}
 
 		$this->setPing(true);
@@ -138,6 +143,6 @@ class Network extends NetworkModule
 		}
 		$this->lock->release($lockkey);
 		$count = count($items);
-		System::httpExit(($count < 100) ? $count : '99+');
+		$this->earlyHttpExit(($count < 100) ? $count : '99+');
 	}
 }

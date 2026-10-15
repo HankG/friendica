@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -27,27 +27,13 @@ class DestroyTest extends ApiTestCase
 	 *
 	 * @return void
 	 */
-	public function testApiStatusesDestroy()
+	public function testApiStatusesDestroy(): void
 	{
 		$this->expectException(BadRequestException::class);
 
+		// @phpstan-ignore method.deprecated
 		(new Destroy(DI::mstdnError(), DI::appHelper(), DI::l10n(), DI::baseUrl(), DI::args(), DI::logger(), DI::profiler(), DI::apiResponse(), []))
 			->run($this->httpExceptionMock);
-	}
-
-	/**
-	 * Test the api_statuses_destroy() function without an authenticated user.
-	 *
-	 * @return void
-	 */
-	public function testApiStatusesDestroyWithoutAuthenticatedUser()
-	{
-		self::markTestIncomplete('Needs BasicAuth as dynamic method for overriding first');
-
-		// $this->expectException(\Friendica\Network\HTTPException\UnauthorizedException::class);
-		// BasicAuth::setCurrentUserID();
-		// $_SESSION['authenticated'] = false;
-		// api_statuses_destroy('json');
 	}
 
 	/**
@@ -55,11 +41,12 @@ class DestroyTest extends ApiTestCase
 	 *
 	 * @return void
 	 */
-	public function testApiStatusesDestroyWithId()
+	public function testApiStatusesDestroyWithId(): void
 	{
+		// @phpstan-ignore method.deprecated
 		$response = (new Destroy(DI::mstdnError(), DI::appHelper(), DI::l10n(), DI::baseUrl(), DI::args(), DI::logger(), DI::profiler(), DI::apiResponse(), []))
 			->run($this->httpExceptionMock, [
-				'id' => 1
+				'id' => 1,
 			]);
 
 		$json = $this->toJson($response);

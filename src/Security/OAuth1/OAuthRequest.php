@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -9,23 +9,30 @@ namespace Friendica\Security\OAuth1;
 
 use Friendica\Util\Strings;
 
-class OAuthRequest
+class OAuthRequest implements \Stringable
 {
 	private $parameters;
-	private $http_method;
 	private $http_url;
 	// for debug purposes
 	public $base_string;
-	public static $version = '1.0';
+	public static $version    = '1.0';
 	public static $POST_INPUT = 'php://input';
 
-	function __construct($http_method, $http_url, $parameters = null)
-	{
-		@$parameters or $parameters = [];
-		$parameters        = array_merge(OAuthUtil::parse_parameters(parse_url($http_url, PHP_URL_QUERY)), $parameters);
-		$this->parameters  = $parameters;
-		$this->http_method = $http_method;
-		$this->http_url    = $http_url;
+	/**
+	 * @param array|null $parameters
+	 */
+	public function __construct(
+		private $http_method,
+		$http_url,
+		$parameters = null,
+	) {
+		if (is_null($parameters)) {
+			$parameters = [];
+		}
+
+		$parameters       = array_merge(OAuthUtil::parse_parameters(parse_url((string) $http_url, PHP_URL_QUERY)), $parameters);
+		$this->parameters = $parameters;
+		$this->http_url   = $http_url;
 	}
 
 
@@ -43,11 +50,11 @@ class OAuthRequest
 		$scheme = (!isset($_SERVER['HTTPS']) || $_SERVER['HTTPS'] != "on")
 			? 'http'
 			: 'https';
-		@$http_url or $http_url = $scheme .
-								  '://' . $_SERVER['HTTP_HOST'] .
-								  ':' .
-								  $_SERVER['SERVER_PORT'] .
-								  $_SERVER['REQUEST_URI'];
+		@$http_url or $http_url = $scheme
+								  . '://' . $_SERVER['HTTP_HOST']
+								  . ':'
+								  . $_SERVER['SERVER_PORT']
+								  . $_SERVER['REQUEST_URI'];
 		@$http_method or $http_method = $_SERVER['REQUEST_METHOD'];
 
 		// We weren't handed any parameters, so let's find the ones relevant to
@@ -66,28 +73,28 @@ class OAuthRequest
 			if (
 				$http_method == "POST"
 				&& @strstr(
-					$request_headers["Content-Type"],
-					"application/x-www-form-urlencoded"
+					(string) $request_headers["Content-Type"],
+					"application/x-www-form-urlencoded",
 				)
 			) {
-				$post_data  = OAuthUtil::parse_parameters(
-					file_get_contents(self::$POST_INPUT)
+				$post_data = OAuthUtil::parse_parameters(
+					file_get_contents(self::$POST_INPUT),
 				);
 				$parameters = array_merge($parameters, $post_data);
 			}
 
 			// We have a Authorization-header with OAuth data. Parse the header
 			// and add those overriding any duplicates from GET or POST
-			if (@substr($request_headers['Authorization'], 0, 6) == "OAuth ") {
+			if (@substr((string) $request_headers['Authorization'], 0, 6) == "OAuth ") {
 				$header_parameters = OAuthUtil::split_header(
-					$request_headers['Authorization']
+					$request_headers['Authorization'],
 				);
-				$parameters        = array_merge($parameters, $header_parameters);
+				$parameters = array_merge($parameters, $header_parameters);
 			}
 		}
 		// fix for friendica redirect system
 
-		$http_url = substr($http_url, 0, strpos($http_url, $parameters['pagename']) + strlen($parameters['pagename']));
+		$http_url = substr((string) $http_url, 0, strpos((string) $http_url, (string) $parameters['pagename']) + strlen((string) $parameters['pagename']));
 		unset($parameters['pagename']);
 
 		return new OAuthRequest($http_method, $http_url, $parameters);
@@ -104,17 +111,21 @@ class OAuthRequest
 	 *
 	 * @return OAuthRequest
 	 */
-	public static function from_consumer_and_token(OAuthConsumer $consumer, $http_method, $http_url, array $parameters = null, OAuthToken $token = null)
+	public static function from_consumer_and_token(OAuthConsumer $consumer, $http_method, $http_url, ?array $parameters = null, ?OAuthToken $token = null)
 	{
-		@$parameters or $parameters = [];
+		if (is_null($parameters)) {
+			$parameters = [];
+		}
+
 		$defaults = [
 			"oauth_version"      => OAuthRequest::$version,
 			"oauth_nonce"        => OAuthRequest::generate_nonce(),
 			"oauth_timestamp"    => OAuthRequest::generate_timestamp(),
 			"oauth_consumer_key" => $consumer->key,
 		];
-		if ($token)
+		if ($token) {
 			$defaults['oauth_token'] = $token->key;
+		}
 
 		$parameters = array_merge($defaults, $parameters);
 
@@ -139,7 +150,7 @@ class OAuthRequest
 
 	public function get_parameter($name)
 	{
-		return isset($this->parameters[$name]) ? $this->parameters[$name] : null;
+		return $this->parameters[$name] ?? null;
 	}
 
 	public function get_parameters()
@@ -196,7 +207,7 @@ class OAuthRequest
 	 */
 	public function get_normalized_http_method()
 	{
-		return strtoupper($this->http_method);
+		return strtoupper((string) $this->http_method);
 	}
 
 	/**
@@ -205,20 +216,20 @@ class OAuthRequest
 	 */
 	public function get_normalized_http_url()
 	{
-		$parts = parse_url($this->http_url);
+		$parts = parse_url((string) $this->http_url);
 
-		$port   = @$parts['port'];
 		$scheme = $parts['scheme'];
+		$port   = $parts['port'] ?? ($scheme === 'https') ? '443' : '80';
 		$host   = $parts['host'];
 		$path   = @$parts['path'];
 
-		$port or $port = ($scheme == 'https') ? '443' : '80';
-
-		if (($scheme == 'https' && $port != '443')
-			|| ($scheme == 'http' && $port != '80')
+		if (
+			($scheme === 'https' && $port != '443')
+			|| ($scheme === 'http' && $port != '80')
 		) {
 			$host = "$host:$port";
 		}
+
 		return "$scheme://$host$path";
 	}
 
@@ -244,10 +255,11 @@ class OAuthRequest
 	 */
 	public function to_postdata(bool $raw = false)
 	{
-		if ($raw)
+		if ($raw) {
 			return $this->parameters;
-		else
+		} else {
 			return OAuthUtil::build_http_query($this->parameters);
+		}
 	}
 
 	/**
@@ -264,27 +276,30 @@ class OAuthRequest
 		if ($realm) {
 			$out   = 'Authorization: OAuth realm="' . OAuthUtil::urlencode_rfc3986($realm) . '"';
 			$first = false;
-		} else
+		} else {
 			$out = 'Authorization: OAuth';
+		}
 
 		foreach ($this->parameters as $k => $v) {
-			if (substr($k, 0, 5) != "oauth") continue;
+			if (!str_starts_with((string) $k, "oauth")) {
+				continue;
+			}
 			if (is_array($v)) {
 				throw new OAuthException('Arrays not supported in headers');
 			}
-			$out   .= ($first) ? ' ' : ',';
-			$out   .= OAuthUtil::urlencode_rfc3986($k) .
-					  '="' .
-					  OAuthUtil::urlencode_rfc3986($v) .
-					  '"';
+			$out .= ($first) ? ' ' : ',';
+			$out .= OAuthUtil::urlencode_rfc3986($k)
+					  . '="'
+					  . OAuthUtil::urlencode_rfc3986($v)
+					  . '"';
 			$first = false;
 		}
 		return $out;
 	}
 
-	public function __toString()
+	public function __toString(): string
 	{
-		return $this->to_url();
+		return (string) $this->to_url();
 	}
 
 
@@ -293,7 +308,7 @@ class OAuthRequest
 		$this->set_parameter(
 			"oauth_signature_method",
 			$signature_method->get_name(),
-			false
+			false,
 		);
 		$signature = $this->build_signature($signature_method, $consumer, $token);
 		$this->set_parameter("oauth_signature", $signature, false);

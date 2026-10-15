@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -13,10 +13,8 @@ use Friendica\Core\Config\Capability\IManageConfigValues;
 use Friendica\Test\MemoryCacheTestCase;
 use Mockery;
 
-/**
- * @requires extension redis
- * @group REDIS
- */
+#[\PHPUnit\Framework\Attributes\RequiresPhpExtension('redis')]
+#[\PHPUnit\Framework\Attributes\Group('REDIS')]
 class RedisCacheTest extends MemoryCacheTestCase
 {
 	protected function getInstance()
@@ -58,10 +56,7 @@ class RedisCacheTest extends MemoryCacheTestCase
 		parent::tearDown();
 	}
 
-	/**
-	 * @small
-	 */
-	public function testStats()
+	public function testStats(): void
 	{
 		$stats = $this->instance->getStats();
 

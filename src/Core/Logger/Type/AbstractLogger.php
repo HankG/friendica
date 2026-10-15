@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -12,6 +12,7 @@ use Friendica\Core\Logger\Exception\LoggerException;
 use Friendica\Util\Strings;
 use Psr\Log\LoggerInterface;
 use Psr\Log\LogLevel;
+use Stringable;
 
 /**
  * This class contains all necessary dependencies and calls for Friendica
@@ -24,7 +25,7 @@ use Psr\Log\LogLevel;
  */
 abstract class AbstractLogger implements LoggerInterface
 {
-	const NAME = '';
+	public const NAME = '';
 
 	/**
 	 * The output channel of this logger
@@ -123,7 +124,7 @@ abstract class AbstractLogger implements LoggerInterface
 	/**
 	 * {@inheritdoc}
 	 */
-	public function emergency($message, array $context = [])
+	public function emergency(string|Stringable $message, array $context = [])
 	{
 		$this->addEntry(LogLevel::EMERGENCY, (string) $message, $context);
 	}
@@ -131,7 +132,7 @@ abstract class AbstractLogger implements LoggerInterface
 	/**
 	 * {@inheritdoc}
 	 */
-	public function alert($message, array $context = [])
+	public function alert(string|Stringable $message, array $context = [])
 	{
 		$this->addEntry(LogLevel::ALERT, (string) $message, $context);
 	}
@@ -139,7 +140,7 @@ abstract class AbstractLogger implements LoggerInterface
 	/**
 	 * {@inheritdoc}
 	 */
-	public function critical($message, array $context = [])
+	public function critical(string|Stringable $message, array $context = [])
 	{
 		$this->addEntry(LogLevel::CRITICAL, (string) $message, $context);
 	}
@@ -147,7 +148,7 @@ abstract class AbstractLogger implements LoggerInterface
 	/**
 	 * {@inheritdoc}
 	 */
-	public function error($message, array $context = [])
+	public function error(string|Stringable $message, array $context = [])
 	{
 		$this->addEntry(LogLevel::ERROR, (string) $message, $context);
 	}
@@ -155,7 +156,7 @@ abstract class AbstractLogger implements LoggerInterface
 	/**
 	 * {@inheritdoc}
 	 */
-	public function warning($message, array $context = [])
+	public function warning(string|Stringable $message, array $context = [])
 	{
 		$this->addEntry(LogLevel::WARNING, (string) $message, $context);
 	}
@@ -163,7 +164,7 @@ abstract class AbstractLogger implements LoggerInterface
 	/**
 	 * {@inheritdoc}
 	 */
-	public function notice($message, array $context = [])
+	public function notice(string|Stringable $message, array $context = [])
 	{
 		$this->addEntry(LogLevel::NOTICE, (string) $message, $context);
 	}
@@ -171,7 +172,7 @@ abstract class AbstractLogger implements LoggerInterface
 	/**
 	 * {@inheritdoc}
 	 */
-	public function info($message, array $context = [])
+	public function info(string|Stringable $message, array $context = [])
 	{
 		$this->addEntry(LogLevel::INFO, (string) $message, $context);
 	}
@@ -179,7 +180,7 @@ abstract class AbstractLogger implements LoggerInterface
 	/**
 	 * {@inheritdoc}
 	 */
-	public function debug($message, array $context = [])
+	public function debug(string|Stringable $message, array $context = [])
 	{
 		$this->addEntry(LogLevel::DEBUG, (string) $message, $context);
 	}
@@ -187,7 +188,7 @@ abstract class AbstractLogger implements LoggerInterface
 	/**
 	 * {@inheritdoc}
 	 */
-	public function log($level, $message, array $context = [])
+	public function log($level, string|Stringable $message, array $context = [])
 	{
 		$this->addEntry($level, (string) $message, $context);
 	}

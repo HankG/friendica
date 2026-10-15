@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -21,7 +21,7 @@ class Outbox extends BaseApi
 	protected function rawContent(array $request = [])
 	{
 		if (empty($this->parameters['nickname'])) {
-			$this->jsonExit([], 'application/activity+json');
+			$this->earlyJsonExit([], 'application/activity+json');
 		}
 
 		$owner = User::getOwnerDataByNick($this->parameters['nickname']);
@@ -36,9 +36,9 @@ class Outbox extends BaseApi
 			$page = 1;
 		}
 
-		$outbox = ActivityPub\ClientToServer::getOutbox($owner, $uid, $page, $request['max_id'] ?? null, HTTPSignature::getSigner('', $_SERVER));
+		$outbox = ActivityPub\ClientToServer::getOutbox($owner, $uid, $page, !empty($request['max_id']) ? (int) $request['max_id'] : null, HTTPSignature::getSigner('', $_SERVER));
 
-		$this->jsonExit($outbox, 'application/activity+json');
+		$this->earlyJsonExit($outbox, 'application/activity+json');
 	}
 
 	protected function post(array $request = [])
@@ -64,6 +64,6 @@ class Outbox extends BaseApi
 			throw new \Friendica\Network\HTTPException\BadRequestException();
 		}
 
-		$this->jsonExit(ActivityPub\ClientToServer::processActivity($activity, $uid, self::getCurrentApplication() ?? []));
+		$this->earlyJsonExit(ActivityPub\ClientToServer::processActivity($activity, $uid, self::getCurrentApplication() ?? []));
 	}
 }

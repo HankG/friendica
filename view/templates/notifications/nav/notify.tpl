@@ -1,9 +1,15 @@
 {{*
-  * Copyright (C) 2010-2024, the Friendica project
-  * SPDX-FileCopyrightText: 2010-2024 the Friendica project
+  * Copyright (C) 2010-2026, the Friendica project
+  * SPDX-FileCopyrightText: 2010-2026 the Friendica project
   *
   * SPDX-License-Identifier: AGPL-3.0-or-later
   *}}
-<li class="notification-{{if !$notify.seen}}un{{/if}}seen">
-	<a href="{{$notify.href}}" title="{{$notify.localdate}}"><img data-src="{{$notify.contact.photo}}" height="24" width="24" alt="" loading="lazy"/>{{$notify.richtext nofilter}} <span class="notif-when">{{$notify.ago}}</span></a>
+<li class="notification-{{if !$notify.seen}}un{{/if}}seen" onclick="location.href='{{$notify.href}}';">
+	<div class="notif-entry-wrapper">
+		<div class="notif-photo-wrapper"><a href="{{$notify.contact.url}}"><img data-src="{{$notify.contact.photo}}" loading="lazy"></a></div>
+		<div class="notif-desc-wrapper">
+            {{$notify.richtext nofilter}}
+			<div><time class="notif-when" title="{{$notify.localdate}}">{{$notify.ago}}</time></div>
+		</div>
+	</div>
 </li>

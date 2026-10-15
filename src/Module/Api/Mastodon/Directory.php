@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -42,8 +42,10 @@ class Directory extends BaseApi
 			$condition = ['uid' => 0, 'hidden' => false, 'network' => Protocol::FEDERATED];
 		}
 
-		$params = ['limit' => [$request['offset'], $request['limit']],
-			'order'           => [($request['order'] == 'active') ? 'last-item' : 'created' => true]];
+		$params = [
+			'limit' => [$request['offset'], $request['limit']],
+			'order' => [($request['order'] == 'active') ? 'last-item' : 'created' => true],
+		];
 
 		$accounts = [];
 		$contacts = DBA::select($table, ['id', 'uid'], $condition, $params);
@@ -52,6 +54,6 @@ class Directory extends BaseApi
 		}
 		DBA::close($contacts);
 
-		$this->jsonExit($accounts);
+		$this->earlyJsonExit($accounts);
 	}
 }

@@ -12,152 +12,53 @@ $a->strings['Item couldn\'t be fetched.'] = '項目を取得できませんで�
 $a->strings['Empty post discarded.'] = '空の投稿は破棄されました。';
 $a->strings['Item not found.'] = '見つかりませんでした。';
 $a->strings['Permission denied.'] = '必要な権限が有りません。';
-$a->strings['No valid account found.'] = '有効なアカウントが見つかりません。';
-$a->strings['Password reset request issued. Check your email.'] = 'パスワードリセット要求が発行されました。あなたのメールをチェックしてください。';
-$a->strings['
-		Dear %1$s,
-			A request was recently received at "%2$s" to reset your account
-		password. In order to confirm this request, please select the verification link
-		below or paste it into your web browser address bar.
-
-		If you did NOT request this change, please DO NOT follow the link
-		provided and ignore and/or delete this email, the request will expire shortly.
-
-		Your password will not be changed unless we can verify that you
-		issued this request.'] = '
-		%1$s さん、
-			"%2$s" アカウントのパスワードリセットが要求されました。
-		このリクエストを確認するには、確認リンクをクリックするか、
-		ウェブブラウザのアドレスバーに貼り付けてください。
-
-		この変更をリクエストしていない場合は、リンクをクリックせず、
-		このメールを無視・削除してください。リセットはキャンセルされます。
-
-		このリクエストの発行元があなたであると確認できない限り、
-		パスワードは変更されません。';
-$a->strings['
-		Follow this link soon to verify your identity:
-
-		%1$s
-
-		You will then receive a follow-up message containing the new password.
-		You may change that password from your account settings page after logging in.
-
-		The login details are as follows:
-
-		Site Location:	%2$s
-		Login Name:	%3$s'] = '
-		このリンクをたどって本人確認を行ってください：
-
-		%1$s
-
-		新しいパスワードを含むフォローアップメッセージが届きます。
-		ログイン後にアカウント設定ページからそのパスワードを変更できます。
-
-		ログインの詳細は次のとおりです。
-
-		サイトの場所：	%2$s
-		ログイン名：	%3$s';
-$a->strings['Password reset requested at %s'] = 'パスワードのリセット要求が有りました:  %s';
-$a->strings['Request could not be verified. (You may have previously submitted it.) Password reset failed.'] = 'リクエストを確認できませんでした。 （以前に送信した可能性があります。）パスワードのリセットに失敗しました。';
-$a->strings['Request has expired, please make a new one.'] = 'リクエストの有効期限が切れています。新しいものを作成してください。';
-$a->strings['Forgot your Password?'] = 'パスワードをお忘れですか？';
-$a->strings['Enter your email address and submit to have your password reset. Then check your email for further instructions.'] = 'メールアドレスを入力して送信し、パスワードをリセットしてください。その後、メールで詳細な手順を確認してください。';
-$a->strings['Nickname or Email: '] = 'ニックネームまたはメール：';
-$a->strings['Reset'] = 'リセットする';
-$a->strings['Password Reset'] = 'パスワードのリセット';
-$a->strings['Your password has been reset as requested.'] = 'パスワードは要求どおりにリセットされました。';
-$a->strings['Your new password is'] = '新しいパスワードは';
-$a->strings['Save or copy your new password - and then'] = '新しいパスワードを保存またはコピーします-その後';
-$a->strings['click here to login'] = 'ここをクリックしてログイン';
-$a->strings['Your password may be changed from the <em>Settings</em> page after successful login.'] = 'ログインに成功すると、パスワードは<em>設定</em>ページから変更される場合があります。';
-$a->strings['Your password has been reset.'] = 'パスワードはリセットされました。';
-$a->strings['
-			Dear %1$s,
-				Your password has been changed as requested. Please retain this
-			information for your records (or change your password immediately to
-			something that you will remember).
-		'] = '
-			%1$s さん、
-				パスワードは要求に応じて変更されました。記録のためにこの情報を保管してください（または、パスワードをすぐに覚えているものに変更してください）。
-		';
-$a->strings['
-			Your login details are as follows:
-
-			Site Location:	%1$s
-			Login Name:	%2$s
-			Password:	%3$s
-
-			You may change that password from your account settings page after logging in.
-		'] = '
-			ログインの詳細は次のとおりです：
-
-			サイトの場所：	%1$s
-			ログイン名：	%2$s
-			パスワード：	%3$s
-
-			ログイン後にアカウント設定ページからパスワードを変更できます。
-		';
-$a->strings['Your password has been changed at %s'] = 'パスワードは%s変更されました';
+$a->strings['Messages'] = 'メッセージ';
 $a->strings['New Message'] = '新しいメッセージ';
 $a->strings['No recipient selected.'] = '宛先が未指定です。';
 $a->strings['Unable to locate contact information.'] = 'コンタクト情報が見つかりません。';
 $a->strings['Message could not be sent.'] = 'メッセージを送信できませんでした。';
 $a->strings['Message collection failure.'] = 'メッセージの収集に失敗しました。';
 $a->strings['Discard'] = '捨てる';
-$a->strings['Messages'] = 'メッセージ';
 $a->strings['Conversation not found.'] = '会話が見つかりません。';
 $a->strings['Message was not deleted.'] = 'メッセージを削除しませんでした。';
 $a->strings['Conversation was not removed.'] = '会話を削除しませんでした。';
 $a->strings['Please enter a link URL:'] = 'リンクURLを入力してください。';
 $a->strings['Send Private Message'] = 'プライベートメッセージを送信する';
 $a->strings['To:'] = '送信先:';
-$a->strings['Subject:'] = '件名';
-$a->strings['Your message:'] = 'メッセージ';
 $a->strings['Upload photo'] = '写真をアップロード';
 $a->strings['Insert web link'] = 'webリンクを挿入';
 $a->strings['Please wait'] = 'お待ち下さい';
-$a->strings['Submit'] = '送信する';
-$a->strings['No messages.'] = 'メッセージはありません。';
 $a->strings['Message not available.'] = 'メッセージは利用できません。';
 $a->strings['Delete message'] = 'メッセージを削除';
 $a->strings['D, d M Y - g:i A'] = 'D、d MY-g：i A';
 $a->strings['Delete conversation'] = '会話を削除';
 $a->strings['No secure communications available. You <strong>may</strong> be able to respond from the sender\'s profile page.'] = '安全な通信は利用できません。送信者のプロフィールページから返信できる<strong>場合が</strong>あります。';
 $a->strings['Send Reply'] = '返信する';
+$a->strings['Subject:'] = '件名';
+$a->strings['Your message:'] = 'メッセージ';
 $a->strings['Unknown sender - %s'] = '不明な送信者です - %s';
 $a->strings['You and %s'] = 'あなたと%s';
 $a->strings['%s and You'] = '%sとあなた';
 $a->strings['%d message'] = [
 	0 => '%dメッセージ',
 ];
-$a->strings['Personal Notes'] = '個人メモ';
-$a->strings['Personal notes are visible only by yourself.'] = '個人メモは自分自身によってのみ見えます。';
-$a->strings['Save'] = '保存する';
 $a->strings['User not found.'] = 'ユーザーが見つかりません。';
 $a->strings['Photo Albums'] = 'フォトアルバム';
 $a->strings['Recent Photos'] = '最近の写真';
-$a->strings['Upload New Photos'] = '新しい写真をアップロード';
 $a->strings['everybody'] = 'みなさん';
 $a->strings['Contact information unavailable'] = 'コンタクト情報は利用できません';
 $a->strings['Album not found.'] = 'アルバムが見つかりません。';
 $a->strings['Album successfully deleted'] = 'アルバムを削除しました';
 $a->strings['Album was empty.'] = 'アルバムは空でした。';
 $a->strings['Failed to delete the photo.'] = '写真を削除できませんでした';
-$a->strings['a photo'] = '写真';
-$a->strings['%1$s was tagged in %2$s by %3$s'] = '%1$sが%2$sで%3$sによってタグ付けされました';
 $a->strings['Public access denied.'] = 'パブリックアクセスが拒否されました。';
 $a->strings['No photos selected'] = '写真が選択されていません';
-$a->strings['Upload Photos'] = '写真をアップロードする';
-$a->strings['New album name: '] = '新しいアルバム名：';
-$a->strings['or select existing album:'] = 'または既存のアルバムを選択：';
-$a->strings['Do not show a status post for this upload'] = 'このアップロードのステータス投稿を表示しません';
 $a->strings['Permissions'] = '許可';
 $a->strings['Do you really want to delete this photo album and all its photos?'] = 'このフォトアルバムとそのすべての写真を本当に削除しますか？';
 $a->strings['Delete Album'] = 'アルバムを削除';
 $a->strings['Cancel'] = 'キャンセル';
+$a->strings['New album name: '] = '新しいアルバム名：';
 $a->strings['Edit Album'] = 'アルバムを編集';
-$a->strings['Drop Album'] = 'アルバムを削除';
 $a->strings['Show Newest First'] = '新しいもの順に表示';
 $a->strings['Show Oldest First'] = '最も古いものを最初に表示';
 $a->strings['View Photo'] = '写真を見る';
@@ -168,29 +69,15 @@ $a->strings['Delete Photo'] = '写真を削除';
 $a->strings['View photo'] = '写真を見る';
 $a->strings['Edit photo'] = '写真を編集する';
 $a->strings['Delete photo'] = '写真を削除';
-$a->strings['Use as profile photo'] = 'プロフィール写真として使用';
 $a->strings['Private Photo'] = 'プライベート写真';
 $a->strings['View Full Size'] = 'フルサイズを表示';
-$a->strings['Tags: '] = 'タグ：';
-$a->strings['[Select tags to remove]'] = '[削除するタグを選択]';
 $a->strings['New album name'] = '新しいアルバム名';
 $a->strings['Caption'] = 'キャプション';
-$a->strings['Add a Tag'] = 'タグを追加する';
-$a->strings['Example: @bob, @Barbara_Jensen, @jim@example.com, #California, #camping'] = '例：@ bob、@ Barbara_Jensen、@ jim @ example.com、＃California、＃camping';
 $a->strings['Do not rotate'] = '回転させないでください';
 $a->strings['Rotate CW (right)'] = 'CWを回転（右）';
 $a->strings['Rotate CCW (left)'] = 'CCWを回転（左）';
-$a->strings['This is you'] = 'これはあなたです';
-$a->strings['Comment'] = 'コメント';
-$a->strings['Preview'] = 'プレビュー';
-$a->strings['Loading...'] = '読み込み中…';
-$a->strings['Select'] = '選択';
+$a->strings['Edit'] = '編集';
 $a->strings['Delete'] = '削除';
-$a->strings['Like'] = 'いいね';
-$a->strings['I like this (toggle)'] = '私はこれが好きです（トグル）';
-$a->strings['Dislike'] = '嫌い';
-$a->strings['I don\'t like this (toggle)'] = '気に入らない（トグル）';
-$a->strings['Map'] = '地図';
 $a->strings['Delete this item?'] = 'この項目を削除しますか？';
 $a->strings['Block this author? They won\'t be able to follow you nor see your public posts, and you won\'t be able to see their posts and their notifications.'] = 'この作者をブロックしますか？その人はあなたをフォローできなくなり、あなたの公開された投稿を見ることができなくなります。また、あなたはその人の投稿や通知を見ることができなくなります。';
 $a->strings['toggle mobile'] = 'モバイルを切り替え';
@@ -202,6 +89,7 @@ $a->strings['The form security token was not correct. This probably happened bec
 $a->strings['All contacts'] = 'すべてのコンタクト';
 $a->strings['Followers'] = 'フォロワー';
 $a->strings['Following'] = 'フォロー中';
+$a->strings['Friends'] = '友だち';
 $a->strings['Could not find any unarchived contact entry for this URL (%s)'] = 'このURL（ %s ）のアーカイブされていないコンタクトエントリが見つかりませんでした';
 $a->strings['The contact entries have been archived'] = 'コンタクトエントリがアーカイブされました';
 $a->strings['Could not find any contact entry for this URL (%s)'] = 'このURL（ %s ）のコンタクトエントリが見つかりませんでした';
@@ -249,7 +137,7 @@ $a->strings['Tag term:'] = '用語のタグ付け:';
 $a->strings['Where are you right now?'] = 'どこにいますか？:';
 $a->strings['Delete item(s)?'] = 'これ(ら)の項目を削除しますか？';
 $a->strings['New Post'] = '新しい投稿';
-$a->strings['Share'] = '共有';
+$a->strings['Loading...'] = '読み込み中…';
 $a->strings['upload photo'] = '写真をアップロード';
 $a->strings['Attach file'] = 'ファイルを添付';
 $a->strings['attach file'] = 'ファイルを添付';
@@ -261,7 +149,6 @@ $a->strings['Code'] = 'コード';
 $a->strings['Image'] = '画像';
 $a->strings['Link'] = 'リンク';
 $a->strings['Link or Media'] = 'リンク／メディア';
-$a->strings['Video'] = '動画';
 $a->strings['Set your location'] = '現在地を設定';
 $a->strings['set location'] = '現在地を設定';
 $a->strings['Clear browser location'] = 'ブラウザの現在地を解除';
@@ -270,12 +157,13 @@ $a->strings['Set title'] = '件名を設定';
 $a->strings['Categories (comma-separated list)'] = 'カテゴリ（半角カンマ区切り）';
 $a->strings['Permission settings'] = '権限設定';
 $a->strings['Public post'] = '一般公開の投稿';
+$a->strings['Preview'] = 'プレビュー';
 $a->strings['Message'] = 'メッセージ';
-$a->strings['Browser'] = 'ブラウザ';
 $a->strings['Open Compose page'] = '作成ページを開く';
 $a->strings['remove'] = '削除';
 $a->strings['Delete Selected Items'] = '選択した項目を削除';
 $a->strings['%s reshared this.'] = '%s が再共有しました。';
+$a->strings['Select'] = '選択';
 $a->strings['Pinned item'] = 'ピン留め項目';
 $a->strings['View %s\'s profile @ %s'] = '%sのプロフィールを確認 @ %s';
 $a->strings['Categories:'] = 'カテゴリ:';
@@ -292,17 +180,15 @@ $a->strings['Latest Posts'] = '最新の投稿';
 $a->strings['Sort by post received date'] = '投稿を受信した順に並び替え';
 $a->strings['Personal'] = 'パーソナル';
 $a->strings['Posts that mention or involve you'] = 'あなたに言及または関与している投稿';
-$a->strings['Starred'] = 'スター付き';
 $a->strings['Favourite Posts'] = 'お気に入りの投稿';
 $a->strings['General Features'] = '一般的な機能';
-$a->strings['Photo Location'] = '写真の場所';
-$a->strings['Photo metadata is normally stripped. This extracts the location (if present) prior to stripping metadata and links it to a map.'] = '通常、写真のメタデータは削除されます。これにより、メタデータを除去する前に場所（存在する場合）が抽出され、マップにリンクされます。';
 $a->strings['Post Composition Features'] = '合成後の機能';
 $a->strings['Explicit Mentions'] = '明示的な言及';
 $a->strings['Add explicit mentions to comment box for manual control over who gets mentioned in replies.'] = 'コメントボックスに明示的なメンションを追加して、返信の通知先をカスタマイズします。';
 $a->strings['Post/Comment Tools'] = '投稿/コメントツール';
 $a->strings['Post Categories'] = '投稿カテゴリ';
 $a->strings['Add categories to your posts'] = '投稿にカテゴリを追加する';
+$a->strings['Summary'] = '概要';
 $a->strings['Archives'] = 'アーカイブ';
 $a->strings['Protocols'] = 'プロトコル';
 $a->strings['Account Types'] = 'アカウントの種類';
@@ -319,23 +205,16 @@ $a->strings['event'] = 'イベント';
 $a->strings['status'] = 'ステータス';
 $a->strings['photo'] = '写真';
 $a->strings['%1$s tagged %2$s\'s %3$s with %4$s'] = '%1$s が %2$s の %3$s を %4$s としてタグ付けしました';
-$a->strings['Follow Thread'] = 'このスレッドをフォロー';
 $a->strings['View Status'] = 'ステータスを見る';
 $a->strings['View Profile'] = 'プロフィールを見る';
 $a->strings['View Photos'] = '写真を見る';
 $a->strings['Network Posts'] = 'ネットワーク投稿';
 $a->strings['View Contact'] = 'コンタクトを見る';
-$a->strings['Send PM'] = 'PMを送る';
-$a->strings['Block'] = 'ブロック';
-$a->strings['Ignore'] = '無視';
-$a->strings['Languages'] = '言語';
 $a->strings['Connect/Follow'] = 'つながる/フォローする';
 $a->strings['Nothing new here'] = 'ここに新しいものはありません';
 $a->strings['Home'] = 'ホーム';
 $a->strings['Clear notifications'] = 'クリア通知';
-$a->strings['Logout'] = 'ログアウト';
 $a->strings['End this session'] = 'このセッションを終了';
-$a->strings['Login'] = 'ログイン';
 $a->strings['Sign in'] = 'サインイン';
 $a->strings['Profile'] = 'プロフィール';
 $a->strings['Your profile page'] = 'あなたのプロフィールページ';
@@ -370,12 +249,9 @@ $a->strings['Your posts and conversations'] = 'あなたの投稿と会話';
 $a->strings['Introductions'] = '招待';
 $a->strings['Friend Requests'] = '友達リクエスト';
 $a->strings['Notifications'] = '通知';
-$a->strings['See all notifications'] = 'すべての通知を見る';
-$a->strings['Mark as seen'] = '既読にする';
 $a->strings['Private mail'] = 'プライベートメール';
 $a->strings['Inbox'] = '受信トレイ';
 $a->strings['Outbox'] = '送信トレイ';
-$a->strings['Manage other pages'] = '他のページを管理する';
 $a->strings['Settings'] = '設定';
 $a->strings['Account settings'] = 'アカウント設定';
 $a->strings['Manage/edit friends and contacts'] = '友達とコンタクトを管理/編集する';
@@ -394,10 +270,8 @@ $a->strings['Invalid source protocol'] = '無効なソースプロトコル';
 $a->strings['Invalid link protocol'] = '無効なリンクプロトコル';
 $a->strings['Loading more entries...'] = 'さらにエントリを読み込んでいます...';
 $a->strings['The end'] = '終わり';
-$a->strings['Follow'] = 'フォロー';
 $a->strings['Add New Contact'] = '新しいコンタクトを追加';
 $a->strings['Enter address or web location'] = '住所またはウェブの場所を入力してください';
-$a->strings['Example: bob@example.com, http://example.com/barbara'] = '例: bob@example.com, http://example.com/barbara';
 $a->strings['Connect'] = 'つながる';
 $a->strings['%d invitation available'] = [
 	0 => '%d通の招待が利用できます',
@@ -430,13 +304,11 @@ $a->strings['%d Contact'] = [
 ];
 $a->strings['View Contacts'] = 'コンタクトを表示';
 $a->strings['Remove term'] = '用語を削除';
-$a->strings['Trending Tags (last %d hour)'] = [
-	0 => 'トレンドタグ（過去%d時間）',
-];
 $a->strings['More Trending Tags'] = 'よりトレンドのタグ';
 $a->strings['XMPP:'] = 'XMPP：';
 $a->strings['Location:'] = 'ロケーション：';
 $a->strings['Network:'] = 'ネットワーク：';
+$a->strings['Follow'] = 'フォロー';
 $a->strings['Unfollow'] = 'フォロー解除';
 $a->strings['Mutuals'] = '相互';
 $a->strings['Post to Email'] = 'メールに投稿';
@@ -502,43 +374,6 @@ $a->strings['ImageMagick PHP extension is not installed'] = 'ImageMagick PHP拡�
 $a->strings['ImageMagick PHP extension is installed'] = 'ImageMagick PHP拡張機能がインストールされています';
 $a->strings['Database already in use.'] = 'データベースはすでに使用されています。';
 $a->strings['Could not connect to database.'] = 'データベースに接続できません。';
-$a->strings['Monday'] = '月曜';
-$a->strings['Tuesday'] = '火曜日';
-$a->strings['Wednesday'] = '水曜日';
-$a->strings['Thursday'] = '木曜日';
-$a->strings['Friday'] = '金曜日';
-$a->strings['Saturday'] = '土曜日';
-$a->strings['Sunday'] = '日曜日';
-$a->strings['January'] = '1月';
-$a->strings['February'] = '2月';
-$a->strings['March'] = '3月';
-$a->strings['April'] = '4月';
-$a->strings['May'] = '5月';
-$a->strings['June'] = '6月';
-$a->strings['July'] = '7月';
-$a->strings['August'] = '8月';
-$a->strings['September'] = '9月';
-$a->strings['October'] = '10月';
-$a->strings['November'] = '11月';
-$a->strings['December'] = '12月';
-$a->strings['Mon'] = '月';
-$a->strings['Tue'] = '火';
-$a->strings['Wed'] = '水';
-$a->strings['Thu'] = '木';
-$a->strings['Fri'] = '金';
-$a->strings['Sat'] = '土';
-$a->strings['Sun'] = '日';
-$a->strings['Jan'] = '1月';
-$a->strings['Feb'] = '2月';
-$a->strings['Mar'] = '3月';
-$a->strings['Apr'] = '4月';
-$a->strings['Jun'] = '6月';
-$a->strings['Jul'] = '7月';
-$a->strings['Aug'] = '8月';
-$a->strings['Sep'] = '9月';
-$a->strings['Oct'] = '10月';
-$a->strings['Nov'] = '11月';
-$a->strings['Dec'] = '12月';
 $a->strings['The logfile \'%s\' is not usable. No logging possible (error: \'%s\')'] = 'ログファイル \' %s \' は使用できません。ログ機能が使用できません。(エラー: \' %s \' )';
 $a->strings['The debug logfile \'%s\' is not usable. No logging possible (error: \'%s\')'] = 'デバッグログファイル \' %s \' は使用できません。ログ機能が使用できません。(エラー: \' %s \' )';
 $a->strings['Storage base path'] = 'ストレージのbase path';
@@ -587,9 +422,44 @@ $a->strings['Use mailto: in front of address to force email check.'] = 'メー�
 $a->strings['Limited profile. This person will be unable to receive direct/personal notifications from you.'] = '限定公開のプロフィールです。この人はあなたから直接/個人的な通知を受け取ることができません。';
 $a->strings['Unable to retrieve contact information.'] = 'コンタクト情報を取得できません。';
 $a->strings['Starts:'] = '開始：';
-$a->strings['Finishes:'] = '終了：';
 $a->strings['all-day'] = '一日中';
+$a->strings['Sun'] = '日';
+$a->strings['Mon'] = '月';
+$a->strings['Tue'] = '火';
+$a->strings['Wed'] = '水';
+$a->strings['Thu'] = '木';
+$a->strings['Fri'] = '金';
+$a->strings['Sat'] = '土';
+$a->strings['Sunday'] = '日曜日';
+$a->strings['Monday'] = '月曜';
+$a->strings['Tuesday'] = '火曜日';
+$a->strings['Wednesday'] = '水曜日';
+$a->strings['Thursday'] = '木曜日';
+$a->strings['Friday'] = '金曜日';
+$a->strings['Saturday'] = '土曜日';
+$a->strings['Jan'] = '1月';
+$a->strings['Feb'] = '2月';
+$a->strings['Mar'] = '3月';
+$a->strings['Apr'] = '4月';
+$a->strings['May'] = '5月';
+$a->strings['Jun'] = '6月';
+$a->strings['Jul'] = '7月';
+$a->strings['Aug'] = '8月';
 $a->strings['Sept'] = '9月';
+$a->strings['Oct'] = '10月';
+$a->strings['Nov'] = '11月';
+$a->strings['Dec'] = '12月';
+$a->strings['January'] = '1月';
+$a->strings['February'] = '2月';
+$a->strings['March'] = '3月';
+$a->strings['April'] = '4月';
+$a->strings['June'] = '6月';
+$a->strings['July'] = '7月';
+$a->strings['August'] = '8月';
+$a->strings['September'] = '9月';
+$a->strings['October'] = '10月';
+$a->strings['November'] = '11月';
+$a->strings['December'] = '12月';
 $a->strings['today'] = '今日';
 $a->strings['month'] = '月';
 $a->strings['week'] = '週間';
@@ -597,12 +467,6 @@ $a->strings['day'] = '日';
 $a->strings['No events to display'] = '表示するイベントはありません';
 $a->strings['Access to this profile has been restricted.'] = 'このプロフィールへのアクセスは制限されています。';
 $a->strings['l, F j'] = 'l, F j';
-$a->strings['Edit event'] = 'イベントを編集';
-$a->strings['Duplicate event'] = '重複イベント';
-$a->strings['Delete event'] = 'イベントを削除';
-$a->strings['l F d, Y \@ g:i A'] = 'l F d, Y \@ g:i A';
-$a->strings['D g:i A'] = 'D g:i A';
-$a->strings['g:i A'] = 'g:i A';
 $a->strings['Show map'] = '地図を表示';
 $a->strings['Hide map'] = '地図を隠す';
 $a->strings['%s\'s birthday'] = '%sの誕生日';
@@ -610,19 +474,15 @@ $a->strings['Happy Birthday %s'] = 'ハッピーバースデー %s';
 $a->strings['activity'] = 'アクティビティ';
 $a->strings['post'] = '投稿';
 $a->strings['bytes'] = 'バイト';
-$a->strings['View on separate page'] = '個別のページで見る';
 $a->strings['[no subject]'] = '[件名なし]';
 $a->strings['Wall Photos'] = 'ウォール写真';
-$a->strings['Edit profile'] = 'プロフィール編集';
-$a->strings['Change profile photo'] = 'プロフィール写真を変更';
 $a->strings['Homepage:'] = 'ホームページ：';
 $a->strings['About:'] = 'この場所について:';
+$a->strings['Edit profile'] = 'プロフィール編集';
 $a->strings['Atom feed'] = 'Atomフィード';
-$a->strings['F d'] = 'F d';
 $a->strings['[today]'] = '[今日]';
 $a->strings['Birthday Reminders'] = '誕生日のリマインダー';
 $a->strings['Birthdays this week:'] = '今週の誕生日：';
-$a->strings['g A l F d'] = 'g A l F d';
 $a->strings['[No description]'] = '[説明なし]';
 $a->strings['Event Reminders'] = 'イベントリマインダー';
 $a->strings['Upcoming events the next 7 days:'] = '今後7日間の今後のイベント：';
@@ -633,7 +493,6 @@ $a->strings['Religious Views:'] = '宗教的見解：';
 $a->strings['Likes:'] = '好きなもの：';
 $a->strings['Dislikes:'] = '嫌いなもの：';
 $a->strings['Title/Description:'] = 'タイトル説明：';
-$a->strings['Summary'] = '概要';
 $a->strings['Musical interests'] = '音楽的興味';
 $a->strings['Books, literature'] = '本、文学';
 $a->strings['Television'] = 'テレビ';
@@ -673,7 +532,6 @@ $a->strings['Nickname is already registered. Please choose another.'] = 'ニッ�
 $a->strings['An error occurred during registration. Please try again.'] = '登録中にエラーが発生しました。もう一度試してください。';
 $a->strings['An error occurred creating your default profile. Please try again.'] = '既定のプロフィールの作成中にエラーが発生しました。もう一度試してください。';
 $a->strings['An error occurred creating your self contact. Please try again.'] = '自己コンタクトの作成中にエラーが発生しました。もう一度試してください。';
-$a->strings['Friends'] = '友だち';
 $a->strings['Profile Photos'] = 'プロフィール写真';
 $a->strings['Registration details for %s'] = '%s の登録の詳細';
 $a->strings['
@@ -739,7 +597,6 @@ $a->strings['Federation Statistics'] = 'フェデレーション統計';
 $a->strings['The logfile \'%s\' is not writable. No logging possible'] = 'ログファイル \' %s \' は書き込みできません。ログ機能が使用できません。';
 $a->strings['PHP log currently enabled.'] = '現在有効なPHPログ。';
 $a->strings['PHP log currently disabled.'] = 'PHPログは現在無効になっています。';
-$a->strings['Logs'] = 'ログ';
 $a->strings['Clear'] = 'クリア';
 $a->strings['Enable Debugging'] = 'デバッグを有効にする';
 $a->strings['Log file'] = 'ログファイル';
@@ -817,8 +674,6 @@ $a->strings['Allowed friend domains'] = '許可された友達ドメイン';
 $a->strings['Comma separated list of domains which are allowed to establish friendships with this site. Wildcards are accepted. Empty to allow any domains'] = 'このサイトとの友達関係を確立できるドメインのカンマ区切りリスト。ワイルドカードが使用できます。すべてのドメインを許可するには空白にしてください。';
 $a->strings['Allowed email domains'] = '許可されたメールドメイン';
 $a->strings['Comma separated list of domains which are allowed in email addresses for registrations to this site. Wildcards are accepted. Empty to allow any domains'] = 'このサイトへの登録用の電子メールアドレスで許可されるドメインのカンマ区切りリスト。ワイルドカードが使用できます。すべてのドメインを許可するには空白にしてください。';
-$a->strings['No OEmbed rich content'] = 'OEmbed リッチコンテンツなし';
-$a->strings['Don\'t show the rich content (e.g. embedded PDF), except from the domains listed below.'] = '以下にリストされているドメインを除き、リッチコンテンツ（埋め込みPDFなど）を表示しないでください。';
 $a->strings['Block public'] = '一般公開をブロック';
 $a->strings['Check to block public access to all otherwise public personal pages on this site unless you are currently logged in.'] = 'このサイトの一般公開済み個人ページを除き、すべてのページで非ログイン状態のアクセスをブロックするには、ここをチェックします。';
 $a->strings['Force publish'] = '公開を強制する';
@@ -892,6 +747,7 @@ $a->strings['Allow user tags'] = 'ユーザータグを許可する';
 $a->strings['If enabled, the tags from the saved searches will used for the "tags" subscription in addition to the "relay_server_tags".'] = '有効にすると、保存された検索のタグが、"relay_server_tags "に加えて"tags "サブスクリプションに使用されます。';
 $a->strings['Start Relocation'] = '再配置を開始';
 $a->strings['Invalid storage backend setting value.'] = '無効なストレージバックエンド設定値です。';
+$a->strings['Save'] = '保存する';
 $a->strings['Database (legacy)'] = 'データベース（レガシー）';
 $a->strings['Your DB still runs with MyISAM tables. You should change the engine type to InnoDB. As Friendica will use InnoDB only features in the future, you should change this! See <a href="%s">here</a> for a guide that may be helpful converting the table engines. You may also use the command <tt>php bin/console.php dbstructure toinnodb</tt> of your Friendica installation for an automatic conversion.<br />'] = 'DBは引き続きMyISAMテーブルで実行されます。エンジンタイプをInnoDBに変更する必要があります。 Friendicaは今後InnoDBのみの機能を使用するため、これを変更する必要があります。テーブルエンジンの変換に役立つガイドについては、<a href="%s">こちら</a>をご覧ください。 Friendicaインストールの<tt> php bin/console.php dbstructure toinnodb </tt>コマンドを使用して自動変換することもできます。<br />';
 $a->strings['There is a new version of Friendica available for download. Your current version is %1$s, upstream version is %2$s'] = 'ダウンロード可能なFriendicaの新しいバージョンがあります。現在のバージョンは%1$s 、アップストリームバージョンは%2$sです。';
@@ -937,12 +793,13 @@ $a->strings['Database'] = 'データベース';
 $a->strings['DB updates'] = 'DBの更新';
 $a->strings['Inspect Deferred Workers'] = '非同期実行ワーカーの検査';
 $a->strings['Inspect worker Queue'] = 'ワーカーキューの検査';
+$a->strings['Logs'] = 'ログ';
+$a->strings['View'] = '表示する';
 $a->strings['Diagnostics'] = '診断';
 $a->strings['PHP Info'] = 'PHP情報';
 $a->strings['probe address'] = 'プローブアドレス';
 $a->strings['check webfinger'] = 'webfingerで診断';
 $a->strings['Babel'] = 'Babel';
-$a->strings['Addon Features'] = 'アドオン機能';
 $a->strings['User registrations waiting for confirmation'] = '確認待ちのユーザー登録';
 $a->strings['Daily posting limit of %d post reached. The post was rejected.'] = [
 	0 => '一日の最大投稿数 %d 件を超えたため、投稿できませんでした。',
@@ -961,7 +818,7 @@ $a->strings['Only You Can See This'] = 'これしか見えない';
 $a->strings['Tips for New Members'] = '新会員のためのヒント';
 $a->strings['More'] = '更に';
 $a->strings['People Search - %s'] = '人を検索- %s';
-$a->strings['No matches'] = '一致する項目がありません';
+$a->strings['No results.'] = '結果がありません。';
 $a->strings['Account'] = 'アカウント';
 $a->strings['Two-factor authentication'] = '二要素認証';
 $a->strings['Display'] = '表示';
@@ -976,19 +833,16 @@ $a->strings['The post was created'] = '投稿が作成されました';
 $a->strings['Failed to remove event'] = 'イベントを削除できませんでした';
 $a->strings['Event can not end before it has started.'] = 'イベントは開始する前に終了できません。';
 $a->strings['Event title and start time are required.'] = 'イベントのタイトルと開始時間が必要です。';
+$a->strings['Edit event'] = 'イベントを編集';
 $a->strings['Starting date and Title are required.'] = '開始日とタイトルが必要です。';
-$a->strings['Event Starts:'] = 'イベント開始：';
 $a->strings['Required'] = '必須';
-$a->strings['Finish date/time is not known or not relevant'] = '終了日時が不明であるか、関連性がない';
-$a->strings['Event Finishes:'] = 'イベント終了：';
+$a->strings['Location'] = '位置情報';
+$a->strings['Description'] = '説明';
 $a->strings['Share this event'] = 'このイベントを共有する';
 $a->strings['Basic'] = 'ベーシック';
 $a->strings['This calendar format is not supported'] = 'このカレンダー形式はサポートされていません';
 $a->strings['No exportable data found'] = 'エクスポート可能なデータが見つかりません';
 $a->strings['calendar'] = 'カレンダー';
-$a->strings['Events'] = 'イベント';
-$a->strings['View'] = '表示する';
-$a->strings['Create New Event'] = '新しいイベントを作成';
 $a->strings['list'] = 'リスト';
 $a->strings['Contact not found.'] = 'コンタクトが見つかりません。';
 $a->strings['Invalid contact.'] = '無効なコンタクト。';
@@ -1014,20 +868,22 @@ $a->strings['Only show hidden contacts'] = '非表示のコンタクトのみを
 $a->strings['Search your contacts'] = 'コンタクトを検索する';
 $a->strings['Results for: %s'] = '結果： %s';
 $a->strings['Update'] = '更新';
+$a->strings['Block'] = 'ブロック';
 $a->strings['Unblock'] = 'ブロック解除';
+$a->strings['Ignore'] = '無視';
 $a->strings['Unignore'] = '無視しない';
 $a->strings['Batch Actions'] = 'バッチアクション';
 $a->strings['Conversations started by this contact'] = 'このコンタクトが開始した会話';
 $a->strings['Posts and Comments'] = '投稿とコメント';
 $a->strings['Advanced Contact Settings'] = '高度なコンタクト設定';
-$a->strings['Mutual Friendship'] = '相互フォロー';
-$a->strings['is a fan of yours'] = 'あなたのファンです';
-$a->strings['you are a fan of'] = 'あなたはファンです';
+$a->strings['Friend'] = 'ともだち';
 $a->strings['Pending outgoing contact request'] = '保留中の送信済みコンタクトリクエスト';
 $a->strings['Pending incoming contact request'] = '保留中の受信済みコンタクトリクエスト';
+$a->strings['This is you'] = 'これはあなたです';
 $a->strings['Visit %s\'s profile [%s]'] = '%sのプロフィール[ %s ]を開く';
 $a->strings['Contact update failed.'] = 'コンタクトの更新に失敗しました。';
 $a->strings['Return to contact editor'] = 'コンタクトエディターに戻る';
+$a->strings['Submit'] = '送信する';
 $a->strings['Name'] = '名';
 $a->strings['Account Nickname'] = 'アカウントのニックネーム';
 $a->strings['Account URL'] = 'アカウントURL';
@@ -1038,9 +894,6 @@ $a->strings['Follower (%s)'] = [
 ];
 $a->strings['Following (%s)'] = [
 	0 => 'フォロー中（ %s ）',
-];
-$a->strings['Mutual friend (%s)'] = [
-	0 => '相互の友人（ %s ）',
 ];
 $a->strings['Contact (%s)'] = [
 	0 => 'コンタクト（ %s ）',
@@ -1058,16 +911,14 @@ $a->strings['%s knows you'] = '%sはあなたを知っています';
 $a->strings['Add a personal note:'] = '個人メモを追加します。';
 $a->strings['The contact could not be added.'] = 'コンタクトを追加できませんでした。';
 $a->strings['Invalid request.'] = '無効なリクエストです。';
-$a->strings['No keywords to match. Please add keywords to your profile.'] = '合致するキーワードが有りません。あなたのプロフィールにキーワードを追加してください。';
 $a->strings['Profile Match'] = '一致するプロフィール';
+$a->strings['No keywords to match. Please add keywords to your profile.'] = '合致するキーワードが有りません。あなたのプロフィールにキーワードを追加してください。';
+$a->strings['No matches'] = '一致する項目がありません';
 $a->strings['Failed to update contact record.'] = 'コンタクトレコードを更新できませんでした。';
 $a->strings['Contact has been unblocked'] = 'コンタクトのブロックが解除されました';
 $a->strings['Contact has been blocked'] = 'コンタクトがブロックされました';
 $a->strings['Contact has been unignored'] = 'コンタクトは無視されていません';
 $a->strings['Contact has been ignored'] = 'コンタクトは無視されました';
-$a->strings['You are mutual friends with %s'] = 'あなたは%sと共通の友達です';
-$a->strings['You are sharing with %s'] = '%sと共有しています';
-$a->strings['%s is sharing with you'] = '%sはあなたと共有しています';
 $a->strings['Private communications are not available for this contact.'] = 'このコンタクトへのプライベート通信は利用できません。';
 $a->strings['Never'] = '全くない';
 $a->strings['(Update was not successful)'] = '（更新は成功しませんでした）';
@@ -1114,7 +965,6 @@ $a->strings['No suggestions available. If this is a new site, please try again i
 $a->strings['You aren\'t following this contact.'] = 'あなたはこのコンタクトをフォローしていません';
 $a->strings['Unfollowing is currently not supported by your network.'] = '現在、フォロー解除はあなたのネットワークではサポートされていません';
 $a->strings['Disconnect/Unfollow'] = '接続・フォローを解除';
-$a->strings['No results.'] = '結果がありません。';
 $a->strings['This community stream shows all public posts received by this node. They may not reflect the opinions of this node’s users.'] = 'このコミュニティストリームには、このノードが受信したすべての一般公開投稿が表示されます。このノードのユーザーの意見を反映していない場合があります。';
 $a->strings['Community option not available.'] = 'コミュニティオプションは利用できません。';
 $a->strings['Not available.'] = '利用不可。';
@@ -1123,37 +973,9 @@ $a->strings['Friendica is a community project, that would not be possible withou
 $a->strings['Error'] = [
 	0 => 'エラー',
 ];
-$a->strings['Source input'] = 'ソース入力';
-$a->strings['BBCode::toPlaintext'] = 'BBCode :: toPlaintext';
-$a->strings['BBCode::convert (raw HTML)'] = 'BBCode :: convert（生のHTML）';
-$a->strings['BBCode::convert'] = 'BBCode :: convert';
-$a->strings['BBCode::convert => HTML::toBBCode'] = 'BBCode :: convert => HTML :: toBBCode';
-$a->strings['BBCode::toMarkdown'] = 'BBCode :: toMarkdown';
-$a->strings['BBCode::toMarkdown => Markdown::convert (raw HTML)'] = 'BBCode::toMarkdown => Markdown::convert (raw HTML)';
-$a->strings['BBCode::toMarkdown => Markdown::convert'] = 'BBCode :: toMarkdown => Markdown :: convert';
-$a->strings['BBCode::toMarkdown => Markdown::toBBCode'] = 'BBCode :: toMarkdown => Markdown :: toBBCode';
-$a->strings['BBCode::toMarkdown =>  Markdown::convert => HTML::toBBCode'] = 'BBCode :: toMarkdown => Markdown :: convert => HTML :: toBBCode';
-$a->strings['Item Body'] = '項目本体';
-$a->strings['Item Tags'] = '項目タグ';
-$a->strings['Source input (Diaspora format)'] = 'ソース入力（Diaspora形式）';
-$a->strings['Markdown::convert (raw HTML)'] = 'Markdown :: convert（生のHTML）';
-$a->strings['Markdown::convert'] = 'Markdown :: convert';
-$a->strings['Markdown::toBBCode'] = 'Markdown :: toBBCode';
-$a->strings['Raw HTML input'] = '生のHTML入力';
-$a->strings['HTML Input'] = 'HTML入力';
-$a->strings['HTML::toBBCode'] = 'HTML :: toBBCode';
-$a->strings['HTML::toBBCode => BBCode::convert'] = 'HTML :: toBBCode => BBCode :: convert';
-$a->strings['HTML::toBBCode => BBCode::convert (raw HTML)'] = 'HTML :: toBBCode => BBCode :: convert（生のHTML）';
-$a->strings['HTML::toBBCode => BBCode::toPlaintext'] = 'HTML :: toBBCode => BBCode :: toPlaintext';
-$a->strings['HTML::toMarkdown'] = 'HTML :: toMarkdown';
-$a->strings['HTML::toPlaintext'] = 'HTML :: toPlaintext';
-$a->strings['HTML::toPlaintext (compact)'] = 'HTML :: toPlaintext（コンパクト）';
-$a->strings['Source text'] = 'ソーステキスト';
-$a->strings['BBCode'] = 'BBCode';
-$a->strings['Markdown'] = 'マークダウン';
-$a->strings['HTML'] = 'HTML';
 $a->strings['You must be logged in to use this module'] = 'このモジュールを使用するにはログインする必要があります';
 $a->strings['Source URL'] = 'ソースURL';
+$a->strings['l F d, Y \@ g:i A'] = 'l F d, Y \@ g:i A';
 $a->strings['Time Conversion'] = '時間変換';
 $a->strings['Friendica provides this service for sharing events with other networks and friends in unknown timezones.'] = 'Friendicaは、未知のタイムゾーンで他のネットワークや友人とイベントを共有するためにこのサービスを提供します。';
 $a->strings['UTC time: %s'] = 'UTC時間： %s';
@@ -1163,7 +985,6 @@ $a->strings['Please select your timezone:'] = 'タイムゾーンを選択して
 $a->strings['Only logged in users are permitted to perform a probing.'] = 'ログインしているユーザーのみがプローブを実行できます。';
 $a->strings['Output'] = '出力';
 $a->strings['Lookup address'] = 'ルックアップアドレス';
-$a->strings['No entries (some entries may be hidden).'] = 'エントリなし（一部のエントリは非表示になる場合があります）';
 $a->strings['Find on this site'] = 'このサイトで見つける';
 $a->strings['Results for:'] = 'の結果：';
 $a->strings['Site Directory'] = 'サイトディレクトリ';
@@ -1245,6 +1066,21 @@ $a->strings['Clear the location'] = '場所をクリアする';
 $a->strings['Location services are unavailable on your device'] = 'デバイスで位置情報サービスを利用できません';
 $a->strings['Location services are disabled. Please check the website\'s permissions on your device'] = '位置情報サービスは無効になっています。お使いのデバイスでウェブサイトの権限を確認してください';
 $a->strings['The feed for this item is unavailable.'] = 'この項目のフィードは利用できません。';
+$a->strings['No valid account found.'] = '有効なアカウントが見つかりません。';
+$a->strings['Password reset request issued. Check your email.'] = 'パスワードリセット要求が発行されました。あなたのメールをチェックしてください。';
+$a->strings['Password reset requested at %s'] = 'パスワードのリセット要求が有りました:  %s';
+$a->strings['Request could not be verified. (You may have previously submitted it.) Password reset failed.'] = 'リクエストを確認できませんでした。 （以前に送信した可能性があります。）パスワードのリセットに失敗しました。';
+$a->strings['Request has expired, please make a new one.'] = 'リクエストの有効期限が切れています。新しいものを作成してください。';
+$a->strings['Forgot your Password?'] = 'パスワードをお忘れですか？';
+$a->strings['Enter your email address and submit to have your password reset. Then check your email for further instructions.'] = 'メールアドレスを入力して送信し、パスワードをリセットしてください。その後、メールで詳細な手順を確認してください。';
+$a->strings['Password Reset'] = 'パスワードのリセット';
+$a->strings['Your password has been reset as requested.'] = 'パスワードは要求どおりにリセットされました。';
+$a->strings['Your new password is'] = '新しいパスワードは';
+$a->strings['Save or copy your new password - and then'] = '新しいパスワードを保存またはコピーします-その後';
+$a->strings['click here to login'] = 'ここをクリックしてログイン';
+$a->strings['Your password may be changed from the <em>Settings</em> page after successful login.'] = 'ログインに成功すると、パスワードは<em>設定</em>ページから変更される場合があります。';
+$a->strings['Your password has been reset.'] = 'パスワードはリセットされました。';
+$a->strings['Your password has been changed at %s'] = 'パスワードは%s変更されました';
 $a->strings['System down for maintenance'] = 'メンテナンスのためのシステムダウン';
 $a->strings['A Decentralized Social Network'] = '分権化されたソーシャルネットワーク';
 $a->strings['Files'] = 'ファイル';
@@ -1297,6 +1133,7 @@ $a->strings['The GUID of the item you want to delete.'] = '削除する項目の
 $a->strings['Type'] = 'タイプ';
 $a->strings['Item not found'] = '項目が見つかりません';
 $a->strings['Item Guid'] = '項目GUID';
+$a->strings['Comment'] = 'コメント';
 $a->strings['Registered users'] = '登録ユーザー';
 $a->strings['Pending registrations'] = '保留中の登録';
 $a->strings['%s user blocked'] = [
@@ -1327,12 +1164,7 @@ $a->strings['%s user unblocked'] = [
 	0 => '%sユーザーのブロックを解除しました',
 ];
 $a->strings['User "%s" unblocked'] = 'ユーザー"%s"のブロックを解除しました';
-$a->strings['New User'] = '新しいユーザー';
-$a->strings['Add User'] = 'ユーザーを追加する';
-$a->strings['Name of the new user.'] = '新しいユーザーの名前。';
 $a->strings['Nickname'] = 'ニックネーム';
-$a->strings['Nickname of the new user.'] = '新しいユーザーのニックネーム。';
-$a->strings['Email address of the new user.'] = '新しいユーザーのメールアドレス。';
 $a->strings['Permanent deletion'] = '永久削除';
 $a->strings['User waiting for permanent deletion'] = '永久削除を待っているユーザー';
 $a->strings['Account approved.'] = 'アカウントが承認されました。';
@@ -1344,13 +1176,8 @@ $a->strings['Show Ignored Requests'] = '無視されたリクエストを表示'
 $a->strings['Hide Ignored Requests'] = '無視されたリクエストを隠す';
 $a->strings['Notification type:'] = '通知の種類：';
 $a->strings['Suggested by:'] = 'によって提案されました：';
+$a->strings['Remove'] = '削除';
 $a->strings['Claims to be known to you: '] = 'あなたに知られているという主張：';
-$a->strings['Shall your connection be bidirectional or not?'] = 'つながりを相互フォローにしてもよいですか？';
-$a->strings['Accepting %s as a friend allows %s to subscribe to your posts, and you will also receive updates from them in your news feed.'] = '%s を友達として受け入れた場合、%s はあなたの投稿を購読できます。また、あなたのニュースフィードにこのアカウントの投稿が表示されます。';
-$a->strings['Accepting %s as a subscriber allows them to subscribe to your posts, but you will not receive updates from them in your news feed.'] = '%sを購読者として受け入れると、このアカウントはあなたの投稿を購読できますが、このアカウントからの投稿はあなたのニュースフィードに表示されません。';
-$a->strings['Friend'] = 'ともだち';
-$a->strings['Subscriber'] = '購読者';
-$a->strings['No introductions.'] = '招待はありません。';
 $a->strings['No more %s notifications.'] = 'これ以上%s通知はありません。';
 $a->strings['You must be logged in to show this page.'] = 'このページを表示するにはログインする必要があります';
 $a->strings['Network Notifications'] = 'ネットワーク通知';
@@ -1361,14 +1188,6 @@ $a->strings['Show unread'] = '未読を表示';
 $a->strings['{0} requested registration'] = '{0}は登録をリクエストしました';
 $a->strings['Authorize application connection'] = 'アプリからの接続を承認します';
 $a->strings['Do you want to authorize this application to access your posts and contacts, and/or create new posts for you?'] = 'このアプリケーションによる、あなたの投稿・コンタクトの読み取りや、新しい投稿の作成を許可しますか？';
-$a->strings['No contact provided.'] = 'コンタクトは提供されていません。';
-$a->strings['Couldn\'t fetch information for contact.'] = 'コンタクトの情報を取得できませんでした。';
-$a->strings['Couldn\'t fetch friends for contact.'] = 'コンタクトの友達関係を取得できませんでした。';
-$a->strings['Done'] = '完了';
-$a->strings['success'] = '成功';
-$a->strings['failed'] = '失敗';
-$a->strings['ignored'] = '無視';
-$a->strings['Keep this window open until done.'] = 'ウィンドウを閉じずにお待ちください…';
 $a->strings['The Photo with id %s is not available.'] = 'ID%sの写真は利用できません';
 $a->strings['Invalid photo with id %s.'] = 'ID %s の写真が無効です。';
 $a->strings['Edit post'] = '投稿を編集';
@@ -1379,7 +1198,6 @@ $a->strings['Insert audio link'] = 'オーディオリンクを挿入';
 $a->strings['audio link'] = 'オーディオリンク';
 $a->strings['Remove Item Tag'] = 'タグの削除';
 $a->strings['Select a tag to remove: '] = '削除するタグを選択:';
-$a->strings['Remove'] = '削除';
 $a->strings['Model not found'] = 'モジュールが見つかりません';
 $a->strings['Remote privacy information not available.'] = 'リモートプライバシー情報は利用できません。';
 $a->strings['Visible to:'] = '表示先：';
@@ -1387,6 +1205,7 @@ $a->strings['No contacts.'] = 'コンタクトはありません。';
 $a->strings['%s\'s posts'] = '%sの投稿';
 $a->strings['%s\'s comments'] = '%sのコメント';
 $a->strings['%s\'s timeline'] = '%sのタイムライン';
+$a->strings['Personal notes are visible only by yourself.'] = '個人メモは自分自身によってのみ見えます。';
 $a->strings['Image exceeds size limit of %s'] = '画像サイズ上限 %s を超えています。';
 $a->strings['Image upload didn\'t complete, please try again'] = '画像のアップロードが完了しませんでした。もう一度お試しください';
 $a->strings['Image file is missing'] = '画像ファイルがありません';
@@ -1394,10 +1213,7 @@ $a->strings['Server can\'t accept new file upload at this time, please contact y
 $a->strings['Image file is empty.'] = '画像ファイルが空です。';
 $a->strings['View Album'] = 'アルバムを見る';
 $a->strings['Profile not found.'] = 'プロフィールが見つかりません。';
-$a->strings['Full Name:'] = 'フルネーム：';
-$a->strings['Member since:'] = '以来のメンバー：';
-$a->strings['j F, Y'] = 'j F, Y';
-$a->strings['j F'] = 'j F';
+$a->strings['Display name:'] = '表示名:';
 $a->strings['Birthday:'] = 'お誕生日：';
 $a->strings['Age: '] = '年齢：';
 $a->strings['%d year old'] = [
@@ -1409,6 +1225,8 @@ $a->strings['Invalid locator'] = '無効なロケーター';
 $a->strings['Remote subscription can\'t be done for your network. Please subscribe directly on your system.'] = 'あなたのネットワークではリモート購読ができません。あなたのシステム上で直接購読してください。';
 $a->strings['Friend/Connection Request'] = '友達/接続リクエスト';
 $a->strings['If you are not yet a member of the free social web, <a href="%s">follow this link to find a public Friendica node and join us today</a>.'] = 'まだ\'自由なソーシャルウェブ\'のメンバーでない場合は、<a href="%s">このリンクをクリックして、Friendicaの公開サイトを見つけて、今すぐ参加してください</a>。';
+$a->strings['Private Message'] = '自分のみ';
+$a->strings['via'] = '投稿先:';
 $a->strings['Only parent users can create additional accounts.'] = '追加アカウントを作成できるのは親ユーザのみです。';
 $a->strings['This site has exceeded the number of allowed daily account registrations. Please try again tomorrow.'] = 'このサイトは、1日あたりに許可されているアカウント登録数の上限を超えています。 明日再度お試しください。';
 $a->strings['You may (optionally) fill in this form via OpenID by supplying your OpenID and clicking "Register".'] = '（オプションで）OpenIDを提供し、「登録」をクリックして、OpenIDを介してこのフォームに入力できます。';
@@ -1446,18 +1264,14 @@ $a->strings['Only logged in users are permitted to perform a search.'] = 'ログ
 $a->strings['Only one search per minute is permitted for not logged in users.'] = 'ログインしていないユーザーには、1分間に1つの検索のみが許可されます。';
 $a->strings['Items tagged with: %s'] = 'タグ付けされた項目： %s';
 $a->strings['Search term already saved.'] = 'すでに保存された検索キーワードです。';
-$a->strings['Create a New Account'] = '新しいアカウントを作成する';
 $a->strings['Your OpenID: '] = 'あなたの OpenID: ';
 $a->strings['Please enter your username and password to add the OpenID to your existing account.'] = 'ユーザー名とパスワードを入力して、既存のアカウントにOpenIDを追加してください。';
-$a->strings['Or login using OpenID: '] = 'または、OpenIDを使用してログインします。';
-$a->strings['Password: '] = 'パスワード：';
 $a->strings['Remember me'] = '次から自動的にログイン';
 $a->strings['Forgot your password?'] = 'パスワードをお忘れですか？';
 $a->strings['Website Terms of Service'] = 'ウェブサイト利用規約';
 $a->strings['terms of service'] = '利用規約';
 $a->strings['Website Privacy Policy'] = 'ウェブサイトのプライバシーポリシー';
 $a->strings['privacy policy'] = '個人情報保護方針';
-$a->strings['Logged out.'] = 'ログアウトしました。';
 $a->strings['OpenID protocol error. No ID returned'] = 'OpenID プロトコルエラー。返答にてIDが返されませんでした。';
 $a->strings['Account not found. Please login to your existing account to add the OpenID to it.'] = 'アカウントが見つかりませんでした。 既存のアカウントにログインして、OpenIDを追加してください。';
 $a->strings['Account not found. Please register a new account or login to your existing account to add the OpenID to it.'] = 'アカウントが見つかりませんでした。 OpenIDを追加するには、新しいアカウントを登録するか、既存のアカウントにログインしてください。';
@@ -1506,13 +1320,11 @@ $a->strings['Password:'] = 'パスワード：';
 $a->strings['Your current password to confirm the changes of the email address'] = '変更を確認するための電子メールアドレスの現在のパスワード';
 $a->strings['Delete OpenID URL'] = 'OpenID URLを削除';
 $a->strings['Basic Settings'] = '基本設定';
-$a->strings['Display name:'] = '表示名:';
 $a->strings['Email Address:'] = '電子メールアドレス：';
 $a->strings['Your Timezone:'] = 'あなたのタイムゾーン：';
 $a->strings['Your Language:'] = 'あなたの言語：';
 $a->strings['Set the language we use to show you friendica interface and to send you emails'] = 'friendicaインターフェイスを表示し、メールを送信するために使用する言語を設定します';
 $a->strings['Default Post Location:'] = 'デフォルトの投稿場所：';
-$a->strings['Use Browser Location:'] = 'ブラウザのロケーションを使用：';
 $a->strings['Security and Privacy Settings'] = 'セキュリティとプライバシーの設定';
 $a->strings['Maximum Friend Requests/Day:'] = '1日あたりの友達リクエスト上限：';
 $a->strings['(to prevent spam abuse)'] = '（スパムの悪用を防ぐため）';
@@ -1529,22 +1341,16 @@ $a->strings['Your contacts may write posts on your profile wall. These posts wil
 $a->strings['Allow friends to tag your posts?'] = '友達があなたの投稿にタグを付けることを許可しますか？';
 $a->strings['Your contacts can add additional tags to your posts.'] = 'コンタクトは、投稿にタグを追加できます。';
 $a->strings['Default Post Permissions'] = '投稿の既定の権限';
-$a->strings['Expiration settings'] = '有効期限設定';
 $a->strings['Automatically expire posts after this many days:'] = 'この数日後に投稿を自動的に期限切れにします：';
 $a->strings['If empty, posts will not expire. Expired posts will be deleted'] = '空の場合、投稿は期限切れになりません。期限切れの投稿は削除されます';
 $a->strings['Expire posts'] = '投稿の有効期限';
 $a->strings['When activated, posts and comments will be expired.'] = '有効にすると、投稿とコメントは期限切れになるでしょう。';
 $a->strings['Expire personal notes'] = '個人メモの有効期限';
 $a->strings['When activated, the personal notes on your profile page will be expired.'] = '有効にすると、プロフィールページ上の個人メモは期限切れになるでしょう。';
-$a->strings['Expire starred posts'] = 'スター付き投稿の有効期限';
-$a->strings['Starring posts keeps them from being expired. That behaviour is overwritten by this setting.'] = '投稿にスターを付けると、投稿が期限切れにならないようにします。動作はこの設定で上書きされます。';
 $a->strings['Only expire posts by others'] = '他のユーザーによる投稿のみを期限切れにする';
 $a->strings['When activated, your own posts never expire. Then the settings above are only valid for posts you received.'] = '有効にすると、自分の投稿は期限切れになりません。そうすると、上記の設定は自分が受け取った投稿に対してのみ有効となります。';
-$a->strings['Notification Settings'] = '通知設定';
-$a->strings['Send a notification email when:'] = '次の場合に通知メールを送信します。';
 $a->strings['You receive an introduction'] = '招待を受けます';
 $a->strings['Your introductions are confirmed'] = 'あなたの招待が確認されました';
-$a->strings['Someone writes on your profile wall'] = '誰かがあなたのプロフィールウォールに書き込みます';
 $a->strings['Someone writes a followup comment'] = '誰かがフォローアップコメントを書く';
 $a->strings['You receive a private message'] = 'プライベートメッセージを受け取ります';
 $a->strings['You receive a friend suggestion'] = '友達の提案を受け取ります';
@@ -1563,8 +1369,7 @@ $a->strings['Relocate'] = '再配置';
 $a->strings['If you have moved this profile from another server, and some of your contacts don\'t receive your updates, try pushing this button.'] = 'このプロフィールを別のサーバーから移動し、コンタクトの一部が更新を受信しない場合は、このボタンを押してみてください。';
 $a->strings['Resend relocate message to contacts'] = '再配置メッセージをコンタクトに再送信する';
 $a->strings['Addon Settings'] = 'アドオン設定';
-$a->strings['No Addon settings configured'] = 'アドオン設定は構成されていません';
-$a->strings['Description'] = '説明';
+$a->strings['Languages'] = '言語';
 $a->strings['Add'] = '追加';
 $a->strings['Failed to connect with email account using the settings provided.'] = '提供された設定を使用してメールアカウントに接続できませんでした。';
 $a->strings['Diaspora (Socialhome, Hubzilla)'] = 'Diaspora（Socialhome、Hubzilla）';
@@ -1586,9 +1391,8 @@ $a->strings['Send public posts to all email contacts:'] = 'すべてのメール
 $a->strings['Action after import:'] = 'インポート後のアクション：';
 $a->strings['Move to folder'] = 'フォルダへ移動';
 $a->strings['Move to folder:'] = 'フォルダへ移動：';
-$a->strings['Contact CSV file upload error'] = 'アップロードエラー：コンタクトCSVファイル';
 $a->strings['Importing Contacts done'] = 'コンタクトのインポートが完了しました';
-$a->strings['Upload a CSV file that contains the handle of your followed accounts in the first column you exported from the old account.'] = '古いアカウントからエクスポートしたCSVファイルをアップロードします。これは最初の列に、フォローしているアカウントのハンドルを含みます。';
+$a->strings['Contact CSV file upload error'] = 'アップロードエラー：コンタクトCSVファイル';
 $a->strings['Upload File'] = 'ファイルをアップロード';
 $a->strings['Delegation successfully granted.'] = '委任が正常に許可されました。';
 $a->strings['Parent user not found, unavailable or password doesn\'t match.'] = '親ユーザーが見つからないか、利用できないか、パスワードが一致しません。';
@@ -1609,12 +1413,8 @@ $a->strings['No entries.'] = 'エントリは有りません。';
 $a->strings['The theme you chose isn\'t available.'] = '選択したテーマは使用できません。';
 $a->strings['%s - (Unsupported)'] = '%s （サポートされていません）';
 $a->strings['Display Settings'] = 'ディスプレイの設定';
-$a->strings['General Theme Settings'] = '一般的なテーマ設定';
-$a->strings['Custom Theme Settings'] = 'カスタムテーマ設定';
 $a->strings['Content Settings'] = 'コンテンツ設定';
 $a->strings['Theme settings'] = 'テーマ設定';
-$a->strings['Display Theme:'] = 'ディスプレイテーマ：';
-$a->strings['Mobile Theme:'] = 'モバイルテーマ：';
 $a->strings['Number of items to display per page:'] = 'ページごとに表示する項目の数：';
 $a->strings['Maximum of 100 items'] = '最大100項目';
 $a->strings['Number of items to display per page when viewed from mobile device:'] = 'モバイルデバイスから表示したときにページごとに表示する項目の数：';
@@ -1627,11 +1427,8 @@ $a->strings['Remove authorization'] = '承認を削除';
 $a->strings['(click to open/close)'] = '（クリックして開く・閉じる）';
 $a->strings['Profile Actions'] = 'プロフィールアクション';
 $a->strings['Edit Profile Details'] = 'プロフィールの詳細を編集';
-$a->strings['Change Profile Photo'] = 'プロフィール写真の変更';
 $a->strings['Profile picture'] = 'プロフィールの写真';
-$a->strings['Location'] = '位置情報';
 $a->strings['Miscellaneous'] = 'その他';
-$a->strings['Upload Profile Photo'] = 'プロフィール写真をアップロード';
 $a->strings['Street Address:'] = '住所：';
 $a->strings['Locality/City:'] = '地域/市：';
 $a->strings['Region/State:'] = '地域/州：';
@@ -1640,9 +1437,7 @@ $a->strings['Country:'] = '国：';
 $a->strings['XMPP (Jabber) address:'] = 'XMPP（Jabber）アドレス：';
 $a->strings['Homepage URL:'] = 'ホームページのURL：';
 $a->strings['Public Keywords:'] = '公開キーワード：';
-$a->strings['(Used for suggesting potential friends, can be seen by others)'] = '（友人を候補を提案するために使用ます。また他の人が見ることができます。）';
 $a->strings['Private Keywords:'] = 'プライベートキーワード：';
-$a->strings['(Used for searching profiles, never shown to others)'] = '（プロフィールの検索に使用され、他のユーザーには表示されません）';
 $a->strings['Image size reduction [%s] failed.'] = '画像サイズの縮小[ %s ]に失敗しました。';
 $a->strings['Shift-reload the page or clear browser cache if the new photo does not display immediately.'] = '新しい写真がすぐに表示されない場合は、Shiftキーを押しながらページをリロードするか、ブラウザーのキャッシュをクリアします。';
 $a->strings['Unable to process image'] = '画像を処理できません';
@@ -1700,6 +1495,7 @@ $a->strings['<p>Recovery codes can be used to access your account in the event y
 $a->strings['When you generate new recovery codes, you must copy the new codes. Your old codes won’t work anymore.'] = '新しい回復コードを生成する場合、新しいコードをコピーする必要があります。古いコードはもう機能しません。';
 $a->strings['Generate new recovery codes'] = '新しい回復コードを生成する';
 $a->strings['Next: Verification'] = '次：検証';
+$a->strings['Browser'] = 'ブラウザ';
 $a->strings['Two-factor authentication successfully activated.'] = '二要素認証が正常にアクティブ化されました。';
 $a->strings['<p>Or you can submit the authentication settings manually:</p>
 <dl>
@@ -1770,10 +1566,10 @@ $a->strings['New Member Checklist'] = '新しく参加した人のチェック�
 $a->strings['We would like to offer some tips and links to help make your experience enjoyable. Click any item to visit the relevant page. A link to this page will be visible from your home page for two weeks after your initial registration and then will quietly disappear.'] = '私たちはあなたの経験を楽しいものにするためのいくつかのヒントとリンクを提供したいと思います。項目をクリックして、関連するページにアクセスします。このページへのリンクは、最初の登録後2週間、ホームページから表示され、その後静かに消えます。';
 $a->strings['Getting Started'] = 'はじめに';
 $a->strings['Friendica Walk-Through'] = 'Friendica ウォークスルー';
-$a->strings['On your <em>Quick Start</em> page - find a brief introduction to your profile and network tabs, make some new connections, and find some groups to join.'] = '<em>クイックスタート</em>ページで、プロフィールとネットワークタブの簡単な紹介を見つけ、新しい接続を作成し、参加するグループを見つけます。';
 $a->strings['Go to Your Settings'] = '設定に移動';
 $a->strings['On your <em>Settings</em> page -  change your initial password. Also make a note of your Identity Address. This looks just like an email address - and will be useful in making friends on the free social web.'] = '[<em>設定</em>]ページで、初期パスワードを変更します。また、IDアドレスを書き留めます。これはメールアドレスのように見えます。無料のソーシャルウェブで友達を作るのに役立ちます。';
 $a->strings['Review the other settings, particularly the privacy settings. An unpublished directory listing is like having an unlisted phone number. In general, you should probably publish your listing - unless all of your friends and potential friends know exactly how to find you.'] = '他の設定、特にプライバシー設定を確認してください。公開されていないディレクトリ一覧は、一覧にない電話番号を持っているようなものです。一般に、おそらくあなたのリストを公開する必要があります-あなたの友人や潜在的な友人全員があなたを見つける方法を正確に知っていない限り。';
+$a->strings['Upload Profile Photo'] = 'プロフィール写真をアップロード';
 $a->strings['Upload a profile photo if you have not done so already. Studies have shown that people with real photos of themselves are ten times more likely to make friends than people who do not.'] = 'まだプロフィール写真をアップロードしていない場合はアップロードします。研究では、自分の実際の写真を持っている人は、持っていない人よりも友達を作る可能性が10倍高いことが示されています。';
 $a->strings['Edit Your Profile'] = 'プロフィールを編集する';
 $a->strings['Edit your <strong>default</strong> profile to your liking. Review the settings for hiding your list of friends and hiding the profile from unknown visitors.'] = 'お好みに合わせて<strong>既定の</strong>プロフィールを編集します。友達のリストを非表示にし、未知の訪問者からプロフィールを非表示にするための設定を確認します。';
@@ -1814,7 +1610,6 @@ $a->strings['You\'ve received an introduction from \'%1$s\' at %2$s'] = '\'%1$s\
 $a->strings['You\'ve received [url=%1$s]an introduction[/url] from %2$s.'] = '[url=%1$s]招待[/url] が %2$s から来ています。';
 $a->strings['You may visit their profile at %s'] = '彼らのプロフィールを %s にて開けるかもしれません。';
 $a->strings['Please visit %s to approve or reject the introduction.'] = ' %s を開いて、招待を承諾・拒否してください。';
-$a->strings['%1$s is sharing with you at %2$s'] = '%1$s さんが %2$s にて あなたの投稿を共有しました';
 $a->strings['You have a new follower at %2$s : %1$s'] = '新しいフォロワーです %2$s : %1$s';
 $a->strings['You\'ve received a friend suggestion from \'%1$s\' at %2$s'] = '\'%1$s\' より %2$s に 友達の候補を受け取りました';
 $a->strings['You\'ve received [url=%1$s]a friend suggestion[/url] for %2$s from %3$s.'] = '%3$s から %2$s への [url=%1$s]友達の候補[/url] を受け取りました。';
@@ -1824,7 +1619,6 @@ $a->strings['Please visit %s to approve or reject the suggestion.'] = '%s を開
 $a->strings['%s Connection accepted'] = '%s つながりが承諾されました';
 $a->strings['\'%1$s\' has accepted your connection request at %2$s'] = '\'%1$s\' は %2$s に あなたからのつながりの申込みを承諾しました';
 $a->strings['%2$s has accepted your [url=%1$s]connection request[/url].'] = '%2$s は あなたからの [url=%1$s]つながりの申し込み[/url] を承諾しました。';
-$a->strings['You are now mutual friends and may exchange status updates, photos, and email without restriction.'] = 'あなたたちは友達になりました。ステータスの更新、写真、メールを制限なくやりとりできます。';
 $a->strings['Please visit %s if you wish to make any changes to this relationship.'] = 'このつながりを変更する場合は %s を開いてください。';
 $a->strings['\'%1$s\' has chosen to accept you a fan, which restricts some forms of communication - such as private messaging and some profile interactions. If this is a celebrity or community page, these settings were applied automatically.'] = '\'%1$s\' はあなたをファンとして受け入れました。プライベートメッセージやプロフィール インタラクションなど、一部のやりとりは制限されています。 有名人またはコミュニティページの場合、これらの設定は自動的に適用されます。';
 $a->strings['\'%1$s\' may choose to extend this into a two-way or more permissive relationship in the future.'] = '\'%1$s\' は後日、これを双方向・より寛容な関係へと拡張する場合があります。';
@@ -1837,20 +1631,20 @@ $a->strings['This message was sent to you by %s, a member of the Friendica socia
 $a->strings['You may visit them online at %s'] = 'あなたは%sでそれらをオンラインで訪れることができます';
 $a->strings['Please contact the sender by replying to this post if you do not wish to receive these messages.'] = 'これらのメッセージを受信したくない場合は、この投稿に返信して送信者に連絡してください。';
 $a->strings['%s posted an update.'] = '%sが更新を投稿しました。';
-$a->strings['Private Message'] = '自分のみ';
 $a->strings['This entry was edited'] = 'このエントリは編集されました';
-$a->strings['Edit'] = '編集';
 $a->strings['Delete globally'] = 'グローバルに削除';
 $a->strings['Remove locally'] = 'ローカルで削除';
 $a->strings['Save to folder'] = 'フォルダーに保存';
 $a->strings['I will attend'] = '参加します';
 $a->strings['I will not attend'] = '私は出席しません';
 $a->strings['I might attend'] = '私は出席するかもしれません';
-$a->strings['Ignore thread'] = 'スレッドを無視';
-$a->strings['Unignore thread'] = '無視しないスレッド';
+$a->strings['Starred'] = 'スター付き';
+$a->strings['I like this (toggle)'] = '私はこれが好きです（トグル）';
+$a->strings['Like'] = 'いいね';
+$a->strings['I don\'t like this (toggle)'] = '気に入らない（トグル）';
+$a->strings['Dislike'] = '嫌い';
 $a->strings['%s (Received %s)'] = '%s (%s を受け取りました)';
 $a->strings['to'] = 'に';
-$a->strings['via'] = '投稿先:';
 $a->strings['Wall-to-Wall'] = '壁間';
 $a->strings['via Wall-To-Wall:'] = 'Wall-to-Wall経由：';
 $a->strings['Reply to %s'] = '%sへの返信';
@@ -1884,6 +1678,4 @@ $a->strings['minutes'] = '分';
 $a->strings['second'] = '秒';
 $a->strings['seconds'] = '秒';
 $a->strings['%1$d %2$s ago'] = '%1$d%2$s前';
-$a->strings['Copy or paste schemestring'] = 'スキーム文字列のコピーまたは貼り付け';
-$a->strings['You can copy this string to share your theme with others. Pasting here applies the schemestring'] = 'この文字列をコピーして、テーマを他の人と共有できます。ここに貼り付けると、スキーム文字列が適用されます';
 $a->strings['Navigation bar background color'] = 'ナビゲーションバーの背景色';

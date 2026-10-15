@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -25,7 +25,7 @@ use Psr\Log\LoggerInterface;
 abstract class MailBuilder
 {
 	/** @var string The default email banner in case nothing else is defined */
-	const DEFAULT_EMAIL_BANNER = 'images/friendica-32.png';
+	public const DEFAULT_EMAIL_BANNER = 'images/friendica-32.png';
 
 	/** @var L10n */
 	protected $l10n;
@@ -39,20 +39,24 @@ abstract class MailBuilder
 	/** @var string[][] */
 	protected $headers;
 
-	/** @var string */
+	/** @var string|null */
 	protected $senderName = null;
 	/** @var string */
 	protected $senderAddress = null;
-	/** @var string */
+	/** @var string|null */
 	protected $senderNoReply = null;
 
-	/** @var string */
+	/** @var string|null */
 	protected $recipientAddress = null;
-	/** @var int */
+	/** @var int|null */
 	protected $recipientUid = null;
 
-	public function __construct(L10n $l10n, BaseURL $baseUrl, IManageConfigValues $config, LoggerInterface $logger)
-	{
+	public function __construct(
+		L10n $l10n,
+		BaseURL $baseUrl,
+		IManageConfigValues $config,
+		LoggerInterface $logger,
+	) {
 		$this->l10n    = $l10n;
 		$this->baseUrl = $baseUrl;
 		$this->config  = $config;
@@ -123,7 +127,7 @@ abstract class MailBuilder
 	 *
 	 * @return static
 	 */
-	public function withSender(string $name, string $address, string $noReply = null)
+	public function withSender(string $name, string $address, ?string $noReply = null)
 	{
 		$this->senderName    = $name;
 		$this->senderAddress = $address;
@@ -199,7 +203,7 @@ abstract class MailBuilder
 	 *
 	 * @return static
 	 */
-	public function	setHeader(string $name, string $value)
+	public function setHeader(string $name, string $value)
 	{
 		$this->headers[$name] = [$value];
 
@@ -218,8 +222,8 @@ abstract class MailBuilder
 	 */
 	public function build(bool $raw = false)
 	{
-		if ((empty($this->recipientAddress)) &&
-		    !empty($this->recipientUid)) {
+		if ((empty($this->recipientAddress))
+			&& !empty($this->recipientUid)) {
 			$user = User::getById($this->recipientUid, ['email']);
 
 			if (!empty($user['email'])) {
@@ -235,9 +239,9 @@ abstract class MailBuilder
 			throw new UnprocessableEntityException('Sender address or name is missing.');
 		}
 
-		$this->senderNoReply = $this->senderNoReply ?? $this->senderAddress;
+		$this->senderNoReply ??= $this->senderAddress;
 
-		$msgHtml = $this->getHtmlMessage() ?? '';
+		$msgHtml = $this->getHtmlMessage();
 
 		if (!$raw) {
 			// load the template for private message notifications
@@ -247,8 +251,11 @@ abstract class MailBuilder
 				'$product'     => App::PLATFORM,
 				'$htmlversion' => $msgHtml,
 				'$sitename'    => $this->config->get('config', 'sitename'),
-				'$banner'      => $this->config->get('system', 'email_banner',
-					$this->baseUrl . DIRECTORY_SEPARATOR . self::DEFAULT_EMAIL_BANNER),
+				'$banner'      => $this->config->get(
+					'system',
+					'email_banner',
+					$this->baseUrl . DIRECTORY_SEPARATOR . self::DEFAULT_EMAIL_BANNER,
+				),
 			]);
 		}
 
@@ -257,10 +264,11 @@ abstract class MailBuilder
 			$this->senderAddress,
 			$this->senderNoReply,
 			$this->recipientAddress,
-			$this->getSubject() ?? '',
+			$this->getSubject(),
 			$msgHtml,
-			$this->getPlaintextMessage() ?? '',
+			$this->getPlaintextMessage(),
 			$this->headers,
-			$this->recipientUid ?? null);
+			$this->recipientUid ?? null,
+		);
 	}
 }

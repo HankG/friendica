@@ -1,8 +1,9 @@
 #!/usr/bin/env php
 <?php
+
 /**
- * Copyright (C) 2010-2024, the Friendica project
- * SPDX-FileCopyrightText: 2010-2024 the Friendica project
+ * Copyright (C) 2010-2026, the Friendica project
+ * SPDX-FileCopyrightText: 2010-2026 the Friendica project
  *
  * SPDX-License-Identifier: AGPL-3.0-or-later
  *
@@ -13,7 +14,7 @@ if (php_sapi_name() !== 'cli') {
 	exit();
 }
 
-// Ensure that te console is executed from the base path of the installation
+// Ensure console is executed from the base path of the installation
 chdir(dirname(__DIR__));
 
 require dirname(__DIR__) . '/vendor/autoload.php';

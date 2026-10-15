@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -25,15 +25,15 @@ class FollowConfirm extends BaseModule
 			return;
 		}
 
-		$intro_id = intval($_POST['intro_id']   ?? 0);
-		$duplex   = intval($_POST['duplex']     ?? 0);
-		$hidden   = intval($_POST['hidden']     ?? 0);
+		$intro_id = intval($_POST['intro_id'] ?? 0);
+		$duplex   = (bool) intval($_POST['duplex'] ?? 0);
+		$hidden   = (bool) intval($_POST['hidden'] ?? 0);
 
 		$intro = DI::intro()->selectOneById($intro_id, DI::userSession()->getLocalUserId());
 
 		Contact\Introduction::confirm($intro, $duplex, $hidden);
 		DI::intro()->delete($intro);
 
-		DI::baseUrl()->redirect('contact/' .  $intro->cid);
+		DI::baseUrl()->redirect('contact/' . $intro->cid);
 	}
 }

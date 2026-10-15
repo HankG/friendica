@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -24,19 +24,6 @@ use Seld\CliPrompt\CliPrompt;
 class User extends \Asika\SimpleConsole\Console
 {
 	protected $helpOptions = ['h', 'help', '?'];
-
-	/**
-	 * @var Mode
-	 */
-	private $appMode;
-	/**
-	 * @var L10n
-	 */
-	private $l10n;
-	/**
-	 * @var IManagePersonalConfigValues
-	 */
-	private $pConfig;
 
 	protected function getHelp()
 	{
@@ -74,19 +61,19 @@ HELP;
 		return $help;
 	}
 
-	public function __construct(Mode $appMode, L10n $l10n, IManagePersonalConfigValues $pConfig, array $argv = null)
-	{
+	public function __construct(
+		private readonly Mode $appMode,
+		private readonly L10n $l10n,
+		private readonly IManagePersonalConfigValues $pConfig,
+		?array $argv = null,
+	) {
 		parent::__construct($argv);
-
-		$this->appMode = $appMode;
-		$this->l10n    = $l10n;
-		$this->pConfig = $pConfig;
 	}
 
 	protected function doExecute(): int
 	{
 		if ($this->getOption('v')) {
-			$this->out('Class: ' . __CLASS__);
+			$this->out('Class: ' . self::class);
 			$this->out('Arguments: ' . var_export($this->args, true));
 			$this->out('Options: ' . var_export($this->options, true));
 		}
@@ -102,30 +89,19 @@ HELP;
 
 		$command = $this->getArgument(0);
 
-		switch ($command) {
-			case 'password':
-				return $this->password();
-			case 'add':
-				return ($this->addUser()) ? 0 : 1;
-			case 'allow':
-				return ($this->pendingUser(true)) ? 0 : 1;
-			case 'deny':
-				return ($this->pendingUser(false)) ? 0 : 1;
-			case 'block':
-				return ($this->blockUser(true)) ? 0 : 1;
-			case 'unblock':
-				return ($this->blockUser(false)) ? 0 : 1;
-			case 'delete':
-				return ($this->deleteUser()) ? 0 : 1;
-			case 'list':
-				return ($this->listUser()) ? 0 : 1;
-			case 'search':
-				return ($this->searchUser()) ? 0 : 1;
-			case 'config':
-				return ($this->configUser()) ? 0 : 1;
-			default:
-				throw new \Asika\SimpleConsole\CommandArgsException('Wrong command.');
-		}
+		return match ($command) {
+			'password' => $this->password(),
+			'add'      => ($this->addUser()) ? 0 : 1,
+			'allow'    => ($this->pendingUser(true)) ? 0 : 1,
+			'deny'     => ($this->pendingUser(false)) ? 0 : 1,
+			'block'    => ($this->blockUser(true)) ? 0 : 1,
+			'unblock'  => ($this->blockUser(false)) ? 0 : 1,
+			'delete'   => ($this->deleteUser()) ? 0 : 1,
+			'list'     => ($this->listUser()) ? 0 : 1,
+			'search'   => ($this->searchUser()) ? 0 : 1,
+			'config'   => ($this->configUser()) ? 0 : 1,
+			default    => throw new \Asika\SimpleConsole\CommandArgsException('Wrong command.'),
+		};
 	}
 
 	/**
@@ -221,23 +197,23 @@ HELP;
 		$avatar = $this->getArgument(5);
 
 		if (empty($name)) {
-			$this->out($this->l10n->t('Enter user name: '));
+			$this->out($this->l10n->t('Enter display name: '));
 			$name = CliPrompt::prompt();
 			if (empty($name)) {
-				throw new RuntimeException('A name must be set.');
+				throw new RuntimeException('A display name must be set.');
 			}
 		}
 
 		if (empty($nick)) {
-			$this->out($this->l10n->t('Enter user nickname: '));
+			$this->out($this->l10n->t('Enter username: '));
 			$nick = CliPrompt::prompt();
 			if (empty($nick)) {
-				throw new RuntimeException('A nick name must be set.');
+				throw new RuntimeException('A username must be set.');
 			}
 		}
 
 		if (empty($email)) {
-			$this->out($this->l10n->t('Enter user email address: '));
+			$this->out($this->l10n->t('Enter email address: '));
 			$email = CliPrompt::prompt();
 			if (empty($email)) {
 				throw new RuntimeException('A email address must be set.');
@@ -490,9 +466,9 @@ HELP;
 					}
 				}
 
-				if (array_key_exists($category, $values) and
-					array_key_exists($key, $values[$category]) and
-					$values[$category][$key] == $value) {
+				if (array_key_exists($category, $values)
+					and array_key_exists($key, $values[$category])
+					and $values[$category][$key] == $value) {
 					throw new RuntimeException('Value not changed');
 				}
 

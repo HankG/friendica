@@ -1,6 +1,6 @@
 {{*
-  * Copyright (C) 2010-2024, the Friendica project
-  * SPDX-FileCopyrightText: 2010-2024 the Friendica project
+  * Copyright (C) 2010-2026, the Friendica project
+  * SPDX-FileCopyrightText: 2010-2026 the Friendica project
   *
   * SPDX-License-Identifier: AGPL-3.0-or-later
   *}}
@@ -35,7 +35,7 @@
 		{{$myaddr}}
 		<input type="hidden" name="dfrn_url" id="dfrn-url" value="{{$myaddr}}">
 {{else}}
-		<input type="text" name="dfrn_url" id="dfrn-url" size="32" value="{{$myaddr}}">
+		<input type="text" name="dfrn_url" id="dfrn-url" value="{{$myaddr}}">
 {{/if}}
 		<input type="hidden" name="url" id="url" value="{{$url}}">
 		<div id="dfrn-request-url-end"></div>

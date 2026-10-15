@@ -1,6 +1,11 @@
-# SPDX-FileCopyrightText: 2010 - 2024 the Friendica project
+# SPDX-FileCopyrightText: 2010-2026 the Friendica project
 #
 # SPDX-License-Identifier: CC0-1.0
+
+matrix:
+  include:
+    - PHP_MAJOR_VERSION: 8.5
+      PHP_VERSION: 8.5.5
 
 # The code standard check is just triggered for PRs and pushes to non-stable branches of Friendica
 when:
@@ -20,11 +25,14 @@ steps:
         - '.composer'
     volumes:
       - /tmp/drone-cache:/tmp/cache
+
   composer_install:
-    image: composer
+    image: friendicaci/php${PHP_MAJOR_VERSION}:php${PHP_VERSION}
     commands:
+      - mkdir addon # create empty addon folder to appease composer
       - export COMPOSER_HOME=.composer
-      - ./bin/composer.phar run cs:install
+      - ./bin/composer.phar install --prefer-dist
+
   rebuild_cache:
     image: meltwater/drone-cache:dev
     settings:
@@ -36,10 +44,11 @@ steps:
         - '.composer'
     volumes:
       - /tmp/drone-cache:/tmp/cache
+
   check:
     image: php:8.3
     commands:
-      - echo "**** Use bin/dev/fix-codestyle.sh in case of errors ****"
+      - echo "**** Run `composer run cs:fix` in case of errors ****"
       - apt-get update -q
       - DEBIAN_FRONTEND=noninteractive apt-get install -q -y git
       - if [ ! -z "$${CI_COMMIT_PULL_REQUEST}" ]; then
@@ -49,4 +58,4 @@ steps:
           CHANGED_FILES="$(git diff --name-only --diff-filter=ACMRTUXB ${CI_COMMIT_SHA})";
         fi
       - EXTRA_ARGS="--path-mode=intersection -- $${CHANGED_FILES}";
-      - ./bin/dev/php-cs-fixer/vendor/bin/php-cs-fixer check --config=.php-cs-fixer.dist.php -v --diff --using-cache=no $${EXTRA_ARGS}
+      - ./vendor/bin/php-cs-fixer check --config=.php-cs-fixer.dist.php -v --diff --using-cache=no $${EXTRA_ARGS}

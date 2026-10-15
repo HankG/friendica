@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -14,6 +14,7 @@ use Friendica\Model\Post;
 use Friendica\Module\BaseApi;
 use Friendica\Network\HTTPException;
 use Friendica\Object\Api\Mastodon\TimelineOrderByTypes;
+use Friendica\Content\Post\Entity\PostMedia;
 
 /**
  * @see https://docs.joinmastodon.org/methods/timelines/
@@ -37,7 +38,7 @@ class Home extends BaseApi
 			'with_muted'      => false, // Pleroma extension: return activities by muted (not by blocked!) users.
 			'only_media'      => false, // Show only statuses with media attached? Defaults to false.
 			'remote'          => false, // Show only remote statuses? Defaults to false.
-			'exclude_replies' => false, // Don't show comments
+			'exclude_replies' => true, // Don't show comments
 			'friendica_order' => TimelineOrderByTypes::ID, // Sort order options (defaults to ID)
 		], $request);
 
@@ -53,7 +54,7 @@ class Home extends BaseApi
 		if ($request['only_media']) {
 			$condition = DBA::mergeConditions($condition, [
 				"`uri-id` IN (SELECT `uri-id` FROM `post-media` WHERE `type` IN (?, ?, ?))",
-				Post\Media::AUDIO, Post\Media::IMAGE, Post\Media::VIDEO
+				PostMedia::TYPE_AUDIO, PostMedia::TYPE_IMAGE, PostMedia::TYPE_VIDEO, PostMedia::TYPE_HLS,
 			]);
 		}
 
@@ -61,20 +62,18 @@ class Home extends BaseApi
 			$condition = DBA::mergeConditions($condition, ["NOT `uri-id` IN (SELECT `uri-id` FROM `post-user` WHERE `origin` AND `post-user`.`uri-id` = `post-user-view`.`uri-id`)"]);
 		}
 
+		$condition = DBA::mergeConditions($condition, ["NOT EXISTS(SELECT `cid` FROM `user-contact` WHERE `uid` = ? AND `cid` IN (`author-id`, `owner-id`, `causer-id`, `parent-owner-id`, `parent-author-id`) AND (`blocked` OR `ignored` OR `is-blocked` OR `channel-only`))", $uid]);
+
 		if ($request['exclude_replies']) {
-			$condition = DBA::mergeConditions($condition, ['gravity' => Item::GRAVITY_PARENT]);
+			$items = Post::selectTimelineThreadForUser($uid, ['uri-id'], $condition, $params);
+		} else {
+			$items = Post::selectTimelineForUser($uid, ['uri-id'], $condition, $params);
 		}
-
-		$condition = DBA::mergeConditions($condition, ["NOT EXISTS(SELECT `cid` FROM `user-contact` WHERE `uid` = ? AND `cid` IN (`parent-owner-id`, `parent-author-id`) AND (`blocked` OR `ignored` OR `is-blocked` OR `channel-only`))", $uid]);
-
-		$items = Post::selectTimelineForUser($uid, ['uri-id'], $condition, $params);
-
-		$display_quotes = self::appSupportsQuotes();
 
 		$statuses = [];
 		while ($item = Post::fetch($items)) {
 			try {
-				$status = DI::mstdnStatus()->createFromUriId($item['uri-id'], $uid, $display_quotes);
+				$status = DI::mstdnStatus()->createFromUriId($item['uri-id'], $uid);
 				$this->updateBoundaries($status, $item, $request['friendica_order']);
 				$statuses[] = $status;
 			} catch (\Throwable $th) {
@@ -88,7 +87,7 @@ class Home extends BaseApi
 		}
 
 
-		self::setLinkHeader($request['friendica_order'] != TimelineOrderByTypes::ID);
-		$this->jsonExit($statuses);
+		$this->setPaginationLinkHeader($request['friendica_order'] != TimelineOrderByTypes::ID);
+		$this->earlyJsonExit($statuses);
 	}
 }

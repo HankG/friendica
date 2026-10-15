@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -51,9 +51,9 @@ class UpdateContacts
 
 			try {
 				if ((!empty($contact['gsid']) || !empty($contact['baseurl'])) && GServer::reachable($contact)) {
-					$stamp   = (float)microtime(true);
+					$stamp   = (float) microtime(true);
 					$success = Contact::updateFromProbe($contact['id']);
-					DI::logger()->debug('Direct update', ['id' => $contact['id'], 'count' => $count, 'duration' => round((float)microtime(true) - $stamp, 3), 'success' => $success]);
+					DI::logger()->debug('Direct update', ['id' => $contact['id'], 'count' => $count, 'duration' => round((float) microtime(true) - $stamp, 3), 'success' => $success]);
 					++$count;
 				} elseif (UpdateContact::add(['priority' => Worker::PRIORITY_LOW, 'dont_fork' => true], $contact['id'])) {
 					DI::logger()->debug('Update by worker', ['id' => $contact['id'], 'count' => $count]);

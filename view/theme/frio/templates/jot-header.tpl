@@ -1,13 +1,11 @@
 {{*
-  * Copyright (C) 2010-2024, the Friendica project
-  * SPDX-FileCopyrightText: 2010-2024 the Friendica project
+  * Copyright (C) 2010-2026, the Friendica project
+  * SPDX-FileCopyrightText: 2010-2026 the Friendica project
   *
   * SPDX-License-Identifier: AGPL-3.0-or-later
   *}}
 
-<script type="text/javascript" src="{{$baseurl}}/view/js/ajaxupload.js?v={{$VERSION}}"></script>
 <script type="text/javascript" src="{{$baseurl}}/view/js/linkPreview.js?v={{$VERSION}}"></script>
-<script type="text/javascript" src="{{$baseurl}}/view/theme/frio/js/jot.js?v={{$VERSION}}"></script>
 
 <script type="text/javascript">
 	var editor = false;
@@ -65,7 +63,19 @@
 <script type="text/javascript">
 	var ispublic = '{{$ispublic nofilter}}';
 	aStr.linkurl = '{{$linkurl}}';
+	aStr.postPublished = '{{$postPublished}}';
+	aStr.goToPost = '{{$goToPost}}';
 
+	function goToElement(elementId) {
+		let $element = $('#' + elementId);
+		if ($element.length) {
+			window.scrollTo(0, $element.offset().top - 100);
+			$element.addClass('highlight-post');
+			setTimeout(function() {
+				$element.removeClass('highlight-post');
+			}, 2000);
+		}
+	}
 
 	$(document).ready(function() {
 
@@ -107,6 +117,18 @@
 			// This cancels the automatic redirection after item submission
 			formData.delete('return');
 
+			let isNewPost = !formData.get('post_id');
+
+			// remember existing post IDs to find our new one later
+			let existingPostIds = new Set();
+			if (isNewPost) {
+				$('.toplevel_item').each(function() {
+					existingPostIds.add($(this).attr('id'));
+				});
+			}
+
+			showPosting();
+
 			$.ajax({
 				url: 'item',
 				data: formData,
@@ -118,9 +140,14 @@
 				// Reset the form for jot reuse in the same page
 				e.target.reset();
 				$('#jot-modal').modal('hide');
+				// Ensure modal backdrop is removed (fixes lingering backdrop issue)
+				$(".modal-backdrop").remove();
+				$("body").removeClass("modal-open");
 				resetFormModifiedFlag(); // Reset formModified after successful submission
 			})
 			.always(function() {
+				hideLoading();
+
 				// Reset the post_id_random to avoid duplicate post errors
 				let new_post_id_random = Math.floor(Math.random() * (Number.MAX_SAFE_INTEGER - (Number.MAX_SAFE_INTEGER / 10))) + Number.MAX_SAFE_INTEGER / 10;
 				$('#profile-jot-form [name=post_id_random]').val(new_post_id_random);
@@ -129,10 +156,44 @@
 				$share.button('reset');
 				$sharePreview.button('reset');
 
-				// Force the display update of the edited post/comment
+				force_update = true;
 				if (formData.get('post_id')) {
-					force_update = true;
 					update_item = formData.get('post_id');
+				}
+
+				if (isNewPost) {
+					let alertHandler = function() {
+						// find our new post (has edit button)
+						let newPostElement = null;
+						$('.toplevel_item').each(function() {
+							if (!existingPostIds.has($(this).attr('id')) && $(this).find('.pencil').length > 0) {
+								newPostElement = $(this);
+								return false;
+							}
+						});
+
+						if (newPostElement) {
+							let postId = newPostElement.attr('id');
+							let alertHtml = '<div id="post-published-alert" class="alert alert-info alert-dismissible" role="alert">' +
+								'<button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>' +
+								aStr.postPublished + ' ' +
+								'<a href="#' + postId + '" class="alert-link" onclick="goToElement(\'' + postId + '\'); return false;">' + aStr.goToPost + '</a>' +
+								'</div>';
+
+							$('#post-published-alert').remove();
+							$('body').append(alertHtml);
+
+							// auto-dismiss after 5 seconds
+							setTimeout(function() {
+								$('#post-published-alert').fadeOut(400, function() {
+									$(this).remove();
+								});
+							}, 5000);
+						}
+
+						document.removeEventListener('postprocess_liveupdate', alertHandler);
+					};
+					document.addEventListener('postprocess_liveupdate', alertHandler);
 				}
 
 				NavUpdate();
@@ -149,13 +210,14 @@
 			jotActive();
 		});
 
-		$('body').on('click', '.p-category .filerm', function(e){
+		$('body').on('click', '.tag .filerm', function(e){
 			e.preventDefault();
 
-			let $href = $(e.target).attr('href');
+			let t = e.currentTarget
+			let $href = $(t).attr('href');
 			// Prevents arbitrary Ajax requests
 			if ($href.substr(0, 7) === 'filerm/') {
-				$(e.target).parent().removeClass('btn-success btn-danger');
+				$(t).parent().fadeOut(500)
 				$.post($href)
 				.done(function() {
 					liking = 1;
@@ -174,7 +236,7 @@
 			const ItemsToDelete = {};
 
 			$('#item-delete-selected').prop('disabled', true);
-			$('#item-delete-selected i').toggleClass('fa-trash fa-hourglass fa-spin');
+			$('#item-delete-selected i').toggleClass('ri-delete-bin-line ri-hourglass-line ri-spin');
 
 			$('.item-select').each(function () {
 				if ($(this).is(':checked')) {
@@ -203,7 +265,7 @@
 					$(ItemsToDelete[key]).remove();
 				}
 
-				$('#item-delete-selected i').toggleClass('fa-trash fa-hourglass fa-spin')
+				$('#item-delete-selected i').toggleClass('ri-delete-bin-line ri-hourglass-line ri-spin')
 				$('#item-delete-selected').prop('disabled', false).hide();
 			});
 		}
@@ -360,34 +422,5 @@
 	}
 
 	{{$geotag nofilter}}
-
-	function jotShow() {
-		var modal = $('#jot-modal').modal();
-		jotcache = $("#jot-sections");
-
-		// Auto focus on the first enabled field in the modal
-		modal.on('shown.bs.modal', function (e) {
-			$('#jot-modal-content').find('select:not([disabled]), input:not([type=hidden]):not([disabled]), textarea:not([disabled])').first().focus();
-		})
-
-		modal
-			.find('#jot-modal-content')
-			.append(jotcache)
-			.modal.show;
-
-		// Jot attachment live preview.
-		linkPreview = $('#profile-jot-text').linkPreview();
-	}
-
-	// Activate the jot text section in the jot modal
-	function jotActive() {
-		// Make sure jot text does have really the active class (we do this because there are some
-		// other events which trigger jot text (we need to do this for the desktop and mobile
-		// jot nav
-		var elem = $("#jot-modal .jot-nav #jot-text-lnk");
-		var elemMobile = $("#jot-modal .jot-nav #jot-text-lnk-mobile")
-		toggleJotNav(elem[0]);
-		toggleJotNav(elemMobile[0]);
-	}
 </script>
 

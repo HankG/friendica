@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -44,7 +44,7 @@ class Mail
 		}
 
 		if (empty($msg['guid'])) {
-			$msg['guid'] = Item::guidFromUri($msg['uri'], parse_url($msg['from-url'], PHP_URL_HOST));
+			$msg['guid'] = DI::postUriGenerator()->guidFromUri($msg['uri'], parse_url((string) $msg['from-url'], PHP_URL_HOST));
 		}
 
 		$msg['created'] = (!empty($msg['created']) ? DateTimeFormat::utc($msg['created']) : DateTimeFormat::utcNow());
@@ -53,10 +53,10 @@ class Mail
 		$msg['uri-id']        = ItemURI::insert(['uri' => $msg['uri'], 'guid' => $msg['guid']]);
 		$msg['parent-uri-id'] = ItemURI::getIdByURI($msg['parent-uri']);
 
-		DBA::lock('mail');
+		DBA::transaction();
 
 		if (DBA::exists('mail', ['uri' => $msg['uri'], 'uid' => $msg['uid']])) {
-			DBA::unlock();
+			DBA::rollback();
 			DI::logger()->info('duplicate message already delivered.');
 			return false;
 		}
@@ -73,7 +73,7 @@ class Mail
 
 		$msg['id'] = DBA::lastInsertId();
 
-		DBA::unlock();
+		DBA::commit();
 
 		if (!empty($msg['convid'])) {
 			DBA::update('conv', ['updated' => DateTimeFormat::utcNow()], ['id' => $msg['convid']]);
@@ -137,7 +137,7 @@ class Mail
 		Photo::setPermissionFromBody($body, $sender_uid, $me['id'], '<' . $contact['id'] . '>', '', '', '');
 
 		$guid = System::createUUID();
-		$uri  = Item::newURI($guid);
+		$uri  = DI::postUriGenerator()->newURI($guid);
 
 		$convid = 0;
 		$reply  = false;
@@ -193,9 +193,9 @@ class Mail
 				'replied'    => 0,
 				'uri'        => $uri,
 				'parent-uri' => $replyto,
-				'created'    => DateTimeFormat::utcNow()
+				'created'    => DateTimeFormat::utcNow(),
 			],
-			false
+			false,
 		);
 
 		/**
@@ -223,7 +223,7 @@ class Mail
 		}
 
 		if ($post_id) {
-			Worker::add(Worker::PRIORITY_HIGH, "Notifier", Delivery::MAIL, $post_id);
+			Worker::add(Worker::PRIORITY_HIGH, "Notifier", Delivery::MAIL, $post_id, $sender_uid);
 			return intval($post_id);
 		} else {
 			return -3;

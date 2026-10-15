@@ -1,14 +1,14 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Object\Api\Twitter;
 
 use Friendica\BaseDataTransferObject;
-use Friendica\Model\Post;
+use Friendica\Content\Post\Entity\PostMedia;
 
 /**
  * Class Media
@@ -48,11 +48,11 @@ class Media extends BaseDataTransferObject
 		$this->display_url     = $media['url'];
 		$this->expanded_url    = $media['url'];
 		$this->id              = $media['id'];
-		$this->id_str          = (string)$media['id'];
+		$this->id_str          = (string) $media['id'];
 		$this->indices         = $indices;
 		$this->media_url       = $media['url'];
 		$this->media_url_https = $media['url'];
-		$this->type            = $media['type'] == Post\Media::IMAGE ? 'photo' : 'video';
+		$this->type            = $media['type'] == PostMedia::TYPE_IMAGE ? 'photo' : 'video';
 		$this->url             = $url;
 
 		if (!empty($media['height']) && !empty($media['width'])) {
@@ -69,7 +69,7 @@ class Media extends BaseDataTransferObject
 					'h'      => $media['height'],
 					'resize' => 'fit',
 					'w'      => $media['width'],
-				]
+				],
 			];
 		}
 	}

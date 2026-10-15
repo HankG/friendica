@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -28,7 +28,7 @@ class Relationships extends BaseApi
 		], $request);
 
 		if (empty($request['id'])) {
-			$this->jsonExit([]);
+			$this->earlyJsonExit([]);
 		}
 
 		if (!is_array($request['id'])) {
@@ -41,6 +41,6 @@ class Relationships extends BaseApi
 			$relationships[] = DI::mstdnRelationship()->createFromContactId($id, $uid);
 		}
 
-		$this->jsonExit($relationships);
+		$this->earlyJsonExit($relationships);
 	}
 }

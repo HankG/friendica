@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -26,22 +26,18 @@ use Psr\Log\LoggerInterface;
  */
 class ExtendedDescription extends BaseApi
 {
-	private IManageConfigValues $config;
-
-	public function __construct(\Friendica\Factory\Api\Mastodon\Error $errorFactory, AppHelper $appHelper, L10n $l10n, BaseURL $baseUrl, Arguments $args, LoggerInterface $logger, Profiler $profiler, ApiResponse $response, IManageConfigValues $config, array $server, array $parameters = [])
+	public function __construct(\Friendica\Factory\Api\Mastodon\Error $errorFactory, AppHelper $appHelper, L10n $l10n, BaseURL $baseUrl, Arguments $args, LoggerInterface $logger, Profiler $profiler, ApiResponse $response, private readonly IManageConfigValues $config, array $server, array $parameters = [])
 	{
 		parent::__construct($errorFactory, $appHelper, $l10n, $baseUrl, $args, $logger, $profiler, $response, $server, $parameters);
-
-		$this->config = $config;
 	}
 
 	/**
 	 * @throws HTTPException\InternalServerErrorException
 	 */
-	protected function rawContent(array $request = [])
+	protected function rawContent(array $request = []): never
 	{
 		$account = User::getSystemAccount();
 
-		$this->jsonExit(new Mastodon\ExtendedDescription(new DateTime($account['updated']), $this->config->get('config', 'info')));
+		$this->earlyJsonExit(new Mastodon\ExtendedDescription(new DateTime($account['updated']), $this->config->get('config', 'info')));
 	}
 }

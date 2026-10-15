@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -20,29 +20,18 @@ use Friendica\Util\Images;
 
 class Photo extends BaseFactory
 {
-	/** @var BaseURL */
-	private $baseUrl;
-	/** @var Status */
-	private $status;
-	/** @var Activities */
-	private $activities;
-
-	public function __construct(LoggerInterface $logger, BaseURL $baseURL, Status $status, Activities $activities)
+	public function __construct(LoggerInterface $logger, private readonly BaseURL $baseUrl, private readonly Status $status, private readonly Activities $activities)
 	{
 		parent::__construct($logger);
-
-		$this->activities = $activities;
-		$this->status     = $status;
-		$this->baseUrl    = $baseURL;
 	}
 
 	/**
 	 * @param string $photo_id
-	 * @param int    $scale
+	 * @param int|null    $scale
 	 * @param int    $uid
 	 * @param string $type
 	 */
-	public function createFromId(string $photo_id, int $scale = null, int $uid, string $type = 'json', bool $with_posts = true): array
+	public function createFromId(string $photo_id, ?int $scale, int $uid, string $type = 'json', bool $with_posts = true): array
 	{
 		$fields = ['resource-id', 'created', 'edited', 'title', 'desc', 'album', 'filename','type',
 			'height', 'width', 'datasize', 'profile', 'allow_cid', 'deny_cid', 'allow_gid', 'deny_gid',
@@ -80,7 +69,7 @@ class Photo extends BaseFactory
 				$data['links'][$photo['scale'] . ':link']['@attributes'] = [
 					'type'  => $data['type'],
 					'scale' => $photo['scale'],
-					'href'  => $link
+					'href'  => $link,
 				];
 			} else {
 				$data['link'][$id] = $link;
@@ -137,10 +126,10 @@ class Photo extends BaseFactory
 			$data['friendica_comments'] = $comments;
 
 			// include info if rights on photo and rights on item are mismatching
-			$data['rights_mismatch'] = $data['allow_cid'] != $item['allow_cid'] ||
-				$data['deny_cid'] != $item['deny_cid'] ||
-				$data['allow_gid'] != $item['allow_gid'] ||
-				$data['deny_gid'] != $item['deny_gid'];
+			$data['rights_mismatch'] = $data['allow_cid'] != $item['allow_cid']
+				|| $data['deny_cid'] != $item['deny_cid']
+				|| $data['allow_gid'] != $item['allow_gid']
+				|| $data['deny_gid'] != $item['deny_gid'];
 		} elseif ($with_posts) {
 			$data['friendica_activities'] = [];
 			$data['friendica_comments']   = [];

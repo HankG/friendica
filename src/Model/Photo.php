@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -32,15 +32,15 @@ use Friendica\Util\Strings;
  */
 class Photo
 {
-	const CONTACT_PHOTOS = 'Contact Photos';
-	const PROFILE_PHOTOS = 'Profile Photos';
-	const BANNER_PHOTOS  = 'Banner Photos';
+	public const CONTACT_PHOTOS = 'Contact Photos';
+	public const PROFILE_PHOTOS = 'Profile Photos';
+	public const BANNER_PHOTOS  = 'Banner Photos';
 
-	const DEFAULT        = 0;
-	const USER_AVATAR    = 10;
-	const USER_BANNER    = 11;
-	const CONTACT_AVATAR = 20;
-	const CONTACT_BANNER = 21;
+	public const DEFAULT        = 0;
+	public const USER_AVATAR    = 10;
+	public const USER_BANNER    = 11;
+	public const CONTACT_AVATAR = 20;
+	public const CONTACT_BANNER = 21;
 
 	/**
 	 * Select rows from the photo table and returns them as array
@@ -151,7 +151,7 @@ class Photo
 
 		$uid = $r['uid'];
 
-		$accessible = $uid ? (bool)DI::pConfig()->get($uid, 'system', 'accessible-photos', false) : false;
+		$accessible = $uid ? (bool) DI::pConfig()->get($uid, 'system', 'accessible-photos', false) : false;
 
 		if (!empty($visitor_uid) && ($uid == $visitor_uid)) {
 			$sql_acl = '';
@@ -181,8 +181,8 @@ class Photo
 				"SELECT DISTINCT(`album`) AS `album` FROM `photo` WHERE `uid` = ? AND NOT `photo-type` IN (?, ?)",
 				$uid,
 				static::CONTACT_AVATAR,
-				static::CONTACT_BANNER
-			)
+				static::CONTACT_BANNER,
+			),
 		);
 
 		return array_column($photos, 'album');
@@ -197,12 +197,12 @@ class Photo
 	 * @return array All photos of the user/album
 	 * @throws \Exception
 	 */
-	public static function getBrowsablePhotosForUser(int $uid, string $album = null): array
+	public static function getBrowsablePhotosForUser(int $uid, ?string $album = null): array
 	{
 		$values = [
 			$uid,
 			Photo::CONTACT_AVATAR,
-			Photo::CONTACT_BANNER
+			Photo::CONTACT_BANNER,
 		];
 
 		if (!empty($album)) {
@@ -220,8 +220,8 @@ class Photo
 					min(`scale`) AS `hiq`, max(`scale`) AS `loq`, MIN(`desc`) AS `desc`, MIN(`created`) AS `created`
 					FROM `photo` WHERE `uid` = ? AND NOT `photo-type` IN (?, ?) $sqlExtra
 					GROUP BY `resource-id` $sqlExtra2",
-				$values
-			)
+				$values,
+			),
 		);
 	}
 
@@ -256,7 +256,7 @@ class Photo
 			$backendClass = DI::storageManager()->getByName($photo['backend-class'] ?? '');
 
 			return $backendClass->get($photo['backend-ref'] ?? '');
-		} catch (InvalidClassStorageException $storageException) {
+		} catch (InvalidClassStorageException) {
 			try {
 				// legacy data storage in "data" column
 				$i = self::selectFirst(['data'], ['id' => $photo['id']]);
@@ -371,7 +371,7 @@ class Photo
 	 * @return array
 	 * @throws \Exception
 	 */
-	public static function createPhotoForExternalResource(string $url, int $uid = 0, string $mimetype = '', string $blurhash = null, int $width = null, int $height = null): array
+	public static function createPhotoForExternalResource(string $url, int $uid = 0, string $mimetype = '', ?string $blurhash = null, ?int $width = null, ?int $height = null): array
 	{
 		if (empty($mimetype)) {
 			$mimetype = Images::guessTypeByExtension($url);
@@ -436,15 +436,19 @@ class Photo
 		$storage     = '';
 		$img_str     = $image->asString();
 
+		if (!is_string($img_str)) {
+			return false;
+		}
+
 		try {
 			if (DBA::isResult($existing_photo)) {
-				$backend_ref = (string)$existing_photo['backend-ref'];
+				$backend_ref = (string) $existing_photo['backend-ref'];
 				$storage     = DI::storageManager()->getWritableStorageByName($existing_photo['backend-class'] ?? '');
 			} else {
 				$storage = DI::storage();
 			}
 			$backend_ref = $storage->put($img_str, $backend_ref);
-		} catch (InvalidClassStorageException $storageException) {
+		} catch (InvalidClassStorageException) {
 			$data = $img_str;
 		}
 
@@ -472,8 +476,8 @@ class Photo
 			'deny_cid'      => $deny_cid,
 			'deny_gid'      => $deny_gid,
 			'desc'          => $desc,
-			'backend-class' => (string)$storage,
-			'backend-ref'   => $backend_ref
+			'backend-class' => (string) $storage,
+			'backend-ref'   => $backend_ref,
 		];
 
 		$fields = DI::dbaDefinition()->truncateFieldsForTable('photo', $fields);
@@ -532,7 +536,7 @@ class Photo
 	 * @throws \Friendica\Network\HTTPException\InternalServerErrorException
 	 * @see   \Friendica\Database\DBA::update
 	 */
-	public static function update(array $fields, array $conditions, Image $image = null, array $old_fields = []): bool
+	public static function update(array $fields, array $conditions, ?Image $image = null, array $old_fields = []): bool
 	{
 		if (!is_null($image)) {
 			// get photo to update
@@ -542,7 +546,7 @@ class Photo
 				try {
 					$backend_class         = DI::storageManager()->getWritableStorageByName($photo['backend-class'] ?? '');
 					$fields['backend-ref'] = $backend_class->put($image->asString(), $photo['backend-ref']);
-				} catch (InvalidClassStorageException $storageException) {
+				} catch (InvalidClassStorageException) {
 					$fields['data'] = $image->asString();
 				}
 			}
@@ -571,7 +575,7 @@ class Photo
 		$photo = DBA::selectFirst(
 			'photo',
 			['resource-id'],
-			['uid' => $uid, 'contact-id' => $cid, 'scale' => 4, 'photo-type' => self::CONTACT_AVATAR]
+			['uid' => $uid, 'contact-id' => $cid, 'scale' => 4, 'photo-type' => self::CONTACT_AVATAR],
 		);
 		if (!empty($photo['resource-id'])) {
 			$resource_id = $photo['resource-id'];
@@ -610,7 +614,7 @@ class Photo
 		if ($image->isValid()) {
 			$image->scaleToSquare(300);
 
-			$filesize     = strlen($image->asString());
+			$filesize     = strlen((string) $image->asString());
 			$maximagesize = Strings::getBytesFromShorthand(DI::config()->get('system', 'maximagesize'));
 
 			if ($maximagesize && ($filesize > $maximagesize)) {
@@ -619,7 +623,7 @@ class Photo
 					$image->toStatic();
 					$image = new Image($image->asString(), image_type_to_mime_type(IMAGETYPE_PNG));
 
-					$filesize = strlen($image->asString());
+					$filesize = strlen((string) $image->asString());
 					DI::logger()->info('Converted gif to a static png', ['uid' => $uid, 'cid' => $cid, 'size' => $filesize, 'type' => $image->getType()]);
 				}
 				if ($filesize > $maximagesize) {
@@ -627,7 +631,7 @@ class Photo
 						if ($filesize > $maximagesize) {
 							DI::logger()->info('Resize', ['uid' => $uid, 'cid' => $cid, 'size' => $filesize, 'max' => $maximagesize, 'pixels' => $pixels, 'type' => $image->getType()]);
 							$image->scaleDown($pixels);
-							$filesize = strlen($image->asString());
+							$filesize = strlen((string) $image->asString());
 						}
 					}
 				}
@@ -679,7 +683,7 @@ class Photo
 		$photo = DBA::selectFirst(
 			'photo',
 			['blurhash'],
-			['uid' => $uid, 'contact-id' => $cid, 'scale' => 4, 'photo-type' => self::CONTACT_AVATAR]
+			['uid' => $uid, 'contact-id' => $cid, 'scale' => 4, 'photo-type' => self::CONTACT_AVATAR],
 		);
 
 		return [$image_url, $thumb, $micro, $photo['blurhash']];
@@ -718,7 +722,7 @@ class Photo
 		}
 
 		if (count($parts) == 1) {
-			return (float)$parts[0];
+			return (float) $parts[0];
 		}
 
 		return floatval($parts[0]) / floatval($parts[1]);
@@ -757,7 +761,7 @@ class Photo
 					$uid,
 					self::DEFAULT,
 					$banner_type,
-					$avatar_type
+					$avatar_type,
 				));
 			} else {
 				// This query doesn't do the count and is much faster
@@ -769,12 +773,27 @@ class Photo
 					$uid,
 					self::DEFAULT,
 					$banner_type,
-					$avatar_type
+					$avatar_type,
 				));
 			}
 			DI::cache()->set($key, $albums, Duration::DAY);
 		}
 		return $albums;
+	}
+
+	/**
+	 * Fetch the photo albums that are available for a viewer for API output
+	 *
+	 * This function is used for API output and doesn't contain any permission checks or caching.
+	 *
+	 * @param int $uid User id of the photos
+	 *
+	 * @return array Returns array of the photo albums
+	 * @throws \Friendica\Network\HTTPException\InternalServerErrorException
+	 */
+	public static function getAlbumsForAPI(int $uid): array
+	{
+		return DBA::toArray(DBA::p("SELECT COUNT(DISTINCT `resource-id`) as `total`, `album`, MIN(`created`) AS `created` FROM `photo` WHERE `uid` = ? GROUP BY `album`", $uid));
 	}
 
 	/**
@@ -839,11 +858,11 @@ class Photo
 	public static function setPermissionFromBody($body, $uid, $original_contact_id, $str_contact_allow, $str_circle_allow, $str_contact_deny, $str_circle_deny): bool
 	{
 		// Simplify image codes
-		$img_body = preg_replace("/\[img\=([0-9]*)x([0-9]*)\](.*?)\[\/img\]/ism", '[img]$3[/img]', $body);
-		$img_body = preg_replace("/\[img\=(.*?)\](.*?)\[\/img\]/ism", '[img]$1[/img]', $img_body);
+		$img_body = preg_replace("/\[img\=([0-9]*)x([0-9]*)\](.*?)\[\/img\]/ism", '[img]$3[/img]', (string) $body);
+		$img_body = preg_replace("/\[img\=(.*?)\](.*?)\[\/img\]/ism", '[img]$1[/img]', (string) $img_body);
 
 		// Search for images
-		if (!preg_match_all("/\[img\](.*?)\[\/img\]/", $img_body, $match)) {
+		if (!preg_match_all("/\[img\](.*?)\[\/img\]/", (string) $img_body, $match)) {
 			return false;
 		}
 		$images = $match[1];
@@ -862,7 +881,7 @@ class Photo
 
 			$condition = [
 				'allow_cid'   => $srch, 'allow_gid' => '', 'deny_cid' => '', 'deny_gid' => '',
-				'resource-id' => $image_rid, 'uid' => $uid
+				'resource-id' => $image_rid, 'uid' => $uid,
 			];
 			if (!self::exists($condition)) {
 				$photo = self::selectFirst(['allow_cid', 'allow_gid', 'deny_cid', 'deny_gid', 'uid'], ['resource-id' => $image_rid]);
@@ -904,7 +923,7 @@ class Photo
 		$fields = [
 			'allow_cid'  => $str_contact_allow, 'allow_gid' => $str_circle_allow,
 			'deny_cid'   => $str_contact_deny, 'deny_gid' => $str_circle_deny,
-			'accessible' => DI::pConfig()->get($uid, 'system', 'accessible-photos', false)
+			'accessible' => (bool) DI::pConfig()->get($uid, 'system', 'accessible-photos', false),
 		];
 
 		$condition = ['resource-id' => $image_rid, 'uid' => $uid];
@@ -920,7 +939,7 @@ class Photo
 	 */
 	public static function getResourceData(string $name): array
 	{
-		$guid = str_replace([Strings::normaliseLink((string)DI::baseUrl()), '/photo/'], '', Strings::normaliseLink($name));
+		$guid = str_replace([Strings::normaliseLink((string) DI::baseUrl()), '/photo/'], '', Strings::normaliseLink($name));
 
 		if (parse_url($guid, PHP_URL_SCHEME)) {
 			return [];
@@ -932,9 +951,6 @@ class Photo
 		}
 
 		$scale = intval(substr($guid, -1, 1));
-		if (!is_numeric($scale)) {
-			return [];
-		}
 
 		$guid = substr($guid, 0, -2);
 		return ['guid' => $guid, 'scale' => $scale];
@@ -950,7 +966,7 @@ class Photo
 	public static function isLocal(string $name): bool
 	{
 		// @TODO Maybe a proper check here on true condition?
-		return (bool)self::getIdForName($name);
+		return (bool) self::getIdForName($name);
 	}
 
 	/**
@@ -982,7 +998,7 @@ class Photo
 	 */
 	public static function isLocalPage(string $name): bool
 	{
-		$guid = str_replace(Strings::normaliseLink((string)DI::baseUrl()), '', Strings::normaliseLink($name));
+		$guid = str_replace(Strings::normaliseLink((string) DI::baseUrl()), '', Strings::normaliseLink($name));
 		$guid = preg_replace("=/photos/.*/image/(.*)=ism", '$1', $guid);
 		if (empty($guid)) {
 			return false;
@@ -1000,7 +1016,7 @@ class Photo
 	 */
 	public static function resizeToFileSize(Image $image, int $maximagesize): Image
 	{
-		$filesize = strlen($image->asString());
+		$filesize = strlen((string) $image->asString());
 		$width    = $image->getWidth();
 		$height   = $image->getHeight();
 
@@ -1010,7 +1026,7 @@ class Photo
 				if (($filesize > $maximagesize) && (max($width, $height) > $pixels)) {
 					DI::logger()->info('Resize', ['size' => $filesize, 'width' => $width, 'height' => $height, 'max' => $maximagesize, 'pixels' => $pixels]);
 					$image->scaleDown($pixels);
-					$filesize = strlen($image->asString());
+					$filesize = strlen((string) $image->asString());
 					$width    = $image->getWidth();
 					$height   = $image->getHeight();
 				}
@@ -1024,7 +1040,7 @@ class Photo
 	 * Tries to resize image to wanted maximum size
 	 *
 	 * @param Image $image Image instance
-	 * @return Image|null Image instance on success, null on error
+	 * @return Image Image instance
 	 */
 	private static function fitImageSize(Image $image)
 	{
@@ -1103,9 +1119,9 @@ class Photo
 
 		if (!empty($files['name'])) {
 			if (is_array($files['name'])) {
-				$filename = basename($files['name'][0]);
+				$filename = basename((string) $files['name'][0]);
 			} else {
-				$filename = basename($files['name']);
+				$filename = basename((string) $files['name']);
 			}
 		} else {
 			$filename = '';
@@ -1171,7 +1187,7 @@ class Photo
 	 * @return array photo record or empty array on error
 	 * @throws \Friendica\Network\HTTPException\InternalServerErrorException
 	 */
-	public static function upload(int $uid, array $files, string $album = '', string $allow_cid = null, string $allow_gid = null, string $deny_cid = '', string $deny_gid = '', string $desc = '', string $resource_id = ''): array
+	public static function upload(int $uid, array $files, string $album = '', ?string $allow_cid = null, ?string $allow_gid = null, string $deny_cid = '', string $deny_gid = '', string $desc = '', string $resource_id = ''): array
 	{
 		$user = User::getOwnerDataById($uid);
 		if (empty($user)) {
@@ -1389,8 +1405,10 @@ class Photo
 		$resource_id = self::newResource();
 		$album       = DI::l10n()->t(self::BANNER_PHOTOS);
 
-		if ($width > 960) {
-			$image->scaleDown(960);
+		$max_banner_width = DI::config()->get('system', 'max_banner_width');
+
+		if ($width > $max_banner_width && $max_banner_width > 0) {
+			$image->scaleDown($max_banner_width);
 		}
 
 		$r = self::store($image, $uid, 0, $resource_id, $filename, $album, 3, self::USER_BANNER);

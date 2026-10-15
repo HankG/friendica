@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -32,9 +32,9 @@ class DelegatingLoggerFactoryTest extends TestCase
 
 		$factory->registerFactory('test', $this->createStub(LoggerFactory::class));
 
-		$this->assertInstanceOf(
+		$this->assertInstanceOf( // @phpstan-ignore method.alreadyNarrowedType
 			LoggerInterface::class,
-			$factory->createLogger(LogLevel::DEBUG, LogChannel::DEFAULT)
+			$factory->createLogger(LogLevel::DEBUG, LogChannel::DEFAULT),
 		);
 	}
 
@@ -49,7 +49,7 @@ class DelegatingLoggerFactoryTest extends TestCase
 
 		$this->assertInstanceOf(
 			NullLogger::class,
-			$factory->createLogger(LogLevel::DEBUG, LogChannel::DEFAULT)
+			$factory->createLogger(LogLevel::DEBUG, LogChannel::DEFAULT),
 		);
 	}
 
@@ -69,7 +69,7 @@ class DelegatingLoggerFactoryTest extends TestCase
 
 		$this->assertInstanceOf(
 			NullLogger::class,
-			$factory->createLogger(LogLevel::DEBUG, LogChannel::DEFAULT)
+			$factory->createLogger(LogLevel::DEBUG, LogChannel::DEFAULT),
 		);
 	}
 }

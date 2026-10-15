@@ -1,15 +1,15 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Security;
 
 use Friendica\Core\Cache\Enum\Duration;
-use Friendica\Core\Hook;
 use Friendica\Core\System;
+use Friendica\Event\ArrayFilterEvent;
 use Friendica\Database\DBA;
 use Friendica\DI;
 use Friendica\Model\Contact;
@@ -55,7 +55,7 @@ class OpenWebAuth
 		$addr = $_GET['addr'] ?? $my_url;
 
 		$arr = ['zrl' => $my_url, 'url' => DI::args()->getCommand()];
-		Hook::callAll('zrl_init', $arr);
+		DI::eventDispatcher()->dispatch(new ArrayFilterEvent(ArrayFilterEvent::ZRL_INIT, $arr));
 
 		// Try to find the public contact entry of the visitor.
 		$contact = Contact::getByURL($my_url, null, ['id', 'url', 'gsid']);
@@ -134,7 +134,7 @@ class OpenWebAuth
 
 		$arr = [
 			'visitor' => $visitor,
-			'url'     => DI::args()->getQueryString()
+			'url'     => DI::args()->getQueryString(),
 		];
 		/**
 		 * @hooks magic_auth_success
@@ -142,7 +142,9 @@ class OpenWebAuth
 		 *   * \e array \b visitor
 		 *   * \e string \b url
 		 */
-		Hook::callAll('magic_auth_success', $arr);
+		$arr = DI::eventDispatcher()->dispatch(
+			new ArrayFilterEvent(ArrayFilterEvent::MAGIC_AUTH_SUCCESS, $arr),
+		)->getArray();
 
 		$appHelper->setContactId($arr['visitor']['id']);
 
@@ -222,7 +224,7 @@ class OpenWebAuth
 		if (!strpos($url, '/profile/') && !$force) {
 			return $url;
 		}
-		if ($force && substr($url, -1, 1) !== '/') {
+		if ($force && !str_ends_with($url, '/')) {
 			$url = $url . '/';
 		}
 

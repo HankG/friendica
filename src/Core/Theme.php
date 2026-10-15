@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -65,7 +65,7 @@ class Theme
 			'version'      => "",
 			'credits'      => "",
 			'experimental' => file_exists("view/theme/$theme/experimental"),
-			'unsupported'  => file_exists("view/theme/$theme/unsupported")
+			'unsupported'  => file_exists("view/theme/$theme/unsupported"),
 		];
 
 		if (!is_file("view/theme/$theme/theme.php")) {
@@ -82,9 +82,9 @@ class Theme
 			$comment_lines = explode("\n", $matches[0]);
 			foreach ($comment_lines as $comment_line) {
 				$comment_line = trim($comment_line, "\t\n\r */");
-				if (strpos($comment_line, ':') !== false) {
-					list($key, $value) = array_map("trim", explode(":", $comment_line, 2));
-					$key               = strtolower($key);
+				if (str_contains($comment_line, ':')) {
+					[$key, $value] = array_map(trim(...), explode(":", $comment_line, 2));
+					$key           = strtolower($key);
 					if ($key == "author") {
 						$result = preg_match("|([^<]+)<([^>]+)>|", $value, $matches);
 						if ($result) {
@@ -286,7 +286,7 @@ class Theme
 	 * @param int|null $uid   Current logged-in user id
 	 * @return string|null
 	 */
-	public static function getBackgroundColor(string $theme, int $uid = null)
+	public static function getBackgroundColor(string $theme, ?int $uid = null)
 	{
 		$theme = Strings::sanitizeFilePathItem($theme);
 
@@ -312,7 +312,7 @@ class Theme
 	 * @param int|null $uid   Current logged-in user id
 	 * @return string|null
 	 */
-	public static function getThemeColor(string $theme, int $uid = null)
+	public static function getThemeColor(string $theme, ?int $uid = null)
 	{
 		$theme = Strings::sanitizeFilePathItem($theme);
 

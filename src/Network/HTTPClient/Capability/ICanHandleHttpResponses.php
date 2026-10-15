@@ -1,13 +1,14 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Network\HTTPClient\Capability;
 
 use Psr\Http\Message\MessageInterface;
+use Psr\Http\Message\StreamInterface;
 
 /**
  * Temporary class to map Friendica used variables based on PSR-7 HTTPResponse
@@ -59,7 +60,7 @@ interface ICanHandleHttpResponses
 	/**
 	 * Returns the headers as an associated array
 	 * @see MessageInterface::getHeaders()
-	 * @deprecated
+	 * @deprecated 2021.10 Use getHeaders() instead
 	 *
 	 * @return string[][] associated header array
 	 */
@@ -123,4 +124,11 @@ interface ICanHandleHttpResponses
 	 * @return boolean
 	 */
 	public function isTimeout(): bool;
+
+	/**
+	 * Get the response body as a stream
+	 *
+	 * @return StreamInterface
+	 */
+	public function getBodyStream(): StreamInterface;
 }

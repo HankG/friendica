@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -24,7 +24,7 @@ class Acctlink extends BaseModule
 			throw new NotFoundException('Parameter "addr" is missing or empty');
 		}
 
-		$contact = Contact::getByURL($addr, null, ['url']) ?? '';
+		$contact = Contact::getByURL($addr, null, ['url']);
 		if (!$contact) {
 			throw new NotFoundException('Contact not found');
 		}

@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -31,12 +31,12 @@ class PollContacts
 		if (!empty($abandon_days)) {
 			$condition = DBA::mergeConditions(
 				$condition,
-				["`uid` != ? AND `uid` IN (SELECT `uid` FROM `user` WHERE `verified` AND NOT `blocked` AND NOT `account_removed` AND NOT `account_expired` AND `last-activity` > ?)", 0, DateTimeFormat::utc('now - ' . $abandon_days . ' days')]
+				["`uid` != ? AND `uid` IN (SELECT `uid` FROM `user` WHERE `verified` AND NOT `blocked` AND NOT `account_removed` AND NOT `account_expired` AND `last-activity` > ?)", 0, DateTimeFormat::utc('now - ' . $abandon_days . ' days')],
 			);
 		} else {
 			$condition = DBA::mergeConditions(
 				$condition,
-				["`uid` != ? AND `uid` IN (SELECT `uid` FROM `user` WHERE `verified` AND NOT `blocked` AND NOT `account_removed` AND NOT `account_expired`)", 0]
+				["`uid` != ? AND `uid` IN (SELECT `uid` FROM `user` WHERE `verified` AND NOT `blocked` AND NOT `account_removed` AND NOT `account_expired`)", 0],
 			);
 		}
 
@@ -69,7 +69,7 @@ class PollContacts
 
 			DI::logger()->notice("Polling " . $contact["network"] . " " . $contact["id"] . " " . $contact['priority'] . " " . $contact["nick"] . " " . $contact["name"]);
 
-			Worker::add(['priority' => $priority, 'dont_fork' => true, 'force_priority' => true], 'OnePoll', (int)$contact['id']);
+			Worker::add(['priority' => $priority, 'dont_fork' => true, 'force_priority' => true], 'OnePoll', (int) $contact['id']);
 			Worker::coolDown();
 		}
 		DBA::close($contacts);

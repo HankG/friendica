@@ -1,6 +1,6 @@
 {{*
-  * Copyright (C) 2010-2024, the Friendica project
-  * SPDX-FileCopyrightText: 2010-2024 the Friendica project
+  * Copyright (C) 2010-2026, the Friendica project
+  * SPDX-FileCopyrightText: 2010-2026 the Friendica project
   *
   * SPDX-License-Identifier: AGPL-3.0-or-later
   *}}
@@ -19,6 +19,7 @@
 		<input type="hidden" name="category" value="{{$category}}">
 		<input type="hidden" name="rule-ids" value="{{$ruleIds}}">
 		<input type="hidden" name="uri-ids" value="{{$uriIds}}">
+		<input type="hidden" name="return" value="{{$return}}">
 
 		{{include file="field_radio.tpl" field=$nothing}}
 		{{include file="field_radio.tpl" field=$collapse}}

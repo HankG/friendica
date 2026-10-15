@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -37,12 +37,12 @@ class FileSystem implements FileSystemUtil
 			$dirname = realpath(dirname($file));
 		}
 
-		if (substr($file, 0, 7) === 'file://') {
+		if (str_starts_with($file, 'file://')) {
 			$dirname = realpath(dirname(substr($file, 7)));
 		}
 
 		if (isset($dirname) && !is_dir($dirname)) {
-			set_error_handler([$this, 'customErrorHandler']);
+			set_error_handler($this->customErrorHandler(...));
 			$status = mkdir($dirname, 0777, true);
 			restore_error_handler();
 
@@ -70,7 +70,7 @@ class FileSystem implements FileSystemUtil
 	public function createStream(string $url)
 	{
 		$directory = $this->createDir($url);
-		set_error_handler([$this, 'customErrorHandler']);
+		set_error_handler($this->customErrorHandler(...));
 		if (!empty($directory)) {
 			$url = $directory . DIRECTORY_SEPARATOR . pathinfo($url, PATHINFO_BASENAME);
 		}
@@ -87,6 +87,6 @@ class FileSystem implements FileSystemUtil
 
 	private function customErrorHandler($code, $msg)
 	{
-		$this->errorMessage = preg_replace('{^(fopen|mkdir)\(.*?\): }', '', $msg);
+		$this->errorMessage = preg_replace('{^(fopen|mkdir)\(.*?\): }', '', (string) $msg);
 	}
 }

@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -49,8 +49,17 @@ class ProfileField extends BaseEntity
 	/** @var \DateTime */
 	protected $edited;
 
-	public function __construct(int $uid, int $order, string $label, string $value, \DateTime $created, \DateTime $edited, PermissionSet $permissionSet, int $id = null, int $uriId = null)
-	{
+	public function __construct(
+		int $uid,
+		int $order,
+		string $label,
+		string $value,
+		\DateTime $created,
+		\DateTime $edited,
+		PermissionSet $permissionSet,
+		?int $id = null,
+		?int $uriId = null,
+	) {
 		$this->permissionSet = $permissionSet;
 		$this->uid           = $uid;
 		$this->order         = $order;

@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -27,25 +27,25 @@ class Worker
 	 * Process priority for the worker
 	 * @{
 	 */
-	const PRIORITY_UNDEFINED  = 0;
-	const PRIORITY_CRITICAL   = 10;
-	const PRIORITY_HIGH       = 20;
-	const PRIORITY_MEDIUM     = 30;
-	const PRIORITY_LOW        = 40;
-	const PRIORITY_NEGLIGIBLE = 50;
-	const PRIORITIES          = [self::PRIORITY_CRITICAL, self::PRIORITY_HIGH, self::PRIORITY_MEDIUM, self::PRIORITY_LOW, self::PRIORITY_NEGLIGIBLE];
+	public const PRIORITY_UNDEFINED  = 0;
+	public const PRIORITY_CRITICAL   = 10;
+	public const PRIORITY_HIGH       = 20;
+	public const PRIORITY_MEDIUM     = 30;
+	public const PRIORITY_LOW        = 40;
+	public const PRIORITY_NEGLIGIBLE = 50;
+	public const PRIORITIES          = [self::PRIORITY_CRITICAL, self::PRIORITY_HIGH, self::PRIORITY_MEDIUM, self::PRIORITY_LOW, self::PRIORITY_NEGLIGIBLE];
 	/* @}*/
 
-	const STATE_STARTUP    = 1; // Worker is in startup. This takes most time.
-	const STATE_LONG_LOOP  = 2; // Worker is processing the whole - long - loop.
-	const STATE_REFETCH    = 3; // Worker had refetched jobs in the execution loop.
-	const STATE_SHORT_LOOP = 4; // Worker is processing preassigned jobs, thus saving much time.
+	public const STATE_STARTUP    = 1; // Worker is in startup. This takes most time.
+	public const STATE_LONG_LOOP  = 2; // Worker is processing the whole - long - loop.
+	public const STATE_REFETCH    = 3; // Worker had refetched jobs in the execution loop.
+	public const STATE_SHORT_LOOP = 4; // Worker is processing preassigned jobs, thus saving much time.
 
-	const FAST_COMMANDS = ['APDelivery', 'Delivery'];
+	public const FAST_COMMANDS = ['APDelivery', 'Delivery'];
 
-	const LOCK_PROCESS = 'worker_process';
-	const LOCK_WORKER  = 'worker';
-	const LAST_CHECK   = 'worker::check';
+	public const LOCK_PROCESS = 'worker_process';
+	public const LOCK_WORKER  = 'worker';
+	public const LAST_CHECK   = 'worker::check';
 
 	private static $up_start;
 	private static $db_duration       = 0;
@@ -55,8 +55,7 @@ class Worker
 	private static $lock_duration     = 0;
 	private static $last_update;
 	private static $state;
-	/** @var Process */
-	private static $process;
+	private static Process $process;
 
 	/**
 	 * Processes the tasks that are in the workerqueue table
@@ -82,7 +81,7 @@ class Worker
 		// Kill stale processes every 5 minutes
 		$last_cleanup = DI::keyValue()->get('worker_last_cleaned') ?? 0;
 		if (time() > ($last_cleanup + 300)) {
-			DI::keyValue()->set( 'worker_last_cleaned', time());
+			DI::keyValue()->set('worker_last_cleaned', time());
 			Worker\Cron::killStaleWorkers();
 		}
 
@@ -151,7 +150,7 @@ class Worker
 			// Quit the worker once every cron interval
 			if (time() > ($starttime + (DI::config()->get('system', 'cron_interval') * 60)) && !self::systemLimitReached()) {
 				DI::logger()->info('Process lifetime reached, respawning.');
-				self::unclaimProcess($process);
+				self::unclaimProcess(self::$process);
 				if (Worker\Daemon::isMode()) {
 					Worker\IPC::SetJobState(true);
 				} else {
@@ -212,7 +211,7 @@ class Worker
 	 */
 	public static function entriesExists(): bool
 	{
-		$stamp  = (float)microtime(true);
+		$stamp  = (float) microtime(true);
 		$exists = DBA::exists('workerqueue', ["NOT `done` AND `pid` = 0 AND `next_try` < ?", DateTimeFormat::utcNow()]);
 		self::$db_duration += (microtime(true) - $stamp);
 		return $exists;
@@ -226,7 +225,7 @@ class Worker
 	 */
 	public static function deferredEntries(): int
 	{
-		$stamp = (float)microtime(true);
+		$stamp = (float) microtime(true);
 		$count = DBA::count('workerqueue', ["NOT `done` AND `pid` = 0 AND `retrial` > ?", 0]);
 		self::$db_duration += (microtime(true) - $stamp);
 		self::$db_duration_count += (microtime(true) - $stamp);
@@ -241,7 +240,7 @@ class Worker
 	 */
 	public static function totalEntries(): int
 	{
-		$stamp = (float)microtime(true);
+		$stamp = (float) microtime(true);
 		$count = DBA::count('workerqueue', ['done' => false, 'pid' => 0]);
 		self::$db_duration += (microtime(true) - $stamp);
 		self::$db_duration_count += (microtime(true) - $stamp);
@@ -256,7 +255,7 @@ class Worker
 	 */
 	private static function highestPriority(): int
 	{
-		$stamp       = (float)microtime(true);
+		$stamp       = (float) microtime(true);
 		$condition   = ["`pid` = 0 AND NOT `done` AND `next_try` < ?", DateTimeFormat::utcNow()];
 		$workerqueue = DBA::selectFirst('workerqueue', ['priority'], $condition, ['order' => ['priority']]);
 		self::$db_duration += (microtime(true) - $stamp);
@@ -294,7 +293,7 @@ class Worker
 
 		$file = realpath($file);
 
-		if (strpos($file, getcwd()) !== 0) {
+		if (!str_starts_with($file, (string) getcwd())) {
 			return false;
 		}
 
@@ -307,7 +306,7 @@ class Worker
 			return false;
 		}
 
-		return (strpos($file, 'addon/') === 0);
+		return (str_starts_with($file, 'addon/'));
 	}
 
 	/**
@@ -340,7 +339,7 @@ class Worker
 			return false;
 		}
 
-		$argv = json_decode($queue['parameter'], true);
+		$argv = json_decode((string) $queue['parameter'], true);
 		if (!is_array($argv)) {
 			$argv = [];
 		}
@@ -360,14 +359,14 @@ class Worker
 		if (method_exists(sprintf('Friendica\Worker\%s', $include), 'execute')) {
 			// We constantly update the "executed" date every minute to avoid being killed too soon
 			if (!isset(self::$last_update)) {
-				self::$last_update = strtotime($queue['executed']);
+				self::$last_update = strtotime((string) $queue['executed']);
 			}
 
 			$age               = (time() - self::$last_update) / 60;
 			self::$last_update = time();
 
 			if ($age > 1) {
-				$stamp = (float)microtime(true);
+				$stamp = (float) microtime(true);
 				DBA::update('workerqueue', ['executed' => DateTimeFormat::utcNow()], ['pid' => $mypid, 'done' => false]);
 				self::$db_duration += (microtime(true) - $stamp);
 				self::$db_duration_write += (microtime(true) - $stamp);
@@ -377,7 +376,7 @@ class Worker
 
 			self::execFunction($queue, $include, $argv, true);
 
-			$stamp     = (float)microtime(true);
+			$stamp     = (float) microtime(true);
 			$condition = ["`id` = ? AND `next_try` < ?", $queue['id'], DateTimeFormat::utcNow()];
 			if (DBA::update('workerqueue', ['done' => true], $condition)) {
 				DI::keyValue()->set('last_worker_execution', DateTimeFormat::utcNow());
@@ -390,7 +389,7 @@ class Worker
 
 		if (!self::validateInclude($include)) {
 			DI::logger()->warning('Include file is not valid', ['file' => $argv[0]]);
-			$stamp = (float)microtime(true);
+			$stamp = (float) microtime(true);
 			DBA::delete('workerqueue', ['id' => $queue['id']]);
 			self::$db_duration = (microtime(true) - $stamp);
 			self::$db_duration_write += (microtime(true) - $stamp);
@@ -399,19 +398,19 @@ class Worker
 
 		require_once $include;
 
-		$funcname = str_replace('.php', '', basename($argv[0])) .'_run';
+		$funcname = str_replace('.php', '', basename((string) $argv[0])) . '_run';
 
 		if (function_exists($funcname)) {
 			// We constantly update the "executed" date every minute to avoid being killed too soon
 			if (!isset(self::$last_update)) {
-				self::$last_update = strtotime($queue['executed']);
+				self::$last_update = strtotime((string) $queue['executed']);
 			}
 
 			$age               = (time() - self::$last_update) / 60;
 			self::$last_update = time();
 
 			if ($age > 1) {
-				$stamp = (float)microtime(true);
+				$stamp = (float) microtime(true);
 				DBA::update('workerqueue', ['executed' => DateTimeFormat::utcNow()], ['pid' => $mypid, 'done' => false]);
 				self::$db_duration += (microtime(true) - $stamp);
 				self::$db_duration_write += (microtime(true) - $stamp);
@@ -419,7 +418,7 @@ class Worker
 
 			self::execFunction($queue, $funcname, $argv, false);
 
-			$stamp = (float)microtime(true);
+			$stamp = (float) microtime(true);
 			if (DBA::update('workerqueue', ['done' => true], ['id' => $queue['id']])) {
 				DI::keyValue()->set('last_worker_execution', DateTimeFormat::utcNow());
 			}
@@ -427,7 +426,7 @@ class Worker
 			self::$db_duration_write += (microtime(true) - $stamp);
 		} else {
 			DI::logger()->warning('Function does not exist', ['function' => $funcname]);
-			$stamp = (float)microtime(true);
+			$stamp = (float) microtime(true);
 			DBA::delete('workerqueue', ['id' => $queue['id']]);
 			self::$db_duration = (microtime(true) - $stamp);
 			self::$db_duration_write += (microtime(true) - $stamp);
@@ -551,7 +550,7 @@ class Worker
 
 		DI::logger()->info('Process start.', ['priority' => $queue['priority'], 'id' => $queue['id']]);
 
-		$stamp = (float)microtime(true);
+		$stamp = (float) microtime(true);
 
 		// We use the callstack here to analyze the performance of executed worker entries.
 		// For this reason the variables have to be initialized.
@@ -569,7 +568,7 @@ class Worker
 			try {
 				call_user_func_array(sprintf('Friendica\Worker\%s::execute', $funcname), $argv);
 			} catch (\Throwable $e) {
-				DI::logger()->error('Uncaught exception in worker method execution', ['class' => get_class($e), 'message' => $e->getMessage(), 'code' => $e->getCode(), 'file' => $e->getFile() . ':' . $e->getLine(), 'trace' => $e->getTraceAsString(), 'previous' => $e->getPrevious()]);
+				DI::logger()->error('Uncaught exception in worker method execution', ['class' => $e::class, 'message' => $e->getMessage(), 'code' => $e->getCode(), 'file' => $e->getFile() . ':' . $e->getLine(), 'trace' => $e->getTraceAsString(), 'previous' => $e->getPrevious()]);
 				Worker::defer();
 			}
 		} else {
@@ -648,13 +647,13 @@ class Worker
 				$max = $r['Value'];
 			}
 			// Or it can be granted. This overrides the system variable
-			$stamp = (float)microtime(true);
+			$stamp = (float) microtime(true);
 			$r     = DBA::p('SHOW GRANTS');
 			self::$db_duration += (microtime(true) - $stamp);
 			while ($grants = DBA::fetch($r)) {
 				$grant = array_pop($grants);
-				if (stristr($grant, "GRANT USAGE ON")) {
-					if (preg_match("/WITH MAX_USER_CONNECTIONS (\d*)/", $grant, $match)) {
+				if (stristr((string) $grant, "GRANT USAGE ON")) {
+					if (preg_match("/WITH MAX_USER_CONNECTIONS (\d*)/", (string) $grant, $match)) {
 						$max = $match[1];
 					}
 				}
@@ -662,7 +661,7 @@ class Worker
 			DBA::close($r);
 		}
 
-		$stamp = (float)microtime(true);
+		$stamp = (float) microtime(true);
 		$used  = 0;
 		$sleep = 0;
 		$data  = DBA::p("SHOW PROCESSLIST");
@@ -684,7 +683,7 @@ class Worker
 			$level = ($used / $max) * 100;
 
 			if ($level >= $maxlevel) {
-				DI::logger()->warning('Maximum level (' . $maxlevel . '%) of user connections reached: ' . $used .'/' . $max);
+				DI::logger()->warning('Maximum level (' . $maxlevel . '%) of user connections reached: ' . $used . '/' . $max);
 				return true;
 			}
 		}
@@ -750,22 +749,22 @@ class Worker
 			$processlist = '';
 
 			if (DI::config()->get('system', 'worker_jpm')) {
-				$intervals       = explode(',', DI::config()->get('system', 'worker_jpm_range'));
+				$intervals       = explode(',', (string) DI::config()->get('system', 'worker_jpm_range'));
 				$jobs_per_minute = [];
 				foreach ($intervals as $interval) {
 					if ($interval == 0) {
 						continue;
 					} else {
-						$interval = (int)$interval;
+						$interval = (int) $interval;
 					}
 
-					$stamp = (float)microtime(true);
+					$stamp = (float) microtime(true);
 					$jobs  = DBA::count('workerqueue', ["`done` AND `executed` > ?", DateTimeFormat::utc('now - ' . $interval . ' minute')]);
 					self::$db_duration += (microtime(true) - $stamp);
 					self::$db_duration_stat += (microtime(true) - $stamp);
 					$jobs_per_minute[$interval] = number_format($jobs / $interval, 0);
 				}
-				$processlist = ' - jpm: '.implode('/', $jobs_per_minute);
+				$processlist = ' - jpm: ' . implode('/', $jobs_per_minute);
 			}
 
 			// Create a list of queue entries grouped by their priority
@@ -778,12 +777,12 @@ class Worker
 			if (DI::config()->get('system', 'worker_debug')) {
 				$waiting_processes = 0;
 				// Now adding all processes with workerqueue entries
-				$stamp = (float)microtime(true);
+				$stamp = (float) microtime(true);
 				$jobs  = DBA::p("SELECT COUNT(*) AS `entries`, `priority` FROM `workerqueue` WHERE NOT `done` GROUP BY `priority`");
 				self::$db_duration += (microtime(true) - $stamp);
 				self::$db_duration_stat += (microtime(true) - $stamp);
 				while ($entry = DBA::fetch($jobs)) {
-					$stamp   = (float)microtime(true);
+					$stamp   = (float) microtime(true);
 					$running = DBA::count('workerqueue-view', ['priority' => $entry['priority']]);
 					self::$db_duration += (microtime(true) - $stamp);
 					self::$db_duration_stat += (microtime(true) - $stamp);
@@ -794,7 +793,7 @@ class Worker
 				DBA::close($jobs);
 			} else {
 				$waiting_processes = self::totalEntries();
-				$stamp             = (float)microtime(true);
+				$stamp             = (float) microtime(true);
 				$jobs              = DBA::p("SELECT COUNT(*) AS `running`, `priority` FROM `workerqueue-view` GROUP BY `priority` ORDER BY `priority`");
 				self::$db_duration += (microtime(true) - $stamp);
 				self::$db_duration_stat += (microtime(true) - $stamp);
@@ -810,7 +809,7 @@ class Worker
 
 			$listitem[0] = '0:' . max(0, $idle_workers);
 
-			$processlist .= ' ('.implode(', ', $listitem).')';
+			$processlist .= ' (' . implode(', ', $listitem) . ')';
 
 			if (DI::config()->get('system', 'worker_fastlane', false) && ($queues > 0) && ($active >= $queues) && self::entriesExists()) {
 				$top_priority = self::highestPriority();
@@ -866,7 +865,7 @@ class Worker
 	 */
 	public static function activeWorkers(): int
 	{
-		$stamp = (float)microtime(true);
+		$stamp = (float) microtime(true);
 		$count = DI::process()->countCommand('Worker.php');
 		self::$db_duration += (microtime(true) - $stamp);
 		self::$db_duration_count += (microtime(true) - $stamp);
@@ -882,7 +881,7 @@ class Worker
 	private static function getWorkerPIDList(): array
 	{
 		$ids   = [];
-		$stamp = (float)microtime(true);
+		$stamp = (float) microtime(true);
 
 		$queues = DBA::p("SELECT `process`.`pid`, COUNT(`workerqueue`.`pid`) AS `entries` FROM `process`
 			LEFT JOIN `workerqueue` ON `workerqueue`.`pid` = `process`.`pid` AND NOT `workerqueue`.`done`
@@ -905,7 +904,7 @@ class Worker
 	 */
 	private static function getWaitingJobForPID()
 	{
-		$stamp = (float)microtime(true);
+		$stamp = (float) microtime(true);
 		$r     = DBA::select('workerqueue', [], ['pid' => getmypid(), 'done' => false]);
 		self::$db_duration += (microtime(true) - $stamp);
 		if (DBA::isResult($r)) {
@@ -931,7 +930,7 @@ class Worker
 		}
 
 		$ids       = [];
-		$stamp     = (float)microtime(true);
+		$stamp     = (float) microtime(true);
 		$condition = ["`priority` = ? AND `pid` = 0 AND NOT `done` AND `next_try` < ?", $priority, DateTimeFormat::utcNow()];
 		$tasks     = DBA::select('workerqueue', ['id', 'command', 'parameter'], $condition, ['limit' => $limit, 'order' => ['retrial', 'created']]);
 		self::$db_duration += (microtime(true) - $stamp);
@@ -941,7 +940,7 @@ class Worker
 			if (!empty($task['command'])) {
 				$command = $task['command'];
 			} else {
-				$command = json_decode($task['parameter'])[0];
+				$command = json_decode((string) $task['parameter'])[0];
 			}
 
 			if (!in_array($command, self::FAST_COMMANDS)) {
@@ -965,7 +964,7 @@ class Worker
 		$waiting    = [];
 		$priorities = [self::PRIORITY_CRITICAL, self::PRIORITY_HIGH, self::PRIORITY_MEDIUM, self::PRIORITY_LOW, self::PRIORITY_NEGLIGIBLE];
 		foreach ($priorities as $priority) {
-			$stamp = (float)microtime(true);
+			$stamp = (float) microtime(true);
 			if (DBA::exists('workerqueue', ["`priority` = ? AND `pid` = 0 AND NOT `done` AND `next_try` < ?", $priority, DateTimeFormat::utcNow()])) {
 				$waiting[$priority] = true;
 			}
@@ -978,7 +977,7 @@ class Worker
 
 		$running       = [];
 		$running_total = 0;
-		$stamp         = (float)microtime(true);
+		$stamp         = (float) microtime(true);
 		$processes     = DBA::p("SELECT COUNT(DISTINCT(`pid`)) AS `running`, `priority` FROM `workerqueue-view` GROUP BY `priority`");
 		self::$db_duration += (microtime(true) - $stamp);
 		while ($process = DBA::fetch($processes)) {
@@ -1056,7 +1055,7 @@ class Worker
 
 		// If there is not enough results we check without priority limit
 		if ($limit > 0) {
-			$stamp     = (float)microtime(true);
+			$stamp     = (float) microtime(true);
 			$condition = ["`pid` = 0 AND NOT `done` AND `next_try` < ?", DateTimeFormat::utcNow()];
 			$tasks     = DBA::select('workerqueue', ['id', 'command', 'parameter'], $condition, ['limit' => $limit, 'order' => ['priority', 'retrial', 'created']]);
 			self::$db_duration += (microtime(true) - $stamp);
@@ -1067,7 +1066,7 @@ class Worker
 				if (!empty($task['command'])) {
 					$command = $task['command'];
 				} else {
-					$command = json_decode($task['parameter'])[0];
+					$command = json_decode((string) $task['parameter'])[0];
 				}
 				if (!in_array($command, self::FAST_COMMANDS)) {
 					break;
@@ -1090,13 +1089,13 @@ class Worker
 			$worker[$pid][] = $id;
 		}
 
-		$stamp = (float)microtime(true);
+		$stamp = (float) microtime(true);
 		foreach ($worker as $worker_pid => $worker_ids) {
 			DI::logger()->info('Set queue entry', ['pid' => $worker_pid, 'ids' => $worker_ids]);
 			DBA::update(
 				'workerqueue',
 				['executed' => DateTimeFormat::utcNow(), 'pid' => $worker_pid],
-				['id'       => $worker_ids, 'done' => false, 'pid' => 0]
+				['id'       => $worker_ids, 'done' => false, 'pid' => 0],
 			);
 		}
 		self::$db_duration += (microtime(true) - $stamp);
@@ -1117,7 +1116,7 @@ class Worker
 			return $waiting;
 		}
 
-		$stamp = (float)microtime(true);
+		$stamp = (float) microtime(true);
 		if (!DI::lock()->acquire(self::LOCK_PROCESS)) {
 			return [];
 		}
@@ -1142,7 +1141,7 @@ class Worker
 	 */
 	public static function unclaimProcess(Process $process)
 	{
-		$stamp = (float)microtime(true);
+		$stamp = (float) microtime(true);
 		DBA::update('workerqueue', ['executed' => DBA::NULL_DATETIME, 'pid' => 0], ['pid' => $process->pid, 'done' => false]);
 		self::$db_duration += (microtime(true) - $stamp);
 		self::$db_duration_write += (microtime(true) - $stamp);
@@ -1230,23 +1229,27 @@ class Worker
 	/**
 	 * Adds tasks to the worker queue
 	 *
-	 * @param integer|array $args priority or parameter array, strings are deprecated and are ignored
+	 * @param int|array $run_parameter priority number or task parameter array
+	 * @param string    $command       command to execute
+	 * @param mixed     ...$args       command parameters (JSON-encodable)
 	 *
-	 * next args are passed as $cmd command line
 	 * or: Worker::add(Worker::PRIORITY_HIGH, 'Notifier', Delivery::DELETION, $drop_id);
 	 * or: Worker::add(array('priority' => Worker::PRIORITY_HIGH, 'dont_fork' => true), 'Delivery', $post_id);
 	 *
 	 * @return int '0' if worker queue entry already existed or there had been an error, otherwise the ID of the worker task
 	 * @throws \Friendica\Network\HTTPException\InternalServerErrorException
-	 * @note $cmd and string args are surrounded with ''
 	 */
-	public static function add(...$args)
+	public static function add($run_parameter = self::PRIORITY_MEDIUM, $command = '', ...$args): int
 	{
-		if (!count($args)) {
+		if (func_num_args() === 0) {
 			return 0;
 		}
 
-		$arr = ['args' => $args, 'run_cmd' => true];
+		if (!is_string($command)) {
+			@trigger_error('`' . __METHOD__ . '()`: Passing ' . get_debug_type($command) . ' as $command is deprecated since 2026.08, it will be enforced as `string` in a future release.', E_USER_DEPRECATED);
+		}
+
+		$arr = ['args' => [$run_parameter, $command, ...$args], 'run_cmd' => true];
 
 		$eventDispatcher = DI::eventDispatcher();
 
@@ -1254,7 +1257,7 @@ class Worker
 			new ArrayFilterEvent(ArrayFilterEvent::ADD_WORKER_TASK, $arr),
 		)->getArray();
 
-		if (!$arr['run_cmd'] || !count($args)) {
+		if (!$arr['run_cmd']) {
 			return 1;
 		}
 
@@ -1264,8 +1267,6 @@ class Worker
 		$created        = DateTimeFormat::utcNow();
 		$delayed        = DBA::NULL_DATETIME;
 		$force_priority = false;
-
-		$run_parameter = array_shift($args);
 
 		if (is_int($run_parameter)) {
 			$priority = $run_parameter;
@@ -1286,10 +1287,10 @@ class Worker
 				$force_priority = $run_parameter['force_priority'];
 			}
 		} else {
+			@trigger_error('`' . __METHOD__ . '()`: Passing ' . get_debug_type($run_parameter) . ' as $run_parameter is deprecated since 2026.08, it will be enforced as `int|array` in a future release.', E_USER_DEPRECATED);
 			throw new \InvalidArgumentException('Priority number or task parameter array expected as first argument');
 		}
 
-		$command    = array_shift($args);
 		$parameters = json_encode($args);
 		$queue      = DBA::selectFirst('workerqueue', ['id', 'priority'], ['command' => $command, 'parameter' => $parameters, 'done' => false]);
 		$added      = 0;
@@ -1342,8 +1343,8 @@ class Worker
 			return $added;
 		}
 
-		// Quit on daemon mode, except the priority is critical (like for db updates)
-		if (Worker\Daemon::isMode() && $priority !== self::PRIORITY_CRITICAL) {
+		// Quit on daemon mode
+		if (Worker\Daemon::isMode()) {
 			return $added;
 		}
 
@@ -1368,13 +1369,13 @@ class Worker
 	 */
 	private static function getNextRetrial(array $queue, int $max_level): int
 	{
-		$created      = strtotime($queue['created']);
+		$created      = strtotime((string) $queue['created']);
 		$retrial_time = time() - $created;
 
 		$new_retrial = $queue['retrial'] + 1;
 		$total       = 0;
 		for ($retrial = 0; $retrial <= $max_level + 1; ++$retrial) {
-			$delay = (($retrial + 3) ** 4) + (rand(1, 30) * ($retrial + 1));
+			$delay = (($retrial + 3) ** 4) + (random_int(1, 30) * ($retrial + 1));
 			$total += $delay;
 			if (($total < $retrial_time) && ($retrial > $queue['retrial'])) {
 				$new_retrial = $retrial;
@@ -1427,7 +1428,7 @@ class Worker
 		}
 
 		// Calculate the delay until the next trial
-		$delay = (($new_retrial + 2) ** 4) + (rand(1, 30) * ($new_retrial));
+		$delay = (($new_retrial + 2) ** 4) + (random_int(1, 30) * ($new_retrial));
 		$next  = DateTimeFormat::utc('now + ' . $delay . ' seconds');
 
 		if (($priority < self::PRIORITY_MEDIUM) && ($new_retrial > 3)) {
@@ -1440,7 +1441,7 @@ class Worker
 
 		DI::logger()->info('Deferred task', ['id' => $id, 'retrial' => $new_retrial, 'created' => $queue['created'], 'next_execution' => $next, 'old_prio' => $queue['priority'], 'new_prio' => $priority]);
 
-		$stamp  = (float)microtime(true);
+		$stamp  = (float) microtime(true);
 		$fields = ['retrial' => $new_retrial, 'next_try' => $next, 'executed' => DBA::NULL_DATETIME, 'pid' => 0, 'priority' => $priority];
 		DBA::update('workerqueue', $fields, ['id' => $id]);
 		self::$db_duration += (microtime(true) - $stamp);
@@ -1458,8 +1459,8 @@ class Worker
 	public static function isInMaintenanceWindow(bool $check_last_execution = false): bool
 	{
 		// Calculate the seconds of the start and end of the maintenance window
-		$start = strtotime(DI::config()->get('system', 'maintenance_start')) % 86400;
-		$end   = strtotime(DI::config()->get('system', 'maintenance_end')) % 86400;
+		$start = strtotime((string) DI::config()->get('system', 'maintenance_start')) % 86400;
+		$end   = strtotime((string) DI::config()->get('system', 'maintenance_end')) % 86400;
 
 		DI::logger()->info('Maintenance window', ['start' => date('H:i:s', $start), 'end' => date('H:i:s', $end)]);
 
@@ -1492,5 +1493,15 @@ class Worker
 		}
 
 		return $execute;
+	}
+
+	/**
+	 * Check if we are in worker mode
+	 *
+	 * @return boolean
+	 */
+	public static function isInWorkerMode(): bool
+	{
+		return (DI::logger() instanceof WorkerLogger);
 	}
 }

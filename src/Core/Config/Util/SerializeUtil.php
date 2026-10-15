@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -26,7 +26,7 @@ class SerializeUtil
 		// This checks for possible multiple serialized values
 		while (static::isSerialized($value)) {
 			$oldValue = $value;
-			$value = @unserialize($value);
+			$value    = @unserialize($value);
 
 			// If there's no change after the unserialize call, break the loop (avoid endless loops)
 			if ($oldValue === $value) {
@@ -94,20 +94,20 @@ class SerializeUtil
 					if ('"' !== substr($data, -2, 1)) {
 						return false;
 					}
-				} elseif (false === strpos($data, '"')) {
+				} elseif (!str_contains($data, '"')) {
 					return false;
 				}
-			// Or else fall through.
-			// no break
+				// Or else fall through.
+				// no break
 			case 'a':
 			case 'O':
 			case 'E':
-				return (bool)preg_match("/^{$token}:[0-9]+:/s", $data);
+				return (bool) preg_match("/^{$token}:[0-9]+:/s", $data);
 			case 'b':
 			case 'i':
 			case 'd':
 				$end = $strict ? '$' : '';
-				return (bool)preg_match("/^{$token}:[0-9.E+-]+;$end/", $data);
+				return (bool) preg_match("/^{$token}:[0-9.E+-]+;$end/", $data);
 		}
 		return false;
 	}

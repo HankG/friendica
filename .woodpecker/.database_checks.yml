@@ -1,11 +1,11 @@
-# SPDX-FileCopyrightText: 2010 - 2024 the Friendica project
+# SPDX-FileCopyrightText: 2010-2026 the Friendica project
 #
 # SPDX-License-Identifier: CC0-1.0
 
 matrix:
   include:
-    - PHP_MAJOR_VERSION: 8.2
-      PHP_VERSION: 8.2.28
+    - PHP_MAJOR_VERSION: 8.5
+      PHP_VERSION: 8.5.5
 
 when:
   branch:

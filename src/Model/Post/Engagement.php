@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -21,22 +21,24 @@ use Friendica\Protocol\Activity;
 use Friendica\Protocol\ActivityPub\Receiver;
 use Friendica\Protocol\Relay;
 use Friendica\Util\DateTimeFormat;
+use Friendica\Content\Post\Entity\PostMedia;
 
 class Engagement
 {
-	const KEYWORDS     = ['source', 'server', 'from', 'to', 'group', 'application', 'tag', 'network', 'platform', 'visibility', 'language', 'media'];
-	const SHORTCUTS    = ['lang' => 'language', 'net' => 'network', 'relay' => 'application'];
-	const ALTERNATIVES = ['source:news' => 'source:service', 'source:relay' => 'source:application',
-		'media:picture'                    => 'media:image', 'media:photo' => 'media:image',
-		'network:activitypub'              => 'network:apub', 'network:friendica' => 'network:dfrn',
-		'network:diaspora'                 => 'network:dspr', 'network:discourse' => 'network:dscs',
-		'network:tumblr'                   => 'network:tmbl', 'network:bluesky' => 'network:bsky'];
-	const MEDIA_NONE  = 0;
-	const MEDIA_IMAGE = 1;
-	const MEDIA_VIDEO = 2;
-	const MEDIA_AUDIO = 4;
-	const MEDIA_CARD  = 8;
-	const MEDIA_POST  = 16;
+	public const KEYWORDS     = ['source', 'server', 'from', 'to', 'group', 'application', 'tag', 'network', 'platform', 'visibility', 'language', 'media'];
+	public const SHORTCUTS    = ['lang' => 'language', 'net' => 'network', 'relay' => 'application'];
+	public const ALTERNATIVES = ['source:news' => 'source:service', 'source:relay' => 'source:application',
+		'media:picture'                           => 'media:image', 'media:photo' => 'media:image',
+		'network:activitypub'                     => 'network:apub', 'network:friendica' => 'network:dfrn',
+		'network:diaspora'                        => 'network:dspr', 'network:discourse' => 'network:dscs',
+		'network:tumblr'                          => 'network:tmbl', 'network:bluesky' => 'network:bsky',
+		'network:atprotocol'                      => 'network:bsky', 'network:atproto' => 'network:bsky'];
+	public const MEDIA_NONE  = 0;
+	public const MEDIA_IMAGE = 1;
+	public const MEDIA_VIDEO = 2;
+	public const MEDIA_AUDIO = 4;
+	public const MEDIA_CARD  = 8;
+	public const MEDIA_POST  = 16;
 
 	/**
 	 * Store engagement data from an item array
@@ -56,7 +58,7 @@ class Engagement
 				'contact-contact-type', 'network', 'title', 'content-warning', 'body', 'language',
 				'author-id', 'author-contact-type', 'author-nick', 'author-addr', 'author-gsid',
 				'owner-id', 'owner-contact-type', 'owner-nick', 'owner-addr', 'owner-gsid'],
-			['uri-id' => $item['parent-uri-id']]
+			['uri-id' => $item['parent-uri-id']],
 		);
 
 		if ($parent['created'] < self::getCreationDateLimit(false)) {
@@ -77,7 +79,7 @@ class Engagement
 		if (!$store) {
 			$tagList = Relay::getSubscribedTags();
 			foreach (array_column(Tag::getByURIId($item['parent-uri-id'], [Tag::HASHTAG]), 'name') as $tag) {
-				if (in_array(mb_strtolower($tag), $tagList)) {
+				if (in_array(mb_strtolower((string) $tag), $tagList)) {
 					$store = true;
 					break;
 				}
@@ -91,7 +93,7 @@ class Engagement
 		}
 
 		$searchtext = self::getSearchTextForItem($parent, $mediatype);
-		$language   = !empty($parent['language']) ? (array_key_first(json_decode($parent['language'], true)) ?? L10n::UNDETERMINED_LANGUAGE) : L10n::UNDETERMINED_LANGUAGE;
+		$language   = !empty($parent['language']) ? (array_key_first(json_decode((string) $parent['language'], true)) ?? L10n::UNDETERMINED_LANGUAGE) : L10n::UNDETERMINED_LANGUAGE;
 		if (!$store) {
 			$store = DI::userDefinedChannel()->match($searchtext, $language);
 		}
@@ -108,11 +110,12 @@ class Engagement
 			'network'      => $parent['network'],
 			'restricted'   => !in_array($item['network'], Protocol::FEDERATED) || ($parent['private'] != Item::PUBLIC),
 			'comments'     => DBA::count('post', ['parent-uri-id' => $item['parent-uri-id'], 'gravity' => Item::GRAVITY_COMMENT]),
+			'views'        => DBA::count('post', ['parent-uri-id' => $item['parent-uri-id'], 'gravity' => Item::GRAVITY_ACTIVITY, 'vid' => [Verb::getID(Activity::VIEW), Verb::getID(Activity::READ)]]),
 			'activities'   => DBA::count('post', [
 				"`parent-uri-id` = ? AND `gravity` = ? AND NOT `vid` IN (?, ?, ?)",
 				$item['parent-uri-id'], Item::GRAVITY_ACTIVITY,
-				Verb::getID(Activity::FOLLOW), Verb::getID(Activity::VIEW), Verb::getID(Activity::READ)
-			])
+				Verb::getID(Activity::FOLLOW), Verb::getID(Activity::VIEW), Verb::getID(Activity::READ),
+			]),
 		];
 		if (!$store && ($engagement['comments'] == 0) && ($engagement['activities'] == 0)) {
 			DI::logger()->debug('No media, follower, subscribed tags, comments or activities. Engagement not stored', ['fields' => $engagement]);
@@ -210,7 +213,7 @@ class Engagement
 			if (!empty($platform)) {
 				$body .= ' platform_' . $platform;
 			}
-			$body .= ' server_' . parse_url($gserver['nurl'], PHP_URL_HOST);
+			$body .= ' server_' . parse_url((string) $gserver['nurl'], PHP_URL_HOST);
 		}
 
 		if (($item['owner-contact-type'] == Contact::TYPE_COMMUNITY) && !empty($item['owner-gsid']) && ($item['owner-gsid'] != ($item['author-gsid'] ?? 0))) {
@@ -219,7 +222,7 @@ class Engagement
 			if (!empty($platform) && !strpos($body, 'platform_' . $platform)) {
 				$body .= ' platform_' . $platform;
 			}
-			$body .= ' server_' . parse_url($gserver['nurl'], PHP_URL_HOST);
+			$body .= ' server_' . parse_url((string) $gserver['nurl'], PHP_URL_HOST);
 		}
 
 		switch ($item['private']) {
@@ -285,7 +288,7 @@ class Engagement
 		}
 
 		if (!empty($item['language'])) {
-			$languages = json_decode($item['language'], true);
+			$languages = json_decode((string) $item['language'], true);
 			$body .= ' language_' . array_key_first($languages);
 		}
 
@@ -318,7 +321,7 @@ class Engagement
 	{
 		$result = Post::selectPosts(
 			['author-addr', 'author-nick', 'author-contact-type'],
-			['thr-parent-id' => $uri_id, 'gravity' => Item::GRAVITY_ACTIVITY, 'verb' => Activity::ANNOUNCE, 'author-contact-type' => [Contact::TYPE_RELAY, Contact::TYPE_COMMUNITY]]
+			['thr-parent-id' => $uri_id, 'gravity' => Item::GRAVITY_ACTIVITY, 'verb' => Activity::ANNOUNCE, 'author-contact-type' => [Contact::TYPE_RELAY, Contact::TYPE_COMMUNITY]],
 		);
 		while ($reshare = Post::fetch($result)) {
 			$prefix = '';
@@ -343,20 +346,20 @@ class Engagement
 		return $text;
 	}
 
-	public static function getMediaType(int $uri_id, int $quote_uri_id = null): int
+	public static function getMediaType(int $uri_id, ?int $quote_uri_id = null): int
 	{
 		$media = Post\Media::getByURIId($uri_id);
 		$type  = !empty($quote_uri_id) ? self::MEDIA_POST : self::MEDIA_NONE;
 		foreach ($media as $entry) {
-			if ($entry['type'] == Post\Media::IMAGE) {
+			if ($entry['type'] == PostMedia::TYPE_IMAGE) {
 				$type = $type | self::MEDIA_IMAGE;
-			} elseif (in_array($entry['type'], [Post\Media::VIDEO, Post\Media::HLS])) {
+			} elseif (in_array($entry['type'], [PostMedia::TYPE_VIDEO, PostMedia::TYPE_HLS])) {
 				$type = $type | self::MEDIA_VIDEO;
-			} elseif ($entry['type'] == Post\Media::AUDIO) {
+			} elseif ($entry['type'] == PostMedia::TYPE_AUDIO) {
 				$type = $type | self::MEDIA_AUDIO;
-			} elseif ($entry['type'] == Post\Media::HTML) {
+			} elseif ($entry['type'] == PostMedia::TYPE_HTML) {
 				$type = $type | self::MEDIA_CARD;
-			} elseif ($entry['type'] == Post\Media::ACTIVITY) {
+			} elseif ($entry['type'] == PostMedia::TYPE_ACTIVITY) {
 				$type = $type | self::MEDIA_POST;
 			}
 		}
@@ -379,7 +382,7 @@ class Engagement
 		DI::logger()->notice('Cleared expired engagements', ['limit' => $limit, 'rows' => DBA::affectedRows()]);
 	}
 
-	private static function getCreationDateLimit(bool $forDeletion): string
+	public static function getCreationDateLimit(bool $forDeletion): string
 	{
 		$posts = DI::config()->get('channel', 'engagement_post_limit');
 		if (!empty($posts)) {
@@ -397,7 +400,7 @@ class Engagement
 	public static function escapeKeywords(string $fullTextSearch): string
 	{
 		foreach (self::SHORTCUTS as $search => $replace) {
-			$fullTextSearch = preg_replace('~' . $search . ':(.[\w\*@\.-]+)~', $replace . ':$1', $fullTextSearch);
+			$fullTextSearch = preg_replace('~' . $search . ':(.[\w\*@\.-]+)~', $replace . ':$1', (string) $fullTextSearch);
 		}
 
 		foreach (self::ALTERNATIVES as $search => $replace) {
@@ -405,7 +408,7 @@ class Engagement
 		}
 
 		foreach (self::KEYWORDS as $keyword) {
-			$fullTextSearch = preg_replace('~(' . $keyword . '):(.[\w\*@\.-]+)~', '"$1_$2"', $fullTextSearch);
+			$fullTextSearch = preg_replace('~(' . $keyword . '):(.[\w\*@\.-]+)~', '"$1_$2"', (string) $fullTextSearch);
 		}
 		return $fullTextSearch;
 	}
@@ -413,7 +416,7 @@ class Engagement
 	public static function unescapeKeywords(string $fullTextSearch): string
 	{
 		foreach (self::KEYWORDS as $keyword) {
-			$fullTextSearch = preg_replace('~(' . $keyword . ')_(.[\w\*@\.-]+)~', '$1:$2', $fullTextSearch);
+			$fullTextSearch = preg_replace('~(' . $keyword . ')_(.[\w\*@\.-]+)~', '$1:$2', (string) $fullTextSearch);
 		}
 		return $fullTextSearch;
 	}

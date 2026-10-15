@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -16,15 +16,6 @@ use Friendica\Core\Config\Capability\IManageConfigValues;
 class Maintenance extends \Asika\SimpleConsole\Console
 {
 	protected $helpOptions = ['h', 'help', '?'];
-
-	/**
-	 * @var Mode
-	 */
-	private $appMode;
-	/**
-	 * @var IManageConfigValues
-	 */
-	private $config;
 
 	protected function getHelp()
 	{
@@ -55,18 +46,15 @@ HELP;
 		return $help;
 	}
 
-	public function __construct(Mode $appMode, IManageConfigValues $config, $argv = null)
+	public function __construct(private readonly Mode $appMode, private readonly IManageConfigValues $config, $argv = null)
 	{
 		parent::__construct($argv);
-
-		$this->appMode = $appMode;
-		$this->config = $config;
 	}
 
 	protected function doExecute(): int
 	{
 		if ($this->getOption('v')) {
-			$this->out('Class: ' . __CLASS__);
+			$this->out('Class: ' . self::class);
 			$this->out('Arguments: ' . var_export($this->args, true));
 			$this->out('Options: ' . var_export($this->options, true));
 		}

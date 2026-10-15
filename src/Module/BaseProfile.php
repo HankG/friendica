@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -39,10 +39,10 @@ class BaseProfile extends BaseModule
 				'accesskey' => 'r',
 			],
 			[
-				'label'     => DI::l10n()->t('Conversations'),
+				'label'     => DI::l10n()->t('Posts'),
 				'url'       => $baseProfileUrl . '/conversations',
 				'sel'       => $current == 'status' ? 'active' : '',
-				'title'     => DI::l10n()->t('Conversations started'),
+				'title'     => DI::l10n()->t('All posts'),
 				'id'        => 'status-tab',
 				'accesskey' => 'm',
 			],
@@ -55,10 +55,10 @@ class BaseProfile extends BaseModule
 				'accesskey' => 'h',
 			],
 			[
-				'label'     => DI::l10n()->t('Media'),
+				'label'     => DI::l10n()->t('Media posts'),
 				'url'       => $baseProfileUrl . '/media',
 				'sel'       => $current == 'media' ? 'active' : '',
-				'title'     => DI::l10n()->t('Media'),
+				'title'     => DI::l10n()->t('Posts containing media'),
 				'id'        => 'media-tab',
 				'accesskey' => 'd',
 			],
@@ -76,7 +76,7 @@ class BaseProfile extends BaseModule
 			];
 		} else {
 			$owner = User::getByNickname($nickname, ['uid']);
-			if(DI::userSession()->isAuthenticated() || $owner && Feature::isEnabled($owner['uid'], Feature::PUBLIC_CALENDAR)) {
+			if (DI::userSession()->isAuthenticated() || $owner && Feature::isEnabled($owner['uid'], Feature::PUBLIC_CALENDAR)) {
 				$tabs[] = [
 					'label'     => DI::l10n()->t('Calendar'),
 					'url'       => DI::baseUrl() . '/calendar/show/' . $nickname,
@@ -90,15 +90,15 @@ class BaseProfile extends BaseModule
 
 		if ($is_owner) {
 			$tabs[] = [
-				'label'     => DI::l10n()->t('Personal Notes'),
+				'label'     => DI::l10n()->t('Personal notes'),
 				'url'       => DI::baseUrl() . '/notes',
 				'sel'       => $current == 'notes' ? 'active' : '',
-				'title'     => DI::l10n()->t('Only You Can See This'),
+				'title'     => DI::l10n()->t('Only you can see these'),
 				'id'        => 'notes-tab',
 				'accesskey' => 't',
 			];
 			$tabs[] = [
-				'label'     => DI::l10n()->t('Scheduled Posts'),
+				'label'     => DI::l10n()->t('Scheduled posts'),
 				'url'       => $baseProfileUrl . '/schedule',
 				'sel'       => $current == 'schedule' ? 'active' : '',
 				'title'     => DI::l10n()->t('Posts that are scheduled for publishing'),

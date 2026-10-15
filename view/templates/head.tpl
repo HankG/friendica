@@ -1,12 +1,13 @@
 {{*
-  * Copyright (C) 2010-2024, the Friendica project
-  * SPDX-FileCopyrightText: 2010-2024 the Friendica project
+  * Copyright (C) 2010-2026, the Friendica project
+  * SPDX-FileCopyrightText: 2010-2026 the Friendica project
   *
   * SPDX-License-Identifier: AGPL-3.0-or-later
   *}}
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <base href="{{$baseurl}}/" />
 <meta name="generator" content="{{$generator}}" />
+<link rel="stylesheet" href="view/asset/remixicon/fonts/remixicon.css?v={{$VERSION}}" type="text/css" media="screen" />
 <link rel="stylesheet" href="view/global.css?v={{$VERSION}}" type="text/css" media="all" />
 <link rel="stylesheet" href="view/asset/jquery-colorbox/example5/colorbox.css?v={{$VERSION}}" type="text/css" media="screen" />
 <link rel="stylesheet" href="view/asset/jgrowl/jquery.jgrowl.min.css?v={{$VERSION}}" type="text/css" media="screen" />
@@ -41,7 +42,7 @@
 <script type="text/javascript" src="view/js/modernizr.js?v={{$VERSION}}"></script>
 <script type="text/javascript" src="view/asset/jquery/dist/jquery.min.js?v={{$VERSION}}"></script>
 <script type="text/javascript" src="view/js/jquery.textinputs.js?v={{$VERSION}}"></script>
-<script type="text/javascript" src="view/asset/textcomplete/dist/textcomplete.min.js?v={{$VERSION}}"></script>
+<script type="text/javascript" src="view/asset/jquery-textcomplete/dist/jquery.textcomplete.min.js?v={{$VERSION}}"></script>
 <script type="text/javascript" src="view/js/autocomplete.js?v={{$VERSION}}"></script>
 <script type="text/javascript" src="view/asset/jquery-colorbox/jquery.colorbox-min.js?v={{$VERSION}}"></script>
 <script type="text/javascript" src="view/asset/jgrowl/jquery.jgrowl.min.js?v={{$VERSION}}"></script>
@@ -74,7 +75,28 @@ window.onload = function(){
 	const updateContent = {{$update_content}};
 	const localUser = {{if $local_user}}{{$local_user}}{{else}}false{{/if}};
 </script>
+<script type="text/javascript" src="view/js/loading-indicator.js?v={{$VERSION}}"></script>
 <script type="text/javascript" src="view/js/main.js?v={{$VERSION}}"></script>
+<script>
+// Loading indicator translations with delay messages
+window.spaLoadingTexts = {
+	fetching: "{{$loading.fetching nofilter}}",
+	receiving: "{{$loading.receiving nofilter}}",
+	processing: "{{$loading.processing nofilter}}",
+	posting: "{{$loading.posting nofilter}}",
+	delay_messages: {{$loading.delay_messages_json nofilter}}
+};
+
+// SPA error translations
+window.spaErrorTexts = {
+	timeout: "{{$spaErrors.timeout nofilter}}",
+	timeout_message: "{{$spaErrors.timeout_message nofilter}}",
+	close: "{{$spaErrors.close nofilter}}",
+	delay_title: "{{$spaErrors.delay_title nofilter}}"
+};
+</script>
+<link rel="stylesheet" href="view/loading-indicator.css?v={{$VERSION}}" type="text/css" media="all" />
+<link rel="stylesheet" href="view/spa-router.css?v={{$VERSION}}" type="text/css" media="all" />
 <script>
 	// Lifted from https://css-tricks.com/snippets/jquery/move-cursor-to-end-of-textarea-or-input/
     jQuery.fn.putCursorAtEnd = function() {

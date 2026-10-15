@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -25,36 +25,17 @@ use Psr\Log\LoggerInterface;
  */
 final class AddonManagerHelper implements AddonHelper
 {
-	private string $addonPath;
-
-	private Database $database;
-
-	private IManageConfigValues $config;
-
-	private ICanCache $cache;
-
-	private LoggerInterface $logger;
-
-	private Profiler $profiler;
-
 	/** @var string[] */
 	private array $addons = [];
 
 	public function __construct(
-		string $addonPath,
-		Database $database,
-		IManageConfigValues $config,
-		ICanCache $cache,
-		LoggerInterface $logger,
-		Profiler $profiler
-	) {
-		$this->addonPath = $addonPath;
-		$this->database  = $database;
-		$this->config    = $config;
-		$this->cache     = $cache;
-		$this->logger    = $logger;
-		$this->profiler  = $profiler;
-	}
+		private readonly string $addonPath,
+		private readonly Database $database,
+		private readonly IManageConfigValues $config,
+		private readonly ICanCache $cache,
+		private readonly LoggerInterface $logger,
+		private readonly Profiler $profiler,
+	) {}
 	/**
 	 * Returns the absolute path to the addon folder
 	 *
@@ -85,8 +66,7 @@ final class AddonManagerHelper implements AddonHelper
 
 		foreach ($dirs as $dirname) {
 			// ignore hidden files and folders
-			// @TODO: Replace with str_starts_with() when PHP 8.0 is the minimum version
-			if (strncmp($dirname, '.', 1) === 0) {
+			if (str_starts_with($dirname, '.')) {
 				continue;
 			}
 
@@ -143,7 +123,11 @@ final class AddonManagerHelper implements AddonHelper
 
 		$timestamp = @filemtime($addon_file_path);
 
-		@include_once($addon_file_path);
+		try {
+			require_once($addon_file_path);
+		} catch (\Error) {
+			return false;
+		}
 
 		if (function_exists($addonId . '_install')) {
 			$func = $addonId . '_install';
@@ -214,7 +198,7 @@ final class AddonManagerHelper implements AddonHelper
 		$addons = array_filter($this->config->get('addons') ?? []);
 
 		foreach ($addons as $addonName => $data) {
-			$addonId = Strings::sanitizeFilePathItem(trim($addonName));
+			$addonId = Strings::sanitizeFilePathItem(trim((string) $addonName));
 
 			$addon_file_path = $this->getAddonPath() . '/' . $addonId . '/' . $addonId . '.php';
 
@@ -264,7 +248,7 @@ final class AddonManagerHelper implements AddonHelper
 
 		$result = preg_match("|/\*.*\*/|msU", $raw, $matches);
 
-		if ($result === false || $result === 0 || !is_array($matches) || count($matches) < 1) {
+		if ($result === false || $result === 0 || count($matches) < 1) {
 			throw new InvalidAddonException('Could not find valid comment block in addon file: ' . $addonFile);
 		}
 

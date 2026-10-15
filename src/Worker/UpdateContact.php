@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -40,7 +40,7 @@ class UpdateContact
 	 * @param array|int $run_parameters Priority constant or array of options described in Worker::add
 	 * @param int       $contact_id
 	 * @return int
-	 * @throws InternalServerErrorException
+	 * @throws InternalServerErrorException|\InvalidArgumentException
 	 */
 	public static function add($run_parameters, int $contact_id): int
 	{
@@ -55,6 +55,21 @@ class UpdateContact
 
 		DI::logger()->debug('Update contact', ['id' => $contact_id]);
 		return Worker::add($run_parameters, 'UpdateContact', $contact_id);
+	}
+
+	/**
+	 * Checks if the maximum number of allowed workers for this task is reached
+	 *
+	 * @return boolean
+	 */
+	public static function workerLimitReached(): bool
+	{
+		$update_limit = (int) DI::config()->get('system', 'contact_update_limit');
+		$updating     = Worker::countWorkersByCommand('UpdateContact');
+		if ($updating >= $update_limit) {
+			DI::logger()->info('The number of currently running jobs exceed the limit', ['updating' => $updating, 'limit' => $update_limit]);
+		}
+		return ($updating >= $update_limit);
 	}
 
 	public static function isUpdatable(int $contact_id): bool

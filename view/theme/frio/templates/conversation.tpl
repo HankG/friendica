@@ -1,6 +1,6 @@
 {{*
-  * Copyright (C) 2010-2024, the Friendica project
-  * SPDX-FileCopyrightText: 2010-2024 the Friendica project
+  * Copyright (C) 2010-2026, the Friendica project
+  * SPDX-FileCopyrightText: 2010-2026 the Friendica project
   *
   * SPDX-License-Identifier: AGPL-3.0-or-later
   *}}
@@ -25,12 +25,10 @@
 
 {{if !$update}}
 <div id="conversation-end"></div>
-    {{if $dropping}}
-<div id="item-delete-selected" class="fakelink" onclick="deleteCheckedItems();">
-	<div id="item-delete-selected-icon" class="icon drophide" title="{{$dropping}}"
-	     onmouseover="imgbright(this);" onmouseout="imgdull(this);"></div>
-	<div id="item-delete-selected-desc">{{$dropping}}</div>
-</div>
-<div id="item-delete-selected-end"></div>
-    {{/if}}
+{{if $dropping}}
+    <button id="item-delete-selected" class="btn btn-primary" onclick="deleteCheckedItems();">
+      <i id="item-delete-selected-icon" class="ri ri-delete-bin-line drophide"></i>
+      <span>{{$dropping}}</span>
+    </button>
+{{/if}}
 {{/if}}

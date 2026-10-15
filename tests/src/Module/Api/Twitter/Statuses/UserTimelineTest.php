@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -20,8 +20,9 @@ class UserTimelineTest extends ApiTestCase
 	 *
 	 * @return void
 	 */
-	public function testApiStatusesUserTimeline()
+	public function testApiStatusesUserTimeline(): void
 	{
+		// @phpstan-ignore method.deprecated
 		$response = (new UserTimeline(DI::mstdnError(), DI::appHelper(), DI::l10n(), DI::baseUrl(), DI::args(), DI::logger(), DI::profiler(), DI::apiResponse(), []))
 			->run($this->httpExceptionMock, [
 				'user_id'         => 43, // Public contact id
@@ -45,11 +46,12 @@ class UserTimelineTest extends ApiTestCase
 	 *
 	 * @return void
 	 */
-	public function testApiStatusesUserTimelineWithNegativePage()
+	public function testApiStatusesUserTimelineWithNegativePage(): void
 	{
 		// @todo: This call is needed for this test
-		Renderer::registerTemplateEngine('Friendica\Render\FriendicaSmartyEngine');
+		Renderer::registerTemplateEngine(\Friendica\Render\FriendicaSmartyEngine::class);
 
+		// @phpstan-ignore method.deprecated
 		$response = (new UserTimeline(DI::mstdnError(), DI::appHelper(), DI::l10n(), DI::baseUrl(), DI::args(), DI::logger(), DI::profiler(), DI::apiResponse(), []))
 			->run($this->httpExceptionMock, [
 				'user_id' => 43, // Public contact id
@@ -71,28 +73,15 @@ class UserTimelineTest extends ApiTestCase
 	 *
 	 * @return void
 	 */
-	public function testApiStatusesUserTimelineWithRss()
+	public function testApiStatusesUserTimelineWithRss(): void
 	{
+		// @phpstan-ignore method.deprecated
 		$response = (new UserTimeline(DI::mstdnError(), DI::appHelper(), DI::l10n(), DI::baseUrl(), DI::args(), DI::logger(), DI::profiler(), DI::apiResponse(), [], [
-			'extension' => ICanCreateResponses::TYPE_RSS
+			'extension' => ICanCreateResponses::TYPE_RSS,
 		]))->run($this->httpExceptionMock);
 
 		self::assertEquals(ICanCreateResponses::TYPE_RSS, $response->getHeaderLine(ICanCreateResponses::X_HEADER));
 
-		self::assertXml((string)$response->getBody(), 'statuses');
-	}
-
-	/**
-	 * Test the api_statuses_user_timeline() function with an unallowed user.
-	 *
-	 * @return void
-	 */
-	public function testApiStatusesUserTimelineWithUnallowedUser()
-	{
-		self::markTestIncomplete('Needs BasicAuth as dynamic method for overriding first');
-
-		// $this->expectException(\Friendica\Network\HTTPException\UnauthorizedException::class);
-		// BasicAuth::setCurrentUserID();
-		// api_statuses_user_timeline('json');
+		self::assertXml((string) $response->getBody(), 'statuses');
 	}
 }

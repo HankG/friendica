@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -16,7 +16,7 @@ use Friendica\Util\Router\FriendicaGroupCountBased;
 
 class FriendicaGroupCountBasedTest extends MockedTestCase
 {
-	public function testOptions()
+	public function testOptions(): void
 	{
 		$collector = new RouteCollector(new Std(), new GroupCountBased());
 		$collector->addRoute('GET', '/get', Options::class);

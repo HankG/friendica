@@ -1,17 +1,15 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Module\Item;
 
 use Friendica\BaseModule;
-use Friendica\Core\System;
 use Friendica\DI;
 use Friendica\Model\Item;
-use Friendica\Model\Post;
 use Friendica\Network\HTTPException;
 
 /**
@@ -41,7 +39,7 @@ class Follow extends BaseModule
 		$return_path = $_REQUEST['return'] ?? '';
 		if (!empty($return_path)) {
 			$rand = '_=' . time();
-			if (strpos($return_path, '?')) {
+			if (strpos((string) $return_path, '?')) {
 				$rand = "&$rand";
 			} else {
 				$rand = "?$rand";
@@ -51,12 +49,12 @@ class Follow extends BaseModule
 		}
 
 		$return = [
-			'status' => 'ok',
+			'status'  => 'ok',
 			'item_id' => $itemId,
-			'verb' => 'follow',
-			'state' => 1
+			'verb'    => 'follow',
+			'state'   => 1,
 		];
 
-		$this->jsonExit($return);
+		$this->earlyJsonExit($return);
 	}
 }

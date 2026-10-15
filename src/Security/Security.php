@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -101,7 +101,7 @@ class Security
 			$circleIds = '<<>>'; // should be impossible to match
 
 			foreach (Circle::getIdsByContactId($remote_contact) as $circleId) {
-				$circleIds .= '|<' . intval($circleId) . '>';
+				$circleIds .= '|<' . $circleId . '>';
 			}
 
 			$sql = sprintf(
@@ -111,7 +111,7 @@ class Security
 				intval($remote_contact),
 				DBA::escape($circleIds),
 				intval($remote_contact),
-				DBA::escape($circleIds)
+				DBA::escape($circleIds),
 			);
 		}
 		return $sql;

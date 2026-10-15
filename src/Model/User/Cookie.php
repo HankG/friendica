@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -17,15 +17,15 @@ use Friendica\Core\Config\Capability\IManageConfigValues;
 class Cookie
 {
 	/** @var int Default expire duration in days */
-	const DEFAULT_EXPIRE = 7;
+	public const DEFAULT_EXPIRE = 7;
 	/** @var string The name of the Friendica cookie */
-	const NAME = 'Friendica';
+	public const NAME = 'Friendica';
 	/** @var string The path of the Friendica cookie */
-	const PATH = '/';
+	public const PATH = '/';
 	/** @var string The domain name of the Friendica cookie */
-	const DOMAIN = '';
+	public const DOMAIN = '';
 	/** @var bool True, if the cookie should only be accessible through HTTP */
-	const HTTPONLY = true;
+	public const HTTPONLY = true;
 
 	/** @var string The remote address of this node */
 	private $remoteAddr;
@@ -44,13 +44,20 @@ class Cookie
 	 * @param BaseURL             $baseURL
 	 * @param array               $COOKIE The $_COOKIE array
 	 */
-	public function __construct(Request $request, IManageConfigValues $config, BaseURL $baseURL, array $COOKIE = [])
-	{
+	public function __construct(
+		Request $request,
+		IManageConfigValues $config,
+		BaseURL $baseURL,
+		array $COOKIE = [],
+	) {
 		$this->sslEnabled     = $baseURL->getScheme() === 'https';
 		$this->sitePrivateKey = $config->get('system', 'site_prvkey');
 
-		$authCookieDays = $config->get('system', 'auth_cookie_lifetime',
-			self::DEFAULT_EXPIRE);
+		$authCookieDays = $config->get(
+			'system',
+			'auth_cookie_lifetime',
+			self::DEFAULT_EXPIRE,
+		);
 		$this->lifetime = $authCookieDays * 24 * 60 * 60;
 
 		$this->remoteAddr = $request->getRemoteAddress();
@@ -120,8 +127,8 @@ class Cookie
 	 */
 	public function reset(array $data): bool
 	{
-		return $this->clear() &&
-			   $this->setMultiple($data);
+		return $this->clear()
+			   && $this->setMultiple($data);
 	}
 
 	/**
@@ -144,7 +151,7 @@ class Cookie
 		return $this->setCookie(
 			json_encode(['ip' => $this->remoteAddr] + $this->data),
 			$this->lifetime + time(),
-			$this->sslEnabled
+			$this->sslEnabled,
 		);
 	}
 
@@ -160,10 +167,12 @@ class Cookie
 	 * @return bool If output exists prior to calling this function,
 	 *
 	 */
-	protected function setCookie(string $value = null, int $expire = null,
-								 bool $secure = null): bool
-	{
-		return setcookie(self::NAME, $value, $expire, self::PATH, self::DOMAIN, $secure, self::HTTPONLY);
+	protected function setCookie(
+		?string $value = null,
+		?int $expire = null,
+		?bool $secure = null,
+	): bool {
+		return setcookie(self::NAME, (string) $value, ['expires' => $expire, 'path' => self::PATH, 'domain' => self::DOMAIN, 'secure' => $secure, 'httponly' => self::HTTPONLY]);
 	}
 
 	/**
@@ -180,7 +189,7 @@ class Cookie
 		return hash_hmac(
 			'sha256',
 			hash_hmac('sha256', $privateData, $privateKey),
-			$this->sitePrivateKey
+			$this->sitePrivateKey,
 		);
 	}
 
@@ -196,7 +205,7 @@ class Cookie
 	{
 		return hash_equals(
 			$this->hashPrivateData($privateData, $privateKey),
-			$hash
+			$hash,
 		);
 	}
 }

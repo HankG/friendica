@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -114,8 +114,6 @@ final class ArrayFilterEvent extends Event
 
 	public const ACL_LOOKUP_END = 'friendica.data.acl_lookup_end';
 
-	public const OEMBED_FETCH_END = 'friendica.data.oembed_fetch_end';
-
 	public const PAGE_INFO = 'friendica.data.page_info';
 
 	public const SMILEY_LIST = 'friendica.data.smiley_list';
@@ -174,13 +172,55 @@ final class ArrayFilterEvent extends Event
 
 	public const DB_VIEW_DEFINITION = 'friendica.data.db_view_definition';
 
-	private array $array;
+	public const ADDON_SETTINGS_POST = 'friendica.data.addon_settings_post';
 
-	public function __construct(string $name, array $array)
+	public const CONNECTOR_SETTINGS_POST = 'friendica.data.connector_settings_post';
+
+	public const DISPLAY_SETTINGS_POST = 'friendica.data.display_settings_post';
+
+	public const EMAILER_SEND = 'friendica.data.emailer_send';
+
+	public const EMAILER_SEND_PREPARE = 'friendica.data.emailer_send_prepare';
+
+	public const EMAIL_GET_MESSAGE = 'friendica.data.email_get_message';
+
+	public const EMAIL_GET_MESSAGE_END = 'friendica.data.email_get_message_end';
+
+	public const GENERATE_MAP = 'friendica.data.generate_map';
+
+	public const GENERATE_NAMED_MAP = 'friendica.data.generate_named_map';
+
+	public const GET_SITE_INFO = 'friendica.data.get_site_info';
+
+	public const GLOBAL_DIR_UPDATE = 'friendica.data.global_dir_update';
+
+	public const LOGGED_IN = 'friendica.data.logged_in';
+
+	public const LOGIN_FORM = 'friendica.data.login_form';
+
+	public const MAGIC_AUTH_SUCCESS = 'friendica.data.magic_auth_success';
+
+	public const MAP_GET_COORDINATES = 'friendica.data.map_get_coordinates';
+
+	public const NOTIFIER_END = 'friendica.data.notifier_end';
+
+	public const OCR_DETECTION = 'friendica.data.ocr_detection';
+
+	public const OTHER_ENCAPSULATE = 'friendica.data.other_encapsulate';
+
+	public const OTHER_UNENCAPSULATE = 'friendica.data.other_unencapsulate';
+
+	public const PROBE_DETECT = 'friendica.data.probe_detect';
+
+	public const TEMPLATE_VARS = 'friendica.data.template_vars';
+
+	public const USER_EXPORT_OPTIONS = 'friendica.data.user_export_options';
+
+	public const ZRL_INIT = 'friendica.data.zrl_init';
+
+	public function __construct(string $name, private array $array)
 	{
 		parent::__construct($name);
-
-		$this->array = $array;
 	}
 
 	public function getArray(): array

@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -26,16 +26,9 @@ use Psr\Log\LoggerInterface;
  */
 class Media extends BaseModule
 {
-	/**
-	 * @var IHandleUserSessions
-	 */
-	private $userSession;
-
-	public function __construct(L10n $l10n, App\BaseURL $baseUrl, App\Arguments $args, LoggerInterface $logger, Profiler $profiler, Response $response, IHandleUserSessions $userSession, $server, array $parameters = [])
+	public function __construct(L10n $l10n, App\BaseURL $baseUrl, App\Arguments $args, LoggerInterface $logger, Profiler $profiler, Response $response, private readonly IHandleUserSessions $userSession, $server, array $parameters = [])
 	{
 		parent::__construct($l10n, $baseUrl, $args, $logger, $profiler, $response, $server, $parameters);
-
-		$this->userSession = $userSession;
 	}
 
 	protected function content(array $request = []): string
@@ -49,9 +42,11 @@ class Media extends BaseModule
 
 		DI::page()['aside'] = Widget\VCard::getHTML($contact);
 
+		Contact::setPageTitle($contact);
+
 		$o = Contact::getTabsHTML($contact, Contact::TAB_MEDIA);
 
-		$o .= ModelContact::getPostsFromUrl($contact['url'], $this->userSession->getLocalUserId(), true, $request['last_created'] ?? '');
+		$o .= ModelContact::getPostsFromUrl($contact['url'], $this->userSession->getLocalUserId(), true, $request);
 
 		return $o;
 	}

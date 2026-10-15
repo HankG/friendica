@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -49,7 +49,7 @@ class Attachment extends BaseDataTransferObject
 	 */
 	public function __construct(array $attachment, string $type, string $url, string $preview, string $remote)
 	{
-		$this->id          = (string)$attachment['id'];
+		$this->id          = (string) $attachment['id'];
 		$this->type        = $type;
 		$this->url         = $url;
 		$this->preview_url = $preview;
@@ -61,14 +61,14 @@ class Attachment extends BaseDataTransferObject
 				$this->meta['original']['width']  = (int) $attachment['width'];
 				$this->meta['original']['height'] = (int) $attachment['height'];
 				$this->meta['original']['size']   = (int) $attachment['width'] . 'x' . (int) $attachment['height'];
-				$this->meta['original']['aspect'] = (float) ((int)  $attachment['width'] / (int) $attachment['height']);
+				$this->meta['original']['aspect'] = (float) ((int) $attachment['width'] / (int) $attachment['height']);
 			}
 
 			if (isset($attachment['preview-width']) && (int) $attachment['preview-width'] > 0 && (int) $attachment['preview-height'] > 0) {
 				$this->meta['small']['width']  = (int) $attachment['preview-width'];
 				$this->meta['small']['height'] = (int) $attachment['preview-height'];
 				$this->meta['small']['size']   = (int) $attachment['preview-width'] . 'x' . (int) $attachment['preview-height'];
-				$this->meta['small']['aspect'] = (float) ((int)  $attachment['preview-width'] / (int) $attachment['preview-height']);
+				$this->meta['small']['aspect'] = (float) ((int) $attachment['preview-width'] / (int) $attachment['preview-height']);
 			}
 		}
 	}

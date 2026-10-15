@@ -1,21 +1,26 @@
-# SPDX-FileCopyrightText: 2010 - 2024 the Friendica project
+# SPDX-FileCopyrightText: 2010-2026 the Friendica project
 #
 # SPDX-License-Identifier: CC0-1.0
 
 includes:
+    - vendor/phpstan/phpstan-deprecation-rules/rules.neon
+    - vendor/phpstan/phpstan-mockery/extension.neon
+    - vendor/phpstan/phpstan-phpunit/extension.neon
     - vendor/phpstan/phpstan-strict-rules/rules.neon
+    - .phpstan-baseline.neon
 
 parameters:
-    level: 3
+    level: 5
+
+    phpVersion: 80200 # PHP 8.2
 
     paths:
         - bin/auth_ejabberd.php
         - bin/console.php
-        - bin/daemon.php
-        - bin/jetstream.php
-        - bin/worker.php
         - index.php
         - src/
+        - static/
+        - tests/
 
     scanDirectories:
         - mod
@@ -23,39 +28,52 @@ parameters:
         - vendor
         - view
 
+    excludePaths:
+        - vendor/rector/
+
     dynamicConstantNames:
         - DB_UPDATE_VERSION
+
+    treatPhpDocTypesAsCertain: false
 
     # See all rules at https://github.com/phpstan/phpstan-strict-rules/blob/2.0.x/rules.neon
     strictRules:
         allRules: false
 
     ignoreErrors:
-        -
-            # Ignore missing GdImage class in PHP <= 7.4
-            message: '(^Property .+ has unknown class GdImage as its type\.$)'
-            path: src
 
+        # Deprecated since 2022.05: Notify -> Notification, FormattedNotify -> FormattedNotification
         -
-            # Ignore missing IMAP\Connection class in PHP <= 8.0
-            message: '(^Method .+ has invalid return type IMAP\\Connection\.$)'
-            path: src
+            message: '#deprecated class Friendica\\Navigation\\Notifications\\(?:Repository\\Notify|Entity\\Notify|Factory\\Notify|Factory\\FormattedNotify|ValueObject\\FormattedNotify)#'
+            path: src/
+            count: 90
 
+        # Deprecated run() calls in tests are preserved for BC promise and
+        # will be replaced by handleRequest() tests in the future
         -
-            # Ignore missing IMAP\Connection class in PHP <= 8.0
-            message: '(^Parameter .+ has invalid type IMAP\\Connection\.$)'
-            path: src
+            message: '#^Call to deprecated method run\(\) of class#'
+            identifier: method.deprecated
+            path: tests/
+            count: 53
 
+        # vfsStream v1.6.12: getChild() returns vfsStreamContent, but at() expects
+        # vfsStreamContainer. vfsStreamContainer does NOT extend vfsStreamContent,
+        # so PHPStan can't narrow the type. Library is frozen, no upstream fix.
         -
-            # #Fixme: Ignore type mismatch of BaseRepository::$factory in child classes
-            message: '#^PHPDoc type Friendica\\.+ of property Friendica\\.+\:\:\$factory is not the same as PHPDoc type Friendica\\Capabilities\\ICanCreateFromTableRow of overridden property Friendica\\BaseRepository\:\:\$factory\.$#'
-            identifier: property.phpDocType
-            count: 13
-            path: src
+            message: '#^Parameter \#1 \$container of method org\\bovigo\\vfs\\vfsStreamAbstractContent\:\:at\(\) expects org\\bovigo\\vfs\\vfsStreamContainer, org\\bovigo\\vfs\\vfsStreamContent given\.$#'
+            path: tests/
+            count: 36
 
+        # Arguments::getModuleName() deprecated since 2022.12.
+        # Migration: replace with getModuleClass() (returns FQCN like
+        # "Friendica\Module\Photos"). Not all callers can be migrated
+        # directly — HookEventBridge needs the short name for hook events.
+        # TODO: migrate each caller individually, then remove this ignore.
         -
-            # #Fixme: Ignore type mismatch of BaseModule::$response in BaseApi module
-            message: '#^PHPDoc type Friendica\\Module\\Api\\ApiResponse of property Friendica\\Module\\BaseApi\:\:\$response is not the same as PHPDoc type Friendica\\Capabilities\\ICanCreateResponses of overridden property Friendica\\BaseModule\:\:\$response\.$#'
-            identifier: property.phpDocType
-            count: 1
-            path: src/Module/BaseApi.php
+            message: '''
+                #^Call to deprecated method getModuleName\(\) of class Friendica\\App\\Arguments\:
+                2022\.12 \- With the new \(sub\-\)routes, it's not trustworthy anymore, use the ModuleClass instead$#
+            '''
+            identifier: method.deprecated
+            path: src/
+            count: 10

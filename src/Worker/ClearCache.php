@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -20,9 +20,6 @@ class ClearCache
 	{
 		// clear old cache
 		DI::cache()->clear();
-
-		// Delete the cached OEmbed entries that are older than three month
-		DBA::delete('oembed', ["`created` < ?", DateTimeFormat::utc('now - 3 months')]);
 
 		// Delete the cached "parsed_url" entries that are expired
 		DBA::delete('parsed_url', ["`expires` < ?", DateTimeFormat::utcNow()]);

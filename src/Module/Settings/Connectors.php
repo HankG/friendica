@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -11,6 +11,8 @@ use Friendica\App;
 use Friendica\Core\Config\Capability\IManageConfigValues;
 use Friendica\Core\Hook;
 use Friendica\Core\L10n;
+use Friendica\Event\ArrayFilterEvent;
+use Psr\EventDispatcher\EventDispatcherInterface;
 use Friendica\Core\PConfig\Capability\IManagePersonalConfigValues;
 use Friendica\Core\Renderer;
 use Friendica\Core\Session\Capability\IHandleUserSessions;
@@ -28,23 +30,24 @@ use Psr\Log\LoggerInterface;
 
 class Connectors extends BaseSettings
 {
-	/** @var IManageConfigValues */
-	private $config;
-	/** @var IManagePersonalConfigValues */
-	private $pconfig;
-	/** @var Database */
-	private $database;
-	/** @var SystemMessages */
-	private $systemMessages;
-
-	public function __construct(SystemMessages $systemMessages, Database $database, IManagePersonalConfigValues $pconfig, IManageConfigValues $config, IHandleUserSessions $session, App\Page $page, L10n $l10n, App\BaseURL $baseUrl, App\Arguments $args, LoggerInterface $logger, Profiler $profiler, Response $response, array $server, array $parameters = [])
-	{
+	public function __construct(
+		private readonly SystemMessages $systemMessages,
+		private readonly Database $database,
+		private readonly IManagePersonalConfigValues $pconfig,
+		private readonly IManageConfigValues $config,
+		private readonly EventDispatcherInterface $eventDispatcher,
+		IHandleUserSessions $session,
+		App\Page $page,
+		L10n $l10n,
+		App\BaseURL $baseUrl,
+		App\Arguments $args,
+		LoggerInterface $logger,
+		Profiler $profiler,
+		Response $response,
+		array $server,
+		array $parameters = [],
+	) {
 		parent::__construct($session, $page, $l10n, $baseUrl, $args, $logger, $profiler, $response, $server, $parameters);
-
-		$this->config         = $config;
-		$this->pconfig        = $pconfig;
-		$this->database       = $database;
-		$this->systemMessages = $systemMessages;
 	}
 
 	protected function post(array $request = [])
@@ -62,16 +65,17 @@ class Connectors extends BaseSettings
 			$this->pconfig->set($this->session->getLocalUserId(), 'system', 'api_spoiler_title', intval($request['api_spoiler_title']));
 			$this->pconfig->set($this->session->getLocalUserId(), 'system', 'api_auto_attach', intval($request['api_auto_attach']));
 			$this->pconfig->set($this->session->getLocalUserId(), 'system', 'article_mode', intval($request['article_mode']));
+			$this->pconfig->set($this->session->getLocalUserId(), 'system', 'minimum_posting_interval', max(0, intval($request['minimum_posting_interval'] ?? 0)));
 		} elseif (!empty($request['mail-submit']) && function_exists('imap_open') && !$this->config->get('system', 'imap_disabled')) {
-			$mail_server       =                 $request['mail_server'] ?? '';
-			$mail_port         =                 $request['mail_port'] ?? '';
+			$mail_server       = $request['mail_server'] ?? '';
+			$mail_port         = $request['mail_port']   ?? '';
 			$mail_ssl          = strtolower(trim($request['mail_ssl'] ?? ''));
-			$mail_user         =                 $request['mail_user'] ?? '';
-			$mail_pass         =            trim($request['mail_pass'] ?? '');
-			$mail_action       =            trim($request['mail_action'] ?? '');
-			$mail_movetofolder =            trim($request['mail_movetofolder'] ?? '');
-			$mail_replyto      =                 $request['mail_replyto'] ?? '';
-			$mail_pubmail      =                 $request['mail_pubmail'] ?? '';
+			$mail_user         = $request['mail_user'] ?? '';
+			$mail_pass         = trim($request['mail_pass'] ?? '');
+			$mail_action       = trim($request['mail_action'] ?? '');
+			$mail_movetofolder = trim($request['mail_movetofolder'] ?? '');
+			$mail_replyto      = $request['mail_replyto'] ?? '';
+			$mail_pubmail      = $request['mail_pubmail'] ?? '';
 
 			if (!$this->database->exists('mailacct', ['uid' => $this->session->getLocalUserId()])) {
 				$this->database->insert('mailacct', ['uid' => $this->session->getLocalUserId()]);
@@ -92,15 +96,15 @@ class Connectors extends BaseSettings
 				'movetofolder' => $mail_movetofolder,
 				'mailbox'      => 'INBOX',
 				'reply_to'     => $mail_replyto,
-				'pubmail'      => $mail_pubmail
+				'pubmail'      => $mail_pubmail,
 			], ['uid' => $this->session->getLocalUserId()]);
 
 			$this->logger->debug('updating mailaccount', ['response' => $r]);
 			$mailacct = $this->database->selectFirst('mailacct', [], ['uid' => $this->session->getLocalUserId()]);
 			if ($this->database->isResult($mailacct)) {
-				if (strlen($mailacct['server'])) {
+				if (strlen((string) $mailacct['server'])) {
 					$dcrpass = '';
-					openssl_private_decrypt(hex2bin($mailacct['pass']), $dcrpass, $user['prvkey']);
+					openssl_private_decrypt(hex2bin((string) $mailacct['pass']), $dcrpass, $user['prvkey']);
 					$mbox = Email::connect(Email::constructMailboxName($mailacct), $mail_user, $dcrpass);
 					unset($dcrpass);
 					if (!$mbox) {
@@ -110,7 +114,7 @@ class Connectors extends BaseSettings
 			}
 		}
 
-		Hook::callAll('connector_settings_post', $request);
+		$this->eventDispatcher->dispatch(new ArrayFilterEvent(ArrayFilterEvent::CONNECTOR_SETTINGS_POST, $request));
 		$this->baseUrl->redirect($this->args->getQueryString());
 	}
 
@@ -118,14 +122,15 @@ class Connectors extends BaseSettings
 	{
 		parent::content($request);
 
-		$accept_only_sharer      =  intval($this->pconfig->get($this->session->getLocalUserId(), 'system', 'accept_only_sharer'));
-		$enable_cw               = !intval($this->pconfig->get($this->session->getLocalUserId(), 'system', 'disable_cw'));
-		$enable_smart_shortening = !intval($this->pconfig->get($this->session->getLocalUserId(), 'system', 'no_intelligent_shortening'));
-		$simple_shortening       =  intval($this->pconfig->get($this->session->getLocalUserId(), 'system', 'simple_shortening'));
-		$attach_link_title       =  intval($this->pconfig->get($this->session->getLocalUserId(), 'system', 'attach_link_title'));
-		$api_spoiler_title       =  intval($this->pconfig->get($this->session->getLocalUserId(), 'system', 'api_spoiler_title', true));
-		$api_auto_attach         =  intval($this->pconfig->get($this->session->getLocalUserId(), 'system', 'api_auto_attach', false));
-		$article_mode            =  intval($this->pconfig->get($this->session->getLocalUserId(), 'system', 'article_mode'));
+		$accept_only_sharer       = intval($this->pconfig->get($this->session->getLocalUserId(), 'system', 'accept_only_sharer'));
+		$enable_cw                = !intval($this->pconfig->get($this->session->getLocalUserId(), 'system', 'disable_cw'));
+		$enable_smart_shortening  = !intval($this->pconfig->get($this->session->getLocalUserId(), 'system', 'no_intelligent_shortening'));
+		$simple_shortening        = intval($this->pconfig->get($this->session->getLocalUserId(), 'system', 'simple_shortening'));
+		$attach_link_title        = intval($this->pconfig->get($this->session->getLocalUserId(), 'system', 'attach_link_title'));
+		$api_spoiler_title        = intval($this->pconfig->get($this->session->getLocalUserId(), 'system', 'api_spoiler_title', true));
+		$api_auto_attach          = intval($this->pconfig->get($this->session->getLocalUserId(), 'system', 'api_auto_attach', false));
+		$article_mode             = intval($this->pconfig->get($this->session->getLocalUserId(), 'system', 'article_mode'));
+		$minimum_posting_interval = max(0, intval($this->pconfig->get($this->session->getLocalUserId(), 'system', 'minimum_posting_interval', 0, true)));
 
 		$connector_settings_forms = [];
 		foreach ($this->database->selectToArray('hook', ['file', 'function'], ['hook' => 'connector_settings']) as $hook) {
@@ -136,18 +141,18 @@ class Connectors extends BaseSettings
 			$connector_settings_forms[$data['connector']] = Renderer::replaceMacros($tpl, [
 				'$connector' => $data['connector'],
 				'$title'     => $data['title'],
-				'$image'     => $data['image'] ?? '',
+				'$image'     => $data['image']   ?? '',
 				'$enabled'   => $data['enabled'] ?? true,
 				'$open'      => ($this->parameters['connector'] ?? '') === $data['connector'],
-				'$html'      => $data['html'] ?? '',
+				'$html'      => $data['html']   ?? '',
 				'$submit'    => $data['submit'] ?? $this->t('Save Settings'),
 			]);
 		}
 
 		if ($this->session->isSiteAdmin()) {
-			$diasp_enabled = $this->config->get('system', 'diaspora_enabled') ?
-				$this->t('Built-in support for %s connectivity is enabled', $this->t('Diaspora (Socialhome, Hubzilla)')) :
-				$this->t('Built-in support for %s connectivity is disabled', $this->t('Diaspora (Socialhome, Hubzilla)'));
+			$diasp_enabled = $this->config->get('system', 'diaspora_enabled')
+				? $this->t('Built-in support for %s connectivity is enabled', $this->t('Diaspora (Socialhome, Hubzilla)'))
+				: $this->t('Built-in support for %s connectivity is disabled', $this->t('Diaspora (Socialhome, Hubzilla)'));
 		} else {
 			$diasp_enabled = '';
 		}
@@ -161,8 +166,8 @@ class Connectors extends BaseSettings
 			$mail_disabled = $this->t('Email access is disabled on this site.');
 		}
 
-		$mail_server       = $mail_account['server']       ?? '';
-		$mail_port         = (!empty($mail_account['port']) && is_numeric($mail_account['port'])) ? (int)$mail_account['port'] : '';
+		$mail_server       = $mail_account['server'] ?? '';
+		$mail_port         = (!empty($mail_account['port']) && is_numeric($mail_account['port'])) ? (int) $mail_account['port'] : '';
 		$mail_ssl          = $mail_account['ssltype']      ?? '';
 		$mail_user         = $mail_account['user']         ?? '';
 		$mail_replyto      = $mail_account['reply_to']     ?? '';
@@ -179,7 +184,7 @@ class Connectors extends BaseSettings
 		$article_modes = [
 			ActivityPub::ARTICLE_DEFAULT     => $this->t('Default (Mastodon will display the title and a link to the post)'),
 			ActivityPub::ARTICLE_USE_SUMMARY => $this->t('Use the summary (Mastodon and some others will treat it as content warning)'),
-			ActivityPub::ARTICLE_EMBED_TITLE => $this->t('Embed the title in the body')
+			ActivityPub::ARTICLE_EMBED_TITLE => $this->t('Embed the title in the body'),
 		];
 
 		$tpl = Renderer::getMarkupTemplate('settings/connectors.tpl');
@@ -200,15 +205,16 @@ class Connectors extends BaseSettings
 					Item::COMPLETION_NONE    => $this->t('Only conversations my follows started'),
 					Item::COMPLETION_COMMENT => $this->t('Conversations my follows started or commented on (default)'),
 					Item::COMPLETION_LIKE    => $this->t('Any conversation my follows interacted with, including likes'),
-				]
+				],
 			],
-			'$enable_cw'               => ['enable_cw', $this->t("Collapse sensitive posts"), $enable_cw, $this->t('If a post is marked as "sensitive", it will be displayed in a collapsed state, if this option is enabled.')],
-			'$enable_smart_shortening' => ['enable_smart_shortening', $this->t('Enable intelligent shortening'), $enable_smart_shortening, $this->t('Normally the system tries to find the best link to add to shortened posts. If disabled, every shortened post will always point to the original friendica post.')],
-			'$simple_shortening'       => ['simple_shortening', $this->t('Enable simple text shortening'), $simple_shortening, $this->t('Normally the system shortens posts at the next line feed. If this option is enabled then the system will shorten the text at the maximum character limit.')],
-			'$attach_link_title'       => ['attach_link_title', $this->t('Attach the link title'), $attach_link_title, $this->t('When activated, the title of the attached link will be added as a title on posts to Diaspora. This is mostly helpful with "remote-self" contacts that share feed content.')],
-			'$api_spoiler_title'       => ['api_spoiler_title', $this->t('API: Use spoiler field as title'), $api_spoiler_title, $this->t('When activated, the "spoiler_text" field in the API will be used for the title on standalone posts. When deactivated it will be used for spoiler text. For comments it will always be used for spoiler text.')],
-			'$api_auto_attach'         => ['api_auto_attach', $this->t('API: Automatically links at the end of the post as attached posts'), $api_auto_attach, $this->t('When activated, added links at the end of the post react the same way as added links in the web interface.')],
-			'$article_mode'            => ['article_mode', $this->t('Article Mode'), $article_mode, $this->t("Controls how posts with titles are transmitted. Mastodon and its forks don't display the content of these posts if the post is created in the correct (default) way."), $article_modes],
+			'$enable_cw'                => ['enable_cw', $this->t("Collapse sensitive posts"), $enable_cw, $this->t('If a post is marked as "sensitive", it will be displayed in a collapsed state, if this option is enabled.')],
+			'$enable_smart_shortening'  => ['enable_smart_shortening', $this->t('Enable intelligent shortening'), $enable_smart_shortening, $this->t('Normally the system tries to find the best link to add to shortened posts. If disabled, every shortened post will always point to the original friendica post.')],
+			'$simple_shortening'        => ['simple_shortening', $this->t('Enable simple text shortening'), $simple_shortening, $this->t('Normally the system shortens posts at the next line feed. If this option is enabled then the system will shorten the text at the maximum character limit.')],
+			'$attach_link_title'        => ['attach_link_title', $this->t('Attach the link title'), $attach_link_title, $this->t('When activated, the title of the attached link will be added as a title on posts to Diaspora. This is mostly helpful with "remote-self" contacts that share feed content.')],
+			'$api_spoiler_title'        => ['api_spoiler_title', $this->t('API: Use spoiler field as title'), $api_spoiler_title, $this->t('When activated, the "spoiler_text" field in the API will be used for the title on standalone posts. When deactivated it will be used for spoiler text. For comments it will always be used for spoiler text.')],
+			'$api_auto_attach'          => ['api_auto_attach', $this->t('API: Automatically links at the end of the post as attached posts'), $api_auto_attach, $this->t('When activated, added links at the end of the post react the same way as added links in the web interface.')],
+			'$article_mode'             => ['article_mode', $this->t('Article Mode'), $article_mode, $this->t("Controls how posts with titles are transmitted. Mastodon and its forks don't display the content of these posts if the post is created in the correct (default) way."), $article_modes],
+			'$minimum_posting_interval' => ['minimum_posting_interval', $this->t('Minimal Posting Interval'), $minimum_posting_interval, $this->t('The minimum interval in minutes between two posts. Default is 0. If enabled, your own posts are automatically delayed by the specified number of minutes.'), false, 'min="0" step="1"', 'number'],
 
 			'$connector_settings_forms' => $connector_settings_forms,
 
@@ -223,7 +229,7 @@ class Connectors extends BaseSettings
 			'$mail_pass'         => ['mail_pass', $this->t('Email password:'), '', ''],
 			'$mail_replyto'      => ['mail_replyto', $this->t('Reply-to address:'), $mail_replyto, 'Optional'],
 			'$mail_pubmail'      => ['mail_pubmail', $this->t('Send public posts to all email contacts:'), $mail_pubmail, ''],
-			'$mail_action'       => ['mail_action', $this->t('Action after import:'), $mail_action, '', [0 => $this->t('None'), 1 => $this->t('Delete'), 2 => $this->t('Mark as seen'), 3 => $this->t('Move to folder')]],
+			'$mail_action'       => ['mail_action', $this->t('Action after import:'), $mail_action, '', [0 => $this->t('None'), 1 => $this->t('Delete'), 2 => $this->t('Mark as read'), 3 => $this->t('Move to folder')]],
 			'$mail_movetofolder' => ['mail_movetofolder', $this->t('Move to folder:'), $mail_movetofolder, ''],
 			'$submit'            => $this->t('Save Settings'),
 		]);

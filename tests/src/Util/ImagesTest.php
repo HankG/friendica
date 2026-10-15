@@ -1,13 +1,12 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Test\src\Util;
 
-use DMS\PHPUnitExtensions\ArraySubset\ArraySubsetAsserts;
 use Friendica\Test\DiceHttpMockHandlerTrait;
 use Friendica\Test\MockedTestCase;
 use Friendica\Util\Images;
@@ -17,7 +16,6 @@ use GuzzleHttp\Psr7\Response;
 class ImagesTest extends MockedTestCase
 {
 	use DiceHttpMockHandlerTrait;
-	use ArraySubsetAsserts;
 
 	protected function setUp(): void
 	{
@@ -33,7 +31,7 @@ class ImagesTest extends MockedTestCase
 		parent::tearDown();
 	}
 
-	public function dataImages()
+	public static function dataImages()
 	{
 		return [
 			'image' => [
@@ -49,7 +47,7 @@ class ImagesTest extends MockedTestCase
 					'Date'                          => 'Mon,23Aug202112:39:00GMT',
 					'Connection'                    => 'keep-alive',
 				],
-				'data'      => file_get_contents(__DIR__ . '/../../datasets/curl/image.content'),
+				'data'      => file_get_contents(__DIR__ . '/../../Fixtures/curl/image.content'),
 				'assertion' => [
 					'0'    => '400',
 					'1'    => '400',
@@ -58,7 +56,7 @@ class ImagesTest extends MockedTestCase
 					'bits' => '8',
 					'mime' => 'image/png',
 					'size' => '24875',
-				]
+				],
 			],
 			'emptyUrl' => [
 				'url'       => '',
@@ -71,115 +69,127 @@ class ImagesTest extends MockedTestCase
 
 	/**
 	 * Test the Images::getInfoFromURL() method (only remote images, not local/relative!)
-	 *
-	 * @dataProvider dataImages
 	 */
-	public function testGetInfoFromRemoteURL(string $url, array $headers, string $data, array $assertion)
+	#[\PHPUnit\Framework\Attributes\DataProvider('dataImages')]
+	public function testGetInfoFromRemoteURL(string $url, array $headers, string $data, array $assertion): void
 	{
 		$this->httpRequestHandler->setHandler(new MockHandler([
 			new Response(200, $headers, $data),
 		]));
 
-		self::assertArraySubset($assertion, Images::getInfoFromURL($url));
+		$result = Images::getInfoFromURL($url);
+
+		self::assertIsArray($result);
+
+		foreach ($assertion as $key => $value) {
+			self::assertArrayHasKey($key, $result);
+			self::assertEquals($value, $result[$key]);
+		}
 	}
 
-	public function dataScalingDimensions()
+	public static function dataScalingDimensions()
 	{
 		return [
 			'landscape' => [
-				'width' => 640,
-				'height' => 480,
-				'max' => 320,
+				'width'     => 640,
+				'height'    => 480,
+				'max'       => 320,
 				'assertion' => [
-					'width' => 320,
+					'width'  => 320,
 					'height' => 240,
-				]
+				],
 			],
 			'wide_landscape' => [
-				'width' => 640,
-				'height' => 120,
-				'max' => 320,
+				'width'     => 640,
+				'height'    => 120,
+				'max'       => 320,
 				'assertion' => [
-					'width' => 320,
+					'width'  => 320,
 					'height' => 60,
-				]
+				],
 			],
 			'landscape_round_up' => [
-				'width' => 640,
-				'height' => 479,
-				'max' => 320,
+				'width'     => 640,
+				'height'    => 479,
+				'max'       => 320,
 				'assertion' => [
-					'width' => 320,
+					'width'  => 320,
 					'height' => 240,
-				]
+				],
 			],
 			'landscape_zero_height' => [
-				'width' => 640,
-				'height' => 1,
-				'max' => 160,
+				'width'     => 640,
+				'height'    => 1,
+				'max'       => 160,
 				'assertion' => [
-					'width' => 160,
+					'width'  => 160,
 					'height' => 1,
-				]
+				],
 			],
 			'portrait' => [
-				'width' => 480,
-				'height' => 640,
-				'max' => 320,
+				'width'     => 480,
+				'height'    => 640,
+				'max'       => 320,
 				'assertion' => [
-					'width' => 240,
+					'width'  => 240,
 					'height' => 320,
-				]
+				],
 			],
 			// For portrait with aspect ratio <= 16:9, constrain height
 			'portrait_16_9' => [
-				'width' => 1080,
-				'height' => 1920,
-				'max' => 320,
+				'width'     => 1080,
+				'height'    => 1920,
+				'max'       => 320,
 				'assertion' => [
-					'width' => 180,
+					'width'  => 180,
 					'height' => 320,
-				]
+				],
 			],
 			// For portrait with aspect ratio > 16:9, constrain width
 			'portrait_over_16_9_too_wide' => [
-				'width' => 1080,
-				'height' => 1921,
-				'max' => 320,
+				'width'     => 1080,
+				'height'    => 1921,
+				'max'       => 320,
 				'assertion' => [
-					'width' => 320,
+					'width'  => 320,
 					'height' => 570,
-				]
+				],
 			],
 			// For portrait with aspect ratio > 16:9, constrain width
 			'portrait_over_16_9_not_too_wide' => [
-				'width' => 1080,
-				'height' => 1921,
-				'max' => 1080,
+				'width'     => 1080,
+				'height'    => 1921,
+				'max'       => 1080,
 				'assertion' => [
-					'width' => 1080,
+					'width'  => 1080,
 					'height' => 1921,
-				]
+				],
 			],
 			'portrait_round_up' => [
-				'width' => 479,
-				'height' => 640,
-				'max' => 320,
+				'width'     => 479,
+				'height'    => 640,
+				'max'       => 320,
 				'assertion' => [
-					'width' => 240,
+					'width'  => 240,
 					'height' => 320,
-				]
+				],
 			],
 		];
 	}
 
 	/**
 	 * Test the Images::getScalingDimensions() method
-	 *
-	 * @dataProvider dataScalingDimensions
 	 */
-	public function testGetScalingDimensions(int $width, int $height, int $max, array $assertion)
+	#[\PHPUnit\Framework\Attributes\DataProvider('dataScalingDimensions')]
+	public function testGetScalingDimensions(int $width, int $height, int $max, array $assertion): void
 	{
-		self::assertArraySubset($assertion, Images::getScalingDimensions($width, $height, $max));
+		$result = Images::getScalingDimensions($width, $height, $max);
+
+		self::assertIsArray($result);
+
+		foreach ($assertion as $key => $value) {
+			self::assertArrayHasKey($key, $result);
+			self::assertEquals($value, $result[$key]);
+		}
 	}
 }

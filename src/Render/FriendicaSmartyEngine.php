@@ -1,14 +1,14 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Render;
 
-use Friendica\Core\Hook;
 use Friendica\DI;
+use Friendica\Event\ArrayFilterEvent;
 use Friendica\Network\HTTPException\ServiceUnavailableException;
 use Friendica\Util\Strings;
 
@@ -17,10 +17,10 @@ use Friendica\Util\Strings;
  */
 final class FriendicaSmartyEngine extends TemplateEngine
 {
-	static $name = 'smarty3';
+	public static $name = 'smarty3';
 
-	const FILE_PREFIX = 'file:';
-	const STRING_PREFIX = 'string:';
+	public const FILE_PREFIX   = 'file:';
+	public const STRING_PREFIX = 'string:';
 
 	/** @var FriendicaSmarty */
 	private $smarty;
@@ -41,18 +41,21 @@ final class FriendicaSmartyEngine extends TemplateEngine
 		if (!is_writable($work_dir)) {
 			$admin_message = DI::l10n()->t('The folder %s must be writable by webserver.', $work_dir);
 			DI::logger()->critical($admin_message);
-			$message = DI::userSession()->isSiteAdmin() ?
-				$admin_message :
-				DI::l10n()->t('Friendica can\'t display this page at the moment, please contact the administrator.');
+			$message = DI::userSession()->isSiteAdmin()
+				? $admin_message
+				: DI::l10n()->t('Friendica can\'t display this page at the moment, please contact the administrator.');
 			throw new ServiceUnavailableException($message);
 		}
 	}
 
 	/**
-	 * @inheritDoc
+	 * Test install
+	 *
+	 * @param-out array $errors Array of errors passed by reference
 	 */
-	public function testInstall(array &$errors = null)
+	public function testInstall(?array &$errors = null)
 	{
+		/** @phpstan-ignore paramOut.type(ignore wrong param type in Smarty::testInstall()) */
 		$this->smarty->testInstall($errors);
 	}
 
@@ -68,16 +71,18 @@ final class FriendicaSmartyEngine extends TemplateEngine
 		// "middleware": inject variables into templates
 		$arr = [
 			'template' => basename($this->smarty->filename ?? ''),
-			'vars' => $vars
+			'vars'     => $vars,
 		];
-		Hook::callAll('template_vars', $arr);
+		$arr = DI::eventDispatcher()->dispatch(
+			new ArrayFilterEvent(ArrayFilterEvent::TEMPLATE_VARS, $arr),
+		)->getArray();
 		$vars = $arr['vars'];
 
 		$this->smarty->clearAllAssign();
 
 		foreach ($vars as $key => $value) {
 			if ($key[0] === '$') {
-				$key = substr($key, 1);
+				$key = substr((string) $key, 1);
 			}
 
 			$this->smarty->assign($key, $value);
@@ -92,7 +97,7 @@ final class FriendicaSmartyEngine extends TemplateEngine
 	public function getTemplateFile(string $file, string $subDir = '')
 	{
 		// Make sure $root ends with a slash /
-		if ($subDir !== '' && substr($subDir, -1, 1) !== '/') {
+		if ($subDir !== '' && !str_ends_with($subDir, '/')) {
 			$subDir = $subDir . '/';
 		}
 

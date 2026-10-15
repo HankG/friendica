@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -25,7 +25,6 @@ class Statistics extends BaseModule
 	protected $config;
 	/** @var IManageKeyValuePairs */
 	protected $keyValue;
-	private AddonHelper $addonHelper;
 
 	public function __construct(
 		L10n $l10n,
@@ -35,35 +34,34 @@ class Statistics extends BaseModule
 		Profiler $profiler,
 		IManageConfigValues $config,
 		IManageKeyValuePairs $keyValue,
-		AddonHelper $addonHelper,
+		private readonly AddonHelper $addonHelper,
 		Response $response,
 		array $server,
-		array $parameters = []
+		array $parameters = [],
 	) {
 		parent::__construct($l10n, $baseUrl, $args, $logger, $profiler, $response, $server, $parameters);
 
-		$this->config      = $config;
-		$this->keyValue    = $keyValue;
-		$this->addonHelper = $addonHelper;
+		$this->config   = $config;
+		$this->keyValue = $keyValue;
 
 		if (!$this->config->get("system", "nodeinfo")) {
 			throw new NotFoundException();
 		}
 	}
 
-	protected function rawContent(array $request = [])
+	protected function rawContent(array $request = []): never
 	{
 		$registration_open = Register::getPolicy() !== Register::CLOSED
 			&& !$this->config->get('config', 'invitation_only');
 
 		/// @todo mark the "service" addons and load them dynamically here
 		$services = [
-			'appnet'      => $this->addonHelper->isAddonEnabled('appnet'),
-			'bluesky'     => $this->addonHelper->isAddonEnabled('bluesky'),
+			'atprotocol'  => $this->addonHelper->isAddonEnabled('bluesky'),
 			'dreamwidth'  => $this->addonHelper->isAddonEnabled('dreamwidth'),
 			'gnusocial'   => $this->addonHelper->isAddonEnabled('gnusocial'),
 			'libertree'   => $this->addonHelper->isAddonEnabled('libertree'),
 			'livejournal' => $this->addonHelper->isAddonEnabled('livejournal'),
+			'pnut'        => $this->addonHelper->isAddonEnabled('pnut'),
 			'pumpio'      => $this->addonHelper->isAddonEnabled('pumpio'),
 			'twitter'     => $this->addonHelper->isAddonEnabled('twitter'),
 			'tumblr'      => $this->addonHelper->isAddonEnabled('tumblr'),
@@ -83,6 +81,6 @@ class Statistics extends BaseModule
 		], $services);
 
 		$this->logger->debug("statistics.", ['statistics' => $statistics]);
-		$this->jsonExit($statistics);
+		$this->earlyJsonExit($statistics);
 	}
 }

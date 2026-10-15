@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -32,7 +32,7 @@ class User
 
 		// Additionally assign the key fields
 		$fields['uri-id'] = $uri_id;
-		$fields['uid'] = $uid;
+		$fields['uid']    = $uid;
 
 		// Public posts and activities (like, dislike, ...) are always seen
 		if ($uid == 0 || (($data['gravity'] == Item::GRAVITY_ACTIVITY) && ($data['verb'] != Activity::ANNOUNCE))) {

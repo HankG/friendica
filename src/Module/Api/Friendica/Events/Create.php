@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -68,15 +68,15 @@ class Create extends BaseApi
 		// create event
 		$event = [];
 
-		$event['id']         = $request['id'];
-		$event['uid']        = $uid;
-		$event['type']       = 'event';
-		$event['summary']    = $request['name'];
-		$event['desc']       = $request['desc'];
-		$event['location']   = $request['place'];
-		$event['start']      = $start;
-		$event['finish']     = $finish;
-		$event['nofinish']   = $nofinish;
+		$event['id']       = $request['id'];
+		$event['uid']      = $uid;
+		$event['type']     = 'event';
+		$event['summary']  = $request['name'];
+		$event['desc']     = $request['desc'];
+		$event['location'] = $request['place'];
+		$event['start']    = $start;
+		$event['finish']   = $finish;
+		$event['nofinish'] = $nofinish;
 
 		$event['allow_cid'] = $request['allow_cid'];
 		$event['allow_gid'] = $request['allow_gid'];
@@ -90,7 +90,7 @@ class Create extends BaseApi
 			$item = ['network' => Protocol::DFRN, 'protocol' => Conversation::PARCEL_DIRECT, 'direction' => Conversation::PUSH];
 			$item = Event::getItemArrayForId($event_id, $item);
 			if (Item::insert($item)) {
-				Worker::add(Worker::PRIORITY_HIGH, "Notifier", Delivery::POST, (int)$item['uri-id'], $uid);
+				Worker::add(Worker::PRIORITY_HIGH, "Notifier", Delivery::POST, (int) $item['uri-id'], $uid);
 			}
 		}
 

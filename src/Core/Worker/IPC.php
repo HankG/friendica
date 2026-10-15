@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -23,7 +23,7 @@ class IPC
 	 */
 	public static function SetJobState(bool $jobs, int $key = 0)
 	{
-		$stamp = (float)microtime(true);
+		$stamp = (float) microtime(true);
 		DBA::replace('worker-ipc', ['jobs' => $jobs, 'key' => $key]);
 	}
 
@@ -35,7 +35,7 @@ class IPC
 	 */
 	public static function DeleteJobState(int $key)
 	{
-		$stamp = (float)microtime(true);
+		$stamp = (float) microtime(true);
 		DBA::delete('worker-ipc', ['key' => $key]);
 	}
 
@@ -55,6 +55,6 @@ class IPC
 			return false;
 		}
 
-		return (bool)$row['jobs'];
+		return (bool) $row['jobs'];
 	}
 }

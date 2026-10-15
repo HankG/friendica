@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -6,7 +6,55 @@
 
 var jotcache = ""; //The jot cache. We use it as cache to restore old/original jot content
 
-$(document).ready(function () {
+function syncSecondNavTabmenu() {
+	// Move page tabbar into second navbar after initial load and SPA navigations
+	var $tabbar = $("section .tabbar-wrapper").first();
+	var $tabmenu = $("#topbar-second > .container-fluid > #tabmenu");
+
+	if ($tabbar.length && $tabmenu.length) {
+		$tabbar.appendTo($tabmenu);
+	}
+
+	// Initialize responsive overflow menu for newly injected tab bars only once per element
+	$("ul.tabs.flex-nav").each(function () {
+		var $tabs = $(this);
+		if ($tabs.data("spa-flexmenu-initialized")) {
+			return;
+		}
+
+		$tabs.flexMenu({
+			cutoff: 2,
+			popupClass: "dropdown-menu pull-right",
+			popupAbsolute: false,
+			target: ".flex-target",
+		});
+
+		$tabs.data("spa-flexmenu-initialized", true);
+	});
+}
+
+function syncSecondNavJotButton() {
+	var $jotButton = $("#jotOpen");
+	if (!$jotButton.length) {
+		return;
+	}
+
+	$jotButton.appendTo("#topbar-second > .container-fluid > #navbar-button");
+
+	if ($("#jot-popup").is(":hidden")) {
+		$jotButton.hide();
+	}
+
+	if ($jotButton.hasClass("modal-open")) {
+		$jotButton.off("click.spa-jot").on("click.spa-jot", function (e) {
+			e.preventDefault();
+			jotShow();
+		});
+	}
+}
+
+// Initialize theme functionality (called on initial load and after SPA navigation)
+function initTheme() {
 	// Destroy unused perfect scrollbar in aside element
 	$("aside").perfectScrollbar("destroy");
 
@@ -16,14 +64,14 @@ $(document).ready(function () {
 	$(window).scroll(function () {
 		let currentScroll = $(this).scrollTop();
 
-		// Top of the page or going down = hide the button
-		if (!scrollStart || !currentScroll || currentScroll > scrollStart) {
+		// Top of the page or going up = hide the button
+		if (!scrollStart || !currentScroll || currentScroll < scrollStart) {
 			$("#back-to-top").fadeOut();
 			scrollStart = currentScroll;
 		}
 
-		// Going up enough = show the button
-		if (scrollStart - currentScroll > 100) {
+		// Going down enough = show the button
+		if (currentScroll - scrollStart > 100) {
 			$("#back-to-top").fadeIn();
 			scrollStart = currentScroll;
 		}
@@ -40,16 +88,6 @@ $(document).ready(function () {
 		return false;
 	});
 
-	// add the class "selected" to circle widgets li if li > a does have the class circle-selected
-	if ($("#sidebar-circle-ul li a").hasClass("circle-selected")) {
-		$("#sidebar-circle-ul li a.circle-selected").parent("li").addClass("selected");
-	}
-
-	// add the class "selected" to groups widgets li if li > a does have the class group-selected
-	if ($("#group-list-sidebar-ul li a").hasClass("group-selected")) {
-		$("#group-list-sidebar-ul li a.group-selected").parent("li").addClass("selected");
-	}
-
 	// add the class "active" to tabmenuli if li > a does have the class active
 	if ($("#tabmenu ul li a").hasClass("active")) {
 		$("#tabmenu ul li a.active").parent("li").addClass("active");
@@ -60,59 +98,11 @@ $(document).ready(function () {
 	$(".field.select, .field.custom").addClass("form-group");
 	$(".field.select > select, .field.custom > select").addClass("form-control");
 
-	// move the tabbar to the second nav bar
-	$("section .tabbar-wrapper").first().appendTo("#topbar-second > .container > #tabmenu");
-
-	// add mask css url to the logo-img container
-	//
-	// This is for firefox - we use a mask which looks like the friendica logo to apply user colors
-	// to the friendica logo (the mask is in nav.tpl at the bottom). To make it work we need to apply the
-	// correct url. The only way which comes to my mind was to do this with js
-	// So we apply the correct url (with the link to the id of the mask) after the page is loaded.
-	if ($("#logo-img").length) {
-		var pageurl = "url('" + window.location.href + "#logo-mask')";
-		$("#logo-img").css({ mask: pageurl });
-	}
-
-	// make responsive tabmenu with flexmenu.js
-	// the menupoints which doesn't fit in the second nav bar will moved to a
-	// dropdown menu. Look at common_tabs.tpl
-	$("ul.tabs.flex-nav").flexMenu({
-		cutoff: 2,
-		popupClass: "dropdown-menu pull-right",
-		popupAbsolute: false,
-		target: ".flex-target",
-	});
-
-	// add mention-link button to the second navbar
-	let $mentionButton = $("#mention-link-button");
-	if ($mentionButton.length) {
-		$mentionButton.appendTo("#topbar-second > .container > #navbar-button").addClass("pull-right");
-		$("#mention-link").addClass("btn-sm ");
-		$("#mention-link > span i").addClass("fa-2x");
-		if ($mentionButton.hasClass("modal-open")) {
-			$mentionButton.on("click", function (e) {
-				e.preventDefault();
-				jotShow();
-			});
-		}
-	}
-
+	// move/init tabbar in second nav bar
+	syncSecondNavTabmenu();
 
 	// add Jot button to the second navbar
-	let $jotButton = $("#jotOpen");
-	if ($jotButton.length) {
-		$jotButton.appendTo("#topbar-second > .container > #navbar-button");
-		if ($("#jot-popup").is(":hidden")) {
-			$jotButton.hide();
-		}
-		if ($jotButton.hasClass('modal-open')) {
-			$jotButton.on("click", function (e) {
-				e.preventDefault();
-				jotShow();
-			});
-		}
-	}
+	syncSecondNavJotButton();
 
 	let $body = $("body");
 
@@ -162,7 +152,7 @@ $(document).ready(function () {
 
 	// add search-heading to the second navbar
 	if ($(".search-heading").length) {
-		$(".search-heading").appendTo("#topbar-second > .container > #tabmenu");
+		$(".search-heading").appendTo("#topbar-second > .container-fluid > #tabmenu");
 	}
 
 	// add search results heading to the second navbar
@@ -180,7 +170,7 @@ $(document).ready(function () {
 		// insert the plain text in a <h4> heading and give it a class
 		var newText = '<h4 class="search-heading">' + searchText + "</h4>";
 		// append the new heading to the navbar
-		$("#topbar-second > .container > #tabmenu").append(newText);
+		$("#topbar-second > .container-fluid > #tabmenu").append(newText);
 
 		// try to get the value of the original search input to insert it
 		// as value in the nav-search-input
@@ -205,7 +195,7 @@ $(document).ready(function () {
 	}
 
 	// move the "Save the search" button to the second navbar
-	$(".search-content-wrapper #search-save").appendTo("#topbar-second > .container > #navbar-button");
+	$(".search-content-wrapper #search-save").appendTo("#topbar-second > .container-fluid > #navbar-button");
 
 	// append the vcard-short-info to the second nav after passing the element
 	// with .fn (vcard username). Use scrollspy to get the scroll position.
@@ -260,7 +250,7 @@ $(document).ready(function () {
 		// remove the old heading element
 		heading.remove(),
 			// put the new element to the second nav bar
-			$("#topbar-second > .container > #tabmenu").append(newText);
+			$("#topbar-second > .container-fluid > #tabmenu").append(newText);
 	}
 
 	// Dropdown menus with the class "dropdown-head" will display the active tab
@@ -324,6 +314,10 @@ $(document).ready(function () {
 	 */
 	$(document).on("mousedown", function (event) {
 		if (event.target.type === "button") {
+			return true;
+		}
+
+		if ($(event.target).closest(".fg-emoji-container").length) {
 			return true;
 		}
 
@@ -421,53 +415,83 @@ $(document).ready(function () {
 		showHideEventMap(this);
 	});
 
-	// Comment form submit
-	$body.on("submit", ".comment-edit-form", function (e) {
-		let $form = $(this);
-		let id = $form.data("item-id");
+	// Comment form submit - only register once to prevent duplicate submissions
+	if (typeof frioCommentFormHandlerRegistered === 'undefined') {
+		frioCommentFormHandlerRegistered = true;
+		console.log('[Theme] Registering comment form submit handler (once)');
+		$body.on("submit", ".comment-edit-form", function (e) {
+			console.log('[Theme] Comment form submit handler triggered for form with data-item-id:', $(this).data("item-id"));
+			let $form = $(this);
+			let id = $form.data("item-id");
 
-		// Compose page form exception: id is always 0 and form must not be submitted asynchronously
-		if (id === 0) {
-			return;
-		}
+			// Compose page form exception: id is always 0 and form must not be submitted asynchronously
+			if (id === 0) {
+				console.log('[Theme] Comment form: Compose page (id=0), skipping async submit');
+				return;
+			}
 
-		e.preventDefault();
+			e.preventDefault();
 
-		let $commentSubmit = $form.find(".comment-edit-submit").button("loading");
+			let $commentSubmit = $form.find(".comment-edit-submit").button("loading");
 
-		unpause();
-		commentBusy = true;
+			unpause();
+			commentBusy = true;
+			console.log('[Theme] Comment form: Starting AJAX post for id:', id);
+			showPosting();
 
-		$.post("item", $form.serialize(), "json")
-			.then(function (data) {
-				if (data.success) {
-					$("#comment-edit-wrapper-" + id).hide();
-					let $textarea = $("#comment-edit-text-" + id);
-					$textarea.val("");
-					if ($textarea.get(0)) {
-						commentClose($textarea.get(0), id);
+			$.post("item", $form.serialize(), "json")
+				.done(function (data) {
+					showProcessing();
+					console.log('[Theme] Comment form: AJAX response received for id:', id);
+					if (data.success) {
+						console.log('[Theme] Comment form: Comment posted successfully');
+						$("#comment-edit-wrapper-" + id).hide();
+						let $textarea = $("#comment-edit-text-" + id);
+						$textarea.val("");
+						if ($textarea.get(0)) {
+							commentClose($textarea.get(0), id);
+						}
+						if (timer) {
+							clearTimeout(timer);
+						}
+						timer = setTimeout(NavUpdate, 10);
+						console.debug('[Theme] Comment form: Calling triggerLiveUpdates with guid:', data.guid ?? null);
+						updateItem(id, data.guid ?? null);
 					}
-					if (timer) {
-						clearTimeout(timer);
+					if (data.reload) {
+						console.log('[Theme] Comment form: Server requested reload');
+						window.location.href = data.reload;
 					}
-					timer = setTimeout(NavUpdate, 10);
-					force_update = true;
-					update_item = id;
-				}
-				if (data.reload) {
-					window.location.href = data.reload;
-				}
-			})
-			.always(function () {
-				$commentSubmit.button("reset");
-			});
-	});
+				})
+				.always(function () {
+					console.log('[Theme] Comment form: AJAX completed, resetting button and commentBusy');
+					hideLoading();
+					commentBusy = false;
+					$commentSubmit.button("reset");
+				});
+		});
+	} else {
+		console.log('[Theme] Comment form submit handler already registered, skipping duplicate registration');
+	}
 
 	try {
 		navigator.canShare({ url: "#", });
 	} catch(err) {
 		$('.button-browser-share').hide();
 	}
+
+	// initialize autosize for the textareas
+	autosize($("textarea.text-autosize"));
+}
+
+// Register theme initialization for initial page load and SPA navigation
+$(document).ready(initTheme);
+window.addEventListener("theme:reload", initTheme);
+
+// Keep existing spa:navigate handler for tabmenu syncing
+window.addEventListener("spa:navigate", function () {
+	syncSecondNavTabmenu();
+	syncSecondNavJotButton();
 });
 
 function openClose(theID) {
@@ -533,6 +557,7 @@ function justifyPhotos() {
 		.justifiedGallery({
 			margins: 3,
 			border: 0,
+			captions: false,
 			sizeRangeSuffixes: {
 				lt48: "-6",
 				lt80: "-5",
@@ -548,6 +573,7 @@ function justifyPhotos() {
 }
 
 // Load a js script to the html head.
+// Currently Only used to load browser.js, which could possibly be handled in a better way
 function loadScript(url, callback) {
 	// Check if the script is already in the html head.
 	var oscript = $('head script[src="' + url + '"]');
@@ -611,7 +637,6 @@ function cleanContactUrl(url) {
 }
 
 function parseUrl(str, component) {
-	// eslint-disable-line camelcase
 	//       discuss at: http://locutusjs.io/php/parse_url/
 	//      original by: Steven Levithan (http://blog.stevenlevithan.com)
 	// reimplemented by: Brett Zamir (http://brett-zamir.me)
@@ -724,47 +749,6 @@ String.prototype.rtrim = function () {
 	return trimmed;
 };
 
-/**
- * Scroll the screen to the item element whose id is provided, then highlights it
- *
- * Note: jquery.color.js is required
- *
- * @param {string} elementId The item element id
- * @returns {undefined}
- */
-function scrollToItem(elementId) {
-	if (typeof elementId === "undefined") {
-		return;
-	}
-
-	var $el = $("#" + elementId + " > .media");
-	// Test if the Item exists
-	if (!$el.length) {
-		return;
-	}
-
-	// Define the colors which are used for highlighting
-	var colWhite = { backgroundColor: "#7f7f7f" };
-	var colShiny = { backgroundColor: "#7e763a" };
-
-	// Get the Item Position (we need to substract 100 to match correct position
-	var itemPos = $el.offset().top - 100;
-
-	// Scroll to the DIV with the ID (GUID)
-	$("html, body")
-		.animate(
-			{
-				scrollTop: itemPos,
-			},
-			400,
-		)
-		.promise()
-		.done(function () {
-			// Highlight post/comment with ID  (GUID)
-			$el.animate(colWhite, 1000).animate(colShiny).animate({ backgroundColor: "transparent" }, 600);
-		});
-}
-
 // format a html string to pure text
 function htmlToText(htmlString) {
 	// Replace line breaks with spaces
@@ -784,38 +768,39 @@ function htmlToText(htmlString) {
  * @param {boolean} un    Whether to perform an activity removal instead of creation
  */
 function doActivityItemAction(ident, verb, un) {
+	showPosting();
 	_verb = un ? 'un' + verb : verb;
 	var thumbsClass = '';
 	switch (verb) {
 		case 'like':
-			thumbsClass = 'fa-thumbs-up';
+			thumbsClass = 'ri-thumb-up-line';
 			break;
 		case 'dislike':
-			thumbsClass = 'fa-thumbs-down';
+			thumbsClass = 'ri-thumb-down-line';
 			break;
 		case 'announce':
-			thumbsClass = 'fa-retweet';
+			thumbsClass = 'ri-repeat-line';
 			break;
 		case 'attendyes':
-			thumbsClass = 'fa-check';
+			thumbsClass = 'ri-check-line';
 			break;
 		case 'attendno':
-			thumbsClass = 'fa-times';
+			thumbsClass = 'ri-close-line';
 			break;
 		case 'attendmaybe':
-			thumbsClass = 'fa-question';
+			thumbsClass = 'ri-question-line';
 	}
 	if (verb.indexOf('announce') === 0 ) {
 		// Share-Button(s)
 		// remove share-symbol, to replace it by rotator
-		$('button[id^=shareMenuOptions-' + ident.toString() + '] i:first-child').removeClass('fa-share');
-		$('button[id^=announce-' + ident.toString() + '] i:first-child').removeClass('fa-retweet');
+		$('button[id^=shareMenuOptions-' + ident.toString() + '] i:first-child').removeClass('ri-share-forward-line');
+		$('button[id^=announce-' + ident.toString() + '] i:first-child').removeClass('ri-repeat-line');
 		// avoid multiple rotators on like/share-button if klicked multiple times.
 		if ($('img[id^=waitfor-' + verb + '-' + ident.toString() + ']').length == 0) {
 			// append rotator to the shareMenu-button for small media
 			$('<img>')
 				.attr({id: 'waitfor-' + verb + '-' + ident.toString(), src: 'images/rotator.gif'})
-				.addClass('fa')
+				.addClass('ri')
 				.appendTo($('button[id^=shareMenuOptions-' + ident.toString() + '] i:first-child' ));
 		}
 	}
@@ -824,71 +809,75 @@ function doActivityItemAction(ident, verb, un) {
 	if ($('button:not(button.dropdown-toggle) img#waitfor-' + verb + '-' + ident.toString()).length == 0) {
 		$('<img>')
 			.attr({id: 'waitfor-' + verb + '-' + ident.toString(), src: 'images/rotator.gif'})
-			.addClass('fa')
+			.addClass('ri')
 			.appendTo($('button[id^=' + verb + '-' + ident.toString() + '] i:first-child'));
 	}
 	$.post('item/' + ident.toString() + '/activity/' + _verb)
-	.success(function(data){
-		$('img[id^=waitfor-' + verb + '-' + ident.toString() + ']').remove();
-		if (data.status == 'ok') {
-			if (verb.indexOf('attend') === 0) {
-				$('button[id^=attend][id$=' + ident.toString() + ']').removeClass('active')
-				$('button#attendyes-' + ident.toString()).attr('onclick', 'javascript:doActivityItemAction(' + ident +', "attendyes")');
-				$('button#attendno-' + ident.toString()).attr('onclick', 'javascript:doActivityItemAction(' + ident +', "attendno")');
-				$('button#attendmaybe-' + ident.toString()).attr('onclick', 'javascript:doActivityItemAction(' + ident +', "attendmaybe")');
-			}
-			if (data.verb == 'un' + verb) {
-				// like/dislike buttons
-				$('button[id^=' + verb + '-' + ident.toString() + ']' )
-					.removeClass('active')
-					.attr('onclick', 'doActivityItemAction(' + ident +', "' + verb + '")');
-				// link in share-menu
-				$('a[id^=' + verb + '-' + ident.toString() + ']' )
-					.removeClass('active')
-					.attr('href', 'javascript:doActivityItemAction(' + ident +', "' + verb + '")');
-				$('a[id^=' + verb + '-' + ident.toString() + '] i:first-child' ).addClass('fa-retweet').removeClass('fa-ban');
-			} else {
-				// like/dislike buttons
-				$('button[id^=' + verb + '-' + ident.toString() + ']' )
-					.addClass('active')
-					.attr('onclick', 'doActivityItemAction(' + ident + ', "' + verb + '", true )');
-				// link in share-menu
-				$('a[id^=' + verb + '-' + ident.toString() + ']' )
-					.addClass('active')
-					.attr('href', 'javascript:doActivityItemAction(' + ident + ', "' + verb + '", true )');
-				$('a[id^=' + verb + '-' + ident.toString() + '] i:first-child' ).removeClass('fa-retweet').addClass('fa-ban');
-			}
-			$('button[id^=' + verb + '-' + ident.toString() + '] i:first-child').addClass(thumbsClass);
-			if (verb.indexOf('announce') === 0 ) {
-				// ShareMenuButton
-				$('button[id^=shareMenuOptions-' + ident.toString() + '] i:first-child').addClass('fa-share');
-				if (data.verb == 'un' + verb) {
-					$('button[id^=shareMenuOptions-' + ident.toString() + ']').removeClass('active');
-				} else {
-					$('button[id^=shareMenuOptions-' + ident.toString() + ']').addClass('active');
-				}
-			}
-			updateItem(ident.toString());
-		} else {
-			/* server-response was not ok. Database-problems or some changes in
-			 * data?
-			 * reset all buttons
-			 */
+		.done(function(data){
+			showProcessing();
 			$('img[id^=waitfor-' + verb + '-' + ident.toString() + ']').remove();
-			$('button[id^=shareMenuOptions-' + ident.toString() + '] i:first-child').addClass('fa-share');
+			if (data.status == 'ok') {
+				if (verb.indexOf('attend') === 0) {
+					$('button[id^=attend][id$=' + ident.toString() + ']').removeClass('active')
+					$('button#attendyes-' + ident.toString()).attr('onclick', 'javascript:doActivityItemAction(' + ident +', "attendyes")');
+					$('button#attendno-' + ident.toString()).attr('onclick', 'javascript:doActivityItemAction(' + ident +', "attendno")');
+					$('button#attendmaybe-' + ident.toString()).attr('onclick', 'javascript:doActivityItemAction(' + ident +', "attendmaybe")');
+				}
+				if (data.verb == 'un' + verb) {
+					// like/dislike buttons
+					$('button[id^=' + verb + '-' + ident.toString() + ']' )
+						.removeClass('active')
+						.attr('onclick', 'doActivityItemAction(' + ident +', "' + verb + '")');
+					// link in share-menu
+					$('a[id^=' + verb + '-' + ident.toString() + ']' )
+						.removeClass('active')
+						.attr('href', 'javascript:doActivityItemAction(' + ident +', "' + verb + '")');
+					$('a[id^=' + verb + '-' + ident.toString() + '] i:first-child' ).addClass('ri-repeat-line').removeClass('ri-forbid-2-line');
+				} else {
+					// like/dislike buttons
+					$('button[id^=' + verb + '-' + ident.toString() + ']' )
+						.addClass('active')
+						.attr('onclick', 'doActivityItemAction(' + ident + ', "' + verb + '", true )');
+					// link in share-menu
+					$('a[id^=' + verb + '-' + ident.toString() + ']' )
+						.addClass('active')
+						.attr('href', 'javascript:doActivityItemAction(' + ident + ', "' + verb + '", true )');
+					$('a[id^=' + verb + '-' + ident.toString() + '] i:first-child' ).removeClass('ri-repeat-line').addClass('ri-forbid-2-line');
+				}
+				$('button[id^=' + verb + '-' + ident.toString() + '] i:first-child').addClass(thumbsClass);
+				if (verb.indexOf('announce') === 0 ) {
+					// ShareMenuButton
+					$('button[id^=shareMenuOptions-' + ident.toString() + '] i:first-child').addClass('ri-share-forward-line');
+					if (data.verb == 'un' + verb) {
+						$('button[id^=shareMenuOptions-' + ident.toString() + ']').removeClass('active');
+					} else {
+						$('button[id^=shareMenuOptions-' + ident.toString() + ']').addClass('active');
+					}
+				}
+				updateItem(ident.toString());
+			} else {
+				/* server-response was not ok. Database-problems or some changes in
+				 * data?
+				 * reset all buttons
+				 */
+				$('img[id^=waitfor-' + verb + '-' + ident.toString() + ']').remove();
+				$('button[id^=shareMenuOptions-' + ident.toString() + '] i:first-child').addClass('ri-share-forward-line');
+				$('button[id^=' + verb + '-' + ident.toString() + '] i:first-child').addClass(thumbsClass);
+				$('a[id^=' + verb + '-' + ident.toString() + '] i:first-child').addClass(thumbsClass);
+				$.jGrowl(aActErr[verb] + '<br>(' + aErrType['srvErr'] + ')', {sticky: false, theme: 'info', life: 5000});
+			}
+		})
+		.fail(function(data){
+			// Server could not be reached successfully
+			$('img[id^=waitfor-' + verb + '-' + ident.toString() + ']').remove();
+			$('button[id^=shareMenuOptions-' + ident.toString() + '] i:first-child').addClass('ri-share-forward-line');
 			$('button[id^=' + verb + '-' + ident.toString() + '] i:first-child').addClass(thumbsClass);
 			$('a[id^=' + verb + '-' + ident.toString() + '] i:first-child').addClass(thumbsClass);
-			$.jGrowl(aActErr[verb] + '<br>(' + aErrType['srvErr'] + ')', {sticky: false, theme: 'info', life: 5000});
-		}
-	})
-	.error(function(data){
-		// Server could not be reached successfully
-		$('img[id^=waitfor-' + verb + '-' + ident.toString() + ']').remove();
-		$('button[id^=shareMenuOptions-' + ident.toString() + '] i:first-child').addClass('fa-share');
-		$('button[id^=' + verb + '-' + ident.toString() + '] i:first-child').addClass(thumbsClass);
-		$('a[id^=' + verb + '-' + ident.toString() + '] i:first-child').addClass(thumbsClass);
-		$.jGrowl(aActErr[verb] + '<br>(' + aErrType['netErr'] + ')', {sticky: false, theme: 'info', life: 5000});
-	});
+			$.jGrowl(aActErr[verb] + '<br>(' + aErrType['netErr'] + ')', {sticky: false, theme: 'info', life: 5000});
+		})
+		.always(function() {
+			hideLoading();
+		});
 }
 
 // Decodes a hexadecimally encoded binary string
@@ -967,7 +956,9 @@ function hasClass(elem, cls) {
 function sendOnCtrlEnter(e, submit) {
 	if ((e.ctrlKey || e.metaKey) && (e.keyCode == 13 || e.keyCode == 10)) {
 		console.log("Ctrl + Enter");
+		showPosting();
 		$("#" + submit).trigger('click');
+		hideLoading();
 	}
 }
 // @license-end

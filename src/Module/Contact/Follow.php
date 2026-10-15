@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -84,7 +84,7 @@ class Follow extends BaseModule
 		$url = $this->getUrl($request);
 
 		// Issue 6874: Allow remote following from Peertube
-		if (strpos($url, 'acct:') === 0) {
+		if (str_starts_with($url, 'acct:')) {
 			$url = str_replace('acct:', '', $url);
 		}
 
@@ -119,7 +119,7 @@ class Follow extends BaseModule
 
 			$this->sysMessages->addNotice($this->t('The network type couldn\'t be detected. Contact can\'t be added.'));
 			$submit  = '';
-			$contact = ['url' => $url, 'network' => Protocol::PHANTOM, 'name' => $url, 'keywords' => ''];
+			$contact = ['url' => $url, 'network' => Protocol::PHANTOM, 'name' => $url, 'alias' => '', 'keywords' => ''];
 		}
 
 		$protocol = Contact::getProtocol($contact['url'], $contact['network']);
@@ -159,8 +159,8 @@ class Follow extends BaseModule
 
 			'$action'   => $requestUrl,
 			'$name'     => $contact['name'],
-			'$url'      => $contact['url'],
-			'$zrl'      => OpenWebAuth::getZrlUrl($contact['url']),
+			'$url'      => Contact::getProfileLink($contact),
+			'$zrl'      => OpenWebAuth::getZrlUrl(Contact::getProfileLink($contact)),
 			'$myaddr'   => $myaddr,
 			'$keywords' => $contact['keywords'],
 
@@ -173,12 +173,13 @@ class Follow extends BaseModule
 		if (!in_array($protocol, [Protocol::PHANTOM, Protocol::MAIL])) {
 			$this->page['aside'] = VCard::getHTML($contact, false, true);
 
-			$output .= Renderer::replaceMacros(Renderer::getMarkupTemplate('section_title.tpl'),
-				['$title' => $this->t('Posts and Replies')]
+			$output .= Renderer::replaceMacros(
+				Renderer::getMarkupTemplate('section_title.tpl'),
+				['$title' => $this->t('Posts and Replies')],
 			);
 
 			// Show last public posts
-			$output .= Contact::getPostsFromUrl($contact['url'], $this->session->getLocalUserId());
+			$output .= Contact::getPostsFromUrl($contact['url'], $this->session->getLocalUserId(), false, $request);
 		}
 
 		return $output;
@@ -227,7 +228,7 @@ class Follow extends BaseModule
 					$this->baseUrl->redirect('display/' . $item['guid']);
 				}
 			}
-		} catch (\InvalidArgumentException $e) {
+		} catch (\InvalidArgumentException) {
 			return;
 		}
 	}
@@ -235,7 +236,7 @@ class Follow extends BaseModule
 	private function getUrl(array $request): string
 	{
 		if (!empty($request['binurl']) && Strings::isHex($request['binurl'])) {
-			$url = hex2bin($request['binurl']);
+			$url = hex2bin((string) $request['binurl']);
 		} else {
 			$url = $request['url'] ?? '';
 		}

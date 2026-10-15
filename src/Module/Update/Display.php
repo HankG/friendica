@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -34,7 +34,7 @@ class Display extends DisplayModule
 		$item = Post::selectFirst(
 			['uid', 'parent-uri-id', 'uri-id'],
 			['uri-id' => $uriId, 'uid' => [0, $profileUid]],
-			['order'  => ['uid' => true]]
+			['order'  => ['uid' => true]],
 		);
 
 		if (empty($item)) {
@@ -66,6 +66,6 @@ class Display extends DisplayModule
 			$this->notify->setAllSeenForUser($this->session->getLocalUserId(), ['parent-uri-id' => $item['parent-uri-id']]);
 		}
 
-		return $this->getDisplayData($item, true, $profileUid, $force);
+		return $this->getDisplayData($item, true, $force);
 	}
 }

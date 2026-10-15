@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -16,8 +16,10 @@ use Friendica\App\Request;
 use Friendica\App\Router;
 use Friendica\Capabilities\ICanCreateResponses;
 use Friendica\Capabilities\ICanHandleRequests;
+use Friendica\Capabilities\IRequestHandler;
 use Friendica\Content\Nav;
 use Friendica\Core\Addon\AddonHelper;
+use Friendica\Core\EarlyExitException;
 use Friendica\Core\Config\Factory\Config;
 use Friendica\Core\Container;
 use Friendica\Core\Hooks\HookEventBridge;
@@ -37,6 +39,7 @@ use Friendica\Database\Definition\ViewDefinition;
 use Friendica\Event\ConfigLoadedEvent;
 use Friendica\Event\Event;
 use Friendica\Module\Maintenance;
+use Friendica\Module\Response;
 use Friendica\Module\Special\HTTPException as ModuleHTTPException;
 use Friendica\Network\HTTPException;
 use Friendica\Protocol\ATProtocol\DID;
@@ -65,9 +68,9 @@ use Psr\Log\LoggerInterface;
  */
 class App
 {
-	const PLATFORM = 'Friendica';
-	const CODENAME = 'Interrupted Fern';
-	const VERSION  = '2025.02-dev';
+	public const PLATFORM = 'Friendica';
+	public const CODENAME = 'Blutwurz';
+	public const VERSION  = '2026.08-dev';
 
 	/**
 	 * @internal
@@ -76,11 +79,6 @@ class App
 	{
 		return new self($container);
 	}
-
-	/**
-	 * @var Container
-	 */
-	private $container;
 
 	/**
 	 * @var Mode The Mode of the Application
@@ -133,16 +131,18 @@ class App
 	 */
 	private $appHelper;
 
-	private function __construct(Container $container)
-	{
-		$this->container = $container;
-	}
+	/** @var ServerRequestInterface */
+	private $psrRequest;
+
+	private function __construct(private readonly Container $container) {}
 
 	/**
 	 * @internal
 	 */
 	public function processRequest(ServerRequestInterface $request, float $start_time): void
 	{
+		$this->psrRequest = $request;
+
 		$this->container->addRule(Mode::class, [
 			'call' => [
 				['determineRunMode', [false, $request->getServerParams()], Dice::CHAIN_CALL],
@@ -195,7 +195,7 @@ class App
 			$addonHelper,
 			$this->container->create(ModuleHTTPException::class),
 			$start_time,
-			$request
+			$request,
 		);
 	}
 
@@ -293,7 +293,7 @@ class App
 	{
 		$command = strtolower($argv[1] ?? '');
 
-		if ($command === 'daemon' || $command === 'jetstream') {
+		if ($command === 'daemon') {
 			return LogChannel::DAEMON;
 		}
 
@@ -301,7 +301,9 @@ class App
 			return LogChannel::WORKER;
 		}
 
-		// @TODO Add support for jetstream
+		if ($command === 'jetstream') {
+			return LogChannel::JETSTREAM;
+		}
 
 		return LogChannel::CONSOLE;
 	}
@@ -316,7 +318,7 @@ class App
 	private function setupLegacyServiceLocator(): void
 	{
 		if ($this->container instanceof DiceContainer) {
-			DI::init($this->container->getDice());
+			DI::init($this->container->getDice()); // @phpstan-ignore method.deprecated
 		}
 	}
 
@@ -337,7 +339,7 @@ class App
 
 	private function registerTemplateEngine(): void
 	{
-		Renderer::registerTemplateEngine('Friendica\Render\FriendicaSmartyEngine');
+		Renderer::registerTemplateEngine(\Friendica\Render\FriendicaSmartyEngine::class);
 	}
 
 	/**
@@ -352,7 +354,7 @@ class App
 		Profiler $profiler,
 		EventDispatcherInterface $eventDispatcher,
 		AppHelper $appHelper,
-		AddonHelper $addonHelper
+		AddonHelper $addonHelper,
 	): void {
 		if ($config->get('system', 'ini_max_execution_time') !== false) {
 			set_time_limit((int) $config->get('system', 'ini_max_execution_time'));
@@ -429,7 +431,7 @@ class App
 		AddonHelper $addonHelper,
 		ModuleHTTPException $httpException,
 		float $start_time,
-		ServerRequestInterface $request
+		ServerRequestInterface $request,
 	) {
 		$this->mode->setExecutor(Mode::INDEX);
 
@@ -437,16 +439,25 @@ class App
 		$serverVars = $request->getServerParams();
 		$queryVars  = $request->getQueryParams();
 
+		if ($this->mode->isNormal() && !$this->mode->isBackend()) {
+			$requester = HTTPSignature::getSigner('', $serverVars);
+			if (!empty($requester)) {
+				OpenWebAuth::addVisitorCookieForHandle($requester);
+			}
+		} else {
+			$requester = '';
+		}
+
 		$requeststring = ($serverVars['REQUEST_METHOD'] ?? '') . ' ' . ($serverVars['REQUEST_URI'] ?? '') . ' ' . ($serverVars['SERVER_PROTOCOL'] ?? '');
-		$this->logger->debug('Request received', ['address' => $serverVars['REMOTE_ADDR'] ?? '', 'request' => $requeststring, 'referer' => $serverVars['HTTP_REFERER'] ?? '', 'user-agent' => $serverVars['HTTP_USER_AGENT'] ?? '']);
+		$this->logger->debug('Request received', ['address' => $serverVars['REMOTE_ADDR'] ?? '', 'request' => $requeststring, 'referer' => $serverVars['HTTP_REFERER'] ?? '', 'user-agent' => $serverVars['HTTP_USER_AGENT'] ?? '', 'requester' => $requester]);
 		$request_start = microtime(true);
 		$request       = $_REQUEST;
 
 		$this->profiler->set($start_time, 'start');
 		$this->profiler->set(microtime(true), 'classinit');
 
-		$moduleName = $this->args->getModuleName();
-		$page->setLogging($this->args->getMethod(), $this->args->getModuleName(), $this->args->getCommand());
+		$moduleName = $this->args->getModuleName(); // @phpstan-ignore method.deprecated
+		$page->setLogging($this->args->getMethod(), $this->args->getModuleName(), $this->args->getCommand()); // @phpstan-ignore method.deprecated
 
 		try {
 			// Missing DB connection: ERROR
@@ -456,11 +467,11 @@ class App
 
 			if (!$this->mode->isInstall()) {
 				// Force SSL redirection
-				if ($this->config->get('system', 'force_ssl') &&
-					(empty($serverVars['HTTPS']) || $serverVars['HTTPS'] === 'off') &&
-					(empty($serverVars['HTTP_X_FORWARDED_PROTO']) || $serverVars['HTTP_X_FORWARDED_PROTO'] === 'http') &&
-					!empty($serverVars['REQUEST_METHOD']) &&
-					$serverVars['REQUEST_METHOD'] === 'GET') {
+				if ($this->config->get('system', 'force_ssl')
+					&& (empty($serverVars['HTTPS']) || $serverVars['HTTPS'] === 'off')
+					&& (empty($serverVars['HTTP_X_FORWARDED_PROTO']) || $serverVars['HTTP_X_FORWARDED_PROTO'] === 'http')
+					&& !empty($serverVars['REQUEST_METHOD'])
+					&& $serverVars['REQUEST_METHOD'] === 'GET') {
 					System::externalRedirect($this->baseURL . '/' . $this->args->getQueryString());
 				}
 
@@ -469,19 +480,12 @@ class App
 
 			DID::routeRequest($this->args->getCommand(), $serverVars);
 
-			if ($this->mode->isNormal() && !$this->mode->isBackend()) {
-				$requester = HTTPSignature::getSigner('', $serverVars);
-				if (!empty($requester)) {
-					OpenWebAuth::addVisitorCookieForHandle($requester);
-				}
-			}
-
 			// ZRL
 			if (!empty($queryVars['zrl']) && $this->mode->isNormal() && !$this->mode->isBackend() && !$this->session->getLocalUserId()) {
 				// Only continue when the given profile link seems valid.
 				// Valid profile links contain a path with "/profile/" and no query parameters
-				if ((parse_url($queryVars['zrl'], PHP_URL_QUERY) == '') &&
-					strpos(parse_url($queryVars['zrl'], PHP_URL_PATH) ?? '', '/profile/') !== false) {
+				if ((parse_url((string) $queryVars['zrl'], PHP_URL_QUERY) == '')
+					&& str_contains(parse_url((string) $queryVars['zrl'], PHP_URL_PATH) ?? '', '/profile/')) {
 					$this->auth->setUnauthenticatedVisitor($queryVars['zrl']);
 					OpenWebAuth::zrlInit();
 				} else {
@@ -588,7 +592,29 @@ class App
 
 			// Let the module run its internal process (init, get, post, ...)
 			$timestamp = microtime(true);
-			$response  = $module->run($httpException, $input);
+			try {
+				$response = $module->handleRequest($this->psrRequest);
+			} catch (HTTPException $e) {
+				// In case of System::externalRedirects(), we don't want to prettyprint the exception
+				// just redirect to the new location
+				if (($e instanceof HTTPException\FoundException)
+					|| ($e instanceof HTTPException\MovedPermanentlyException)
+					|| ($e instanceof HTTPException\TemporaryRedirectException)) {
+					throw $e;
+				}
+
+				if ($module instanceof BaseModule) {
+					$responseBuilder = $module->getResponseBuilder();
+				} else {
+					$responseBuilder = new Response();
+				}
+				$responseBuilder->setStatus($e->getCode(), $e->getMessage());
+				$responseBuilder->addContent($httpException->content($e));
+				$response = $responseBuilder->generate();
+			} catch (EarlyExitException $e) {
+				System::echoResponse($e->getResponse());
+				System::exit();
+			}
 			$this->profiler->set(microtime(true) - $timestamp, 'content');
 
 			// Wrapping HTML responses in the theme template
@@ -607,19 +633,19 @@ class App
 		$page->logRuntime($this->config, 'runFrontend');
 	}
 
-	private function createModuleInstance(?string $moduleClass = null): ICanHandleRequests
+	private function createModuleInstance(?string $moduleClass = null): ICanHandleRequests&IRequestHandler
 	{
 		/** @var Router $router */
 		$router = $this->container->create(Router::class);
 
-		$moduleClass = $moduleClass ?? $router->getModuleClass();
-		$parameters  = $router->getParameters();
+		$moduleClass ??= $router->getModuleClass();
+		$parameters = $router->getParameters();
 
 		$dice_profiler_threshold = $this->config->get('system', 'dice_profiler_threshold', 0);
 
 		$stamp = microtime(true);
 
-		/** @var ICanHandleRequests $module */
+		/** @var ICanHandleRequests&IRequestHandler $module */
 		$module = $this->container->create($moduleClass, $parameters);
 
 		if ($dice_profiler_threshold > 0) {
@@ -651,10 +677,10 @@ class App
 
 		@file_put_contents(
 			$logfile,
-			DateTimeFormat::utcNow() . "\t" . round($duration, 3) . "\t" .
-			$this->requestId . "\t" . $code . "\t" .
-			$request . "\t" . $agent . "\n",
-			FILE_APPEND
+			DateTimeFormat::utcNow() . "\t" . round($duration, 3) . "\t"
+			. $this->requestId . "\t" . $code . "\t"
+			. $request . "\t" . $agent . "\n",
+			FILE_APPEND,
 		);
 	}
 }

@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -10,15 +10,14 @@ namespace Friendica\Module\Security;
 use Friendica\App;
 use Friendica\BaseModule;
 use Friendica\Core\Cache\Capability\ICanCache;
-use Friendica\Core\Hook;
 use Friendica\Core\L10n;
+use Friendica\Event\Event;
 use Friendica\Core\Session\Capability\IHandleUserSessions;
 use Friendica\Core\System;
-use Friendica\DI;
-use Friendica\Model\Profile;
 use Friendica\Model\User\Cookie;
 use Friendica\Module\Response;
 use Friendica\Util\Profiler;
+use Psr\EventDispatcher\EventDispatcherInterface;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -33,8 +32,20 @@ class Logout extends BaseModule
 	/** @var IHandleUserSessions */
 	protected $session;
 
-	public function __construct(L10n $l10n, App\BaseURL $baseUrl, App\Arguments $args, LoggerInterface $logger, Profiler $profiler, Response $response, ICanCache $cache, Cookie $cookie, IHandleUserSessions $session, array $server, array $parameters = [])
-	{
+	public function __construct(
+		L10n $l10n,
+		App\BaseURL $baseUrl,
+		App\Arguments $args,
+		LoggerInterface $logger,
+		Profiler $profiler,
+		Response $response,
+		ICanCache $cache,
+		Cookie $cookie,
+		IHandleUserSessions $session,
+		private readonly EventDispatcherInterface $eventDispatcher,
+		array $server,
+		array $parameters = [],
+	) {
 		parent::__construct($l10n, $baseUrl, $args, $logger, $profiler, $response, $server, $parameters);
 
 		$this->cache   = $cache;
@@ -59,7 +70,7 @@ class Logout extends BaseModule
 			$this->cache->delete('zrlInit:' . $visitor_home);
 		}
 
-		Hook::callAll("logging_out");
+		$this->eventDispatcher->dispatch(new Event(Event::LOGGING_OUT));
 
 		// If this is a trusted browser, redirect to the 2fa signout page
 		if ($this->cookie->get('2fa_cookie_hash')) {
@@ -72,7 +83,6 @@ class Logout extends BaseModule
 		if ($visitor_home) {
 			System::externalRedirect($visitor_home);
 		} else {
-			DI::sysmsg()->addInfo($this->t('Logged out.'));
 			$this->baseUrl->redirect();
 		}
 	}

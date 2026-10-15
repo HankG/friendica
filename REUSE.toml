@@ -7,11 +7,15 @@ SPDX-PackageDownloadLocation = "https://friendi.ca"
 path = [
      "database.sql",
      "composer.*",
-     "bin/dev/php-cs-fixer/composer.*",
+     "package.json",
+     "package-lock.json",
+     ".stylelintrc.json",
+     "eslint-suppressions.json",
      "doc/**",
      "spec/*",
      "tests/**",
      ".devcontainer/**",
+     ".docker/**",
      ".vscode/*",
      ".phpactor.json",
      "**/.gitignore",
@@ -21,18 +25,13 @@ path = [
      ".github/ISSUE_TEMPLATE/*",
      "view/theme/frio/README.md",
      "view/theme/vier/README.md",
-     "view/theme/quattro/TODO",
-     "view/theme/quattro/**Makefile",
      "view/theme/**/screenshot.jpg",
      "view/theme/**/screenshot.png",
-     "view/theme/duepuntozero/deriv/**",
      "images/icons/**",
      "images/friendica*",
      "images/ff*",
      "images/person-*.jpg",
      "view/install/*.png",
-     "view/theme/quattro/icons/*",
-     "view/theme/smoothly/images/*",
      "images/screenshots/*",
      "view/theme/frio/img/**",
      "config/local-sample.config.php",
@@ -125,7 +124,7 @@ path = [
      "images/video.gif",
      "images/logo.png",
 ]
-SPDX-FileCopyrightText = "2010-2024 The Friendica Project"
+SPDX-FileCopyrightText = "2010-2026 The Friendica Project"
 SPDX-License-Identifier = "CC0-1.0"
 
 [[annotations]]
@@ -133,7 +132,7 @@ path = [
      "view/lang/**/strings.php",
      "view/lang/**/messages.po"
      ]
-SPDX-FileCopyrightText = "2010-2024 The Friendica Project"
+SPDX-FileCopyrightText = "2010-2026 The Friendica Project"
 SPDX-License-Identifier = "AGPL-3.0-or-later"
 
 [[annotations]]
@@ -196,7 +195,6 @@ SPDX-License-Identifier = "GPL-3.0-only"
 
 [[annotations]]
 path = [
-     "view/theme/smoothly/js/modernizr.custom.2.5.3.*js",
      "view/js/modernizr.js"
 ]
 SPDX-FileCopyrightText = "modernizrJS"
@@ -209,7 +207,6 @@ SPDX-License-Identifier = "MIT"
 
 [[annotations]]
 path = [
-     "view/theme/quattro/jquery.tools.min.js",
      "view/theme/frio/js/jquery.tools.min.js"
 ]
 SPDX-FileCopyrightText = "NO COPYRIGHTS OR LICENSES. DO WHAT YOU LIKE. http://flowplayer.org/tools/"
@@ -258,6 +255,11 @@ SPDX-License-Identifier = "CC0-1.0"
 [[annotations]]
 path = "view/js/hls/**"
 SPDX-FileCopyrightText = "2017 Dailymotion (http://www.dailymotion.com)"
+SPDX-License-Identifier = "Apache-2.0"
+
+[[annotations]]
+path = "view/js/videojs/**"
+SPDX-FileCopyrightText = "Copyright 2010-present Video.js contributors"
 SPDX-License-Identifier = "Apache-2.0"
 
 [[annotations]]

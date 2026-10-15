@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -28,8 +28,11 @@ class TrustedBrowser
 
 	protected static $table_name = '2fa_trusted_browser';
 
-	public function __construct(Database $database, LoggerInterface $logger, TrustedBrowserFactory $factory = null)
-	{
+	public function __construct(
+		Database $database,
+		LoggerInterface $logger,
+		?TrustedBrowserFactory $factory = null,
+	) {
 		$this->db      = $database;
 		$this->logger  = $logger;
 		$this->factory = $factory ?? new TrustedBrowserFactory($logger);
@@ -47,7 +50,7 @@ class TrustedBrowser
 	{
 		try {
 			$fields = $this->db->selectFirst(self::$table_name, [], ['cookie_hash' => $cookie_hash]);
-		} catch (\Exception $exception) {
+		} catch (\Exception) {
 			throw new TrustedBrowserPersistenceException(sprintf('Internal server error when retrieving cookie hash \'%s\'', $cookie_hash));
 		}
 		if (!$this->db->isResult($fields)) {
@@ -71,7 +74,7 @@ class TrustedBrowser
 			}
 			return new TrustedBrowsersCollection($trustedBrowsers);
 
-		} catch (\Exception $exception) {
+		} catch (\Exception) {
 			throw new TrustedBrowserPersistenceException(sprintf('selection for uid \'%s\' wasn\'t successful.', $uid));
 		}
 	}
@@ -83,7 +86,7 @@ class TrustedBrowser
 	{
 		try {
 			return $this->db->insert(self::$table_name, $trustedBrowser->toArray(), $this->db::INSERT_UPDATE);
-		} catch (\Exception $exception) {
+		} catch (\Exception) {
 			throw new TrustedBrowserPersistenceException(sprintf('Couldn\'t save trusted Browser with cookie_hash \'%s\'', $trustedBrowser->cookie_hash));
 		}
 	}
@@ -95,7 +98,7 @@ class TrustedBrowser
 	{
 		try {
 			return $this->db->delete(self::$table_name, ['cookie_hash' => $trustedBrowser->cookie_hash]);
-		} catch (\Exception $exception) {
+		} catch (\Exception) {
 			throw new TrustedBrowserPersistenceException(sprintf('Couldn\'t delete trusted Browser with cookie hash \'%s\'', $trustedBrowser->cookie_hash));
 		}
 	}
@@ -107,7 +110,7 @@ class TrustedBrowser
 	{
 		try {
 			return $this->db->delete(self::$table_name, ['cookie_hash' => $cookie_hash, 'uid' => $local_user]);
-		} catch (\Exception $exception) {
+		} catch (\Exception) {
 			throw new TrustedBrowserPersistenceException(sprintf('Couldn\'t delete trusted Browser for user \'%s\' and cookie hash \'%s\'', $local_user, $cookie_hash));
 		}
 	}
@@ -116,7 +119,7 @@ class TrustedBrowser
 	{
 		try {
 			return $this->db->delete(self::$table_name, ['uid' => $local_user]);
-		} catch (\Exception $exception) {
+		} catch (\Exception) {
 			throw new TrustedBrowserPersistenceException(sprintf('Couldn\'t delete trusted Browsers for user \'%s\'', $local_user));
 		}
 	}

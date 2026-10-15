@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -19,6 +19,7 @@ use Friendica\Model\User;
 use Friendica\Module\BaseAdmin;
 use Friendica\Module\Conversation\Community;
 use Friendica\Module\Register;
+use Friendica\Protocol\ActivityPub\Processor;
 use Friendica\Protocol\Relay;
 use Friendica\Util\BasePath;
 use Friendica\Util\EMailer\MailBuilder;
@@ -41,38 +42,36 @@ class Site extends BaseAdmin
 			return;
 		}
 
-		$sitename         = (!empty($_POST['sitename'])         ? strip_tags(trim($_POST['sitename'])) : '');
-		$sender_email     = (!empty($_POST['sender_email'])     ? trim($_POST['sender_email'])  : '');
-		$banner           = (!empty($_POST['banner'])           ? trim($_POST['banner'])                             : false);
-		$email_banner     = (!empty($_POST['email_banner'])     ? trim($_POST['email_banner'])                       : false);
-		$shortcut_icon    = (!empty($_POST['shortcut_icon'])    ? trim($_POST['shortcut_icon']) : '');
-		$touch_icon       = (!empty($_POST['touch_icon'])       ? trim($_POST['touch_icon'])    : '');
-		$additional_info  = (!empty($_POST['additional_info'])  ? strip_tags(trim($_POST['additional_info']))        : '');
-		$language         = (!empty($_POST['language'])         ? trim($_POST['language'])      : '');
-		$theme            = (!empty($_POST['theme'])            ? trim($_POST['theme'])         : '');
-		$theme_mobile     = (!empty($_POST['theme_mobile'])     ? trim($_POST['theme_mobile'])  : '');
-		$maxfilesize      = (!empty($_POST['maxfilesize'])      ? trim($_POST['maxfilesize'])                        : 0);
-		$maximagesize     = (!empty($_POST['maximagesize'])     ? trim($_POST['maximagesize'])                       : 0);
-		$maximagelength   = (!empty($_POST['maximagelength'])   ? intval(trim($_POST['maximagelength']))             : -1);
-		$jpegimagequality = (!empty($_POST['jpegimagequality']) ? intval(trim($_POST['jpegimagequality']))           : 100);
+		$sitename         = (!empty($_POST['sitename'])         ? strip_tags(trim((string) $_POST['sitename'])) : '');
+		$sender_email     = (!empty($_POST['sender_email'])     ? trim((string) $_POST['sender_email'])  : '');
+		$banner           = (!empty($_POST['banner'])           ? trim((string) $_POST['banner'])                             : false);
+		$email_banner     = (!empty($_POST['email_banner'])     ? trim((string) $_POST['email_banner'])                       : false);
+		$shortcut_icon    = (!empty($_POST['shortcut_icon'])    ? trim((string) $_POST['shortcut_icon']) : '');
+		$touch_icon       = (!empty($_POST['touch_icon'])       ? trim((string) $_POST['touch_icon'])    : '');
+		$additional_info  = (!empty($_POST['additional_info'])  ? strip_tags(trim((string) $_POST['additional_info']))        : '');
+		$language         = (!empty($_POST['language'])         ? trim((string) $_POST['language'])      : '');
+		$theme            = (!empty($_POST['theme'])            ? trim((string) $_POST['theme'])         : '');
+		$theme_mobile     = (!empty($_POST['theme_mobile'])     ? trim((string) $_POST['theme_mobile'])  : '');
+		$maxfilesize      = (!empty($_POST['maxfilesize'])      ? trim((string) $_POST['maxfilesize'])                        : 0);
+		$maximagesize     = (!empty($_POST['maximagesize'])     ? trim((string) $_POST['maximagesize'])                       : 0);
+		$maximagelength   = (!empty($_POST['maximagelength'])   ? intval(trim((string) $_POST['maximagelength']))             : -1);
+		$jpegimagequality = (!empty($_POST['jpegimagequality']) ? intval(trim((string) $_POST['jpegimagequality']))           : 100);
 
-		$register_policy      = (!empty($_POST['register_policy'])         ? intval(trim($_POST['register_policy']))             : 0);
-		$max_registered_users = (!empty($_POST['max_registered_users'])    ? intval(trim($_POST['max_registered_users']))         : 0);
-		$daily_registrations  = (!empty($_POST['max_daily_registrations']) ? intval(trim($_POST['max_daily_registrations']))     : 0);
-		$abandon_days         = (!empty($_POST['abandon_days'])            ? intval(trim($_POST['abandon_days']))                : 0);
+		$register_policy      = (!empty($_POST['register_policy'])         ? intval(trim((string) $_POST['register_policy']))             : 0);
+		$max_registered_users = (!empty($_POST['max_registered_users'])    ? intval(trim((string) $_POST['max_registered_users']))         : 0);
+		$daily_registrations  = (!empty($_POST['max_daily_registrations']) ? intval(trim((string) $_POST['max_daily_registrations']))     : 0);
+		$abandon_days         = (!empty($_POST['abandon_days'])            ? intval(trim((string) $_POST['abandon_days']))                : 0);
 
-		$register_text = (!empty($_POST['register_text'])           ? strip_tags(trim($_POST['register_text']))           : '');
+		$register_text = (!empty($_POST['register_text'])           ? strip_tags(trim((string) $_POST['register_text']))           : '');
 
-		$allowed_sites           = (!empty($_POST['allowed_sites'])           ? trim($_POST['allowed_sites'])  : '');
-		$allowed_email           = (!empty($_POST['allowed_email'])           ? trim($_POST['allowed_email'])  : '');
-		$disallowed_email        = (!empty($_POST['disallowed_email'])        ? trim($_POST['disallowed_email'])  : '');
-		$forbidden_nicknames     = (!empty($_POST['forbidden_nicknames'])     ? strtolower(trim($_POST['forbidden_nicknames'])) : '');
-		$system_actor_name       = (!empty($_POST['system_actor_name'])       ? trim($_POST['system_actor_name']) : '');
-		$no_oembed_rich_content  = !empty($_POST['no_oembed_rich_content']);
-		$allowed_oembed          = (!empty($_POST['allowed_oembed'])          ? trim($_POST['allowed_oembed']) : '');
+		$allowed_sites           = (!empty($_POST['allowed_sites'])           ? trim((string) $_POST['allowed_sites'])  : '');
+		$allowed_email           = (!empty($_POST['allowed_email'])           ? trim((string) $_POST['allowed_email'])  : '');
+		$disallowed_email        = (!empty($_POST['disallowed_email'])        ? trim((string) $_POST['disallowed_email'])  : '');
+		$forbidden_nicknames     = (!empty($_POST['forbidden_nicknames'])     ? strtolower(trim((string) $_POST['forbidden_nicknames'])) : '');
+		$system_actor_name       = (!empty($_POST['system_actor_name'])       ? trim((string) $_POST['system_actor_name']) : '');
 		$block_public            = !empty($_POST['block_public']);
 		$force_publish           = !empty($_POST['publish_all']);
-		$global_directory        = (!empty($_POST['directory'])               ? trim($_POST['directory'])      : '');
+		$global_directory        = (!empty($_POST['directory'])               ? trim((string) $_POST['directory'])      : '');
 		$newuser_private         = !empty($_POST['newuser_private']);
 		$enotify_no_content      = !empty($_POST['enotify_no_content']);
 		$private_addons          = !empty($_POST['private_addons']);
@@ -80,33 +79,35 @@ class Site extends BaseAdmin
 		$allow_users_remote_self = !empty($_POST['allow_users_remote_self']);
 		$allow_relay_channels    = !empty($_POST['allow_relay_channels']);
 		$adjust_poll_frequency   = !empty($_POST['adjust_poll_frequency']);
-		$min_poll_interval       = (!empty($_POST['min_poll_interval']) ? intval(trim($_POST['min_poll_interval']))                : 0);
+		$min_poll_interval       = (!empty($_POST['min_poll_interval']) ? intval(trim((string) $_POST['min_poll_interval']))                : 0);
 		$explicit_content        = !empty($_POST['explicit_content']);
 		$local_search            = !empty($_POST['local_search']);
-		$blocked_tags            = (!empty($_POST['blocked_tags']) ? trim($_POST['blocked_tags'])  : '');
+		$blocked_tags            = (!empty($_POST['blocked_tags']) ? trim((string) $_POST['blocked_tags'])  : '');
 		$cache_contact_avatar    = !empty($_POST['cache_contact_avatar']);
 
 		$enable_multi_reg                = !empty($_POST['enable_multi_reg']);
 		$enable_openid                   = !empty($_POST['enable_openid']);
 		$enable_regfullname              = !empty($_POST['enable_regfullname']);
 		$register_notification           = !empty($_POST['register_notification']);
-		$community_page_style            = (!empty($_POST['community_page_style']) ? intval(trim($_POST['community_page_style'])) : 0);
-		$max_author_posts_community_page = (!empty($_POST['max_author_posts_community_page']) ? intval(trim($_POST['max_author_posts_community_page'])) : 0);
-		$max_server_posts_community_page = (!empty($_POST['max_server_posts_community_page']) ? intval(trim($_POST['max_server_posts_community_page'])) : 0);
+		$community_page_style            = (!empty($_POST['community_page_style']) ? intval(trim((string) $_POST['community_page_style'])) : 0);
+		$max_author_posts_community_page = (!empty($_POST['max_author_posts_community_page']) ? intval(trim((string) $_POST['max_author_posts_community_page'])) : 0);
+		$max_server_posts_community_page = (!empty($_POST['max_server_posts_community_page']) ? intval(trim((string) $_POST['max_server_posts_community_page'])) : 0);
+		$display_local_media             = !empty($_POST['display_local_media']);
+		$display_remote_media            = !empty($_POST['display_remote_media']);
 
 		$verifyssl                = !empty($_POST['verifyssl']);
-		$proxyuser                = (!empty($_POST['proxyuser'])              ? trim($_POST['proxyuser']) : '');
-		$proxy                    = (!empty($_POST['proxy'])                  ? trim($_POST['proxy'])     : '');
-		$timeout                  = (!empty($_POST['timeout'])                ? intval(trim($_POST['timeout']))                : 60);
-		$maxloadavg               = (!empty($_POST['maxloadavg'])             ? intval(trim($_POST['maxloadavg']))             : 20);
-		$min_memory               = (!empty($_POST['min_memory'])             ? intval(trim($_POST['min_memory']))             : 0);
-		$optimize_tables          = (!empty($_POST['optimize_tables'])        ? intval(trim($_POST['optimize_tables']))        : false);
-		$contact_discovery        = (!empty($_POST['contact_discovery'])      ? intval(trim($_POST['contact_discovery']))      : Contact\Relation::DISCOVERY_NONE);
-		$update_active_contacts   = (!empty($_POST['update_active_contacts']) ? intval(trim($_POST['update_active_contacts'])) : false);
-		$update_known_contacts    = (!empty($_POST['update_known_contacts'])  ? intval(trim($_POST['update_known_contacts']))  : false);
-		$synchronize_directory    = (!empty($_POST['synchronize_directory'])  ? intval(trim($_POST['synchronize_directory']))  : false);
-		$poco_requery_days        = (!empty($_POST['poco_requery_days'])      ? intval(trim($_POST['poco_requery_days']))      : 7);
-		$poco_discovery           = (!empty($_POST['poco_discovery'])         ? intval(trim($_POST['poco_discovery']))         : false);
+		$proxyuser                = (!empty($_POST['proxyuser'])              ? trim((string) $_POST['proxyuser']) : '');
+		$proxy                    = (!empty($_POST['proxy'])                  ? trim((string) $_POST['proxy'])     : '');
+		$timeout                  = (!empty($_POST['timeout'])                ? intval(trim((string) $_POST['timeout']))                : 60);
+		$maxloadavg               = (!empty($_POST['maxloadavg'])             ? intval(trim((string) $_POST['maxloadavg']))             : 20);
+		$min_memory               = (!empty($_POST['min_memory'])             ? intval(trim((string) $_POST['min_memory']))             : 0);
+		$optimize_tables          = (!empty($_POST['optimize_tables'])        ? intval(trim((string) $_POST['optimize_tables']))        : false);
+		$contact_discovery        = (!empty($_POST['contact_discovery'])      ? intval(trim((string) $_POST['contact_discovery']))      : Contact\Relation::DISCOVERY_NONE);
+		$update_active_contacts   = (!empty($_POST['update_active_contacts']) ? intval(trim((string) $_POST['update_active_contacts'])) : false);
+		$update_known_contacts    = (!empty($_POST['update_known_contacts'])  ? intval(trim((string) $_POST['update_known_contacts']))  : false);
+		$synchronize_directory    = (!empty($_POST['synchronize_directory'])  ? intval(trim((string) $_POST['synchronize_directory']))  : false);
+		$poco_requery_days        = (!empty($_POST['poco_requery_days'])      ? intval(trim((string) $_POST['poco_requery_days']))      : 7);
+		$poco_discovery           = (!empty($_POST['poco_discovery'])         ? intval(trim((string) $_POST['poco_discovery']))         : false);
 		$poco_local_search        = !empty($_POST['poco_local_search']);
 		$nodeinfo                 = !empty($_POST['nodeinfo']);
 		$mail_enabled             = !empty($_POST['mail_enabled']);
@@ -122,33 +123,35 @@ class Site extends BaseAdmin
 		$max_display_comments     = (!empty($_POST['max_display_comments'])   ? intval($_POST['max_display_comments'])          : 0);
 		$itemspage_network        = (!empty($_POST['itemspage_network'])      ? intval($_POST['itemspage_network'])             : 0);
 		$itemspage_network_mobile = (!empty($_POST['itemspage_network_mobile']) ? intval($_POST['itemspage_network_mobile'])  : 0);
-		$temppath                 = (!empty($_POST['temppath'])               ? trim($_POST['temppath'])   : '');
-		$singleuser               = (!empty($_POST['singleuser'])             ? trim($_POST['singleuser']) : '');
+		$temppath                 = (!empty($_POST['temppath'])               ? trim((string) $_POST['temppath'])   : '');
+		$singleuser               = (!empty($_POST['singleuser'])             ? trim((string) $_POST['singleuser']) : '');
 		$only_tag_search          = !empty($_POST['only_tag_search']);
 		$limited_search_scope     = !empty($_POST['limited_search_scope']);
 		$search_age_days          = (!empty($_POST['search_age_days'])        ? intval($_POST['search_age_days'])               : 0);
 		$compute_circle_counts    = !empty($_POST['compute_circle_counts']);
 		$process_view             = !empty($_POST['process_view']);
 		$archival_days            = (!empty($_POST['archival_days'])          ? intval($_POST['archival_days'])                 : 0);
-		$check_new_version_url    = (!empty($_POST['check_new_version_url'])  ? trim($_POST['check_new_version_url']) : 'none');
+		$check_new_version_url    = (!empty($_POST['check_new_version_url'])  ? trim((string) $_POST['check_new_version_url']) : 'none');
 
 		$worker_queues        = (!empty($_POST['worker_queues'])              ? intval($_POST['worker_queues'])                 : 10);
 		$worker_load_cooldown = (!empty($_POST['worker_load_cooldown'])       ? intval($_POST['worker_load_cooldown'])          : 0);
 		$worker_fastlane      = !empty($_POST['worker_fastlane']);
-		$decoupled_receiver   = (!empty($_POST['decoupled_receiver'])         ? intval(trim($_POST['decoupled_receiver'])) : false);
+		$decoupled_receiver   = (!empty($_POST['decoupled_receiver'])         ? intval(trim((string) $_POST['decoupled_receiver'])) : false);
+		$fetch_replies        = (!empty($_POST['fetch_replies'])              ? intval(trim((string) $_POST['fetch_replies']))      : Processor::FETCH_REPLIES_ALL);
 		$cron_interval        = (!empty($_POST['cron_interval'])              ? intval($_POST['cron_interval'])            : 1);
 		$worker_defer_limit   = (!empty($_POST['worker_defer_limit'])         ? intval($_POST['worker_defer_limit'])       : 15);
 		$worker_fetch_limit   = (!empty($_POST['worker_fetch_limit'])         ? intval($_POST['worker_fetch_limit'])       : 1);
 
-		$relay_directly    = !empty($_POST['relay_directly']);
-		$relay_scope       = (!empty($_POST['relay_scope'])       ? trim($_POST['relay_scope'])        : '');
-		$relay_server_tags = (!empty($_POST['relay_server_tags']) ? trim($_POST['relay_server_tags'])  : '');
-		$relay_deny_tags   = (!empty($_POST['relay_deny_tags'])   ? trim($_POST['relay_deny_tags'])    : '');
-		$relay_max_tags    = (!empty($_POST['relay_max_tags'])    ? intval($_POST['relay_max_tags'])   : 0);
-		$relay_user_tags   = !empty($_POST['relay_user_tags']);
+		$relay_directly            = !empty($_POST['relay_directly']);
+		$relay_scope               = (!empty($_POST['relay_scope'])       ? trim((string) $_POST['relay_scope'])        : '');
+		$relay_server_tags         = (!empty($_POST['relay_server_tags']) ? trim((string) $_POST['relay_server_tags'])  : '');
+		$relay_deny_tags           = (!empty($_POST['relay_deny_tags'])   ? trim((string) $_POST['relay_deny_tags'])    : '');
+		$relay_max_tags            = (!empty($_POST['relay_max_tags'])    ? intval($_POST['relay_max_tags'])   : 0);
+		$relay_user_tags           = !empty($_POST['relay_user_tags']);
+		$relay_auto_subscribe_tags = !empty($_POST["relay_auto_subscribe_tags"]);
 
 		$relay_deny_undetected_language = !empty($_POST['relay_deny_undetected_language']);
-		$relay_language_quality         = (!empty($_POST['relay_language_quality']) ? (float)($_POST['relay_language_quality']) : 0);
+		$relay_language_quality         = (!empty($_POST['relay_language_quality']) ? (float) ($_POST['relay_language_quality']) : 0);
 		$relay_languages                = (!empty($_POST['relay_languages'])        ? intval($_POST['relay_languages'])       : 0);
 
 		$engagement_hours        = (!empty($_POST['engagement_hours'])        ? intval($_POST['engagement_hours'])     : 0);
@@ -157,7 +160,7 @@ class Site extends BaseAdmin
 		$max_posts_per_author    = (!empty($_POST['max_posts_per_author'])    ? intval($_POST['max_posts_per_author']) : 0);
 		$sharer_interaction_days = (!empty($_POST['sharer_interaction_days']) ? intval($_POST['sharer_interaction_days']) : 0);
 
-		$active_panel = (!empty($_POST['active_panel'])      ? "#" . trim($_POST['active_panel']) : '');
+		$active_panel = (!empty($_POST['active_panel'])      ? "#" . trim((string) $_POST['active_panel']) : '');
 
 		$transactionConfig = DI::config()->beginTransaction();
 
@@ -223,12 +226,12 @@ class Site extends BaseAdmin
 		} else {
 			$transactionConfig->set('system', 'singleuser', $singleuser);
 		}
-		if (preg_match('/\d+(?:\s*[kmg])?/i', $maxfilesize)) {
+		if (preg_match('/\d+(?:\s*[kmg])?/i', (string) $maxfilesize)) {
 			$transactionConfig->set('system', 'maxfilesize', $maxfilesize);
 		} else {
 			DI::sysmsg()->addNotice(DI::l10n()->t('%s is no valid input for maximum media size', $maxfilesize));
 		}
-		if (preg_match('/\d+(?:\s*[kmg])?/i', $maximagesize)) {
+		if (preg_match('/\d+(?:\s*[kmg])?/i', (string) $maximagesize)) {
 			$transactionConfig->set('system', 'maximagesize', $maximagesize);
 		} else {
 			DI::sysmsg()->addNotice(DI::l10n()->t('%s is no valid input for maximum image size', $maximagesize));
@@ -249,8 +252,6 @@ class Site extends BaseAdmin
 		$transactionConfig->set('system', 'disallowed_email', $disallowed_email);
 		$transactionConfig->set('system', 'forbidden_nicknames', $forbidden_nicknames);
 		$transactionConfig->set('system', 'system_actor_name', $system_actor_name);
-		$transactionConfig->set('system', 'no_oembed_rich_content', $no_oembed_rich_content);
-		$transactionConfig->set('system', 'allowed_oembed', $allowed_oembed);
 		$transactionConfig->set('system', 'block_public', $block_public);
 		$transactionConfig->set('system', 'publish_all', $force_publish);
 		$transactionConfig->set('system', 'newuser_private', $newuser_private);
@@ -273,6 +274,8 @@ class Site extends BaseAdmin
 		$transactionConfig->set('system', 'community_page_style', $community_page_style);
 		$transactionConfig->set('system', 'max_author_posts_community_page', $max_author_posts_community_page);
 		$transactionConfig->set('system', 'max_server_posts_community_page', $max_server_posts_community_page);
+		$transactionConfig->set('system', 'display_local_media', $display_local_media);
+		$transactionConfig->set('system', 'display_remote_media', $display_remote_media);
 		$transactionConfig->set('system', 'verifyssl', $verifyssl);
 		$transactionConfig->set('system', 'proxyuser', $proxyuser);
 		$transactionConfig->set('system', 'proxy', $proxy);
@@ -317,6 +320,7 @@ class Site extends BaseAdmin
 		$transactionConfig->set('system', 'worker_load_cooldown', $worker_load_cooldown);
 		$transactionConfig->set('system', 'worker_fastlane', $worker_fastlane);
 		$transactionConfig->set('system', 'decoupled_receiver', $decoupled_receiver);
+		$transactionConfig->set('system', 'fetch_replies', $fetch_replies);
 		$transactionConfig->set('system', 'cron_interval', max($cron_interval, 1));
 		$transactionConfig->set('system', 'worker_defer_limit', $worker_defer_limit);
 		$transactionConfig->set('system', 'worker_fetch_limit', max($worker_fetch_limit, 1));
@@ -327,6 +331,7 @@ class Site extends BaseAdmin
 		$transactionConfig->set('system', 'relay_deny_tags', Strings::cleanTags($relay_deny_tags));
 		$transactionConfig->set('system', 'relay_max_tags', $relay_max_tags);
 		$transactionConfig->set('system', 'relay_user_tags', $relay_user_tags);
+		$transactionConfig->set('system', 'relay_auto_subscribe_tags', $relay_auto_subscribe_tags);
 		$transactionConfig->set('system', 'relay_deny_undetected_language', $relay_deny_undetected_language);
 		$transactionConfig->set('system', 'relay_language_quality', $relay_language_quality);
 		$transactionConfig->set('system', 'relay_languages', max($relay_languages, 1));
@@ -349,9 +354,9 @@ class Site extends BaseAdmin
 		/* Installed langs */
 		$lang_choices = DI::l10n()->getAvailableLanguages();
 
-		if (DI::config()->get('system', 'directory_submit_url') &&
-			!DI::config()->get('system', 'directory')) {
-			DI::config()->set('system', 'directory', dirname(DI::config()->get('system', 'directory_submit_url')));
+		if (DI::config()->get('system', 'directory_submit_url')
+			&& !DI::config()->get('system', 'directory')) {
+			DI::config()->set('system', 'directory', dirname((string) DI::config()->get('system', 'directory_submit_url')));
 			DI::config()->delete('system', 'directory_submit_url');
 		}
 
@@ -371,7 +376,7 @@ class Site extends BaseAdmin
 				$f = basename($file);
 
 				// Only show allowed themes here
-				if (($allowed_theme_list != '') && !strstr($allowed_theme_list, $f)) {
+				if (($allowed_theme_list != '') && !strstr((string) $allowed_theme_list, $f)) {
 					continue;
 				}
 
@@ -385,13 +390,21 @@ class Site extends BaseAdmin
 			}
 		}
 
+		/* Reply fetch options */
+		$fetch_replies_choices = [
+			Processor::FETCH_REPLIES_ALL         => DI::l10n()->t('Fetch replies on all posts'),
+			Processor::FETCH_REPLIES_NONE        => DI::l10n()->t('Don\'t fetch replies'),
+			Processor::FETCH_REPLIES_FOLLOWED    => DI::l10n()->t('Fetch replies on posts from followed contacts only'),
+			Processor::FETCH_REPLIES_INTERACTION => DI::l10n()->t('Fetch replies on posts with interactions only'),
+		];
+
 		/* Community page style */
 		$community_page_style_choices = [
 			Community::DISABLED         => DI::l10n()->t('No community page'),
 			Community::DISABLED_VISITOR => DI::l10n()->t('No community page for visitors'),
 			Community::LOCAL            => DI::l10n()->t('Public postings from users of this site'),
 			Community::GLOBAL           => DI::l10n()->t('Public postings from the federated network'),
-			Community::LOCAL_AND_GLOBAL => DI::l10n()->t('Public postings from local users and the federated network')
+			Community::LOCAL_AND_GLOBAL => DI::l10n()->t('Public postings from local users and the federated network'),
 		];
 
 		/* get user names to make the install a personal install of X */
@@ -422,13 +435,13 @@ class Site extends BaseAdmin
 		$register_choices = [
 			Register::CLOSED  => DI::l10n()->t('Closed'),
 			Register::APPROVE => DI::l10n()->t('Requires approval'),
-			Register::OPEN    => DI::l10n()->t('Open')
+			Register::OPEN    => DI::l10n()->t('Open'),
 		];
 
 		$check_git_version_choices = [
 			'none'    => DI::l10n()->t('Don\'t check'),
 			'stable'  => DI::l10n()->t('check the stable version'),
-			'develop' => DI::l10n()->t('check the development version')
+			'develop' => DI::l10n()->t('check the development version'),
 		];
 
 		$discovery_choices = [
@@ -496,13 +509,11 @@ class Site extends BaseAdmin
 			'$max_registered_users'            => ['max_registered_users', DI::l10n()->t('Maximum Users'), DI::config()->get('config', 'max_registered_users'), DI::l10n()->t('If defined, the register policy is automatically closed when the given number of users is reached and reopens the registry when the number drops below the limit. It only works when the policy is set to open or close, but not when the policy is set to approval.')],
 			'$daily_registrations'             => ['max_daily_registrations', DI::l10n()->t('Maximum Daily Registrations'), DI::config()->get('system', 'max_daily_registrations'), DI::l10n()->t('If registration is permitted above, this sets the maximum number of new user registrations to accept per day.  If register is set to closed, this setting has no effect.')],
 			'$register_text'                   => ['register_text', DI::l10n()->t('Register text'), DI::config()->get('config', 'register_text'), DI::l10n()->t('Will be displayed prominently on the registration page. You can use BBCode here.')],
-			'$forbidden_nicknames'             => ['forbidden_nicknames', DI::l10n()->t('Forbidden Nicknames'), DI::config()->get('system', 'forbidden_nicknames'), DI::l10n()->t('Comma separated list of nicknames that are forbidden from registration. Preset is a list of role names according RFC 2142.')],
+			'$forbidden_nicknames'             => ['forbidden_nicknames', DI::l10n()->t('Forbidden Nicknames'), DI::config()->get('system', 'forbidden_nicknames'), DI::l10n()->t('Comma separated list of usernames that are forbidden from registration. Preset is a list of role names according RFC 2142.')],
 			'$abandon_days'                    => ['abandon_days', DI::l10n()->t('Accounts abandoned after x days'), DI::config()->get('system', 'account_abandon_days'), DI::l10n()->t('Will not waste system resources polling external sites for abandonded accounts. Enter 0 for no time limit.')],
 			'$allowed_sites'                   => ['allowed_sites', DI::l10n()->t('Allowed friend domains'), DI::config()->get('system', 'allowed_sites'), DI::l10n()->t('Comma separated list of domains which are allowed to establish friendships with this site. Wildcards are accepted. Empty to allow any domains')],
 			'$allowed_email'                   => ['allowed_email', DI::l10n()->t('Allowed email domains'), DI::config()->get('system', 'allowed_email'), DI::l10n()->t('Comma separated list of domains which are allowed in email addresses for registrations to this site. Wildcards are accepted. Empty to allow any domains')],
 			'$disallowed_email'                => ['disallowed_email', DI::l10n()->t('Disallowed email domains'), DI::config()->get('system', 'disallowed_email'), DI::l10n()->t('Comma separated list of domains which are rejected as email addresses for registrations to this site. Wildcards are accepted.')],
-			'$no_oembed_rich_content'          => ['no_oembed_rich_content', DI::l10n()->t('No OEmbed rich content'), DI::config()->get('system', 'no_oembed_rich_content'), DI::l10n()->t('Don\'t show the rich content (e.g. embedded PDF), except from the domains listed below.')],
-			'$allowed_oembed'                  => ['allowed_oembed', DI::l10n()->t('Trusted third-party domains'), DI::config()->get('system', 'allowed_oembed'), DI::l10n()->t('Comma separated list of domains from which content is allowed to be embedded in posts like with OEmbed. All sub-domains of the listed domains are allowed as well.')],
 			'$block_public'                    => ['block_public', DI::l10n()->t('Block public'), DI::config()->get('system', 'block_public'), DI::l10n()->t('Check to block public access to all otherwise public personal pages on this site unless you are currently logged in.')],
 			'$force_publish'                   => ['publish_all', DI::l10n()->t('Force publish'), DI::config()->get('system', 'publish_all'), DI::l10n()->t('Check to force all profiles on this site to be listed in the site directory.') . '<strong>' . DI::l10n()->t('Enabling this may violate privacy laws like the GDPR') . '</strong>'],
 			'$global_directory'                => ['directory', DI::l10n()->t('Global directory URL'), DI::config()->get('system', 'directory'), DI::l10n()->t('URL to the global directory. If this is not set, the global directory is completely unavailable to the application.')],
@@ -525,6 +536,8 @@ class Site extends BaseAdmin
 			'$community_page_style'            => ['community_page_style', DI::l10n()->t('Community pages for visitors'), DI::config()->get('system', 'community_page_style'), DI::l10n()->t('Which community pages should be available for visitors. Local users always see both pages.'), $community_page_style_choices],
 			'$max_author_posts_community_page' => ['max_author_posts_community_page', DI::l10n()->t('Posts per user on community page'), DI::config()->get('system', 'max_author_posts_community_page'), DI::l10n()->t('The maximum number of posts per user on the local community page. This is useful, when a single user floods the local community page.')],
 			'$max_server_posts_community_page' => ['max_server_posts_community_page', DI::l10n()->t('Posts per server on community page'), DI::config()->get('system', 'max_server_posts_community_page'), DI::l10n()->t('The maximum number of posts per server on the global community page. This is useful, when posts from a single server flood the global community page.')],
+			'$display_local_media'             => ['display_local_media', DI::l10n()->t('Display local media to visitors'), DI::config()->get('system', 'display_local_media'), DI::l10n()->t('When enabled, locally stored media, such as pictures and videos, will be displayed to visitors who are not logged in. When disabled, a message will appear informing visitors that the media is only available to logged-in users.')],
+			'$display_remote_media'            => ['display_remote_media', DI::l10n()->t('Display remote media to visitors'), DI::config()->get('system', 'display_remote_media'), DI::l10n()->t('When enabled, visitors who are not logged in will be able to view non-locally stored media such as pictures and videos. When disabled, visitors will see a message informing them that the media is available on the remote site.')],
 			'$mail_able'                       => function_exists('imap_open'),
 			'$mail_enabled'                    => ['mail_enabled', DI::l10n()->t('Enable Mail support'), !DI::config()->get('system', 'imap_disabled', !function_exists('imap_open')), DI::l10n()->t('Enable built-in mail support to poll IMAP folders and to reply via mail.')],
 			'$mail_not_able'                   => DI::l10n()->t('Mail support can\'t be enabled because the PHP IMAP module is not installed.'),
@@ -539,10 +552,10 @@ class Site extends BaseAdmin
 			'$min_memory'                      => ['min_memory', DI::l10n()->t('Minimal Memory'), DI::config()->get('system', 'min_memory'), DI::l10n()->t('Minimal free memory in MB for the worker. Needs access to /proc/meminfo - default 0 (deactivated).')],
 			'$optimize_tables'                 => ['optimize_tables', DI::l10n()->t('Periodically optimize tables'), DI::config()->get('system', 'optimize_tables'), DI::l10n()->t('Periodically optimize tables like the cache and the workerqueue')],
 
-			'$contact_discovery' => ['contact_discovery', DI::l10n()->t('Discover followers/followings from contacts'), DI::config()->get('system', 'contact_discovery'), DI::l10n()->t('If enabled, contacts are checked for their followers and following contacts.') . '<ul>' .
-				'<li>' . DI::l10n()->t('None - deactivated') . '</li>' .
-				'<li>' . DI::l10n()->t('Local contacts - contacts of our local contacts are discovered for their followers/followings.') . '</li>' .
-				'<li>' . DI::l10n()->t('Interactors - contacts of our local contacts and contacts who interacted on locally visible postings are discovered for their followers/followings.') . '</li></ul>',
+			'$contact_discovery' => ['contact_discovery', DI::l10n()->t('Discover followers/followings from contacts'), DI::config()->get('system', 'contact_discovery'), DI::l10n()->t('If enabled, contacts are checked for their followers and following contacts.') . '<ul>'
+				. '<li>' . DI::l10n()->t('None - deactivated') . '</li>'
+				. '<li>' . DI::l10n()->t('Local contacts - contacts of our local contacts are discovered for their followers/followings.') . '</li>'
+				. '<li>' . DI::l10n()->t('Interactors - contacts of our local contacts and contacts who interacted on locally visible postings are discovered for their followers/followings.') . '</li></ul>',
 				$discovery_choices],
 			'$update_active_contacts' => ['update_active_contacts', DI::l10n()->t('Only update contacts/servers with local data'), DI::config()->get('system', 'update_active_contacts'), DI::l10n()->t('If enabled, the system will only look for changes in contacts and servers that engaged on this system by either being in a contact list of a user or when posts or comments exists from the contact on this system.')],
 			'$update_known_contacts'  => ['update_known_contacts', DI::l10n()->t('Only update contacts with relations'), DI::config()->get('system', 'update_known_contacts'), DI::l10n()->t('If enabled, the system will only look for changes in contacts that are in a contact list of a user on this system.')],
@@ -576,6 +589,7 @@ class Site extends BaseAdmin
 			'$worker_load_cooldown' => ['worker_load_cooldown', DI::l10n()->t('Maximum load for workers'), DI::config()->get('system', 'worker_load_cooldown'), DI::l10n()->t('Maximum load that causes a cooldown before each worker function call.')],
 			'$worker_fastlane'      => ['worker_fastlane', DI::l10n()->t('Enable fastlane'), DI::config()->get('system', 'worker_fastlane'), DI::l10n()->t('When enabed, the fastlane mechanism starts an additional worker if processes with higher priority are blocked by processes of lower priority.')],
 			'$decoupled_receiver'   => ['decoupled_receiver', DI::l10n()->t('Decoupled receiver'), DI::config()->get('system', 'decoupled_receiver'), DI::l10n()->t('Decouple incoming ActivityPub posts by processing them in the background via a worker process. Only enable this on fast systems.')],
+			'$fetch_replies'        => ['fetch_replies', DI::l10n()->t('Fetch replies mode'), DI::config()->get('system', 'fetch_replies'), DI::l10n()->t('Missing replies can be fetched upon receipt of an ActivityPub post.'), $fetch_replies_choices],
 			'$cron_interval'        => ['cron_interval', DI::l10n()->t('Cron interval'), DI::config()->get('system', 'cron_interval'), DI::l10n()->t('Minimal period in minutes between two calls of the "Cron" worker job.')],
 			'$worker_defer_limit'   => ['worker_defer_limit', DI::l10n()->t('Worker defer limit'), DI::config()->get('system', 'worker_defer_limit'), DI::l10n()->t('Per default the systems tries delivering for 15 times before dropping it.')],
 			'$worker_fetch_limit'   => ['worker_fetch_limit', DI::l10n()->t('Worker fetch limit'), DI::config()->get('system', 'worker_fetch_limit'), DI::l10n()->t('Number of worker tasks that are fetched in a single query. Higher values should increase the performance, too high values will mostly likely decrease it. Only change it, when you know how to measure the performance of your system.')],
@@ -586,6 +600,7 @@ class Site extends BaseAdmin
 			'$relay_deny_tags'                => ['relay_deny_tags', DI::l10n()->t('Deny Server tags'), DI::config()->get('system', 'relay_deny_tags'), DI::l10n()->t('Comma separated list of tags that are rejected.')],
 			'$relay_max_tags'                 => ['relay_max_tags', DI::l10n()->t('Maximum amount of tags'), DI::config()->get('system', 'relay_max_tags'), DI::l10n()->t('Maximum amount of tags in a post before it is rejected as spam. The post has to contain at least one link. Posts from subscribed accounts will not be rejected.')],
 			'$relay_user_tags'                => ['relay_user_tags', DI::l10n()->t('Allow user tags'), DI::config()->get('system', 'relay_user_tags'), DI::l10n()->t('If enabled, the tags from the saved searches will used for the "tags" subscription in addition to the "relay_server_tags".')],
+			'$relay_auto_subscribe_tags'      => ['relay_auto_subscribe_tags', DI::l10n()->t('Automatically subscribe to tag relay'), DI::config()->get('system', 'relay_auto_subscribe_tags'), DI::l10n()->t('If enabled, the system will automatically follow and unfollow tags at the tags.pub service based on the configured tags. Additionally, all public posts will be automatically sent to this relay server for distribution.')],
 			'$relay_deny_undetected_language' => ['relay_deny_undetected_language', DI::l10n()->t('Deny undetected languages'), DI::config()->get('system', 'relay_deny_undetected_language'), DI::l10n()->t('If enabled, posts with undetected languages will be rejected.')],
 			'$relay_language_quality'         => ['relay_language_quality', DI::l10n()->t('Language Quality'), DI::config()->get('system', 'relay_language_quality'), DI::l10n()->t('The minimum language quality that is required to accept the post.')],
 			'$relay_languages'                => ['relay_languages', DI::l10n()->t('Number of languages for the language detection'), DI::config()->get('system', 'relay_languages'), DI::l10n()->t('The system detects a list of languages per post. Only if the desired languages are in the list, the message will be accepted. The higher the number, the more posts will be falsely detected.')],

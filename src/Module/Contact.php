@@ -1,20 +1,23 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Module;
 
+use Friendica\App\Arguments;
+use Friendica\App\BaseURL;
 use Friendica\BaseModule;
 use Friendica\Content\ContactSelector;
+use Friendica\Content\Conversation\StatusEditor;
 use Friendica\Content\Nav;
 use Friendica\Content\Pager;
 use Friendica\Content\Widget;
+use Friendica\Core\L10n;
 use Friendica\Core\Protocol;
 use Friendica\Core\Renderer;
-use Friendica\Core\Theme;
 use Friendica\Core\Worker;
 use Friendica\Database\DBA;
 use Friendica\DI;
@@ -23,19 +26,26 @@ use Friendica\Model\User;
 use Friendica\Module\Security\Login;
 use Friendica\Network\HTTPException\InternalServerErrorException;
 use Friendica\Network\HTTPException\NotFoundException;
+use Friendica\Util\Profiler;
 use Friendica\Worker\UpdateContact;
+use Psr\Log\LoggerInterface;
 
 /**
  *  Manages and show Contacts and their content
  */
 class Contact extends BaseModule
 {
-	const TAB_CONVERSATIONS = 1;
-	const TAB_POSTS         = 2;
-	const TAB_PROFILE       = 3;
-	const TAB_CONTACTS      = 4;
-	const TAB_ADVANCED      = 5;
-	const TAB_MEDIA         = 6;
+	public const TAB_CONVERSATIONS = 1;
+	public const TAB_POSTS         = 2;
+	public const TAB_PROFILE       = 3;
+	public const TAB_CONTACTS      = 4;
+	public const TAB_ADVANCED      = 5;
+	public const TAB_MEDIA         = 6;
+
+	public function __construct(private readonly StatusEditor $statusEditor, L10n $l10n, BaseURL $baseUrl, Arguments $args, LoggerInterface $logger, Profiler $profiler, Response $response, array $server, array $parameters)
+	{
+		parent::__construct($l10n, $baseUrl, $args, $logger, $profiler, $response, $server, $parameters);
+	}
 
 	private static function batchActions()
 	{
@@ -44,7 +54,7 @@ class Contact extends BaseModule
 		}
 
 		$redirectUrl = $_POST['command'] ?? '';
-		if (substr($redirectUrl, 0, 7) != 'contact') {
+		if (!str_starts_with((string) $redirectUrl, 'contact')) {
 			$redirectUrl = 'contact';
 		}
 		if (!empty($_POST['parameter'])) {
@@ -177,10 +187,10 @@ class Contact extends BaseModule
 
 		$page = DI::page();
 
-		$page->registerFooterScript(Theme::getPathForFile('asset/typeahead.js/dist/typeahead.bundle.js'));
-		$page->registerFooterScript(Theme::getPathForFile('js/friendica-tagsinput/friendica-tagsinput.js'));
-		$page->registerStylesheet(Theme::getPathForFile('js/friendica-tagsinput/friendica-tagsinput.css'));
-		$page->registerStylesheet(Theme::getPathForFile('js/friendica-tagsinput/friendica-tagsinput-typeahead.css'));
+		// Default page title when not viewing a specific contact
+		$page['title'] = DI::l10n()->t('Contacts');
+
+		$this->statusEditor->registerAssets();
 
 		$vcard_widget      = '';
 		$findpeople_widget = Widget::findPeople();
@@ -201,7 +211,7 @@ class Contact extends BaseModule
 		DI::page()['htmlhead'] .= Renderer::replaceMacros($tpl, []);
 
 		$o = '';
-		Nav::setSelected('contact');
+		Nav::setSelected('contacts');
 
 		$_SESSION['return_path'] = DI::args()->getQueryString();
 
@@ -391,22 +401,13 @@ class Contact extends BaseModule
 		$tabs_tpl  = Renderer::getMarkupTemplate('common_tabs.tpl');
 		$tabs_html = Renderer::replaceMacros($tabs_tpl, ['$tabs' => $tabs, '$more' => DI::l10n()->t('More')]);
 
-		switch ($rel) {
-			case 'followers':
-				$header = DI::l10n()->t('Followers');
-				break;
-			case 'following':
-				$header = DI::l10n()->t('Following');
-				break;
-			case 'mutuals':
-				$header = DI::l10n()->t('Mutual friends');
-				break;
-			case 'nothing':
-				$header = DI::l10n()->t('No relationship');
-				break;
-			default:
-				$header = DI::l10n()->t('Contacts');
-		}
+		$header = match ($rel) {
+			'followers' => DI::l10n()->t('Followers'),
+			'following' => DI::l10n()->t('Following'),
+			'mutuals'   => DI::l10n()->t('Friends'),
+			'nothing'   => DI::l10n()->t('No relationship'),
+			default     => DI::l10n()->t('Contacts'),
+		};
 
 		switch ($type) {
 			case 'pending':
@@ -491,10 +492,10 @@ class Contact extends BaseModule
 				'accesskey' => 'o',
 			],
 			[
-				'label'     => DI::l10n()->t('Conversations'),
+				'label'     => DI::l10n()->t('Posts'),
 				'url'       => 'contact/' . $pcid . '/conversations',
 				'sel'       => (($active_tab == self::TAB_CONVERSATIONS) ? 'active' : ''),
-				'title'     => DI::l10n()->t('Conversations started by this contact'),
+				'title'     => DI::l10n()->t('All posts'),
 				'id'        => 'status-tab',
 				'accesskey' => 'm',
 			],
@@ -507,10 +508,10 @@ class Contact extends BaseModule
 				'accesskey' => 'p',
 			],
 			[
-				'label'     => DI::l10n()->t('Media'),
+				'label'     => DI::l10n()->t('Media posts'),
 				'url'       => 'contact/' . $pcid . '/media',
 				'sel'       => (($active_tab == self::TAB_MEDIA) ? 'active' : ''),
-				'title'     => DI::l10n()->t('Posts containing media objects'),
+				'title'     => DI::l10n()->t('Posts containing media'),
 				'id'        => 'media-tab',
 				'accesskey' => 'd',
 			],
@@ -520,7 +521,7 @@ class Contact extends BaseModule
 				'sel'       => (($active_tab == self::TAB_CONTACTS) ? 'active' : ''),
 				'title'     => DI::l10n()->t('View all known contacts'),
 				'id'        => 'contacts-tab',
-				'accesskey' => 't'
+				'accesskey' => 't',
 			],
 		];
 
@@ -531,7 +532,7 @@ class Contact extends BaseModule
 				'sel'       => (($active_tab == self::TAB_ADVANCED) ? 'active' : ''),
 				'title'     => DI::l10n()->t('Advanced Contact Settings'),
 				'id'        => 'advanced-tab',
-				'accesskey' => 'r'
+				'accesskey' => 'r',
 			];
 		}
 
@@ -539,6 +540,11 @@ class Contact extends BaseModule
 		$tab_str = Renderer::replaceMacros($tab_tpl, ['$tabs' => $tabs, '$more' => DI::l10n()->t('More')]);
 
 		return $tab_str;
+	}
+
+	public static function setPageTitle(array $contact)
+	{
+		DI::page()['title'] = $contact['name'];
 	}
 
 	/**
@@ -565,15 +571,15 @@ class Contact extends BaseModule
 		if (!empty($contact['uid']) && !empty($contact['rel']) && DI::userSession()->getLocalUserId() == $contact['uid']) {
 			switch ($contact['rel']) {
 				case Model\Contact::FRIEND:
-					$alt_text = DI::l10n()->t('Mutual Friendship');
+					$alt_text = DI::l10n()->t('Friend');
 					break;
 
 				case Model\Contact::FOLLOWER:
-					$alt_text = DI::l10n()->t('is a fan of yours');
+					$alt_text = DI::l10n()->t('Follows you');
 					break;
 
 				case Model\Contact::SHARING:
-					$alt_text = DI::l10n()->t('you are a fan of');
+					$alt_text = DI::l10n()->t('You follow');
 					break;
 
 				default:
@@ -583,7 +589,7 @@ class Contact extends BaseModule
 
 		$url = Model\Contact::magicLinkByContact($contact);
 
-		if (strpos($url, 'contact/redir/') === 0) {
+		if (str_starts_with($url, 'contact/redir/')) {
 			$sparkle = ' class="sparkle" ';
 		} else {
 			$sparkle = '';
@@ -603,22 +609,31 @@ class Contact extends BaseModule
 			$sparkle  = '';
 		}
 
+		[$administrator, $moderator] = Model\Contact::getType($contact['id'], $contact['url']);
+
 		return [
-			'id'           => $contact['id'],
-			'url'          => $url,
-			'img_hover'    => DI::l10n()->t('Visit %s\'s profile [%s]', $contact['name'], $contact['url']),
-			'photo_menu'   => Model\Contact::photoMenu($contact, DI::userSession()->getLocalUserId()),
-			'thumb'        => Model\Contact::getThumb($contact, true),
-			'alt_text'     => $alt_text,
-			'name'         => $contact['name'],
-			'nick'         => $contact['nick'],
-			'details'      => $contact['location'],
-			'tags'         => $contact['keywords'],
-			'about'        => $contact['about'],
-			'account_type' => Model\Contact::getAccountType($contact['contact-type']),
-			'sparkle'      => $sparkle,
-			'itemurl'      => ($contact['addr'] ?? '') ?: $contact['url'],
-			'network'      => ContactSelector::networkToName($contact['network'], $contact['protocol'], $contact['gsid']),
+			'id'                => $contact['id'],
+			'is_admin'          => $administrator,
+			'admin_title'       => DI::l10n()->t('Administrator'),
+			'is_mod'            => $moderator,
+			'moderator_title'   => DI::l10n()->t('Moderator'),
+			'url'               => $url,
+			'img_hover'         => DI::l10n()->t('Visit %s\'s profile [%s]', $contact['name'], $contact['url']),
+			'photo_menu'        => Model\Contact::photoMenu($contact, DI::userSession()->getLocalUserId()),
+			'thumb'             => Model\Contact::getThumb($contact, true),
+			'alt_text'          => $alt_text,
+			'name'              => $contact['name'],
+			'nick'              => $contact['nick'],
+			'details'           => $contact['location'],
+			'tags'              => $contact['keywords'],
+			'about'             => $contact['about'],
+			'account_type_name' => Model\Contact::getAccountType($contact['contact-type']),
+			'account_type'      => $contact['contact-type'],
+			'manually_approve'  => $contact['manually-approve'],
+			'private'           => $contact['prv'],
+			'sparkle'           => $sparkle,
+			'itemurl'           => ($contact['addr'] ?? '') ?: $contact['url'],
+			'network'           => ContactSelector::networkToName($contact['network'], $contact['protocol'], $contact['gsid']),
 		];
 	}
 }

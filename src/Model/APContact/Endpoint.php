@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -12,20 +12,20 @@ use Friendica\Database\DBA;
 class Endpoint
 {
 	// Mobilizon Endpoints
-	const DISCUSSIONS = 10;
-	const EVENTS      = 11;
-	const MEMBERS     = 12;
-	const POSTS       = 13;
-	const RESOURCES   = 14;
-	const TODOS       = 15;
+	public const DISCUSSIONS = 10;
+	public const EVENTS      = 11;
+	public const MEMBERS     = 12;
+	public const POSTS       = 13;
+	public const RESOURCES   = 14;
+	public const TODOS       = 15;
 
 	// Peertube Endpoints
-	const PLAYLISTS = 20;
+	public const PLAYLISTS = 20;
 
 	// Mastodon Endpoints
-	const DEVICES = 30;
+	public const DEVICES = 30;
 
-	const ENDPOINT_NAMES = [
+	public const ENDPOINT_NAMES = [
 		self::PLAYLISTS   => 'pt:playlists',
 		self::DISCUSSIONS => 'mobilizon:discussions',
 		self::EVENTS      => 'mobilizon:events',

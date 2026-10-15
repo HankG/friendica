@@ -1,14 +1,13 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Module\ActivityPub;
 
 use Friendica\BaseModule;
-use Friendica\Core\System;
 use Friendica\Model\Contact;
 use Friendica\Model\User;
 use Friendica\Protocol\ActivityPub;
@@ -31,10 +30,10 @@ class Followers extends BaseModule
 			throw new \Friendica\Network\HTTPException\NotFoundException();
 		}
 
-		$page = !empty($request['page']) ? (int)$request['page'] : null;
+		$page = !empty($request['page']) ? (int) $request['page'] : null;
 
-		$followers = ActivityPub\Transmitter::getContacts($owner, [Contact::FOLLOWER, Contact::FRIEND], 'followers', $page, (string)HTTPSignature::getSigner('', $_SERVER));
+		$followers = ActivityPub\Transmitter::getContacts($owner, [Contact::FOLLOWER, Contact::FRIEND], 'followers', $page, (string) HTTPSignature::getSigner('', $_SERVER));
 
-		$this->jsonExit($followers, 'application/activity+json');
+		$this->earlyJsonExit($followers, 'application/activity+json');
 	}
 }

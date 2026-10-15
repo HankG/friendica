@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -38,13 +38,13 @@ class Upload extends BaseApi
 		$returndata = [];
 
 		$returndata["media_id"]        = $media["id"];
-		$returndata["media_id_string"] = (string)$media["id"];
+		$returndata["media_id_string"] = (string) $media["id"];
 		$returndata["size"]            = $media["size"];
 		$returndata["image"]           = [
 			"w"                     => $media["width"],
 			"h"                     => $media["height"],
 			"image_type"            => $media["type"],
-			"friendica_preview_url" => $media["preview"]
+			"friendica_preview_url" => $media["preview"],
 		];
 
 		$this->logger->info('Media uploaded', ['return' => $returndata]);

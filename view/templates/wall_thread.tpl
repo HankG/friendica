@@ -1,6 +1,6 @@
 {{*
-  * Copyright (C) 2010-2024, the Friendica project
-  * SPDX-FileCopyrightText: 2010-2024 the Friendica project
+  * Copyright (C) 2010-2026, the Friendica project
+  * SPDX-FileCopyrightText: 2010-2026 the Friendica project
   *
   * SPDX-License-Identifier: AGPL-3.0-or-later
   *}}
@@ -91,21 +91,21 @@
 					<div class="wall-item-bottom">
 						<div class="wall-item-links">
 						</div>
-						<div class="wall-item-tags">
-                            {{if !$item.suppress_tags}}
-                                {{foreach $item.hashtags as $tag}}
+						<div class="tags wall-item-tags">
+							{{if !$item.suppress_tags}}
+								{{foreach $item.hashtags as $tag}}
 									<span class="tag">{{$tag nofilter}}</span>
-                                {{/foreach}}
-                                {{foreach $item.mentions as $tag}}
+								{{/foreach}}
+								{{foreach $item.mentions as $tag}}
 									<span class="mention">{{$tag nofilter}}</span>
-                                {{/foreach}}
-                            {{/if}}
-                            {{foreach $item.folders as $cat}}
-								<span class="folder p-category">{{$cat.name}}{{if $cat.removeurl}} (<a href="{{$cat.removeurl}}" title="{{$remove}}">x</a>) {{/if}} </span>
-                            {{/foreach}}
-                            {{foreach $item.categories as $cat}}
-								<span class="category p-category"><a href="{{$cat.url}}">{{$cat.name}}</a>{{if $cat.removeurl}} (<a href="{{$cat.removeurl}}" title="{{$remove}}">x</a>) {{/if}} </span>
-                            {{/foreach}}
+								{{/foreach}}
+							{{/if}}
+							{{foreach $item.folders as $cat}}
+								<span class="folder"><a href="{{$cat.url}}">{{$cat.name}}</a>{{if $cat.removeurl}} (<a href="{{$cat.removeurl}}" title="{{$remove}}">x</a>) {{/if}} </span>
+							{{/foreach}}
+							{{foreach $item.categories as $cat}}
+								<span class="category"><a href="{{$cat.url}}">{{$cat.name}}</a>{{if $cat.removeurl}} (<a href="{{$cat.removeurl}}" title="{{$remove}}">x</a>) {{/if}} </span>
+							{{/foreach}}
 						</div>
                         {{if $item.edited}}
 							<div class="itemedited text-muted">{{$item.edited['label']}} (<span title="{{$item.edited['date']}}">{{$item.edited['relative']}}</span>)</div>
@@ -136,14 +136,16 @@
                                 {{if $item.vote}}
                                     {{if $item.vote.like}}
 										<a role="button" id="like-{{$item.id}}"{{if $item.responses.like.self}} class="active"{{/if}} title="{{$item.vote.like.0}}" onclick="doActivityItem({{$item.id}}, 'like'{{if $item.responses.like.self}}, true{{/if}}); return false"><i class="icon-thumbs-up icon-large"><span class="sr-only">{{$item.vote.like.0}}</span></i></a>
-                                    {{/if}}{{if $item.vote.dislike}}
-									<a role="button" id="dislike-{{$item.id}}"{{if $item.responses.dislike.self}} class="active"{{/if}} title="{{$item.vote.dislike.0}}" onclick="doActivityItem({{$item.id}}, 'dislike'{{if $item.responses.dislike.self}}, true{{/if}}); return false"><i class="icon-thumbs-down icon-large"><span class="sr-only">{{$item.vote.dislike.0}}</span></i></a>
-                                {{/if}}{{if $item.vote.announce}}
-									<a role="button" id="announce-{{$item.id}}"{{if $item.responses.announce.self}} class="active"{{/if}} title="{{$item.vote.announce.0}}" onclick="doActivityItem({{$item.id}}, 'announce'{{if $item.responses.announce.self}}, true{{/if}}); return false"><i class="icon-retweet icon-large"><span class="sr-only">{{$item.vote.announce.0}}</span></i></a>
-                                {{/if}}
-                                    {{if $item.vote.share}}
-										<a role="button" id="share-{{$item.id}}" title="{{$item.vote.share.0}}" onclick="jotShare({{$item.id}}); return false"><i class="icon-share icon-large"><span class="sr-only">{{$item.vote.share.0}}</span></i></a>
                                     {{/if}}
+									{{if $item.vote.dislike}}
+										<a role="button" id="dislike-{{$item.id}}"{{if $item.responses.dislike.self}} class="active"{{/if}} title="{{$item.vote.dislike.0}}" onclick="doActivityItem({{$item.id}}, 'dislike'{{if $item.responses.dislike.self}}, true{{/if}}); return false"><i class="icon-thumbs-down icon-large"><span class="sr-only">{{$item.vote.dislike.0}}</span></i></a>
+									{{/if}}
+									{{if $item.vote.announce}}
+										<a role="button" id="announce-{{$item.id}}"{{if $item.responses.announce.self}} class="active"{{/if}} title="{{$item.vote.announce.0}}" onclick="doActivityItem({{$item.id}}, 'announce'{{if $item.responses.announce.self}}, true{{/if}}); return false"><i class="icon-retweet icon-large"><span class="sr-only">{{$item.vote.announce.0}}</span></i></a>
+									{{/if}}
+									{{if $item.vote.share}}
+										<a role="button" id="share-{{$item.id}}" title="{{$item.vote.share.0}}" onclick="jotShare({{$item.id}}); return false"><i class="icon-share icon-large"><span class="sr-only">{{$item.vote.share.0}}</span></i></a>
+									{{/if}}
                                 {{/if}}
 
                                 {{if $item.pin}}
@@ -151,8 +153,8 @@
 									<a role="button" id="unpin-{{$item.id}}" onclick="doPin({{$item.id}}); return false;" class="{{$item.pin.classundo}}" title="{{$item.pin.undo}}"><i class="icon-remove-circle icon-large"><span class="sr-only">{{$item.pin.undo}}</span></i></a>
                                 {{/if}}
                                 {{if $item.star}}
-									<a role="button" id="star-{{$item.id}}" onclick="doStar({{$item.id}}); return false;" class="{{$item.star.classdo}}" title="{{$item.star.do}}"><i class="icon-star icon-large"><span class="sr-only">{{$item.star.do}}</span></i></a>
-									<a role="button" id="unstar-{{$item.id}}" onclick="doStar({{$item.id}}); return false;" class="{{$item.star.classundo}}" title="{{$item.star.undo}}"><i class="icon-star-empty icon-large"><span class="sr-only">{{$item.star.undo}}</span></i></a>
+									<a role="button" id="star-{{$item.id}}" onclick="doStar({{$item.id}}); return false;" class="{{$item.star.classdo}}" title="{{$item.star.do}}"><i class="icon-bookmark icon-large"><span class="sr-only">{{$item.star.do}}</span></i></a>
+									<a role="button" id="unstar-{{$item.id}}" onclick="doStar({{$item.id}}); return false;" class="{{$item.star.classundo}}" title="{{$item.star.undo}}"><i class="icon-bookmark-empty icon-large"><span class="sr-only">{{$item.star.undo}}</span></i></a>
                                 {{/if}}
                                 {{if $item.ignore}}
 									<a role="button" id="ignore-{{$item.id}}" onclick="doIgnoreThread({{$item.id}}); return false;"  class="{{$item.ignore.classdo}}"  title="{{$item.ignore.do}}"><i class="icon-bell-slash icon-large"><span class="sr-only">{{$item.ignore.do}}</span></i></a>
@@ -218,6 +220,14 @@
                     {{/if}}{{/if}}
 				</div>
 
+
+                {{if $item.missing > 0}}
+				<div class="wall-item-bottom">
+					<div class="wall-item-links"></div>
+					<a id="load-more-comments-{{$item.id}}" class="fakelink load-more-comments" href="#" onclick="loadMoreComments('{{$item.uriid}}', {{$item.id}}, {{$item.existing_json}}); return false;">{{$item.load_more_comments}}</a>
+					<span id="load-more-loading-{{$item.id}}" class="loading-text" style="display: none;">{{$item.loading}} <img class="like-rotator" src="images/rotator.gif" alt="{{$item.loading}}" /></span>
+				</div>
+                {{/if}}
 
                 {{foreach $item.children as $child}}
                     {{if $item.type == tag}}

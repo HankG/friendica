@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -27,7 +27,7 @@ class TrustedBrowser extends BaseFactory
 			$uid,
 			$userAgent,
 			$trusted,
-			DateTimeFormat::utcNow()
+			DateTimeFormat::utcNow(),
 		);
 	}
 
@@ -39,7 +39,7 @@ class TrustedBrowser extends BaseFactory
 			$row['user_agent'],
 			$row['trusted'],
 			$row['created'],
-			$row['last_used']
+			$row['last_used'],
 		);
 	}
 }

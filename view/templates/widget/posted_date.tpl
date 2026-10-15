@@ -1,9 +1,10 @@
 {{*
-  * Copyright (C) 2010-2024, the Friendica project
-  * SPDX-FileCopyrightText: 2010-2024 the Friendica project
+  * Copyright (C) 2010-2026, the Friendica project
+  * SPDX-FileCopyrightText: 2010-2026 the Friendica project
   *
   * SPDX-License-Identifier: AGPL-3.0-or-later
   *}}
+<!-- NOTE: Place "sidebar-widget-list" only on one element: The one that should be expanded/collapsed -->
 <script>
 	function showHideDates() {
 		if ($('#posted-date-selector-drop').is(':visible')) {
@@ -17,16 +18,14 @@
 	}
 </script>
 
-<nav>
-	<span id="datebrowse-sidebar-inflated" class="widget inflated fakelink">
-		<button class="fakelink" onclick="openCloseWidget('datebrowse-sidebar', 'datebrowse-sidebar-inflated');" aria-expanded="false">
-			<h3>{{$title}}</h3>
-		</button>
-	</span>
-	<div id="datebrowse-sidebar" class="widget">
-		<button class="fakelink" onclick="openCloseWidget('datebrowse-sidebar', 'datebrowse-sidebar-inflated');" aria-expanded="false">
-			<h3>{{$title}}</h3>
-		</button>
+<nav id="datebrowse-sidebar" class="widget">
+	<button class="widget-btn fakelink" onclick="openCloseWidget('datebrowse-sidebar');" aria-expanded="false">
+		<h3>
+			<i class="ri ri-archive-line" aria-hidden="true"></i>
+			{{$title}}
+		</h3>
+	</button>
+	<div class="sidebar-widget-list">
 		<ul id="posted-date-selector" class="datebrowse-ul">
 			{{foreach $dates as $y => $arr}}
 
@@ -64,5 +63,5 @@
 	</div>
 </nav>
 <script>
-	initWidget('datebrowse-sidebar', 'datebrowse-sidebar-inflated');
+	initWidget('datebrowse-sidebar');
 </script>

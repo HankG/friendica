@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -19,22 +19,14 @@ class CacheLock extends AbstractLock
 	 *
 	 * @var string
 	 */
-	const CACHE_PREFIX = 'lock:';
-
-	/**
-	 * @var ICanCacheInMemory
-	 */
-	private $cache;
+	public const CACHE_PREFIX = 'lock:';
 
 	/**
 	 * CacheLock constructor.
 	 *
 	 * @param ICanCacheInMemory $cache The CacheDriver for this type of lock
 	 */
-	public function __construct(ICanCacheInMemory $cache)
-	{
-		$this->cache = $cache;
-	}
+	public function __construct(private readonly ICanCacheInMemory $cache) {}
 
 	/**
 	 * (@inheritdoc)
@@ -50,7 +42,7 @@ class CacheLock extends AbstractLock
 			do {
 				$lock = $this->cache->get($lockKey);
 				// When we do want to lock something that was already locked by us.
-				if ((int)$lock == getmypid()) {
+				if ((int) $lock == getmypid()) {
 					$got_lock = true;
 				}
 
@@ -66,7 +58,7 @@ class CacheLock extends AbstractLock
 				}
 
 				if (!$got_lock && ($timeout > 0)) {
-					usleep(rand(10000, 200000));
+					usleep(random_int(10000, 200000));
 				}
 			} while (!$got_lock && ((time() - $start) < $timeout));
 		} catch (CachePersistenceException $exception) {
@@ -130,7 +122,7 @@ class CacheLock extends AbstractLock
 			throw new LockPersistenceException(sprintf('Cannot get locks with prefix %s', $prefix), $exception);
 		}
 
-		array_walk($locks, function (&$lock) {
+		array_walk($locks, function (&$lock): void {
 			$lock = substr($lock, strlen(self::CACHE_PREFIX));
 		});
 

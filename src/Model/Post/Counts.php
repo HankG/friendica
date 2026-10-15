@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -22,7 +22,7 @@ class Counts
 	 *
 	 * @param int $uri_id
 	 */
-	public static function update(int $uri_id, int $parent_uri_id, int $vid, string $verb, string $body = null)
+	public static function update(int $uri_id, int $parent_uri_id, int $vid, string $verb, ?string $body = null)
 	{
 		if (!in_array($verb, [Activity::POST, Activity::LIKE, Activity::DISLIKE,
 			Activity::ATTEND, Activity::ATTENDMAYBE, Activity::ATTENDNO,
@@ -30,7 +30,7 @@ class Counts
 			return true;
 		}
 
-		$condition = ['thr-parent-id' => $uri_id, 'vid' => $vid, 'deleted' => false];
+		$condition = ['thr-parent-id' => $uri_id, 'vid' => $vid, 'deleted' => false, 'private' => [Item::PUBLIC, Item::UNLISTED]];
 
 		if ($body == $verb) {
 			$condition['body'] = null;
@@ -52,7 +52,8 @@ class Counts
 			'count'         => Post::countPosts($condition),
 		];
 
-		if ($fields['count'] == 0) {
+		unset($condition['private']);
+		if ($fields['count'] === 0 && Post::countPosts($condition) === 0) {
 			DBA::delete('post-counts', ['uri-id' => $uri_id, 'vid' => $vid, 'reaction' => $body]);
 			return true;
 		}
@@ -83,30 +84,30 @@ class Counts
 		$counts = [];
 
 		$activity_verbs = [
-			Activity::LIKE,
-			Activity::DISLIKE,
-			Activity::ATTEND,
-			Activity::ATTENDMAYBE,
-			Activity::ATTENDNO,
-			Activity::ANNOUNCE,
-			Activity::VIEW,
-			Activity::READ,
+			Verb::getID(Activity::LIKE),
+			Verb::getID(Activity::DISLIKE),
+			Verb::getID(Activity::ATTEND),
+			Verb::getID(Activity::ATTENDMAYBE),
+			Verb::getID(Activity::ATTENDNO),
+			Verb::getID(Activity::ANNOUNCE),
+			Verb::getID(Activity::VIEW),
+			Verb::getID(Activity::READ),
 		];
 
-		$verbs = array_merge($activity_verbs, [Activity::EMOJIREACT, Activity::POST]);
+		$verbs = array_merge($activity_verbs, [Verb::getID(Activity::EMOJIREACT), Verb::getID(Activity::POST)]);
 
-		$condition  = DBA::mergeConditions($condition, ['verb' => $verbs]);
+		$condition  = DBA::mergeConditions($condition, ['vid' => $verbs]);
 		$countquery = DBA::select('post-counts-view', [], $condition);
 		while ($count = DBA::fetch($countquery)) {
 			if (!empty($count['reaction'])) {
 				$count['verb'] = Activity::EMOJIREACT;
 				$count['vid']  = Verb::getID($count['verb']);
-			} elseif (in_array($count['verb'], $activity_verbs)) {
+			} elseif (in_array($count['vid'], $activity_verbs)) {
 				$count['reaction'] = $count['verb'];
 			}
 			$counts[] = $count;
 		}
-		DBA::close($counts);
+		DBA::close($countquery);
 		return $counts;
 	}
 }

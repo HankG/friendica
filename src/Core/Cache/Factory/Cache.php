@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -27,7 +27,7 @@ class Cache
 	/**
 	 * @var string The default cache if nothing set
 	 */
-	const DEFAULT_TYPE = Type\DatabaseCache::NAME;
+	public const DEFAULT_TYPE = Type\DatabaseCache::NAME;
 	/** @var ICanCreateInstances */
 	protected $instanceCreator;
 	/** @var IManageConfigValues */
@@ -35,8 +35,11 @@ class Cache
 	/** @var Profiler */
 	protected $profiler;
 
-	public function __construct(ICanCreateInstances $instanceCreator, IManageConfigValues $config, Profiler $profiler)
-	{
+	public function __construct(
+		ICanCreateInstances $instanceCreator,
+		IManageConfigValues $config,
+		Profiler $profiler,
+	) {
 		$this->config          = $config;
 		$this->instanceCreator = $instanceCreator;
 		$this->profiler        = $profiler;
@@ -65,7 +68,7 @@ class Cache
 	 * @throws InvalidCacheDriverException In case the underlying cache driver isn't valid or not configured properly
 	 * @throws CachePersistenceException In case the underlying cache has errors during persistence
 	 */
-	public function createLocal(string $type = null): ICanCache
+	public function createLocal(?string $type = null): ICanCache
 	{
 		return $this->create($type ?? $this->config->get('system', 'cache_driver', self::DEFAULT_TYPE));
 	}

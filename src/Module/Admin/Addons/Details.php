@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -106,7 +106,7 @@ class Details extends BaseAdmin
 		$addonAuthors = [];
 
 		foreach ($addonInfo->getAuthors() as $addonAuthor) {
-			if (array_key_exists('link', $addonAuthor) && empty(parse_url($addonAuthor['link'], PHP_URL_SCHEME))) {
+			if (array_key_exists('link', $addonAuthor) && empty(parse_url((string) $addonAuthor['link'], PHP_URL_SCHEME))) {
 				$contact = Contact::getByURL($addonAuthor['link'], false);
 
 				if (!empty($contact['url'])) {
@@ -120,7 +120,7 @@ class Details extends BaseAdmin
 		$addonMaintainers = [];
 
 		foreach ($addonInfo->getMaintainers() as $addonMaintainer) {
-			if (array_key_exists('link', $addonMaintainer) && empty(parse_url($addonMaintainer['link'], PHP_URL_SCHEME))) {
+			if (array_key_exists('link', $addonMaintainer) && empty(parse_url((string) $addonMaintainer['link'], PHP_URL_SCHEME))) {
 				$contact = Contact::getByURL($addonMaintainer['link'], false);
 
 				if (!empty($contact['url'])) {

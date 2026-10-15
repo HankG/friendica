@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -36,13 +36,9 @@ final class HtmlFilterEvent extends Event
 
 	public const CONTACT_BLOCK_END = 'friendica.html.contact_block_end';
 
-	private string $html;
-
-	public function __construct(string $name, string $html)
+	public function __construct(string $name, private string $html)
 	{
 		parent::__construct($name);
-
-		$this->html = $html;
 	}
 
 	public function getHtml(): string

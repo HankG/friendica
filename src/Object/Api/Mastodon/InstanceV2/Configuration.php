@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -33,7 +33,7 @@ class Configuration extends BaseDataTransferObject
 		StatusesConfig $statuses,
 		MediaAttachmentsConfig $media_attachments,
 		Polls $polls,
-		Accounts $accounts
+		Accounts $accounts,
 	) {
 		$this->accounts          = $accounts;
 		$this->statuses          = $statuses;

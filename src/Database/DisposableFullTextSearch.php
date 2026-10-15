@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -15,19 +15,16 @@ namespace Friendica\Database;
  */
 class DisposableFullTextSearch
 {
-	private Database $db;
 	/** @var int Unique identifier of the haystack in the database. */
 	private int $identifier;
 
-	public function __construct(Database $database, string $haystack)
+	public function __construct(private readonly Database $db, string $haystack)
 	{
-		$this->db = $database;
-
 		// Unique identifier generation. Two DisposableFullTextSearch object should never have the same as the first object destruction
 		// would delete both check-full-text-search rows before the second object destruction is called, leading to unexpected behavior.
 		do {
 			// Maximum value is indicated by the INT UNSIGNED type of the check-full-text-search.pid field
-			$this->identifier = random_int(0, pow(2, 32) - 1);
+			$this->identifier = random_int(0, pow(2, 31) - 1);
 		} while ($this->db->exists('check-full-text-search', ['pid' => $this->identifier]));
 
 		// If the `exists()` call fails and return false because the database is unavailable, the `insert()` call will likely fail as well, which means

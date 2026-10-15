@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -24,6 +24,7 @@ use Friendica\Navigation\Notifications\Entity\Notification as NotificationEntity
 use Friendica\Navigation\Notifications\Entity\Notify as NotifyEntity;
 use Friendica\Navigation\Notifications\Exception;
 use Friendica\Navigation\Notifications\Factory;
+use Friendica\Navigation\Notifications\Factory\Notify as NotifyFactory;
 use Friendica\Network\HTTPException;
 use Friendica\Object\Api\Mastodon\Notification;
 use Friendica\Protocol\Activity;
@@ -37,9 +38,6 @@ use Psr\Log\LoggerInterface;
  */
 class Notify extends BaseRepository
 {
-	/** @var Factory\Notify  */
-	protected $factory;
-
 	/** @var L10n  */
 	protected $l10n;
 
@@ -49,16 +47,11 @@ class Notify extends BaseRepository
 	/** @var IManageConfigValues */
 	protected $config;
 
-	/** @var IManagePersonalConfigValues */
-	private $pConfig;
-
 	/** @var Emailer */
 	protected $emailer;
 
 	/** @var Factory\Notification */
 	protected $notification;
-
-	private EventDispatcherInterface $eventDispatcher;
 
 	protected static $table_name = 'notify';
 
@@ -68,21 +61,24 @@ class Notify extends BaseRepository
 		L10n $l10n,
 		BaseURL $baseUrl,
 		IManageConfigValues $config,
-		IManagePersonalConfigValues $pConfig,
+		private readonly IManagePersonalConfigValues $pConfig,
 		Emailer $emailer,
 		Factory\Notification $notification,
-		EventDispatcherInterface $eventDispatcher,
-		Factory\Notify $factory = null
+		private readonly EventDispatcherInterface $eventDispatcher,
+		private readonly NotifyFactory $entityFactory,
 	) {
-		$this->l10n            = $l10n;
-		$this->baseUrl         = $baseUrl;
-		$this->config          = $config;
-		$this->pConfig         = $pConfig;
-		$this->emailer         = $emailer;
-		$this->notification    = $notification;
-		$this->eventDispatcher = $eventDispatcher;
+		$this->l10n         = $l10n;
+		$this->baseUrl      = $baseUrl;
+		$this->config       = $config;
+		$this->emailer      = $emailer;
+		$this->notification = $notification;
+		parent::__construct($database, $logger, $this->entityFactory);
+	}
 
-		parent::__construct($database, $logger, $factory ?? new Factory\Notify($logger));
+	/** @not-deprecated */
+	protected function getFactory(): NotifyFactory
+	{
+		return $this->entityFactory;
 	}
 
 	/**
@@ -90,9 +86,9 @@ class Notify extends BaseRepository
 	 */
 	private function selectOne(array $condition, array $params = []): NotifyEntity
 	{
-		$fields = $this->_selectFirstRowAsArray( $condition, $params);
+		$fields = $this->_selectFirstRowAsArray($condition, $params);
 
-		return $this->factory->createFromTableRow($fields);
+		return $this->getFactory()->createFromTableRow($fields);
 	}
 
 	private function select(array $condition, array $params = []): Collection\Notifies
@@ -200,7 +196,7 @@ class Notify extends BaseRepository
 			$Notify->link,
 			$Notify->parent,
 			$Notify->otype,
-			$Notify->uid
+			$Notify->uid,
 		];
 		return $this->db->update(self::$table_name, ['seen' => true], $condition);
 	}
@@ -261,13 +257,13 @@ class Notify extends BaseRepository
 			}
 		}
 
-		$siteurl  = (string)$this->baseUrl;
+		$siteurl  = (string) $this->baseUrl;
 		$sitename = $this->config->get('config', 'sitename');
 
 		// with $params['show_in_notification_page'] == false, the notification isn't inserted into
 		// the database, and an email is sent if applicable.
 		// default, if not specified: true
-		$show_in_notification_page = isset($params['show_in_notification_page']) ? $params['show_in_notification_page'] : true;
+		$show_in_notification_page = $params['show_in_notification_page'] ?? true;
 
 		$title = $params['item']['title'] ?? '';
 		$body  = $params['item']['body']  ?? '';
@@ -290,7 +286,7 @@ class Notify extends BaseRepository
 				$subject = $l10n->t('%s New mail received at %s', $subjectPrefix, $sitename);
 
 				$preamble  = $l10n->t('%1$s sent you a new private message at %2$s.', $params['source_name'], $sitename);
-				$epreamble = $l10n->t('%1$s sent you %2$s.', '[url='.$params['source_link'].']'.$params['source_name'].'[/url]', '[url=' . $itemlink . ']' . $l10n->t('a private message').'[/url]');
+				$epreamble = $l10n->t('%1$s sent you %2$s.', '[url=' . $params['source_link'] . ']' . $params['source_name'] . '[/url]', '[url=' . $itemlink . ']' . $l10n->t('a private message') . '[/url]');
 
 				$sitelink  = $l10n->t('Please visit %s to view and/or reply to your private messages.');
 				$tsitelink = sprintf($sitelink, $itemlink);
@@ -353,13 +349,13 @@ class Notify extends BaseRepository
 				$preamble  = $l10n->t('%1$s posted to your profile wall at %2$s', $params['source_name'], $sitename);
 				$epreamble = $l10n->t(
 					'%1$s posted to [url=%2$s]your wall[/url]',
-					'[url='.$params['source_link'].']'.$params['source_name'].'[/url]',
-					$params['link']
+					'[url=' . $params['source_link'] . ']' . $params['source_name'] . '[/url]',
+					$params['link'],
 				);
 
 				$sitelink  = $l10n->t('Please visit %s to view and/or reply to the conversation.');
 				$tsitelink = sprintf($sitelink, $siteurl);
-				$hsitelink = sprintf($sitelink, '<a href="'.$siteurl.'">'.$sitename.'</a>');
+				$hsitelink = sprintf($sitelink, '<a href="' . $siteurl . '">' . $sitename . '</a>');
 				$itemlink  = $params['link'];
 				break;
 
@@ -371,25 +367,25 @@ class Notify extends BaseRepository
 				$epreamble = $l10n->t(
 					'You\'ve received [url=%1$s]an introduction[/url] from %2$s.',
 					$itemlink,
-					'[url='.$params['source_link'].']'.$params['source_name'].'[/url]'
+					'[url=' . $params['source_link'] . ']' . $params['source_name'] . '[/url]',
 				);
 
 				$body = $l10n->t('You may visit their profile at %s', $params['source_link']);
 
 				$sitelink  = $l10n->t('Please visit %s to approve or reject the introduction.');
 				$tsitelink = sprintf($sitelink, $siteurl);
-				$hsitelink = sprintf($sitelink, '<a href="'.$siteurl.'">'.$sitename.'</a>');
+				$hsitelink = sprintf($sitelink, '<a href="' . $siteurl . '">' . $sitename . '</a>');
 
 				switch ($params['verb']) {
 					case Activity::FRIEND:
 						// someone started to share with user (mostly OStatus)
-						$subject = $l10n->t('%s A new person is sharing with you', $subjectPrefix);
+						$subject = $l10n->t('%s You have a new friend', $subjectPrefix);
 
-						$preamble  = $l10n->t('%1$s is sharing with you at %2$s', $params['source_name'], $sitename);
+						$preamble  = $l10n->t('%1$s is your friend at %2$s', $params['source_name'], $sitename);
 						$epreamble = $l10n->t(
-							'%1$s is sharing with you at %2$s',
-							'[url='.$params['source_link'].']'.$params['source_name'].'[/url]',
-							$sitename
+							'%1$s is your friend at %2$s',
+							'[url=' . $params['source_link'] . ']' . $params['source_name'] . '[/url]',
+							$sitename,
 						);
 						break;
 					case Activity::FOLLOW:
@@ -399,8 +395,8 @@ class Notify extends BaseRepository
 						$preamble  = $l10n->t('You have a new follower at %2$s : %1$s', $params['source_name'], $sitename);
 						$epreamble = $l10n->t(
 							'You have a new follower at %2$s : %1$s',
-							'[url='.$params['source_link'].']'.$params['source_name'].'[/url]',
-							$sitename
+							'[url=' . $params['source_link'] . ']' . $params['source_name'] . '[/url]',
+							$sitename,
 						);
 						break;
 					default:
@@ -417,17 +413,17 @@ class Notify extends BaseRepository
 				$epreamble = $l10n->t(
 					'You\'ve received [url=%1$s]a friend suggestion[/url] for %2$s from %3$s.',
 					$itemlink,
-					'[url='.$params['item']['url'].']'.$params['item']['name'].'[/url]',
-					'[url='.$params['source_link'].']'.$params['source_name'].'[/url]'
+					'[url=' . $params['item']['url'] . ']' . $params['item']['name'] . '[/url]',
+					'[url=' . $params['source_link'] . ']' . $params['source_name'] . '[/url]',
 				);
 
-				$body = $l10n->t('Name:').' '.$params['item']['name']."\n";
-				$body .= $l10n->t('Photo:').' '.$params['item']['photo']."\n";
+				$body = $l10n->t('Name:') . ' ' . $params['item']['name'] . "\n";
+				$body .= $l10n->t('Photo:') . ' ' . $params['item']['photo'] . "\n";
 				$body .= $l10n->t('You may visit their profile at %s', $params['item']['url']);
 
 				$sitelink  = $l10n->t('Please visit %s to approve or reject the suggestion.');
 				$tsitelink = sprintf($sitelink, $siteurl);
-				$hsitelink = sprintf($sitelink, '<a href="'.$siteurl.'">'.$sitename.'</a>');
+				$hsitelink = sprintf($sitelink, '<a href="' . $siteurl . '">' . $sitename . '</a>');
 				break;
 
 			case Model\Notification\Type::CONFIRM:
@@ -439,14 +435,14 @@ class Notify extends BaseRepository
 					$epreamble = $l10n->t(
 						'%2$s has accepted your [url=%1$s]connection request[/url].',
 						$itemlink,
-						'[url='.$params['source_link'].']'.$params['source_name'].'[/url]'
+						'[url=' . $params['source_link'] . ']' . $params['source_name'] . '[/url]',
 					);
 
-					$body = $l10n->t('You are now mutual friends and may exchange status updates, photos, and email without restriction.');
+					$body = $l10n->t('You are now friends and may exchange status updates, photos, and messages without restriction.');
 
 					$sitelink  = $l10n->t('Please visit %s if you wish to make any changes to this relationship.');
 					$tsitelink = sprintf($sitelink, $siteurl);
-					$hsitelink = sprintf($sitelink, '<a href="'.$siteurl.'">'.$sitename.'</a>');
+					$hsitelink = sprintf($sitelink, '<a href="' . $siteurl . '">' . $sitename . '</a>');
 				} else { // ACTIVITY_FOLLOW
 					$itemlink = $params['link'];
 					$subject  = $l10n->t('%s Connection accepted', $subjectPrefix);
@@ -455,7 +451,7 @@ class Notify extends BaseRepository
 					$epreamble = $l10n->t(
 						'%2$s has accepted your [url=%1$s]connection request[/url].',
 						$itemlink,
-						'[url='.$params['source_link'].']'.$params['source_name'].'[/url]'
+						'[url=' . $params['source_link'] . ']' . $params['source_name'] . '[/url]',
 					);
 
 					$body = $l10n->t('\'%1$s\' has chosen to accept you a fan, which restricts some forms of communication - such as private messaging and some profile interactions. If this is a celebrity or community page, these settings were applied automatically.', $params['source_name']);
@@ -464,12 +460,12 @@ class Notify extends BaseRepository
 
 					$sitelink  = $l10n->t('Please visit %s  if you wish to make any changes to this relationship.');
 					$tsitelink = sprintf($sitelink, $siteurl);
-					$hsitelink = sprintf($sitelink, '<a href="'.$siteurl.'">'.$sitename.'</a>');
+					$hsitelink = sprintf($sitelink, '<a href="' . $siteurl . '">' . $sitename . '</a>');
 				}
 				break;
 
 			case Model\Notification\Type::SYSTEM:
-				switch($params['event']) {
+				switch ($params['event']) {
 					case 'SYSTEM_REGISTER_REQUEST':
 						$itemlink = $params['link'];
 						$subject  = $l10n->t('[Friendica System Notify]') . ' ' . $l10n->t('registration request');
@@ -478,15 +474,15 @@ class Notify extends BaseRepository
 						$epreamble = $l10n->t(
 							'You\'ve received a [url=%1$s]registration request[/url] from %2$s.',
 							$itemlink,
-							'[url='.$params['source_link'].']'.$params['source_name'].'[/url]'
+							'[url=' . $params['source_link'] . ']' . $params['source_name'] . '[/url]',
 						);
 
 						$body = $l10n->t(
-							"Display Name:	%s\nSite Location:	%s\nLogin Name:	%s (%s)",
+							"Display Name: %s\nURL: %s\nUsername: %s (%s)",
 							$params['source_name'],
 							$siteurl,
 							$params['source_mail'],
-							$params['source_nick']
+							$params['source_nick'],
 						);
 
 						$sitelink  = $l10n->t('Please visit %s to approve or reject the request.');
@@ -502,15 +498,15 @@ class Notify extends BaseRepository
 						$epreamble = $l10n->t(
 							'You\'ve received a [url=%1$s]new registration[/url] from %2$s.',
 							$itemlink,
-							'[url='.$params['source_link'].']'.$params['source_name'].'[/url]'
+							'[url=' . $params['source_link'] . ']' . $params['source_name'] . '[/url]',
 						);
 
 						$body = $l10n->t(
-							"Display Name:	%s\nSite Location:	%s\nLogin Name:	%s (%s)",
+							"Display name: %s\nURL: %s\nUsername: %s (%s)",
 							$params['source_name'],
 							$siteurl,
 							$params['source_mail'],
-							$params['source_nick']
+							$params['source_nick'],
 						);
 
 						$sitelink  = $l10n->t('Please visit %s to have a look at the new registration.');
@@ -559,7 +555,7 @@ class Notify extends BaseRepository
 
 		$emailBuilder->setHeader('X-Friendica-Account', '<' . $nickname . '@' . $hostname . '>');
 
-		$subject .= " (".$nickname."@".$hostname.")";
+		$subject .= " (" . $nickname . "@" . $hostname . ")";
 
 		$hook_data = [
 			'params'    => $params,
@@ -570,7 +566,7 @@ class Notify extends BaseRepository
 			'sitelink'  => $sitelink,
 			'tsitelink' => $tsitelink,
 			'hsitelink' => $hsitelink,
-			'itemlink'  => $itemlink
+			'itemlink'  => $itemlink,
 		];
 
 		$hook_data = $this->eventDispatcher->dispatch(
@@ -591,10 +587,10 @@ class Notify extends BaseRepository
 		$notify_id = 0;
 
 		if ($show_in_notification_page) {
-			$Notify = $this->factory->createFromParams($params, $itemlink, $item_id, $uri_id, $parent_id, $parent_uri_id);
+			$Notify = $this->getFactory()->createFromParams($params, $itemlink, $item_id, $uri_id, $parent_id, $parent_uri_id);
 			try {
 				$Notify = $this->save($Notify);
-			} catch (Exception\NotificationCreationInterceptedException $e) {
+			} catch (Exception\NotificationCreationInterceptedException) {
 				// Notification insertion can be intercepted by an addon registering the 'enotify_store' hook
 				return false;
 			}
@@ -608,7 +604,8 @@ class Notify extends BaseRepository
 
 		// send email notification if notification preferences permit
 		if ((intval($params['notify_flags']) & intval($params['type']))
-			|| $params['type'] == Model\Notification\Type::SYSTEM) {
+			|| $params['type'] == Model\Notification\Type::SYSTEM
+		) {
 
 			$this->logger->notice('sending notification email');
 
@@ -620,8 +617,12 @@ class Notify extends BaseRepository
 				if (!DBA::exists('notify-threads', ['master-parent-uri-id' => $parent_uri_id, 'receiver-uid' => $params['uid']])) {
 					$this->logger->info("notify_id:" . intval($notify_id) . ", parent: " . intval($params['parent']) . "uid: " . intval($params['uid']));
 
-					$fields = ['notify-id' => $notify_id, 'master-parent-uri-id' => $parent_uri_id,
-						'receiver-uid'        => $params['uid'], 'parent-item' => 0];
+					$fields = [
+						'notify-id'            => $notify_id,
+						'master-parent-uri-id' => $parent_uri_id,
+						'receiver-uid'         => $params['uid'],
+						'parent-item'          => 0,
+					];
 					DBA::insert('notify-threads', $fields);
 
 					$emailBuilder->setHeader('Message-ID', $message_id);
@@ -671,7 +672,7 @@ class Notify extends BaseRepository
 				$emailBuilder->withPhoto(
 					$hook_data['source_photo'],
 					$hook_data['source_link'] ?? $sitelink,
-					$hook_data['source_name'] ?? $sitename
+					$hook_data['source_name'] ?? $sitename,
 				);
 			}
 
@@ -686,9 +687,9 @@ class Notify extends BaseRepository
 		return false;
 	}
 
-	public function shouldShowOnDesktop(NotificationEntity $Notification, string $type = null): bool
+	public function shouldShowOnDesktop(NotificationEntity $Notification, string $type = ''): bool
 	{
-		if (is_null($type)) {
+		if ($type === '') {
 			$type = NotificationFactory::getType($Notification);
 		}
 
@@ -696,11 +697,11 @@ class Notify extends BaseRepository
 			return true;
 		}
 
-		if ($this->pConfig->get($Notification->uid, 'system', 'notify_like') && ($type == Notification::TYPE_LIKE)) {
+		if ($this->pConfig->get($Notification->uid, 'system', 'notify_like') && ($type === Notification::TYPE_LIKE)) {
 			return true;
 		}
 
-		if ($this->pConfig->get($Notification->uid, 'system', 'notify_announce') && ($type == Notification::TYPE_RESHARE)) {
+		if ($this->pConfig->get($Notification->uid, 'system', 'notify_announce') && ($type === Notification::TYPE_RESHARE)) {
 			return true;
 		}
 
@@ -718,12 +719,17 @@ class Notify extends BaseRepository
 		return false;
 	}
 
-	public function createFromNotification(NotificationEntity $Notification): bool
+	public function createFromNotification(NotificationEntity $Notification, string $type): bool
 	{
 		$this->logger->info('Start', ['uid' => $Notification->uid, 'id' => $Notification->id, 'type' => $Notification->type]);
 
 		if ($Notification->type === Model\Post\UserNotification::TYPE_NONE) {
 			$this->logger->info('Not an item based notification, quitting', ['uid' => $Notification->uid, 'id' => $Notification->id, 'type' => $Notification->type]);
+			return false;
+		}
+
+		if (in_array($type, [Notification::TYPE_LIKE, Notification::TYPE_RESHARE])) {
+			$this->logger->info('Notification type is like or reshare, quitting', ['uid' => $Notification->uid, 'id' => $Notification->id, 'type' => $Notification->type]);
 			return false;
 		}
 
@@ -756,7 +762,7 @@ class Notify extends BaseRepository
 			$Notification->uid,
 			Model\Item::ITEM_FIELDLIST,
 			['uid'   => [0, $Notification->uid], 'uri-id' => $Notification->targetUriId, 'deleted' => false],
-			['order' => ['uid' => true]]
+			['order' => ['uid' => true]],
 		);
 		if (empty($item)) {
 			$this->logger->info('Item not found', ['uri-id' => $Notification->targetUriId, 'type' => $Notification->type]);
@@ -765,7 +771,7 @@ class Notify extends BaseRepository
 
 		$params['item']   = $item;
 		$params['parent'] = $item['parent'];
-		$params['link']   = $this->baseUrl . '/display/' . urlencode($item['guid']);
+		$params['link']   = $this->baseUrl . '/display/' . urlencode((string) $item['guid']);
 
 		$subjectPrefix = $l10n->t('[Friendica:Notify]');
 
@@ -776,8 +782,11 @@ class Notify extends BaseRepository
 
 		// Check to see if there was already a tag notify or comment notify for this post.
 		// If so don't create a second notification
-		$condition = ['type' => [Model\Notification\Type::TAG_SELF, Model\Notification\Type::COMMENT, Model\Notification\Type::SHARE],
-			'link'              => $params['link'], 'verb' => Activity::POST];
+		$condition = [
+			'type' => [Model\Notification\Type::TAG_SELF, Model\Notification\Type::COMMENT, Model\Notification\Type::SHARE],
+			'link' => $params['link'],
+			'verb' => Activity::POST,
+		];
 		if ($this->existsForUser($Notification->uid, $condition)) {
 			$this->logger->info('Duplicate found, quitting', $condition + ['uid' => $Notification->uid]);
 			return false;
@@ -825,7 +834,7 @@ class Notify extends BaseRepository
 		$epreamble = $msg['rich'];
 
 		$sitename = $this->config->get('config', 'sitename');
-		$siteurl  = (string)$this->baseUrl;
+		$siteurl  = (string) $this->baseUrl;
 
 		$sitelink  = $l10n->t('Please visit %s to view and/or reply to the conversation.');
 		$tsitelink = sprintf($sitelink, $siteurl);

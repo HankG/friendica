@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -31,7 +31,7 @@ trait DatabaseTestTrait
 		try {
 			// Rollbacks every DB usage so we don't commit anything into the DB
 			StaticDatabase::statRollback();
-		} catch (\PDOException $exception) {
+		} catch (\PDOException) {
 			print_r("Found already rolled back transaction");
 		}
 	}
@@ -58,7 +58,7 @@ trait DatabaseTestTrait
 
 			foreach ($rows as $row) {
 				if (is_array($row)) {
-					$dba->insert($tableName, $row, true);
+					$dba->insert($tableName, $row, Database::INSERT_UPDATE);
 				} else {
 					throw new \Exception('row isn\'t an array');
 				}

@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -43,8 +43,14 @@ class PermissionSet extends BaseEntity
 	 *
 	 * @see \Friendica\Security\PermissionSet\Factory\PermissionSet
 	 */
-	public function __construct(int $uid, array $allow_cid = [], array $allow_gid = [], array $deny_cid = [], array $deny_gid = [], int $id = null)
-	{
+	public function __construct(
+		int $uid,
+		array $allow_cid = [],
+		array $allow_gid = [],
+		array $deny_cid = [],
+		array $deny_gid = [],
+		?int $id = null,
+	) {
 		$this->id        = $id;
 		$this->uid       = $uid;
 		$this->allow_cid = $allow_cid;
@@ -60,20 +66,18 @@ class PermissionSet extends BaseEntity
 	 */
 	public function isPublic(): bool
 	{
-		return (($this->id === PermissionSetRepository::PUBLIC) ||
-				(is_null($this->id) &&
-				 empty($this->allow_cid) &&
-				 empty($this->allow_gid) &&
-				 empty($this->deny_cid) &&
-				 empty($this->deny_gid)));
+		return (($this->id === PermissionSetRepository::PUBLIC)
+				|| (is_null($this->id)
+				 && empty($this->allow_cid)
+				 && empty($this->allow_gid)
+				 && empty($this->deny_cid)
+				 && empty($this->deny_gid)));
 	}
 
 	/**
 	 * Creates a new Entity with a new allowed_cid list (wipes the id because it isn't the same entity anymore)
 	 *
 	 * @param array $allow_cid
-	 *
-	 * @return $this
 	 */
 	public function withAllowedContacts(array $allow_cid): PermissionSet
 	{

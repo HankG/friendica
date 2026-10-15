@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -9,6 +9,7 @@ namespace Friendica\Model;
 
 use Friendica\App\Mode;
 use Friendica\AppHelper;
+use Friendica\Content\Feature;
 use Friendica\Content\Text\BBCode;
 use Friendica\Content\Widget\ContactBlock;
 use Friendica\Core\Cache\Enum\Duration;
@@ -26,6 +27,7 @@ use Friendica\Security\PermissionSet\Entity\PermissionSet;
 use Friendica\Util\DateTimeFormat;
 use Friendica\Util\Proxy;
 use Friendica\Util\Strings;
+use Friendica\Core\Theme;
 
 class Profile
 {
@@ -197,7 +199,7 @@ class Profile
 	 * @throws HTTPException\InternalServerErrorException
 	 * @throws \ImagickException
 	 */
-	public static function load(AppHelper $appHelper, string $nickname, bool $show_contacts = true): array
+	public static function load(AppHelper $appHelper, string $nickname, bool $show_contacts = true, int $view_as_contact_id = 0): array
 	{
 		$profile = User::getOwnerDataByNick($nickname);
 		if (!isset($profile['account_removed']) || $profile['account_removed']) {
@@ -213,7 +215,7 @@ class Profile
 
 		$appHelper->setProfileOwner($profile['uid']);
 
-		DI::page()['title'] = $profile['name'] . ' @ ' . DI::config()->get('config', 'sitename');
+		DI::page()['title'] = $profile['name'];
 
 		if (!DI::userSession()->getLocalUserId()) {
 			$appHelper->setCurrentTheme($profile['theme']);
@@ -238,7 +240,7 @@ class Profile
 		 * By now, the contact block isn't shown, when a different profile is given
 		 * But: When this profile was on the same server, then we could display the contacts
 		 */
-		DI::page()['aside'] .= self::getVCardHtml($profile, $block, $show_contacts);
+		DI::page()['aside'] .= self::getVCardHtml($profile, $block, $show_contacts, $view_as_contact_id);
 
 		return $profile;
 	}
@@ -259,8 +261,10 @@ class Profile
 	 * @throws \ImagickException
 	 * @note  Returns empty string if passed $profile is wrong type or not populated
 	 */
-	public static function getVCardHtml(array $profile, bool $block, bool $show_contacts): string
+	public static function getVCardHtml(array $profile, bool $block, bool $show_contacts, int $view_as_contact_id = 0): string
 	{
+		DI::statusEditor()->registerAssets();
+
 		$o        = '';
 		$location = false;
 
@@ -273,7 +277,7 @@ class Profile
 			$profile_contact = Contact::selectFirst([], ['id' => $profile['cid']]);
 		}
 
-		$profile['picdate'] = urlencode($profile['picdate']);
+		$profile['picdate'] = urlencode((string) $profile['picdate']);
 
 		$profile['network_link'] = '';
 
@@ -309,7 +313,7 @@ class Profile
 		}
 
 		$local_user_is_self       = DI::userSession()->getMyUrl() && ($profile['url'] == DI::userSession()->getMyUrl());
-		$visitor_is_authenticated = (bool)DI::userSession()->getMyUrl();
+		$visitor_is_authenticated = (bool) DI::userSession()->getMyUrl();
 		$visitor_is_following     = in_array($visitor_contact['rel'] ?? 0, [Contact::FOLLOWER, Contact::FRIEND])
 			|| in_array($profile_contact['rel'] ?? 0, [Contact::SHARING, Contact::FRIEND]);
 		$visitor_is_followed = in_array($visitor_contact['rel'] ?? 0, [Contact::SHARING, Contact::FRIEND])
@@ -319,14 +323,14 @@ class Profile
 		if (!$local_user_is_self) {
 			if (!$visitor_is_authenticated) {
 				// Remote follow is only available for local profiles
-				if (!empty($profile['nickname']) && strpos($profile_url, (string)DI::baseUrl()) === 0) {
+				if (!empty($profile['nickname']) && str_starts_with((string) $profile_url, (string) DI::baseUrl())) {
 					$follow_link = 'profile/' . $profile['nickname'] . '/remote_follow';
 				}
 			} else {
 				if ($visitor_is_following) {
-					$unfollow_link = $visitor_base_path . '/contact/unfollow?url=' . urlencode($profile_url) . '&auto=1';
+					$unfollow_link = $visitor_base_path . '/contact/unfollow?url=' . urlencode((string) $profile_url) . '&auto=1';
 				} else {
-					$follow_link = $visitor_base_path . '/contact/follow?binurl=' . bin2hex($profile_url) . '&auto=1';
+					$follow_link = $visitor_base_path . '/contact/follow?binurl=' . bin2hex((string) $profile_url) . '&auto=1';
 				}
 			}
 
@@ -336,21 +340,16 @@ class Profile
 				}
 			}
 		}
-
-		// show edit profile to yourself, but only if this is not meant to be
-		// rendered as a "contact". i.e., if 'self' (a "contact" table column) isn't
-		// set in $profile.
-		if (!isset($profile['self']) && $local_user_is_self) {
-			$profile['edit'] = [DI::baseUrl() . '/settings/profile', DI::l10n()->t('Edit profile'), '', DI::l10n()->t('Edit profile')];
-			$profile['menu'] = [
-				'chg_photo' => DI::l10n()->t('Change profile photo'),
-				'cr_new'    => null,
-				'entries'   => [],
-			];
+		if ($local_user_is_self && $view_as_contact_id == 0) {
+			$picture_dest_url            = DI::baseUrl() . '/settings/profile?profilepicture';
+			$change_profile_picture_text = DI::l10n()->t('Change profile picture');
+		} else {
+			$picture_dest_url            = $profile['url'];
+			$change_profile_picture_text = "";
 		}
 
-		// Fetch the account type
-		$account_type = Contact::getAccountType($profile['account-type']);
+		// Fetch the account type name string
+		$account_type_name = Contact::getAccountType($profile['account-type']);
 
 		if (!empty($profile['address']) || !empty($profile['location'])) {
 			$location = DI::l10n()->t('Location:');
@@ -391,7 +390,7 @@ class Profile
 		$contact_count = 0;
 
 		if (!empty($profile['last-item'])) {
-			$updated = date('c', strtotime($profile['last-item']));
+			$updated = date('c', strtotime((string) $profile['last-item']));
 		}
 
 		if (!$block && $show_contacts) {
@@ -438,44 +437,71 @@ class Profile
 			DI::logger()->warning('Missing hidewall key in profile array', ['profile' => $profile]);
 		}
 
+		$always_open_compose = DI::pConfig()->get(DI::userSession()->getLocalUserId(), 'frio', 'always_open_compose', false);
+
 		if ($profile['account-type'] == Contact::TYPE_COMMUNITY) {
 			$mention_label = DI::l10n()->t('Post to group');
 			$mention_url   = 'compose/0?body=!' . $profile['addr'];
-			$network_label = DI::l10n()->t('View group');
+			$network_label = DI::l10n()->t('Group posts');
+			$network_icon  = 'ri-discuss-line';
 		} else {
 			$mention_label = DI::l10n()->t('Mention');
 			$mention_url   = 'compose/0?body=@' . $profile['addr'];
-			$network_label = DI::l10n()->t('Network Posts');
+			$network_label = DI::l10n()->t('Posts');
+			$network_icon  = 'ri-chat-1-line';
 		}
 		$network_url = 'contact/' . $cid . '/conversations';
 
+		$member_since = null;
+		if (isset($p['register_date']) && Feature::isEnabled($p['uid'], Feature::MEMBER_SINCE)) {
+			$member_since = [ DI::l10n()->t('Joined:'), DI::l10n()->mediumDate($p['register_date']) ];
+		}
+
+		[$administrator, $moderator] = Contact::getType($profile['id'], $profile['url']);
+
 		$tpl = Renderer::getMarkupTemplate('profile/vcard.tpl');
 		$o .= Renderer::replaceMacros($tpl, [
-			'$profile'             => $p,
-			'$xmpp'                => $xmpp,
-			'$matrix'              => $matrix,
-			'$follow'              => DI::l10n()->t('Follow'),
-			'$follow_link'         => $follow_link,
-			'$unfollow'            => DI::l10n()->t('Unfollow'),
-			'$unfollow_link'       => $unfollow_link,
-			'$subscribe_feed'      => DI::l10n()->t('Atom feed'),
-			'$subscribe_feed_link' => $profile['hidewall'] ?? 0 ? '' : $profile['poll'],
-			'$wallmessage'         => DI::l10n()->t('Message'),
-			'$wallmessage_link'    => $wallmessage_link,
-			'$account_type'        => $account_type,
-			'$location'            => $location,
-			'$homepage'            => $homepage,
-			'$homepage_verified'   => DI::l10n()->t('This website has been verified to belong to the same person.'),
-			'$about'               => $about,
-			'$network'             => DI::l10n()->t('Network:'),
-			'$contacts'            => $contact_count,
-			'$updated'             => $updated,
-			'$diaspora'            => $diaspora,
-			'$contact_block'       => $contact_block,
-			'$mention_label'       => $mention_label,
-			'$mention_url'         => $mention_url,
-			'$network_label'       => $network_label,
-			'$network_url'         => $network_url,
+			'is_admin'           => $administrator,
+			'admin_title'        => DI::l10n()->t('Administrator'),
+			'is_mod'             => $moderator,
+			'moderator_title'    => DI::l10n()->t('Moderator'),
+			'$is_owner'          => DI::userSession()->getLocalUserId() == $profile['uid'],
+			'$profile'           => $p,
+			'$edit_profile_link' => [
+				'url'  => 'settings/profile',
+				'text' => DI::l10n()->t('Edit profile'),
+			],
+			'$picture_dest_url'            => $picture_dest_url,
+			'$change_profile_picture_text' => $change_profile_picture_text,
+			'$xmpp'                        => $xmpp,
+			'$member_since'                => $member_since,
+			'$matrix'                      => $matrix,
+			'$follow'                      => DI::l10n()->t('Follow'),
+			'$follow_link'                 => $follow_link,
+			'$unfollow'                    => DI::l10n()->t('Unfollow'),
+			'$unfollow_link'               => $unfollow_link,
+			'$subscribe_feed'              => DI::l10n()->t('Atom feed'),
+			'$subscribe_feed_link'         => $profile['hidewall'] ?? 0 ? '' : $profile['poll'],
+			'$wallmessage'                 => DI::l10n()->t('Message'),
+			'$wallmessage_link'            => $wallmessage_link,
+			'$account_type_name'           => $account_type_name,
+			'$account_type'                => $profile['account-type'],
+			'$page_flags'                  => $profile['page-flags'],
+			'$location'                    => $location,
+			'$homepage'                    => $homepage,
+			'$homepage_verified'           => DI::l10n()->t('This website has been verified to belong to the same person.'),
+			'$about'                       => $about,
+			'$network'                     => DI::l10n()->t('Network:'),
+			'$contacts'                    => $contact_count,
+			'$updated'                     => $updated,
+			'$diaspora'                    => $diaspora,
+			'$contact_block'               => $contact_block,
+			'$always_open_compose'         => $always_open_compose,
+			'$mention_label'               => $mention_label,
+			'$mention_url'                 => $mention_url,
+			'$network_label'               => $network_label,
+			'$network_url'                 => $network_url,
+			'$network_icon'                => $network_icon,
 		]);
 
 		$hook_data = [
@@ -524,8 +550,6 @@ class Profile
 	 */
 	public static function getBirthdays(int $uid): string
 	{
-		$bd_short = DI::l10n()->t('F d');
-
 		$cacheKey = 'get_birthdays:' . $uid;
 		$events   = DI::cache()->get($cacheKey);
 		if (is_null($events)) {
@@ -545,7 +569,7 @@ class Profile
 				Contact::FRIEND,
 				$uid,
 				DateTimeFormat::utc('now + 6 days'),
-				DateTimeFormat::utcNow()
+				DateTimeFormat::utcNow(),
 			);
 			if (DBA::isResult($result)) {
 				$events = DBA::toArray($result);
@@ -562,7 +586,7 @@ class Profile
 
 			$isToday = false;
 			foreach ($events as $event) {
-				if (strlen($event['name'])) {
+				if (strlen((string) $event['name'])) {
 					$total++;
 				}
 				if ((strtotime($event['start'] . ' +00:00') < $now) && (strtotime($event['finish'] . ' +00:00') > $now)) {
@@ -572,7 +596,7 @@ class Profile
 			$classToday = $isToday ? ' birthday-today ' : '';
 			if ($total) {
 				foreach ($events as $event) {
-					if (!strlen($event['name'])) {
+					if (!strlen((string) $event['name'])) {
 						continue;
 					}
 
@@ -588,7 +612,7 @@ class Profile
 						'id'    => $event['id'],
 						'link'  => Contact::magicLinkById($event['cid']),
 						'title' => $event['name'],
-						'date'  => DI::l10n()->getDay(DateTimeFormat::local($event['start'], $bd_short)) . (($today) ? ' ' . DI::l10n()->t('[today]') : '')
+						'date'  => DI::l10n()->longDate($event['start']) . (($today) ? ' ' . DI::l10n()->t('[today]') : ''),
 					];
 				}
 			}
@@ -601,7 +625,7 @@ class Profile
 			'$event_title'     => DI::l10n()->t('Birthdays this week:'),
 			'$events'          => $tpl_events,
 			'$lbr'             => '{', // raw brackets mess up if/endif macro processing
-			'$rbr'             => '}'
+			'$rbr'             => '}',
 		]);
 	}
 
@@ -614,12 +638,11 @@ class Profile
 	 */
 	public static function getEventsReminderHTML(int $uid, int $pcid): string
 	{
-		$bd_format  = DI::l10n()->t('g A l F d'); // 8 AM Friday January 18
 		$classtoday = '';
 
 		$condition = [
 			"`uid` = ? AND `type` != 'birthday' AND `start` < ? AND `start` >= ?",
-			$uid, DateTimeFormat::utc('now + 7 days'), DateTimeFormat::utc('now - 1 days')
+			$uid, DateTimeFormat::utc('now + 7 days'), DateTimeFormat::utc('now - 1 days'),
 		];
 		$s = DBA::select('event', [], $condition, ['order' => ['start']]);
 
@@ -633,13 +656,13 @@ class Profile
 				$condition = [
 					'parent-uri' => $rr['uri'], 'uid' => $rr['uid'], 'author-id' => $pcid,
 					'vid'        => [Verb::getID(Activity::ATTEND), Verb::getID(Activity::ATTENDMAYBE)],
-					'visible'    => true, 'deleted' => false
+					'visible'    => true, 'deleted' => false,
 				];
 				if (!Post::exists($condition)) {
 					continue;
 				}
 
-				if (strlen($rr['summary'])) {
+				if (strlen((string) $rr['summary'])) {
 					$total++;
 				}
 
@@ -655,9 +678,6 @@ class Profile
 				}
 
 				$description = BBCode::toPlaintext($rr['desc'], false) . '... ';
-				if (!$description) {
-					$description = DI::l10n()->t('[No description]');
-				}
 
 				$strt = DateTimeFormat::local($rr['start']);
 
@@ -669,7 +689,7 @@ class Profile
 
 				$rr['title']       = $title;
 				$rr['description'] = $description;
-				$rr['date']        = DI::l10n()->getDay(DateTimeFormat::local($rr['start'], $bd_format)) . (($today) ? ' ' . DI::l10n()->t('[today]') : '');
+				$rr['date']        = DI::l10n()->fullDateTime($rr['start']) . ($today ? ' ' . DI::l10n()->t('[today]') : '');
 				$rr['startime']    = $strt;
 				$rr['today']       = $today;
 
@@ -716,7 +736,7 @@ class Profile
 	 *
 	 * @throws \Exception
 	 */
-	public static function searchProfiles(int $start = 0, int $count = 100, string $search = null): array
+	public static function searchProfiles(int $start = 0, int $count = 100, ?string $search = null): array
 	{
 		if (!empty($search)) {
 			$publish    = (DI::config()->get('system', 'publish_all') ? '' : "AND `publish` ");
@@ -733,7 +753,7 @@ class Profile
 				(`pub_keywords` LIKE ?) OR
 				(`prv_keywords` LIKE ?))",
 				$searchTerm, $searchTerm, $searchTerm, $searchTerm,
-				$searchTerm, $searchTerm, $searchTerm, $searchTerm
+				$searchTerm, $searchTerm, $searchTerm, $searchTerm,
 			];
 		} else {
 			$condition = ['verified' => true, 'blocked' => false, 'account_removed' => false, 'account_expired' => false];
@@ -775,7 +795,7 @@ class Profile
 		if (!$profile['is-default']) {
 			$contacts = Contact::selectToArray(['id'], [
 				'uid'        => $profile['uid'],
-				'profile-id' => $profile['id']
+				'profile-id' => $profile['id'],
 			]);
 			if (!count($contacts)) {
 				// No contact visibility selected defaults to user-only permission
@@ -786,8 +806,8 @@ class Profile
 		$permissionSet = DI::permissionSet()->selectOrCreate(
 			new PermissionSet(
 				$profile['uid'],
-				array_column($contacts, 'id') ?? []
-			)
+				array_column($contacts, 'id'),
+			),
 		);
 
 		$order = 1;
@@ -822,7 +842,7 @@ class Profile
 					$order,
 					trim($label, ':'),
 					$profile[$field],
-					$permissionSet
+					$permissionSet,
 				));
 			}
 
@@ -841,20 +861,20 @@ class Profile
 	/**
 	 * Get "about" field with the added responsible relay contact if appropriate.
 	 *
-	 * @param string $about
+	 * @param string|null $about
 	 * @param integer|null $parent_uid
 	 * @param integer $account_type
 	 * @param string $language
-	 * @return string
+	 * @return string|null
 	 */
-	public static function addResponsibleRelayContact(string $about = null, int $parent_uid = null, int $account_type, string $language): ?string
+	public static function addResponsibleRelayContact(?string $about, ?int $parent_uid, int $account_type, string $language): ?string
 	{
 		if (($account_type != User::ACCOUNT_TYPE_RELAY) || empty($parent_uid)) {
 			return $about;
 		}
 
 		$parent = User::getOwnerDataById($parent_uid);
-		if (strpos($about, $parent['addr']) || strpos($about, $parent['url'])) {
+		if (strpos((string) $about, (string) $parent['addr']) || strpos((string) $about, (string) $parent['url'])) {
 			return $about;
 		}
 

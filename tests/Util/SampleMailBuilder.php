@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -11,12 +11,11 @@ use Friendica\Util\EMailer\MailBuilder;
 
 class SampleMailBuilder extends MailBuilder
 {
-	/** @var string */
-	protected $subject;
-	/** @var string */
-	protected $html;
-	/** @var string */
-	protected $text;
+	protected string $subject = '';
+
+	protected string $html = '';
+
+	protected string $text = '';
 
 	/**
 	 * Adds a test message

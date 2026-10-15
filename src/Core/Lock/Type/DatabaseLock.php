@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -26,16 +26,14 @@ class DatabaseLock extends AbstractLock
 	private $pid;
 
 	/**
-	 * @var Database The database connection of Friendica
-	 */
-	private $dba;
-
-	/**
 	 * @param int|null $pid The id of the current process (null means determine automatically)
 	 */
-	public function __construct(Database $dba, ?int $pid = null)
-	{
-		$this->dba = $dba;
+	public function __construct(/**
+				 * @var Database The database connection of Friendica
+				 */
+		private readonly Database $dba,
+		?int $pid = null,
+	) {
 		$this->pid = $pid ?? getmypid();
 	}
 
@@ -51,7 +49,7 @@ class DatabaseLock extends AbstractLock
 			do {
 				$this->dba->lock('locks');
 				$lock = $this->dba->selectFirst('locks', ['locked', 'pid'], [
-					'`name` = ? AND `expires` >= ?', $key,DateTimeFormat::utcNow()
+					'`name` = ? AND `expires` >= ?', $key,DateTimeFormat::utcNow(),
 				]);
 
 				if ($this->dba->isResult($lock)) {
@@ -65,7 +63,7 @@ class DatabaseLock extends AbstractLock
 						$this->dba->update('locks', [
 							'locked'  => true,
 							'pid'     => $this->pid,
-							'expires' => DateTimeFormat::utc('now + ' . $ttl . 'seconds')
+							'expires' => DateTimeFormat::utc('now + ' . $ttl . 'seconds'),
 						], ['name' => $key]);
 						$got_lock = true;
 					}
@@ -82,7 +80,7 @@ class DatabaseLock extends AbstractLock
 				$this->dba->unlock();
 
 				if (!$got_lock && ($timeout > 0)) {
-					usleep(rand(100000, 2000000));
+					usleep(random_int(100000, 2000000));
 				}
 			} while (!$got_lock && ((time() - $start) < $timeout));
 		} catch (\Exception $exception) {

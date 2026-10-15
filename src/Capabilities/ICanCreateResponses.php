@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -15,16 +15,16 @@ interface ICanCreateResponses
 	/**
 	 * This constant helps to find the specific return type of responses inside the headers array
 	 */
-	const X_HEADER = 'X-RESPONSE-TYPE';
+	public const X_HEADER = 'X-RESPONSE-TYPE';
 
-	const TYPE_HTML  = 'html';
-	const TYPE_XML   = 'xml';
-	const TYPE_JSON  = 'json';
-	const TYPE_ATOM  = 'atom';
-	const TYPE_RSS   = 'rss';
-	const TYPE_BLANK = 'blank';
+	public const TYPE_HTML  = 'html';
+	public const TYPE_XML   = 'xml';
+	public const TYPE_JSON  = 'json';
+	public const TYPE_ATOM  = 'atom';
+	public const TYPE_RSS   = 'rss';
+	public const TYPE_BLANK = 'blank';
 
-	const ALLOWED_TYPES = [
+	public const ALLOWED_TYPES = [
 		self::TYPE_HTML,
 		self::TYPE_XML,
 		self::TYPE_JSON,

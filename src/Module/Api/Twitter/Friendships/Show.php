@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -70,7 +70,7 @@ class Show extends ContactEndpoint
 			'relationship' => [
 				'source' => [
 					'id'                    => $source['id'],
-					'id_str'                => (string)$source['id'],
+					'id_str'                => (string) $source['id'],
 					'screen_name'           => $source['nick'],
 					'following'             => $following,
 					'followed_by'           => $follower,
@@ -84,18 +84,18 @@ class Show extends ContactEndpoint
 					'muting'                => null,
 					'want_retweets'         => null,
 					'all_replies'           => null,
-					'marked_spam'           => null
+					'marked_spam'           => null,
 				],
 				'target' => [
 					'id'                  => $target['id'],
-					'id_str'              => (string)$target['id'],
+					'id_str'              => (string) $target['id'],
 					'screen_name'         => $target['nick'],
 					'following'           => $follower,
 					'followed_by'         => $following,
 					'following_received'  => null,
-					'following_requested' => null
-				]
-			]
+					'following_requested' => null,
+				],
+			],
 		];
 
 		DI::apiResponse()->addFormattedContent('relationship', ['relationship' => $relationship], $this->parameters['extension'] ?? null);

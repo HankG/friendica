@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -19,11 +19,12 @@ class MentionsTest extends ApiTestCase
 	 *
 	 * @return void
 	 */
-	public function testApiStatusesMentions()
+	public function testApiStatusesMentions(): void
 	{
+		// @phpstan-ignore method.deprecated
 		$response = (new Mentions(DI::mstdnError(), DI::appHelper(), DI::l10n(), DI::baseUrl(), DI::args(), DI::logger(), DI::profiler(), DI::apiResponse(), []))
 			->run($this->httpExceptionMock, [
-				'max_id' => 10
+				'max_id' => 10,
 			]);
 
 		$json = $this->toJson($response);
@@ -37,11 +38,12 @@ class MentionsTest extends ApiTestCase
 	 *
 	 * @return void
 	 */
-	public function testApiStatusesMentionsWithNegativePage()
+	public function testApiStatusesMentionsWithNegativePage(): void
 	{
+		// @phpstan-ignore method.deprecated
 		$response = (new Mentions(DI::mstdnError(), DI::appHelper(), DI::l10n(), DI::baseUrl(), DI::args(), DI::logger(), DI::profiler(), DI::apiResponse(), []))
 			->run($this->httpExceptionMock, [
-				'page' => -2
+				'page' => -2,
 			]);
 
 		$json = $this->toJson($response);
@@ -51,33 +53,20 @@ class MentionsTest extends ApiTestCase
 	}
 
 	/**
-	 * Test the api_statuses_mentions() function with an unallowed user.
-	 *
-	 * @return void
-	 */
-	public function testApiStatusesMentionsWithUnallowedUser()
-	{
-		self::markTestIncomplete('Needs BasicAuth as dynamic method for overriding first');
-
-		// $this->expectException(\Friendica\Network\HTTPException\UnauthorizedException::class);
-		// BasicAuth::setCurrentUserID();
-		// api_statuses_mentions('json');
-	}
-
-	/**
 	 * Test the api_statuses_mentions() function with an RSS result.
 	 *
 	 * @return void
 	 */
-	public function testApiStatusesMentionsWithRss()
+	public function testApiStatusesMentionsWithRss(): void
 	{
+		// @phpstan-ignore method.deprecated
 		$response = (new Mentions(DI::mstdnError(), DI::appHelper(), DI::l10n(), DI::baseUrl(), DI::args(), DI::logger(), DI::profiler(), DI::apiResponse(), [], ['extension' => ICanCreateResponses::TYPE_RSS]))
 			->run($this->httpExceptionMock, [
-				'page' => -2
+				'page' => -2,
 			]);
 
 		self::assertEquals(ICanCreateResponses::TYPE_RSS, $response->getHeaderLine(ICanCreateResponses::X_HEADER));
 
-		self::assertXml((string)$response->getBody(), 'statuses');
+		self::assertXml((string) $response->getBody(), 'statuses');
 	}
 }

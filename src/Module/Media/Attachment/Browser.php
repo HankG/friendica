@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -53,21 +53,28 @@ class Browser extends BaseModule
 
 		$files = Attach::selectToArray(['id', 'filename', 'filetype'], ['uid' => $this->session->getLocalUserId()]);
 
-		$fileArray = array_map([$this, 'map_files'], $files);
+		$fileArray = array_map($this->map_files(...), $files);
 
 		$tpl    = Renderer::getMarkupTemplate('media/browser.tpl');
 		$output = Renderer::replaceMacros($tpl, [
-			'$type'     => 'attachment',
-			'$path'     => ['' => $this->t('Files')],
-			'$folders'  => false,
-			'$files'    => $fileArray,
-			'$cancel'   => $this->t('Cancel'),
-			'$nickname' => $this->session->getLocalUserNickname(),
-			'$upload'   => $this->t('Upload'),
+			'$type'                 => 'attachment',
+			'$path'                 => ['' => $this->t('Files')],
+			'$folders'              => false,
+			'$files'                => $fileArray,
+			'$cancel'               => $this->t('Cancel'),
+			'$nickname'             => $this->session->getLocalUserNickname(),
+			'$upload'               => $this->t('Upload'),
+			'$photos_text'          => $this->t('Photos'),
+			'$files_text'           => $this->t('Files'),
+			'$aria_close'           => $this->t('Close'),
+			'$aria_breadcrumb'      => $this->t('Breadcrumb'),
+			'$aria_mode_switch'     => $this->t('Switch between photo and attachment mode'),
+			'$aria_album_nav'       => $this->t('Album navigation'),
+			'$aria_browser_content' => $this->t('Browser content'),
 		]);
 
 		if (empty($request['mode'])) {
-			$this->httpExit($output);
+			$this->earlyHttpExit($output);
 		}
 
 		return $output;
@@ -75,13 +82,14 @@ class Browser extends BaseModule
 
 	protected function map_files(array $record): array
 	{
-		list($m1, $m2) = explode('/', $record['filetype']);
-		$filetype      = file_exists(sprintf('images/icons/%s.png', $m1) ? $m1 : 'text');
+		[$m1, $m2] = explode('/', (string) $record['filetype']);
+		$filetype  = file_exists(sprintf('images/icons/%s.png', $m1)) ? $m1 : 'text';
 
 		return [
 			sprintf('%s/attach/%s', $this->baseUrl, $record['id']),
 			$record['filename'],
-			sprintf('%s/images/icon/16/%s.png', $this->baseUrl, $filetype),
+			sprintf('%s/images/icons/%s.png', $this->baseUrl, $filetype),
+			$filetype,
 		];
 	}
 }

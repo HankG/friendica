@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -125,17 +125,17 @@ class User extends BaseDataTransferObject
 	{
 		$uid = $userContact['uid'] ?? 0;
 
-		$this->id                      = (int)$publicContact['id'];
-		$this->id_str                  = (string) $publicContact['id'];
-		$this->name                    = $publicContact['name'] ?: $publicContact['nick'];
-		$this->screen_name             = $publicContact['nick'] ?: $publicContact['name'];
-		$this->location                = $publicContact['location'] ?:
-			ContactSelector::networkToName($publicContact['network'], $publicContact['protocol'], $publicContact['gsid']);
-		$this->derived                 = [];
-		$this->url                     = $publicContact['url'];
+		$this->id          = (int) $publicContact['id'];
+		$this->id_str      = (string) $publicContact['id'];
+		$this->name        = $publicContact['name'] ?: $publicContact['nick'];
+		$this->screen_name = $publicContact['nick'] ?: $publicContact['name'];
+		$this->location    = $publicContact['location']
+			?: ContactSelector::networkToName($publicContact['network'], $publicContact['protocol'], $publicContact['gsid']);
+		$this->derived = [];
+		$this->url     = $publicContact['url'];
 		// No entities needed since we don't perform any shortening in the URL or description
-		$this->entities            = [
-			'url' => ['urls' => []],
+		$this->entities = [
+			'url'         => ['urls' => []],
 			'description' => ['urls' => []],
 		];
 		if (!$include_user_entities) {
@@ -182,9 +182,9 @@ class User extends BaseDataTransferObject
 		$this->notifications                  = false;
 
 		// Friendica-specific
-		$this->uid                   = (int)$uid;
-		$this->cid                   = (int)($userContact['id'] ?? 0);
-		$this->pid                   = (int)$publicContact['id'];
+		$this->uid                   = (int) $uid;
+		$this->cid                   = (int) ($userContact['id'] ?? 0);
+		$this->pid                   = (int) $publicContact['id'];
 		$this->statusnet_profile_url = $publicContact['url'];
 	}
 }

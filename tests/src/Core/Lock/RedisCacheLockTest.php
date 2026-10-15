@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -15,12 +15,13 @@ use Friendica\Core\Lock\Type\CacheLock;
 use Friendica\Test\CacheLockTestCase;
 use Mockery;
 
-/**
- * @requires extension redis
- * @group REDIS
- */
+#[\PHPUnit\Framework\Attributes\RequiresPhpExtension('redis')]
+#[\PHPUnit\Framework\Attributes\Group('REDIS')]
 class RedisCacheLockTest extends CacheLockTestCase
 {
+	private RedisCache $cache;
+	private CacheLock $lock;
+
 	protected function setUp(): void
 	{
 		$configMock = Mockery::mock(IManageConfigValues::class);
@@ -56,7 +57,7 @@ class RedisCacheLockTest extends CacheLockTestCase
 		parent::setUp();
 	}
 
-	protected function getInstance(): CAcheLock
+	protected function getInstance(): CacheLock
 	{
 		return $this->lock;
 	}

@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2010 - 2024 the Friendica project
+# SPDX-FileCopyrightText: 2010-2026 the Friendica project
 #
 # SPDX-License-Identifier: CC0-1.0
 
@@ -18,11 +18,11 @@ jobs:
       fail-fast: false
       matrix:
         operating-system: ['ubuntu-latest']
-        php: ['7.4', '8.0', '8.1', '8.2', '8.3', '8.4', '8.5']
+        php: ['8.2', '8.3', '8.4', '8.5']
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
         with:
           fetch-depth: 2
 
@@ -34,10 +34,10 @@ jobs:
           tools: none
 
       - name: Clone addon repository
-        run: git clone -b develop --single-branch https://git.friendi.ca/friendica/friendica-addons.git addon
+        run: git clone -b develop --single-branch https://github.com/friendica/friendica-addons.git addon
 
       - name: Install Composer dependencies
-        uses: "ramsey/composer-install@v2"
+        uses: "ramsey/composer-install@v4"
 
       - name: Run Unit tests
         run: composer run test:unit
@@ -72,7 +72,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        php-versions: ['7.4', '8.0', '8.1', '8.2', '8.3', '8.4', '8.5']
+        php-versions: ['8.2', '8.3', '8.4', '8.5']
 
     steps:
       - name: Checkout
@@ -88,12 +88,12 @@ jobs:
           ini-values: apc.enabled=1, apc.enable_cli=1
 
       - name: Clone addon repository
-        run: git clone -b develop --single-branch https://git.friendi.ca/friendica/friendica-addons.git addon
+        run: git clone -b develop --single-branch https://github.com/friendica/friendica-addons.git addon
 
       # Install composer dependencies and handle caching in one go.
       # @link https://github.com/marketplace/actions/install-php-dependencies-with-composer
       - name: "Install Composer dependencies"
-        uses: "ramsey/composer-install@v2"
+        uses: "ramsey/composer-install@v4"
 
       - name: Start mysql service
         run: sudo /etc/init.d/mysql start

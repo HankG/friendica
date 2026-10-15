@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -69,10 +69,11 @@ abstract class BaseAdmin extends BaseModule
 		$aside_sub = [
 			'information' => [DI::l10n()->t('Information'), [
 				'overview'   => ['admin'             , DI::l10n()->t('Overview')                , 'overview'],
-				'federation' => ['admin/federation'  , DI::l10n()->t('Federation Statistics')   , 'federation']
+				'federation' => ['admin/federation'  , DI::l10n()->t('Federation Statistics')   , 'federation'],
 			]],
 			'configuration' => [DI::l10n()->t('Configuration'), [
 				'site'     => ['admin/site'        , DI::l10n()->t('Site')                    , 'site'],
+				'roles'    => ['admin/roles'       , DI::l10n()->t('Roles')                   , 'roles'],
 				'storage'  => ['admin/storage'     , DI::l10n()->t('Storage')                 , 'storage'],
 				'addons'   => ['admin/addons'      , DI::l10n()->t('Addons')                  , 'addons'],
 				'themes'   => ['admin/themes'      , DI::l10n()->t('Themes')                  , 'themes'],
@@ -85,8 +86,8 @@ abstract class BaseAdmin extends BaseModule
 				'workerqueue' => ['admin/queue'       , DI::l10n()->t('Inspect worker Queue')    , 'workerqueue'],
 			]],
 			'logs' => [DI::l10n()->t('Logs'), [
-				'logsconfig' => ['admin/logs/', DI::l10n()->t('Logs')                           , 'logs'],
-				'logsview'   => ['admin/logs/view'    , DI::l10n()->t('View Logs')              , 'viewlogs'],
+				'logsconfig' => ['admin/logs/', DI::l10n()->t('Settings')                           , 'logs'],
+				'logsview'   => ['admin/logs/view'    , DI::l10n()->t('View')              , 'viewlogs'],
 			]],
 			'diagnostics' => [DI::l10n()->t('Diagnostics'), [
 				'phpinfo'   => ['admin/phpinfo?t=' . self::getFormSecurityToken('phpinfo'), DI::l10n()->t('PHP Info')                , 'phpinfo'],
@@ -112,9 +113,9 @@ abstract class BaseAdmin extends BaseModule
 			'$admin'      => ['addons_admin' => $addons_admin],
 			'$subpages'   => $aside_sub,
 			'$admtxt'     => DI::l10n()->t('Admin'),
-			'$plugadmtxt' => DI::l10n()->t('Addon Features'),
+			'$plugadmtxt' => DI::l10n()->t('Addon settings'),
 			'$h_pending'  => DI::l10n()->t('User registrations waiting for confirmation'),
-			'$admurl'     => 'admin/'
+			'$admurl'     => 'admin/',
 		]);
 
 		return '';

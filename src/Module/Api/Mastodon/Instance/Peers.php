@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -31,12 +31,12 @@ class Peers extends BaseApi
 			Protocol::DFRN, Protocol::ACTIVITYPUB,
 			GServer::DETECT_MANUAL, GServer::DETECT_HEADER, GServer::DETECT_BODY, GServer::DETECT_HOST_META]);
 		while ($instance = DBA::fetch($instances)) {
-			$urldata = parse_url($instance['url']);
+			$urldata = parse_url((string) $instance['url']);
 			unset($urldata['scheme']);
-			$return[] = ltrim((string)Uri::fromParts((array)$urldata), '/');
+			$return[] = ltrim((string) Uri::fromParts((array) $urldata), '/');
 		}
 		DBA::close($instances);
 
-		$this->jsonExit($return);
+		$this->earlyJsonExit($return);
 	}
 }

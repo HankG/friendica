@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -10,7 +10,6 @@ namespace Friendica\Module\Search;
 use Friendica\App;
 use Friendica\BaseModule;
 use Friendica\Core\L10n;
-use Friendica\Core\System;
 use Friendica\Database\Database;
 use Friendica\Model\User;
 use Friendica\Module\Response;
@@ -23,7 +22,7 @@ use Psr\Log\LoggerInterface;
  */
 class Tags extends BaseModule
 {
-	const DEFAULT_ITEMS_PER_PAGE = 80;
+	public const DEFAULT_ITEMS_PER_PAGE = 80;
 
 	/** @var Database */
 	protected $database;
@@ -45,7 +44,7 @@ class Tags extends BaseModule
 		$results = [];
 
 		if (empty($tags)) {
-			$this->jsonExit([
+			$this->earlyJsonExit([
 				'total'      => 0,
 				'items_page' => $perPage,
 				'page'       => $page,
@@ -55,12 +54,12 @@ class Tags extends BaseModule
 
 		$condition = [
 			"`net-publish` AND MATCH(`pub_keywords`) AGAINST (?)",
-			$tags
+			$tags,
 		];
 
 		$totalCount = $this->database->count('owner-view', $condition);
 		if ($totalCount === 0) {
-			$this->jsonExit([
+			$this->earlyJsonExit([
 				'total'      => 0,
 				'items_page' => $perPage,
 				'page'       => $page,
@@ -68,10 +67,12 @@ class Tags extends BaseModule
 			]);
 		}
 
-		$searchStmt = $this->database->select('owner-view',
+		$searchStmt = $this->database->select(
+			'owner-view',
 			['pub_keywords', 'name', 'nickname', 'uid'],
 			$condition,
-			['limit' => [$startRec, $perPage]]);
+			['limit' => [$startRec, $perPage]],
+		);
 
 		while ($searchResult = $this->database->fetch($searchStmt)) {
 			$results[] = [
@@ -83,7 +84,7 @@ class Tags extends BaseModule
 
 		$this->database->close($searchStmt);
 
-		$this->jsonExit([
+		$this->earlyJsonExit([
 			'total'      => $totalCount,
 			'items_page' => $perPage,
 			'page'       => $page,

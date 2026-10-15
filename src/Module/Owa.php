@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -33,7 +33,7 @@ class Owa extends BaseModule
 		$ret = [ 'success' => false ];
 
 		foreach (['REDIRECT_REMOTE_USER', 'HTTP_AUTHORIZATION'] as $head) {
-			if (array_key_exists($head, $_SERVER) && substr(trim($_SERVER[$head]), 0, 9) === 'Signature') {
+			if (array_key_exists($head, $_SERVER) && str_starts_with(trim((string) $_SERVER[$head]), 'Signature')) {
 				if ($head !== 'HTTP_AUTHORIZATION') {
 					$_SERVER['HTTP_AUTHORIZATION'] = $_SERVER[$head];
 					continue;
@@ -85,6 +85,6 @@ class Owa extends BaseModule
 				}
 			}
 		}
-		$this->jsonExit($ret, 'application/x-zot+json');
+		$this->earlyJsonExit($ret, 'application/x-zot+json');
 	}
 }

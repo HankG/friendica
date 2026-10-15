@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -16,42 +16,18 @@ use Friendica\Object\EMail\IEmail;
  */
 class Email implements IEmail
 {
-	/** @var string */
-	private $fromName;
-	/** @var string */
-	private $fromAddress;
-	/** @var string */
-	private $replyTo;
-
-	/** @var string */
-	private $toAddress;
-
-	/** @var string */
-	private $subject;
-	/** @var string|null */
-	private $msgHtml;
-	/** @var string */
-	private $msgText;
-
-	/** @var string[][] */
-	private $additionalMailHeader;
-	/** @var int|null */
-	private $toUid;
-
-	public function __construct(string $fromName, string $fromAddress, string $replyTo, string $toAddress,
-	                            string $subject, string $msgHtml, string $msgText,
-	                            array $additionalMailHeader = [], int $toUid = null)
-	{
-		$this->fromName             = $fromName;
-		$this->fromAddress          = $fromAddress;
-		$this->replyTo              = $replyTo;
-		$this->toAddress            = $toAddress;
-		$this->subject              = $subject;
-		$this->msgHtml              = $msgHtml;
-		$this->msgText              = $msgText;
-		$this->additionalMailHeader = $additionalMailHeader;
-		$this->toUid                = $toUid;
-	}
+	public function __construct(
+		private string $fromName,
+		private string $fromAddress,
+		private string $replyTo,
+		private string $toAddress,
+		private string $subject,
+		private string $msgHtml,
+		private string $msgText,
+		/** @var string[][] */
+		private array $additionalMailHeader = [],
+		private ?int $toUid = null,
+	) {}
 
 	/**
 	 * {@inheritDoc}
@@ -101,7 +77,7 @@ class Email implements IEmail
 		if ($plain) {
 			return $this->msgText;
 		} else {
-			return $this->msgHtml ?? '';
+			return $this->msgHtml;
 		}
 	}
 
@@ -144,7 +120,7 @@ class Email implements IEmail
 	/**
 	 * {@inheritDoc}
 	 */
-	public function withRecipient(string $address, int $uid = null)
+	public function withRecipient(string $address, ?int $uid = null)
 	{
 		$newEmail            = clone $this;
 		$newEmail->toAddress = $address;
@@ -156,7 +132,7 @@ class Email implements IEmail
 	/**
 	 * {@inheritDoc}
 	 */
-	public function withMessage(string $plaintext, string $html = null)
+	public function withMessage(string $plaintext, ?string $html = null)
 	{
 		$newMail          = clone $this;
 		$newMail->msgText = $plaintext;
@@ -178,9 +154,9 @@ class Email implements IEmail
 	/**
 	 * @inheritDoc
 	 */
-	public function __toString()
+	public function __toString(): string
 	{
-		return json_encode($this->toArray());
+		return (string) json_encode($this->toArray());
 	}
 
 	/**

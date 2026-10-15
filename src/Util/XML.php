@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -30,7 +30,7 @@ class XML
 	 * @return string
 	 * @throws \Exception
 	 */
-	public static function fromArray(array $array, object &$xml = null, bool $remove_header = false, array $namespaces = [], bool $root = true): string
+	public static function fromArray(array $array, ?object &$xml = null, bool $remove_header = false, array $namespaces = [], bool $root = true): string
 	{
 		if ($root) {
 			foreach ($array as $key => $value) {
@@ -90,13 +90,13 @@ class XML
 				$key = $element_parts[1];
 			}
 
-			if (substr($key, 0, 11) == '@attributes') {
+			if (str_starts_with($key, '@attributes')) {
 				if (!isset($element) || !is_array($value)) {
 					continue;
 				}
 
 				foreach ($value as $attr_key => $attr_value) {
-					$element_parts = explode(':', $attr_key);
+					$element_parts = explode(':', (string) $attr_key);
 					if ((count($element_parts) > 1) && isset($namespaces[$element_parts[0]])) {
 						$namespace = $namespaces[$element_parts[0]];
 					} else {
@@ -130,7 +130,7 @@ class XML
 	public static function copy(&$source, &$target, $elementname)
 	{
 		if (count($source->children()) == 0) {
-			$target->addChild($elementname, self::escape($source));
+			$target->addChild($elementname, self::escape((string) $source));
 		} else {
 			$child = $target->addChild($elementname);
 			foreach ($source->children() as $childfield => $childentry) {
@@ -167,11 +167,11 @@ class XML
 	 * @param DOMDocument $doc        XML root
 	 * @param DOMElement  $parent     parent object
 	 * @param string      $element    XML element name
-	 * @param string      $value      XML value
+	 * @param ?string      $value      XML value
 	 * @param array       $attributes Array containing the attributes
 	 * @return void
 	 */
-	public static function addElement(DOMDocument $doc, DOMElement &$parent, string $element, string $value = null, array $attributes = [])
+	public static function addElement(DOMDocument $doc, DOMElement &$parent, string $element, ?string $value = null, array $attributes = [])
 	{
 		$element = self::createElement($doc, $element, $value ?? '', $attributes);
 		$parent->appendChild($element);
@@ -180,13 +180,13 @@ class XML
 	/**
 	 * Convert an XML document to a normalised, case-corrected array used by webfinger
 	 *
-	 * @param object  $xml_element     The XML document
-	 * @param integer $recursion_depth recursion counter for internal use - default 0
-	 *                                 internal use, recursion counter
+	 * @param SimpleXMLElement|mixed   $xml_element     The XML document or other data on recursive use
+	 * @param integer                  $recursion_depth recursion counter for internal use - default 0
+	 *                                                  internal use, recursion counter
 	 *
 	 * @return array|string|null The array from the xml element or the string
 	 */
-	public static function elementToArray($xml_element, int &$recursion_depth = 0)
+	public static function elementToArray(mixed $xml_element, int &$recursion_depth = 0)
 	{
 		// If we're getting too deep, bail out
 		if ($recursion_depth > 512) {
@@ -194,10 +194,7 @@ class XML
 		}
 
 		$xml_element_copy = '';
-		if (!is_string($xml_element)
-			&& !is_array($xml_element)
-			&& (get_class($xml_element) == 'SimpleXMLElement')
-		) {
+		if ($xml_element instanceof SimpleXMLElement) {
 			$xml_element_copy = $xml_element;
 			$xml_element      = get_object_vars($xml_element);
 		}
@@ -210,7 +207,7 @@ class XML
 
 			foreach ($xml_element as $key => $value) {
 				$recursion_depth++;
-				$result_array[strtolower($key)] = self::elementToArray($value, $recursion_depth);
+				$result_array[strtolower((string) $key)] = self::elementToArray($value, $recursion_depth);
 				$recursion_depth--;
 			}
 
@@ -266,14 +263,9 @@ class XML
 		libxml_clear_errors();
 
 		if ($namespaces) {
-			$parser = @xml_parser_create_ns("UTF-8", ':');
+			$parser = xml_parser_create_ns("UTF-8", ':');
 		} else {
-			$parser = @xml_parser_create();
-		}
-
-		if (!$parser) {
-			DI::logger()->warning('Xml::toArray: xml_parser_create: no resource');
-			return [];
+			$parser = xml_parser_create();
 		}
 
 		xml_parser_set_option($parser, XML_OPTION_TARGET_ENCODING, 'UTF-8');
@@ -303,8 +295,8 @@ class XML
 			$tag        = $data['tag'];
 			$type       = $data['type'];
 			$level      = $data['level'];
-			$attributes = isset($data['attributes']) ? $data['attributes'] : null;
-			$value      = isset($data['value']) ? $data['value'] : null;
+			$attributes = $data['attributes'] ?? null;
+			$value      = $data['value']      ?? null;
 
 			$result          = [];
 			$attributes_data = [];
@@ -329,19 +321,19 @@ class XML
 			}
 
 			// See tag status and do the needed.
-			if ($namespaces && strpos($tag, ':')) {
-				$namespc              = substr($tag, 0, strrpos($tag, ':'));
-				$tag                  = strtolower(substr($tag, strlen($namespc) + 1));
+			if ($namespaces && strpos((string) $tag, ':')) {
+				$namespc              = substr((string) $tag, 0, strrpos((string) $tag, ':'));
+				$tag                  = strtolower(substr((string) $tag, strlen($namespc) + 1));
 				$result['@namespace'] = $namespc;
 			}
-			$tag = strtolower($tag);
+			$tag = strtolower((string) $tag);
 
 			if ($type == 'open') {   // The starting of the tag '<tag>'
 				$parent[$level - 1] = &$current;
 				if (!is_array($current) || (!in_array($tag, array_keys($current)))) { // Insert New tag
 					$current[$tag] = $result;
 					if ($attributes_data) {
-						$current[$tag. '_attr'] = $attributes_data;
+						$current[$tag . '_attr'] = $attributes_data;
 					}
 					$repeated_tag_index[$tag . '_' . $level] = 1;
 
@@ -355,9 +347,9 @@ class XML
 						$current[$tag]                           = [$current[$tag], $result]; // This will combine the existing item and the new item together to make an array
 						$repeated_tag_index[$tag . '_' . $level] = 2;
 
-						if (isset($current[$tag.'_attr'])) { // The attribute of the last(0th) tag must be moved as well
-							$current[$tag]['0_attr'] = $current[$tag.'_attr'];
-							unset($current[$tag.'_attr']);
+						if (isset($current[$tag . '_attr'])) { // The attribute of the last(0th) tag must be moved as well
+							$current[$tag]['0_attr'] = $current[$tag . '_attr'];
+							unset($current[$tag . '_attr']);
 						}
 					}
 					$last_item_index = $repeated_tag_index[$tag . '_' . $level] - 1;
@@ -369,7 +361,7 @@ class XML
 					$current[$tag]                           = $result;
 					$repeated_tag_index[$tag . '_' . $level] = 1;
 					if ($priority == 'tag' and $attributes_data) {
-						$current[$tag. '_attr'] = $attributes_data;
+						$current[$tag . '_attr'] = $attributes_data;
 					}
 				} else { // If taken, put all things inside a list(array)
 					if (isset($current[$tag][0]) and is_array($current[$tag])) { // If it is already an array...
@@ -385,10 +377,10 @@ class XML
 						$current[$tag]                           = [$current[$tag], $result]; //...Make it an array using the existing value and the new value
 						$repeated_tag_index[$tag . '_' . $level] = 1;
 						if ($priority == 'tag' and $get_attributes) {
-							if (isset($current[$tag.'_attr'])) { // The attribute of the last(0th) tag must be moved as well
+							if (isset($current[$tag . '_attr'])) { // The attribute of the last(0th) tag must be moved as well
 
-								$current[$tag]['0_attr'] = $current[$tag.'_attr'];
-								unset($current[$tag.'_attr']);
+								$current[$tag]['0_attr'] = $current[$tag . '_attr'];
+								unset($current[$tag . '_attr']);
 							}
 
 							if ($attributes_data) {
@@ -452,10 +444,10 @@ class XML
 	 *
 	 * @param DOMXPath $xpath XPath object
 	 * @param string $element Element name
-	 * @param DOMNode $context Context object or NULL
+	 * @param ?DOMNode $context Context object or NULL
 	 * @return string XML node value or empty string on failure
 	 */
-	public static function getFirstNodeValue(DOMXPath $xpath, string $element, DOMNode $context = null)
+	public static function getFirstNodeValue(DOMXPath $xpath, string $element, ?DOMNode $context = null)
 	{
 		$result = @$xpath->evaluate($element, $context);
 		if (!is_object($result)) {
@@ -475,10 +467,10 @@ class XML
 	 *
 	 * @param DOMXPath $xpath XPath object
 	 * @param string $element Element name
-	 * @param DOMNode $context Context object or NULL
+	 * @param ?DOMNode $context Context object or NULL
 	 * @return mixed|bool First element's attributes field or false on failure
 	 */
-	public static function getFirstAttributes(DOMXPath $xpath, string $element, DOMNode $context = null)
+	public static function getFirstAttributes(DOMXPath $xpath, string $element, ?DOMNode $context = null)
 	{
 		$result = @$xpath->query($element, $context);
 		if (!is_object($result)) {
@@ -498,10 +490,10 @@ class XML
 	 *
 	 * @param DOMXPath $xpath XPath object
 	 * @param string $element Element name
-	 * @param DOMNode $context Context object or NULL
+	 * @param ?DOMNode $context Context object or NULL
 	 * @return string First value or empty string on failure
 	 */
-	public static function getFirstValue(DOMXPath $xpath, string $element, DOMNode $context = null): string
+	public static function getFirstValue(DOMXPath $xpath, string $element, ?DOMNode $context = null): string
 	{
 		$result = @$xpath->query($element, $context);
 		if (!is_object($result)) {
@@ -552,7 +544,7 @@ class XML
 		if (is_bool($val)) {
 			return $val ? 'true' : 'false';
 		} elseif (is_array($val)) {
-			return array_map('XML::arrayEscape', $val);
+			return array_map(XML::arrayEscape(...), $val);
 		}
 
 		return self::escape((string) $val);

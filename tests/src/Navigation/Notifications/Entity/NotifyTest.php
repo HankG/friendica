@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -12,7 +12,7 @@ use Friendica\Test\FixtureTestCase;
 
 class NotifyTest extends FixtureTestCase
 {
-	public function dataFormatNotify(): array
+	public static function dataFormatNotify(): array
 	{
 		return [
 			'xss-notify' => [
@@ -23,11 +23,9 @@ class NotifyTest extends FixtureTestCase
 		];
 	}
 
-	/**
-	 * @dataProvider dataFormatNotify
-	 */
-	public function testFormatNotify(string $name, string $message, string $assertion)
+	#[\PHPUnit\Framework\Attributes\DataProvider('dataFormatNotify')]
+	public function testFormatNotify(string $name, string $message, string $assertion): void
 	{
-		self::assertEquals($assertion, Notify::formatMessage($name, $message));
+		self::assertEquals($assertion, Notify::formatMessage($name, $message)); // @phpstan-ignore staticMethod.deprecatedClass (testing the deprecated Notify::formatMessage)
 	}
 }

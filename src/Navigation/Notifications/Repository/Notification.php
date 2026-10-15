@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -17,7 +17,7 @@ use Friendica\Model\Post\UserNotification;
 use Friendica\Model\Verb;
 use Friendica\Navigation\Notifications\Collection\Notifications as NotificationsCollection;
 use Friendica\Navigation\Notifications\Entity\Notification as NotificationEntity;
-use Friendica\Navigation\Notifications\Factory;
+use Friendica\Navigation\Notifications\Factory\Notification as NotificationFactory;
 use Friendica\Network\HTTPException\NotFoundException;
 use Friendica\Protocol\Activity;
 use Friendica\Util\DateTimeFormat;
@@ -25,19 +25,21 @@ use Psr\Log\LoggerInterface;
 
 class Notification extends BaseRepository
 {
-	/** @var Factory\Notification  */
-	protected $factory;
-
 	protected static $table_name = 'notification';
 
-	/** @var IManagePersonalConfigValues */
-	private $pconfig;
+	public function __construct(
+		private readonly IManagePersonalConfigValues $pconfig,
+		Database $database,
+		LoggerInterface $logger,
+		private readonly NotificationFactory $entityFactory,
+	) {
+		parent::__construct($database, $logger, $entityFactory);
+	}
 
-	public function __construct(IManagePersonalConfigValues $pconfig, Database $database, LoggerInterface $logger, Factory\Notification $factory)
+	/** @not-deprecated */
+	protected function getFactory(): NotificationFactory
 	{
-		parent::__construct($database, $logger, $factory);
-
-		$this->pconfig = $pconfig;
+		return $this->entityFactory;
 	}
 
 	/**
@@ -45,9 +47,9 @@ class Notification extends BaseRepository
 	 */
 	private function selectOne(array $condition, array $params = []): NotificationEntity
 	{
-		$fields = $this->_selectFirstRowAsArray( $condition, $params);
+		$fields = $this->_selectFirstRowAsArray($condition, $params);
 
-		return $this->factory->createFromTableRow($fields);
+		return $this->getFactory()->createFromTableRow($fields);
 	}
 
 	private function select(array $condition, array $params = []): NotificationsCollection
@@ -106,6 +108,8 @@ class Notification extends BaseRepository
 			$condition = [];
 		}
 
+		$condition = DBA::mergeConditions($condition, ["NOT EXISTS(SELECT `cid` FROM `user-contact` WHERE `user-contact`.`cid` = `notification`.`actor-id` AND `user-contact`.`uid` = `notification`.`uid` AND (`is-blocked` OR `blocked`))"]);
+
 		if (!$this->pconfig->get($uid, 'system', 'notify_like')) {
 			$condition = DBA::mergeConditions($condition, ['NOT `vid` IN (?, ?)', Verb::getID(Activity::LIKE), Verb::getID(Activity::DISLIKE)]);
 		}
@@ -149,6 +153,7 @@ class Notification extends BaseRepository
 		$rows = $this->db->p("
 		SELECT notification.*
 		FROM notification
+		LEFT JOIN `user-contact` ON `user-contact`.`cid` = `notification`.`actor-id` AND `user-contact`.`uid` = `notification`.`uid` AND (`blocked` OR `is-blocked`)
 		WHERE `id` IN (
 		    SELECT MAX(`id`)
 		    FROM `notification`
@@ -158,6 +163,7 @@ class Notification extends BaseRepository
 		    $announce_condition
 		    GROUP BY IFNULL(`parent-uri-id`, `actor-id`)
 		)
+		AND `user-contact`.`cid` IS NULL
 		ORDER BY `seen`, `id` DESC
 		LIMIT 50
 		", ...$values);
@@ -169,7 +175,7 @@ class Notification extends BaseRepository
 		}
 
 		foreach ($rows as $fields) {
-			$entities[] = $this->factory->createFromTableRow($fields);
+			$entities[] = $this->getFactory()->createFromTableRow($fields);
 		}
 
 		return $entities;
@@ -191,7 +197,7 @@ class Notification extends BaseRepository
 	 * @throws Exception
 	 * @see _selectByBoundaries
 	 */
-	public function selectByBoundaries(array $condition = [], array $params = [], int $min_id = null, int $max_id = null, int $limit = self::LIMIT)
+	public function selectByBoundaries(array $condition = [], array $params = [], ?int $min_id = null, ?int $max_id = null, int $limit = self::LIMIT)
 	{
 		$BaseCollection = parent::_selectByBoundaries($condition, $params, $min_id, $max_id, $limit);
 

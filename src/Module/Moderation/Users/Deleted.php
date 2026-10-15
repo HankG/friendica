@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -40,13 +40,13 @@ class Deleted extends BaseUsers
 			'page-flags',
 		];
 
-		$order = 'name';
+		$order           = 'name';
 		$order_direction = '+';
 		if (!empty($request['o'])) {
 			$new_order = $request['o'];
 			if ($new_order[0] === '-') {
 				$order_direction = '-';
-				$new_order = substr($new_order, 1);
+				$new_order       = substr($new_order, 1);
 			}
 
 			if (in_array($new_order, $valid_orders)) {

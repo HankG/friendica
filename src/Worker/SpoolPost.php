@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -25,12 +25,12 @@ class SpoolPost
 				while (($file = readdir($dh)) !== false) {
 
 					// It is not named like a spool file, so we don't care.
-					if (substr($file, 0, 5) != "item-") {
+					if (!str_starts_with($file, "item-")) {
 						DI::logger()->info('Spool file does not start with "item-"', ['file' => $file]);
 						continue;
 					}
 
-					$fullfile = $path."/".$file;
+					$fullfile = $path . "/" . $file;
 
 					// We don't care about directories either
 					if (filetype($fullfile) != "file") {

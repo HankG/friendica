@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -20,14 +20,14 @@ final class ObjectType
 	 * @see http://activitystrea.ms/head/activity-schema.html#bookmark
 	 * @var string
 	 */
-	const BOOKMARK = ActivityNamespace::ACTIVITY_SCHEMA . 'bookmark';
+	public const BOOKMARK = ActivityNamespace::ACTIVITY_SCHEMA . 'bookmark';
 	/**
 	 * The "comment" object type represents a textual response to another object.
 	 *
 	 * @see http://activitystrea.ms/head/activity-schema.html#comment
 	 * @var string
 	 */
-	const COMMENT = ActivityNamespace::ACTIVITY_SCHEMA . 'comment';
+	public const COMMENT = ActivityNamespace::ACTIVITY_SCHEMA . 'comment';
 	/**
 	 * The "comment" object type represents a textual response to another object.
 	 * (Default type for items)
@@ -35,25 +35,25 @@ final class ObjectType
 	 * @see http://activitystrea.ms/head/activity-schema.html#note
 	 * @var string
 	 */
-	const NOTE = ActivityNamespace::ACTIVITY_SCHEMA . 'note';
+	public const NOTE = ActivityNamespace::ACTIVITY_SCHEMA . 'note';
 	/**
 	 * The "person" object type represents a user account.
 	 *
 	 * @see http://activitystrea.ms/head/activity-schema.html#person
 	 * @var string
 	 */
-	const PERSON = ActivityNamespace::ACTIVITY_SCHEMA . 'person';
+	public const PERSON = ActivityNamespace::ACTIVITY_SCHEMA . 'person';
 	/**
 	 * The "image" object type represents a graphical image.
 	 *
 	 * @see http://activitystrea.ms/head/activity-schema.html#image
 	 * @var string
 	 */
-	const IMAGE = ActivityNamespace::ACTIVITY_SCHEMA . 'image';
+	public const IMAGE = ActivityNamespace::ACTIVITY_SCHEMA . 'image';
 	/**
 	 * @var string
 	 */
-	const PHOTO = ActivityNamespace::ACTIVITY_SCHEMA . 'photo';
+	public const PHOTO = ActivityNamespace::ACTIVITY_SCHEMA . 'photo';
 	/**
 	 * The "video" object type represents video content,
 	 * which usually consists of a motion picture track and an audio track.
@@ -61,43 +61,43 @@ final class ObjectType
 	 * @see http://activitystrea.ms/head/activity-schema.html#video
 	 * @var string
 	 */
-	const VIDEO = ActivityNamespace::ACTIVITY_SCHEMA . 'video';
+	public const VIDEO = ActivityNamespace::ACTIVITY_SCHEMA . 'video';
 	/**
 	 * @var string
 	 */
-	const PROFILE_PHOTO = ActivityNamespace::ACTIVITY_SCHEMA . 'profile-photo';
+	public const PROFILE_PHOTO = ActivityNamespace::ACTIVITY_SCHEMA . 'profile-photo';
 	/**
 	 * @var string
 	 */
-	const ALBUM = ActivityNamespace::ACTIVITY_SCHEMA . 'photo-album';
+	public const ALBUM = ActivityNamespace::ACTIVITY_SCHEMA . 'photo-album';
 	/**
 	 * The "event" object type represents an event that occurs in a certain place during a particular interval of time.
 	 *
 	 * @see http://activitystrea.ms/head/activity-schema.html#event
 	 * @var string
 	 */
-	const EVENT = ActivityNamespace::ACTIVITY_SCHEMA . 'event';
+	public const EVENT = ActivityNamespace::ACTIVITY_SCHEMA . 'event';
 	/**
 	 * The "group" object type represents a grouping of objects in which member objects can join or leave.
 	 *
 	 * @see http://activitystrea.ms/head/activity-schema.html#group
 	 * @var string
 	 */
-	const GROUP = ActivityNamespace::ACTIVITY_SCHEMA . 'group';
+	public const GROUP = ActivityNamespace::ACTIVITY_SCHEMA . 'group';
 
 
 	/**
 	 * @var string
 	 */
-	const HEART = ActivityNamespace::DFRN . '/heart';
+	public const HEART = ActivityNamespace::DFRN . '/heart';
 	/**
 	 * @var string
 	 */
-	const TAGTERM = ActivityNamespace::DFRN . '/tagterm';
+	public const TAGTERM = ActivityNamespace::DFRN . '/tagterm';
 	/**
 	 * @var string
 	 */
-	const PROFILE = ActivityNamespace::DFRN . '/profile';
+	public const PROFILE = ActivityNamespace::DFRN . '/profile';
 
 
 	/**
@@ -106,5 +106,5 @@ final class ObjectType
 	 * @see http://activitystrea.ms/head/activity-schema.html#question
 	 * @var string
 	 */
-	const QUESTION = 'http://activityschema.org/object/question';
+	public const QUESTION = 'http://activityschema.org/object/question';
 }

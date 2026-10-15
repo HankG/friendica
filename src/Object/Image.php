@@ -1,13 +1,17 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Object;
 
 use Exception;
+use FFMpeg\Coordinate\TimeCode;
+use FFMpeg\FFMpeg;
+use Friendica\Core\Cache\Enum\Duration;
+use Friendica\Core\System;
 use Friendica\DI;
 use Friendica\Util\Images;
 use Imagick;
@@ -19,9 +23,9 @@ use kornrunner\Blurhash\Blurhash;
 /**
  * Class to handle images
  */
-class Image
+class Image implements \Stringable
 {
-	/** @var GdImage|Imagick|resource */
+	/** @var GdImage|Imagick */
 	private $image;
 
 	/*
@@ -30,10 +34,9 @@ class Image
 	private $imagick;
 	private $width;
 	private $height;
-	private $valid;
+	private $valid = false;
 	private $outputType;
 	private $originType;
-	private $filename;
 
 	/**
 	 * Constructor
@@ -45,20 +48,19 @@ class Image
 	 * @throws \Friendica\Network\HTTPException\InternalServerErrorException
 	 * @throws \ImagickException
 	 */
-	public function __construct(string $data, string $type = '', string $filename = '', bool $imagick = true)
+	public function __construct(string $data, string $type = '', private readonly string $filename = '', bool $imagick = true)
 	{
-		$this->filename = $filename;
-		$type           = Images::addMimeTypeByDataIfInvalid($type, $data);
-		$type           = Images::addMimeTypeByExtensionIfInvalid($type, $filename);
+		$type = Images::addMimeTypeByDataIfInvalid($type, $data);
+		$type = Images::addMimeTypeByExtensionIfInvalid($type, $this->filename);
 
 		if (Images::isSupportedMimeType($type)) {
 			$this->originType = $this->outputType = Images::getImageTypeByMimeType($type);
-		} elseif (($type == '') || substr($type, 0, 6) == 'image/' || substr($type, 0, 12) == ' application/') {
+		} elseif (($type == '') || str_starts_with($type, 'image/') || substr($type, 0, 12) == ' application/') {
 			$this->originType = IMAGETYPE_UNKNOWN;
 			$this->outputType = IMAGETYPE_WEBP;
-			DI::logger()->debug('Unhandled image mime type, use WebP instead', ['type' => $type, 'filename' => $filename, 'size' => strlen($data)]);
+			DI::logger()->debug('Unhandled image mime type, use WebP instead', ['type' => $type, 'filename' => $this->filename, 'size' => strlen($data)]);
 		} else {
-			DI::logger()->debug('Unhandled mime type', ['type' => $type, 'filename' => $filename, 'size' => strlen($data)]);
+			DI::logger()->debug('Unhandled mime type', ['type' => $type, 'filename' => $this->filename, 'size' => strlen($data)]);
 			$this->valid = false;
 			return;
 		}
@@ -68,10 +70,11 @@ class Image
 		if ($this->isImagick() && (empty($data) || $this->loadData($data))) {
 			$this->valid = !empty($data);
 			return;
-		} else {
-			// Failed to load with Imagick, fallback
-			$this->imagick = false;
 		}
+
+		// Failed to load with Imagick, fallback
+		$this->imagick = false;
+
 		$this->loadData($data);
 	}
 
@@ -116,11 +119,11 @@ class Image
 		if (!isset($header['Webp']) || strtoupper($header['Webp']) !== 'WEBP') {
 			return false;
 		}
-		if (!isset($header['Vp']) || strpos(strtoupper($header['Vp']), 'VP8') === false) {
+		if (!isset($header['Vp']) || !str_contains(strtoupper($header['Vp']), 'VP8')) {
 			return false;
 		}
 
-		return strpos(strtoupper($header['Chunk']), 'ANIM') !== false || strpos(strtoupper($header['Chunk']), 'ANMF') !== false;
+		return str_contains(strtoupper((string) $header['Chunk']), 'ANIM') || str_contains(strtoupper((string) $header['Chunk']), 'ANMF');
 	}
 
 	/**
@@ -135,9 +138,6 @@ class Image
 				$this->image->clear();
 				$this->image->destroy();
 				return;
-			}
-			if (is_resource($this->image)) {
-				imagedestroy($this->image);
 			}
 		}
 	}
@@ -208,7 +208,7 @@ class Image
 
 			$this->width  = $this->image->getImageWidth();
 			$this->height = $this->image->getImageHeight();
-			$this->valid  = !empty($this->image);
+			$this->valid  = true;
 
 			return $this->valid;
 		}
@@ -249,9 +249,6 @@ class Image
 	 */
 	public function isValid(): bool
 	{
-		if ($this->isImagick()) {
-			return !empty($this->image);
-		}
 		return $this->valid;
 	}
 
@@ -293,7 +290,7 @@ class Image
 				/* Clean it */
 				$this->image = $this->image->deconstructImages();
 				return $this->image;
-			} catch (Exception $e) {
+			} catch (Exception) {
 				return false;
 			}
 		}
@@ -469,7 +466,7 @@ class Image
 			return;
 		}
 
-		$ort = isset($exif['IFD0']['Orientation']) ? $exif['IFD0']['Orientation'] : 1;
+		$ort = $exif['IFD0']['Orientation'] ?? 1;
 
 		switch ($ort) {
 			case 1: // nothing
@@ -597,7 +594,7 @@ class Image
 				// to allow very tall images to be constrained only horizontally.
 				try {
 					$this->image->scaleImage($dest_width, $dest_height);
-				} catch (Exception $e) {
+				} catch (Exception) {
 					// Imagick couldn't use the data
 					return false;
 				}
@@ -615,10 +612,6 @@ class Image
 			}
 
 			imagecopyresampled($dest, $this->image, 0, 0, 0, 0, $dest_width, $dest_height, $this->width, $this->height);
-
-			if ($this->image) {
-				imagedestroy($this->image);
-			}
 
 			$this->image  = $dest;
 			$this->width  = imagesx($this->image);
@@ -683,9 +676,7 @@ class Image
 			imagefill($dest, 0, 0, imagecolorallocatealpha($dest, 0, 0, 0, 127)); // fill with alpha
 		}
 		imagecopyresampled($dest, $this->image, 0, 0, $x, $y, $max, $max, $w, $h);
-		if ($this->image) {
-			imagedestroy($this->image);
-		}
+
 		$this->image  = $dest;
 		$this->width  = imagesx($this->image);
 		$this->height = imagesy($this->image);
@@ -726,7 +717,7 @@ class Image
 				/* Clean it */
 				$this->image = $this->image->deconstructImages();
 				return $this->image->getImagesBlob();
-			} catch (Exception $e) {
+			} catch (Exception) {
 				return false;
 			}
 		}
@@ -792,7 +783,7 @@ class Image
 				if ($image->isImagick()) {
 					try {
 						$colors = $image->image->getImagePixelColor($x, $y)->getColor();
-					} catch (\Exception $exception) {
+					} catch (\Exception) {
 						return '';
 					}
 					$row[] = [$colors['r'], $colors['g'], $colors['b']];
@@ -836,7 +827,7 @@ class Image
 
 		for ($y = 0; $y < $scaled['height']; ++$y) {
 			for ($x = 0; $x < $scaled['width']; ++$x) {
-				list($r, $g, $b) = $pixels[$y][$x];
+				[$r, $g, $b] = $pixels[$y][$x];
 				if ($draw !== null) {
 					$draw->setFillColor("rgb($r, $g, $b)");
 					$draw->point($x, $y);
@@ -855,8 +846,94 @@ class Image
 			$this->height = imagesy($this->image);
 		}
 
-		$this->valid = !empty($this->image);
+		$this->valid = true;
 
 		$this->scaleUp(min($width, $height));
 	}
+
+	/**
+	 * Create a preview image for the provided video URL using ffmpeg.
+	 * The result is cached for one day.
+	 *
+	 * @param string $url Video URL
+	 * @return string binary image data or empty string
+	 */
+	private function getPreviewImageForVideoUrlCached(string $url): string
+	{
+		$cacheKey = 'getPreviewImageForVideoUrl:' . sha1($url);
+
+		$preview = DI::cache()->get($cacheKey);
+
+		if (!$preview) {
+			$preview = $this->getPreviewImageForVideoUrl($url);
+			if (!$preview) {
+				return '';
+			}
+
+			DI::cache()->set($cacheKey, base64_encode($preview), Duration::DAY);
+		} else {
+			$preview = base64_decode((string) $preview);
+		}
+
+		return $preview;
+	}
+
+	/**
+	 * Create a preview image for the provided video URL using ffmpeg
+	 *
+	 * @param string $url Video URL
+	 * @return string binary image data or empty string
+	 */
+	private function getPreviewImageForVideoUrl($url): string
+	{
+		$preview = '';
+
+		$timestamp = microtime(true);
+
+		try {
+			$ffmpeg = FFMpeg::create();
+			/** @var \FFMpeg\Media\Video $video */
+			$video = $ffmpeg->open($url);
+			$frame = $video->frame(TimeCode::fromSeconds(0));
+
+			$tempfile = tempnam(System::getTempPath(), 'videopreview-');
+			$frame->save($tempfile);
+			$preview = file_get_contents($tempfile);
+			unlink($tempfile);
+			$runtime = number_format(microtime(true) - $timestamp, 3);
+			DI::logger()->debug('Created video preview', ['runtime' => $runtime, 'url' => $url]);
+		} catch (\Throwable $th) {
+			$runtime = number_format(microtime(true) - $timestamp, 3);
+			DI::logger()->notice('Got exception', ['runtime' => $runtime, 'url' => $url, 'code' => $th->getCode(), 'message' => $th->getMessage()]);
+		}
+
+		return $preview;
+	}
+
+	/**
+	 * Create a preview image for the provided video URL using ffmpeg
+	 *
+	 * @param string $url Video URL
+	 * @param bool   $cached optional, default true
+	 * @return boolean Success
+	 */
+	public function getFromVideoUrl(string $url, bool $cached = true): bool
+	{
+		if (!$url) {
+			return false;
+		}
+
+		if (!DI::config()->get('system', 'ffmpeg_installed')) {
+			return false;
+		}
+
+		if ($cached) {
+			$data = $this->getPreviewImageForVideoUrlCached($url);
+		} else {
+			$data = $this->getPreviewImageForVideoUrl($url);
+		}
+
+		return($this->loadData($data));
+	}
+
 }

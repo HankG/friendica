@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -11,17 +11,14 @@ use Friendica\App\Arguments;
 use Friendica\App\BaseURL;
 use Friendica\App\Page;
 use Friendica\AppHelper;
-use Friendica\Content\Feature;
 use Friendica\Content\Pager;
 use Friendica\Core\Config\Capability\IManageConfigValues;
 use Friendica\Core\L10n;
 use Friendica\Core\Renderer;
 use Friendica\Core\Session\Capability\IHandleUserSessions;
-use Friendica\Core\System;
 use Friendica\Database\Database;
 use Friendica\Event\ArrayFilterEvent;
 use Friendica\Model\Contact;
-use Friendica\Model\Item;
 use Friendica\Model\Photo;
 use Friendica\Model\Profile;
 use Friendica\Module\Response;
@@ -39,33 +36,18 @@ use Psr\Log\LoggerInterface;
 
 class Photos extends \Friendica\Module\BaseProfile
 {
-	/** @var IHandleUserSessions */
-	private $session;
-	/** @var Page */
-	private $page;
-	/** @var IManageConfigValues */
-	private $config;
-	/** @var AppHelper */
-	private $appHelper;
-	/** @var Database */
-	private $database;
-	/** @var SystemMessages */
-	private $systemMessages;
-	/** @var ACLFormatter */
-	private $aclFormatter;
-	private EventDispatcherInterface $eventDispatcher;
 	/** @var array owner-view record */
 	private $owner;
 
 	public function __construct(
-		ACLFormatter $aclFormatter,
-		SystemMessages $systemMessages,
-		Database $database,
-		AppHelper $appHelper,
-		IManageConfigValues $config,
-		Page $page,
-		IHandleUserSessions $session,
-		EventDispatcherInterface $eventDispatcher,
+		private readonly ACLFormatter $aclFormatter,
+		private readonly SystemMessages $systemMessages,
+		private readonly Database $database,
+		private readonly AppHelper $appHelper,
+		private readonly IManageConfigValues $config,
+		private Page $page,
+		private readonly IHandleUserSessions $session,
+		private readonly EventDispatcherInterface $eventDispatcher,
 		L10n $l10n,
 		BaseURL $baseUrl,
 		Arguments $args,
@@ -73,18 +55,9 @@ class Photos extends \Friendica\Module\BaseProfile
 		Profiler $profiler,
 		Response $response,
 		array $server,
-		array $parameters = []
+		array $parameters = [],
 	) {
 		parent::__construct($l10n, $baseUrl, $args, $logger, $profiler, $response, $server, $parameters);
-
-		$this->session         = $session;
-		$this->page            = $page;
-		$this->config          = $config;
-		$this->appHelper       = $appHelper;
-		$this->database        = $database;
-		$this->systemMessages  = $systemMessages;
-		$this->aclFormatter    = $aclFormatter;
-		$this->eventDispatcher = $eventDispatcher;
 
 		$owner = Profile::load($this->appHelper, $this->parameters['nickname'] ?? '', false);
 		if (!$owner || $owner['account_removed'] || $owner['account_expired']) {
@@ -113,7 +86,7 @@ class Photos extends \Friendica\Module\BaseProfile
 			// Since we know from the visibility parameter the item should be private, we have to prevent the empty ACL
 			// case that would make it public. So we always append the author's contact id to the allowed contacts.
 			// See https://github.com/friendica/friendica/issues/9672
-			$str_contact_allow .= $this->aclFormatter->toString(Contact::getPublicIdByUserId($this->owner['uid']));
+			$str_contact_allow .= $this->aclFormatter->toString((string) Contact::getPublicIdByUserId($this->owner['uid']));
 		}
 
 		$hook_data = [
@@ -134,25 +107,6 @@ class Photos extends \Friendica\Module\BaseProfile
 		$this->logger->debug('album= ' . $album . ' newalbum= ' . $newalbum);
 
 		$album = $album ?: $newalbum ?: DateTimeFormat::localNow('Y');
-
-		/*
-		 * We create a wall item for every photo, but we don't want to
-		 * overwhelm the data stream with a hundred newly uploaded photos.
-		 * So we will make the first photo uploaded to this album in the last several hours
-		 * visible by default, the rest will become visible over time when and if
-		 * they acquire comments, likes, dislikes, and/or tags
-		 */
-
-		$r = Photo::selectToArray([], ['`album` = ? AND `uid` = ? AND `created` > ?', $album, $this->owner['uid'], DateTimeFormat::utc('now - 3 hours')]);
-		if (!$r || ($album == $this->t(Photo::PROFILE_PHOTOS))) {
-			$visible = 1;
-		} else {
-			$visible = 0;
-		}
-
-		if (!empty($request['not_visible']) && $request['not_visible'] !== 'false') {
-			$visible = 0;
-		}
 
 		$hook_data = [
 			'src'      => '',
@@ -178,7 +132,7 @@ class Photos extends \Friendica\Module\BaseProfile
 			$error    = UPLOAD_ERR_OK;
 		} elseif (!empty($_FILES['userfile'])) {
 			$src      = $_FILES['userfile']['tmp_name'];
-			$filename = basename($_FILES['userfile']['name']);
+			$filename = basename((string) $_FILES['userfile']['name']);
 			$filesize = intval($_FILES['userfile']['size']);
 			$type     = $_FILES['userfile']['type'];
 			$error    = $_FILES['userfile']['error'];
@@ -218,7 +172,7 @@ class Photos extends \Friendica\Module\BaseProfile
 			return;
 		}
 
-		$this->logger->info('photos: upload: received file: ' . $filename . ' as ' . $src . ' ('. $type . ') ' . $filesize . ' bytes');
+		$this->logger->info('photos: upload: received file: ' . $filename . ' as ' . $src . ' (' . $type . ') ' . $filesize . ' bytes');
 
 		$maximagesize = Strings::getBytesFromShorthand($this->config->get('system', 'maximagesize'));
 
@@ -262,7 +216,6 @@ class Photos extends \Friendica\Module\BaseProfile
 			return;
 		}
 
-		$exif = $image->orient($src);
 		@unlink($src);
 
 		$max_length = $this->config->get('system', 'max_image_length');
@@ -276,54 +229,17 @@ class Photos extends \Friendica\Module\BaseProfile
 		if ($preview < 0) {
 			$this->logger->warning('image store failed');
 			$this->systemMessages->addNotice($this->t('Image upload failed.'));
+			$this->eventDispatcher->dispatch(
+				new ArrayFilterEvent(ArrayFilterEvent::PHOTO_UPLOAD_END, ['id' => 0]),
+			);
 			return;
 		}
 
-		$uri = Item::newURI();
-
-		// Create item container
-		$lat = $lon = null;
-		if (!empty($exif['GPS']) && Feature::isEnabled($this->owner['uid'], Feature::PHOTO_LOCATION)) {
-			$lat = Photo::getGps($exif['GPS']['GPSLatitude'], $exif['GPS']['GPSLatitudeRef']);
-			$lon = Photo::getGps($exif['GPS']['GPSLongitude'], $exif['GPS']['GPSLongitudeRef']);
-		}
-
-		$arr = [];
-		if ($lat && $lon) {
-			$arr['coord'] = $lat . ' ' . $lon;
-		}
-
-		$arr['guid']          = System::createUUID();
-		$arr['uid']           = $this->owner['uid'];
-		$arr['uri']           = $uri;
-		$arr['post-type']     = Item::PT_IMAGE;
-		$arr['wall']          = 1;
-		$arr['resource-id']   = $resource_id;
-		$arr['contact-id']    = $this->owner['id'];
-		$arr['owner-name']    = $this->owner['name'];
-		$arr['owner-link']    = $this->owner['url'];
-		$arr['owner-avatar']  = $this->owner['thumb'];
-		$arr['author-name']   = $this->owner['name'];
-		$arr['author-link']   = $this->owner['url'];
-		$arr['author-avatar'] = $this->owner['thumb'];
-		$arr['title']         = '';
-		$arr['allow_cid']     = $str_contact_allow;
-		$arr['allow_gid']     = $str_circle_allow;
-		$arr['deny_cid']      = $str_contact_deny;
-		$arr['deny_gid']      = $str_circle_deny;
-		$arr['visible']       = $visible;
-		$arr['origin']        = 1;
-
-		$arr['body'] = Images::getBBCodeByResource($resource_id, $this->owner['nickname'], $preview, $image->getExt());
-
-		$item_id = Item::insert($arr);
 		// Update the photo albums cache
 		Photo::clearAlbumCache($this->owner['uid']);
 
-		// addon uploaders should call "exit()" within the PHOTO_UPLOAD_END event
-		// if they do not wish to be redirected
 		$this->eventDispatcher->dispatch(
-			new ArrayFilterEvent(ArrayFilterEvent::PHOTO_UPLOAD_END, ['id' => $item_id]),
+			new ArrayFilterEvent(ArrayFilterEvent::PHOTO_UPLOAD_END, ['id' => $resource_id]),
 		);
 
 		$this->baseUrl->redirect($this->session->get('photo_return') ?? 'profile/' . $this->owner['nickname'] . '/photos');
@@ -331,8 +247,6 @@ class Photos extends \Friendica\Module\BaseProfile
 
 	protected function content(array $request = []): string
 	{
-		parent::content($request);
-
 		if ($this->config->get('system', 'block_public') && !$this->session->isAuthenticated()) {
 			throw new HttpException\ForbiddenException($this->t('Public access denied.'));
 		}
@@ -380,7 +294,7 @@ class Photos extends \Friendica\Module\BaseProfile
 			$this->owner['uid'],
 			Photo::DEFAULT,
 			$pager->getStart(),
-			$pager->getItemsPerPage()
+			$pager->getItemsPerPage(),
 		));
 
 		$photos = array_map(function ($photo) {
@@ -391,7 +305,7 @@ class Photos extends \Friendica\Module\BaseProfile
 				'src'   => 'photo/' . $photo['resource-id'] . '-' . ((($photo['scale']) == 6) ? 4 : $photo['scale']) . Images::getExtensionByMimeType($photo['type']),
 				'alt'   => $photo['filename'],
 				'album' => [
-					'link' => 'photos/' . $this->owner['nickname'] . '/album/' . bin2hex($photo['album']),
+					'link' => 'photos/' . $this->owner['nickname'] . '/album/' . bin2hex((string) $photo['album']),
 					'name' => $photo['album'],
 					'alt'  => $this->t('View Album'),
 				],
@@ -400,7 +314,7 @@ class Photos extends \Friendica\Module\BaseProfile
 
 		$tpl = Renderer::getMarkupTemplate('photos_head.tpl');
 		$this->page['htmlhead'] .= Renderer::replaceMacros($tpl, [
-			'$ispublic' => $this->t('everybody')
+			'$ispublic' => $this->t('everybody'),
 		]);
 
 		if ($albums = Photo::getAlbums($this->owner['uid'])) {
@@ -408,9 +322,9 @@ class Photos extends \Friendica\Module\BaseProfile
 				return [
 					'text'      => $album['album'],
 					'total'     => $album['total'],
-					'url'       => 'photos/' . $this->owner['nickname'] . '/album/' . bin2hex($album['album']),
-					'urlencode' => urlencode($album['album']),
-					'bin2hex'   => bin2hex($album['album'])
+					'url'       => 'photos/' . $this->owner['nickname'] . '/album/' . bin2hex((string) $album['album']),
+					'urlencode' => urlencode((string) $album['album']),
+					'bin2hex'   => bin2hex((string) $album['album']),
 				];
 			}, $albums);
 
@@ -419,7 +333,7 @@ class Photos extends \Friendica\Module\BaseProfile
 				'$title'    => $this->t('Photo Albums'),
 				'$recent'   => $this->t('Recent Photos'),
 				'$albums'   => $albums,
-				'$upload'   => [$this->t('Upload New Photos'), 'photos/' . $this->owner['nickname'] . '/upload'],
+				'$upload'   => [$this->t('Upload photo'), 'photos/' . $this->owner['nickname'] . '/upload'],
 				'$can_post' => $this->session->getLocalUserId() && $this->owner['uid'] == $this->session->getLocalUserId(),
 			]);
 		}
@@ -437,11 +351,12 @@ class Photos extends \Friendica\Module\BaseProfile
 
 		$tpl = Renderer::getMarkupTemplate('photos_recent.tpl');
 		$o .= Renderer::replaceMacros($tpl, [
-			'$title'    => $this->t('Recent Photos'),
-			'$can_post' => $is_owner,
-			'$upload'   => [$this->t('Upload New Photos'), 'photos/' . $this->owner['nickname'] . '/upload'],
-			'$photos'   => $photos,
-			'$paginate' => $pager->renderFull($total),
+			'$title'      => $this->t('Recent Photos'),
+			'$can_post'   => $is_owner,
+			'$upload'     => [$this->t('Upload photo'), 'photos/' . $this->owner['nickname'] . '/upload'],
+			'$photos'     => $photos,
+			'$paginate'   => $pager->renderFull($total),
+			'upload_text' => $this->t('Upload photo'),
 		]);
 
 		return $o;

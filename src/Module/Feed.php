@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -31,7 +31,7 @@ class Feed extends BaseModule
 	protected function rawContent(array $request = [])
 	{
 		$nick = $this->parameters['nickname'] ?? '';
-		$type = $this->parameters['type'] ?? null;
+		$type = $this->parameters['type']     ?? null;
 		switch ($type) {
 			case 'posts':
 			case 'comments':
@@ -60,6 +60,6 @@ class Feed extends BaseModule
 
 		$feed = ProtocolFeed::atom($owner, $last_update, 10, $type);
 
-		$this->httpExit($feed, Response::TYPE_ATOM);
+		$this->earlyHttpExit($feed, Response::TYPE_ATOM);
 	}
 }

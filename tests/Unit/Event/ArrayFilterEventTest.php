@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -19,7 +19,7 @@ class ArrayFilterEventTest extends TestCase
 	{
 		$event = new ArrayFilterEvent('test', []);
 
-		$this->assertInstanceOf(NamedEvent::class, $event);
+		$this->assertInstanceOf(NamedEvent::class, $event); // @phpstan-ignore method.alreadyNarrowedType
 	}
 
 	public static function getPublicConstants(): array
@@ -68,7 +68,6 @@ class ArrayFilterEventTest extends TestCase
 			[ArrayFilterEvent::PROFILE_SETTINGS_POST, 'friendica.data.profile_settings_post'],
 			[ArrayFilterEvent::MODERATION_USERS_TABS, 'friendica.data.moderation_users_tabs'],
 			[ArrayFilterEvent::ACL_LOOKUP_END, 'friendica.data.acl_lookup_end'],
-			[ArrayFilterEvent::OEMBED_FETCH_END, 'friendica.data.oembed_fetch_end'],
 			[ArrayFilterEvent::PAGE_INFO, 'friendica.data.page_info'],
 			[ArrayFilterEvent::SMILEY_LIST, 'friendica.data.smiley_list'],
 			[ArrayFilterEvent::BBCODE_TO_HTML_START, 'friendica.data.bbcode_to_html_start'],
@@ -101,9 +100,7 @@ class ArrayFilterEventTest extends TestCase
 		];
 	}
 
-	/**
-	 * @dataProvider getPublicConstants
-	 */
+	#[\PHPUnit\Framework\Attributes\DataProvider('getPublicConstants')]
 	public function testPublicConstantsAreAvailable($value, $expected): void
 	{
 		$this->assertSame($expected, $value);

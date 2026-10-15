@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -15,6 +15,7 @@ use Friendica\Model\APContact;
 use Friendica\Model\Contact;
 use Friendica\Model\Circle;
 use Friendica\Model\Item;
+use Friendica\Core\Worker;
 use Friendica\Model\Post;
 use Friendica\Model\User;
 use Friendica\Protocol\Activity;
@@ -106,7 +107,7 @@ class ClientToServer
 		$item        = ClientToServer::processContent($object_data, $application, $uid);
 		DI::logger()->debug('Got data', ['item' => $item, 'object' => $object_data]);
 
-		$id = Item::insert($item, true);
+		$id = Item::insert($item, Worker::PRIORITY_HIGH);
 		if (!empty($id)) {
 			$item = Post::selectFirst(['uri-id'], ['id' => $id]);
 			if (!empty($item['uri-id'])) {
@@ -310,11 +311,11 @@ class ClientToServer
 	 * @throws \Friendica\Network\HTTPException\InternalServerErrorException
 	 * @throws \ImagickException
 	 */
-	public static function getOutbox(array $owner, int $uid, int $page = null, int $max_id = null, string $requester = ''): array
+	public static function getOutbox(array $owner, int $uid, ?int $page = null, ?int $max_id = null, string $requester = ''): array
 	{
 		$condition = [
 			'gravity' => [Item::GRAVITY_PARENT, Item::GRAVITY_COMMENT],
-			'private' => [Item::PUBLIC, Item::UNLISTED]
+			'private' => [Item::PUBLIC, Item::UNLISTED],
 		];
 
 		if (!empty($requester)) {
@@ -324,7 +325,7 @@ class ClientToServer
 				if (count($permissionSets) > 0) {
 					$condition = ['psid' => array_merge(
 						$permissionSets->column('id'),
-						[DI::permissionSet()->selectPublicForUser($owner['uid'])]
+						[DI::permissionSet()->selectPublicForUser($owner['uid'])],
 					)];
 				}
 			}
@@ -338,7 +339,7 @@ class ClientToServer
 			'parent-network' => Protocol::FEDERATED,
 			'origin'         => true,
 			'deleted'        => false,
-			'visible'        => true
+			'visible'        => true,
 		]);
 
 		$apcontact = APContact::getByURL($owner['url']);
@@ -350,33 +351,33 @@ class ClientToServer
 		return self::getCollection($condition, DI::baseUrl() . '/outbox/' . $owner['nickname'], $page, $max_id, $uid, $apcontact['statuses_count']);
 	}
 
-	public static function getInbox(int $uid, int $page = null, int $max_id = null)
+	public static function getInbox(int $uid, ?int $page = null, ?int $max_id = null)
 	{
 		$owner = User::getOwnerDataById($uid);
 
 		$condition = [
 			'gravity' => [Item::GRAVITY_PARENT, Item::GRAVITY_COMMENT],
 			'network' => [Protocol::ACTIVITYPUB, Protocol::DFRN],
-			'uid'     => $uid
+			'uid'     => $uid,
 		];
 
 		return self::getCollection($condition, DI::baseUrl() . '/inbox/' . $owner['nickname'], $page, $max_id, $uid, null);
 	}
 
-	public static function getPublicInbox(int $uid, int $page = null, int $max_id = null)
+	public static function getPublicInbox(int $uid, ?int $page = null, ?int $max_id = null)
 	{
 		$condition = [
 			'gravity'        => [Item::GRAVITY_PARENT, Item::GRAVITY_COMMENT],
 			'private'        => Item::PUBLIC,
 			'network'        => [Protocol::ACTIVITYPUB, Protocol::DFRN],
 			'author-blocked' => false,
-			'author-hidden'  => false
+			'author-hidden'  => false,
 		];
 
 		return self::getCollection($condition, DI::baseUrl() . '/inbox', $page, $max_id, $uid, null);
 	}
 
-	private static function getCollection(array $condition, string $path, int $page = null, int $max_id = null, int $uid = null, int $total_items = null)
+	private static function getCollection(array $condition, string $path, ?int $page = null, ?int $max_id = null, ?int $uid = null, ?int $total_items = null)
 	{
 		$data = ['@context' => ActivityPub::CONTEXT];
 

@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -14,7 +14,7 @@ use Friendica\Test\ApiTestCase;
 
 class TestTest extends ApiTestCase
 {
-	public function testJson()
+	public function testJson(): void
 	{
 		$response = (new Test(DI::mstdnError(), DI::appHelper(), DI::l10n(), DI::baseUrl(), DI::args(), DI::logger(), DI::profiler(), DI::apiResponse(), [], ['extension' => 'json']))
 			->run($this->httpExceptionMock);
@@ -23,19 +23,19 @@ class TestTest extends ApiTestCase
 
 		self::assertEquals([
 			'Content-type'                => ['application/json'],
-			ICanCreateResponses::X_HEADER => ['json']
+			ICanCreateResponses::X_HEADER => ['json'],
 		], $response->getHeaders());
 		self::assertEquals('ok', $json);
 	}
 
-	public function testXml()
+	public function testXml(): void
 	{
 		$response = (new Test(DI::mstdnError(), DI::appHelper(), DI::l10n(), DI::baseUrl(), DI::args(), DI::logger(), DI::profiler(), DI::apiResponse(), [], ['extension' => 'xml']))
 			->run($this->httpExceptionMock);
 
 		self::assertEquals([
 			'Content-type'                => ['text/xml'],
-			ICanCreateResponses::X_HEADER => ['xml']
+			ICanCreateResponses::X_HEADER => ['xml'],
 		], $response->getHeaders());
 		self::assertXml($response->getBody(), 'ok');
 	}

@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -36,8 +36,8 @@ class Mention extends BaseDataTransferObject
 	 */
 	public function __construct(array $tag, array $contact, array $indices)
 	{
-		$this->id          = (int)($contact['id'] ?? 0);
-		$this->id_str      = (string)($contact['id'] ?? 0);
+		$this->id          = (int) ($contact['id'] ?? 0);
+		$this->id_str      = (string) ($contact['id'] ?? 0);
 		$this->indices     = $indices;
 		$this->name        = $tag['name'];
 		$this->screen_name = $contact['nick'];

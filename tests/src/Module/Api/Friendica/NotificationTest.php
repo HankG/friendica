@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -16,34 +16,10 @@ use Friendica\Util\Temporal;
 
 class NotificationTest extends ApiTestCase
 {
-	public function testEmpty()
-	{
-		self::markTestIncomplete('Needs BasicAuth as dynamic method for overriding first');
-
-		/*
-		$this->expectException(BadRequestException::class);
-		DI::session()->set('uid', '');
-
-		Notification::rawContent();
-		*/
-	}
-
-	public function testWithoutAuthenticatedUser()
-	{
-		self::markTestIncomplete('Needs BasicAuth as dynamic method for overriding first');
-
-		/*
-		$this->expectException(BadRequestException::class);
-		DI::session()->set('uid', 41);
-
-		Notification::rawContent();
-		*/
-	}
-
-	public function testWithXmlResult()
+	public function testWithXmlResult(): void
 	{
 		$date    = DateTimeFormat::local('2020-01-01 12:12:02');
-		$dateRel = Temporal::getRelativeDate('2020-01-01 07:12:02');
+		$dateRel = Temporal::getRelativeDate('2020-01-01 12:12:02');
 
 		$assertXml = <<<XML
 <?xml version="1.0"?>
@@ -52,18 +28,20 @@ class NotificationTest extends ApiTestCase
 </notes>
 XML;
 
+		// @phpstan-ignore method.deprecated
 		$response = (new Notification(DI::mstdnError(), DI::appHelper(), DI::l10n(), DI::baseUrl(), DI::args(), DI::logger(), DI::profiler(), DI::apiResponse(), [], ['extension' => 'xml']))
 			->run($this->httpExceptionMock);
 
-		self::assertXmlStringEqualsXmlString($assertXml, (string)$response->getBody());
+		self::assertXmlStringEqualsXmlString($assertXml, (string) $response->getBody());
 		self::assertEquals([
 			'Content-type'                => ['text/xml'],
-			ICanCreateResponses::X_HEADER => ['xml']
+			ICanCreateResponses::X_HEADER => ['xml'],
 		], $response->getHeaders());
 	}
 
-	public function testWithJsonResult()
+	public function testWithJsonResult(): void
 	{
+		// @phpstan-ignore method.deprecated
 		$response = (new Notification(DI::mstdnError(), DI::appHelper(), DI::l10n(), DI::baseUrl(), DI::args(), DI::logger(), DI::profiler(), DI::apiResponse(), [], ['extension' => 'json']))
 			->run($this->httpExceptionMock);
 
@@ -79,7 +57,7 @@ XML;
 
 		self::assertEquals([
 			'Content-type'                => ['application/json'],
-			ICanCreateResponses::X_HEADER => ['json']
+			ICanCreateResponses::X_HEADER => ['json'],
 		], $response->getHeaders());
 	}
 }

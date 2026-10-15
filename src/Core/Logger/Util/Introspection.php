@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -19,12 +19,6 @@ class Introspection implements IHaveCallIntrospections
 	/** @var string */
 	private $requestId;
 
-	/** @var int  */
-	private $skipStackFramesCount;
-
-	/** @var string[] */
-	private $skipClassesPartials;
-
 	private $skipFunctions = [
 		'call_user_func',
 		'call_user_func_array',
@@ -34,11 +28,9 @@ class Introspection implements IHaveCallIntrospections
 	 * @param string[] $skipClassesPartials  An array of classes to skip during logging
 	 * @param int      $skipStackFramesCount If the logger should use information from other hierarchy levels of the call
 	 */
-	public function __construct(Request $request, array $skipClassesPartials = [], int $skipStackFramesCount = 0)
+	public function __construct(Request $request, private array $skipClassesPartials = [], private readonly int $skipStackFramesCount = 0)
 	{
-		$this->requestId            = $request->getRequestId();
-		$this->skipClassesPartials  = $skipClassesPartials;
-		$this->skipStackFramesCount = $skipStackFramesCount;
+		$this->requestId = $request->getRequestId();
 	}
 
 	/**
@@ -73,7 +65,7 @@ class Introspection implements IHaveCallIntrospections
 			'line'       => $trace[$i - 1]['line'] ?? null,
 			'function'   => $trace[$i]['function'] ?? null,
 			'request-id' => $this->requestId,
-			'stack'      => System::callstack(15, 0, true, ['Friendica\Core\Logger\Type\StreamLogger', 'Friendica\Core\Logger\Type\AbstractLogger', 'Friendica\Core\Logger\Type\WorkerLogger', 'Friendica\Core\Logger']),
+			'stack'      => System::callstack(15, 1, [\Friendica\Core\Logger\Type\StreamLogger::class, \Friendica\Core\Logger\Type\AbstractLogger::class, \Friendica\Core\Logger\Type\WorkerLogger::class]),
 		];
 	}
 
@@ -92,7 +84,7 @@ class Introspection implements IHaveCallIntrospections
 
 		if (isset($traceItem['class'])) {
 			foreach ($this->skipClassesPartials as $part) {
-				if (strpos($traceItem['class'], $part) === 0) {
+				if (str_starts_with($traceItem['class'], $part)) {
 					return true;
 				}
 			}

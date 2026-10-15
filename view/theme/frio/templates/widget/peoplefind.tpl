@@ -1,11 +1,14 @@
 {{*
-  * Copyright (C) 2010-2024, the Friendica project
-  * SPDX-FileCopyrightText: 2010-2024 the Friendica project
+  * Copyright (C) 2010-2026, the Friendica project
+  * SPDX-FileCopyrightText: 2010-2026 the Friendica project
   *
   * SPDX-License-Identifier: AGPL-3.0-or-later
   *}}
 <nav id="peoplefind-sidebar" class="widget">
-	<h3>{{$nv.findpeople}}</h3>
+	<h3>
+		<i class="ri ri-search-line" aria-hidden="true"></i>
+		{{$nv.findpeople}}
+	</h3>
 
 	<form action="dirfind" method="get">
 		{{* The search field *}}

@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -17,15 +17,10 @@ use Friendica\Model\User;
  */
 class UserSession implements IHandleUserSessions
 {
-	/** @var IHandleSessions */
-	private $session;
 	/** @var int|bool saves the public Contact ID for later usage */
 	protected $publicContactId = false;
 
-	public function __construct(IHandleSessions $session)
-	{
-		$this->session = $session;
-	}
+	public function __construct(private readonly IHandleSessions $session) {}
 
 	/** {@inheritDoc} */
 	public function getLocalUserId()
@@ -73,7 +68,7 @@ class UserSession implements IHandleUserSessions
 		}
 
 		if (!empty($this->session->get('visitor_id'))) {
-			return (int)$this->session->get('visitor_id');
+			return (int) $this->session->get('visitor_id');
 		}
 
 		return false;

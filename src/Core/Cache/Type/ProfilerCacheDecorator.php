@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -19,21 +19,16 @@ use Friendica\Util\Profiler;
  */
 class ProfilerCacheDecorator implements ICanCache, ICanCacheInMemory
 {
-	/**
-	 * @var ICanCache The original cache driver
-	 */
-	private $cache;
-
-	/**
-	 * @var Profiler The profiler of Friendica
-	 */
-	private $profiler;
-
-	public function __construct(ICanCache $cache, Profiler $profiler)
-	{
-		$this->cache    = $cache;
-		$this->profiler = $profiler;
-	}
+	public function __construct(
+		/**
+		 * @var ICanCache The original cache driver
+		 */
+		private readonly ICanCache $cache,
+		/**
+		 * @var Profiler The profiler of Friendica
+		 */
+		private readonly Profiler $profiler,
+	) {}
 
 	/**
 	 * {@inheritDoc}

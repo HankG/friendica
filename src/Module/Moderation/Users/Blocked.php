@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -20,11 +20,11 @@ class Blocked extends BaseUsers
 
 		self::checkFormSecurityTokenRedirectOnError('/moderation/users/blocked', 'moderation_users_blocked');
 
-		$users = $request['user'] ?? [];
+		$users = (array) ($request['user'] ?? []);
 
 		if (!empty($request['page_users_unblock'])) {
 			foreach ($users as $uid) {
-				User::block($uid, false);
+				User::block((int) $uid, false);
 			}
 			$this->systemMessages->addInfo($this->tt('%s user unblocked', '%s users unblocked', count($users)));
 		}
@@ -32,7 +32,7 @@ class Blocked extends BaseUsers
 		if (!empty($request['page_users_delete'])) {
 			foreach ($users as $uid) {
 				if ($this->session->getLocalUserId() != $uid) {
-					User::remove($uid);
+					User::remove((int) $uid);
 				} else {
 					$this->systemMessages->addNotice($this->t('You can\'t remove yourself'));
 				}
@@ -93,6 +93,7 @@ class Blocked extends BaseUsers
 			'$blocked'        => $this->t('User blocked'),
 			'$unblock'        => $this->t('Unblock'),
 			'$siteadmin'      => $this->t('Site admin'),
+			'$moderator'      => $this->t('Moderator'),
 			'$accountexpired' => $this->t('Account expired'),
 
 			'$th_users'              => $th_users,
@@ -109,7 +110,7 @@ class Blocked extends BaseUsers
 
 			'$users' => $users,
 			'$count' => $count,
-			'$pager' => $pager->renderFull($count)
+			'$pager' => $pager->renderFull($count),
 		]);
 	}
 

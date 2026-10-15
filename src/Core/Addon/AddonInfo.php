@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -46,13 +46,13 @@ final class AddonInfo
 		foreach ($ll as $l) {
 			$l = trim($l, "\t\n\r */");
 			if ($l !== '') {
-				$addon_info = array_map('trim', explode(":", $l, 2));
+				$addon_info = array_map(trim(...), explode(":", $l, 2));
 				if (count($addon_info) < 2) {
 					continue;
 				}
 
-				list($type, $v) = $addon_info;
-				$type           = strtolower($type);
+				[$type, $v] = $addon_info;
+				$type       = strtolower($type);
 
 				if ($type === 'author' || $type === 'maintainer') {
 					$r = preg_match("|([^<]+)<([^>]+)>|", $v, $m);
@@ -149,9 +149,7 @@ final class AddonInfo
 
 	private string $status = '';
 
-	private function __construct()
-	{
-	}
+	private function __construct() {}
 
 	public function getId(): string
 	{

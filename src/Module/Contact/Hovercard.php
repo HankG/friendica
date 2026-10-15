@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -13,7 +13,6 @@ use Friendica\Content\Widget;
 use Friendica\Core\Config\Capability\IManageConfigValues;
 use Friendica\Core\L10n;
 use Friendica\Core\Session\Capability\IHandleUserSessions;
-use Friendica\Core\System;
 use Friendica\Model\Contact;
 use Friendica\Module\Response;
 use Friendica\Network\HTTPException;
@@ -25,17 +24,9 @@ use Psr\Log\LoggerInterface;
  */
 class Hovercard extends BaseModule
 {
-	/** @var IManageConfigValues */
-	private $config;
-	/** @var IHandleUserSessions */
-	private $userSession;
-
-	public function __construct(IHandleUserSessions $userSession, IManageConfigValues $config, L10n $l10n, App\BaseURL $baseUrl, App\Arguments $args, LoggerInterface $logger, Profiler $profiler, Response $response, array $server, array $parameters = [])
+	public function __construct(private readonly IHandleUserSessions $userSession, private readonly IManageConfigValues $config, L10n $l10n, App\BaseURL $baseUrl, App\Arguments $args, LoggerInterface $logger, Profiler $profiler, Response $response, private readonly Widget\Hovercard $hovercard, array $server, array $parameters = [])
 	{
 		parent::__construct($l10n, $baseUrl, $args, $logger, $profiler, $response, $server, $parameters);
-
-		$this->config      = $config;
-		$this->userSession = $userSession;
 	}
 
 	protected function rawContent(array $request = [])
@@ -51,7 +42,7 @@ class Hovercard extends BaseModule
 		 * - contact/redir/123456
 		 * - contact/123456/conversations
 		 */
-		if (strpos($contact_url, 'contact/') === 0 && preg_match('/(\d+)/', $contact_url, $matches)) {
+		if (str_starts_with($contact_url, 'contact/') && preg_match('/(\d+)/', $contact_url, $matches)) {
 			$remote_contact = Contact::selectFirst(['nurl'], ['id' => $matches[1]]);
 			$contact_url    = $remote_contact['nurl'] ?? '';
 		}
@@ -72,6 +63,6 @@ class Hovercard extends BaseModule
 			throw new HTTPException\NotFoundException();
 		}
 
-		$this->httpExit(Widget\Hovercard::getHTML($contact, $this->userSession->getLocalUserId()));
+		$this->earlyHttpExit($this->hovercard->getHTML($contact, $this->userSession->getLocalUserId()));
 	}
 }

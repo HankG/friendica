@@ -1,14 +1,14 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Protocol;
 
-use Friendica\Core\Hook;
 use Friendica\Content\Text\BBCode;
+use Friendica\Event\ArrayFilterEvent;
 use Friendica\Content\Text\HTML;
 use Friendica\Core\Protocol;
 use Friendica\DI;
@@ -25,7 +25,7 @@ class Email
 	 * @param string $mailbox  The mailbox name
 	 * @param string $username The username
 	 * @param string $password The password
-	 * @return Connection|resource|false
+	 * @return Connection|false
 	 * @throws \Exception
 	 */
 	public static function connect(string $mailbox, string $username, string $password)
@@ -53,8 +53,8 @@ class Email
 	}
 
 	/**
-	 * @param Connection|resource $mbox       mailbox
-	 * @param string              $email_addr email
+	 * @param Connection $mbox       mailbox
+	 * @param string     $email_addr email
 	 * @throws \Exception
 	 */
 	public static function poll($mbox, string $email_addr): array
@@ -67,7 +67,7 @@ class Email
 		if (!$search1) {
 			$search1 = [];
 		} else {
-			DI::logger()->debug("Found mails from ".$email_addr);
+			DI::logger()->debug("Found mails from " . $email_addr);
 			Item::incrementInbound(Protocol::MAIL);
 		}
 
@@ -75,7 +75,7 @@ class Email
 		if (!$search2) {
 			$search2 = [];
 		} else {
-			DI::logger()->debug("Found mails to ".$email_addr);
+			DI::logger()->debug("Found mails to " . $email_addr);
 			Item::incrementInbound(Protocol::MAIL);
 		}
 
@@ -83,7 +83,7 @@ class Email
 		if (!$search3) {
 			$search3 = [];
 		} else {
-			DI::logger()->debug("Found mails cc ".$email_addr);
+			DI::logger()->debug("Found mails cc " . $email_addr);
 			Item::incrementInbound(Protocol::MAIL);
 		}
 
@@ -107,8 +107,8 @@ class Email
 	}
 
 	/**
-	 * @param Connection|resource $mbox     mailbox
-	 * @param string              $sequence
+	 * @param Connection $mbox     mailbox
+	 * @param string     $sequence
 	 * @return mixed
 	 */
 	public static function messageMeta($mbox, string $sequence)
@@ -118,10 +118,10 @@ class Email
 	}
 
 	/**
-	 * @param Connection|resource $mbox  mailbox
-	 * @param integer             $uid   user id
-	 * @param string              $reply reply
-	 * @param array               $item  Item
+	 * @param Connection $mbox  mailbox
+	 * @param integer    $uid   user id
+	 * @param string     $reply reply
+	 * @param array      $item  Item
 	 * @return array
 	 * @throws \Friendica\Network\HTTPException\InternalServerErrorException
 	 */
@@ -142,8 +142,8 @@ class Email
 
 			if (!empty($html)) {
 				$message = ['text' => '', 'html' => $html, 'item' => $ret];
-				Hook::callAll('email_getmessage', $message);
-				$ret = $message['item'];
+				$message = DI::eventDispatcher()->dispatch(new ArrayFilterEvent(ArrayFilterEvent::EMAIL_GET_MESSAGE, $message))->getArray();
+				$ret     = $message['item'];
 				if (empty($ret['body'])) {
 					$ret['body'] = HTML::toBBCode($message['html']);
 				}
@@ -152,8 +152,8 @@ class Email
 			if (empty($ret['body'])) {
 				$text = self::messageGetPart($mbox, $uid, $struc, 0, 'plain');
 
-				$message = ['text' => $text, 'html' => '', 'item' => $ret];
-				Hook::callAll('email_getmessage', $message);
+				$message     = ['text' => $text, 'html' => '', 'item' => $ret];
+				$message     = DI::eventDispatcher()->dispatch(new ArrayFilterEvent(ArrayFilterEvent::EMAIL_GET_MESSAGE, $message))->getArray();
 				$ret         = $message['item'];
 				$ret['body'] = $message['text'];
 			}
@@ -173,8 +173,8 @@ class Email
 			}
 
 			$message = ['text' => trim($text), 'html' => trim($html), 'item' => $ret];
-			Hook::callAll('email_getmessage', $message);
-			$ret = $message['item'];
+			$message = DI::eventDispatcher()->dispatch(new ArrayFilterEvent(ArrayFilterEvent::EMAIL_GET_MESSAGE, $message))->getArray();
+			$ret     = $message['item'];
 
 			if (empty($ret['body']) && !empty($message['html'])) {
 				$ret['body'] = HTML::toBBCode($message['html']);
@@ -199,7 +199,7 @@ class Email
 		$ret['body'] = Strings::escapeHtml($ret['body']);
 		$ret['body'] = BBCode::limitBodySize($ret['body']);
 
-		Hook::callAll('email_getmessage_end', $ret);
+		$ret = DI::eventDispatcher()->dispatch(new ArrayFilterEvent(ArrayFilterEvent::EMAIL_GET_MESSAGE_END, $ret))->getArray();
 
 		return $ret;
 	}
@@ -207,21 +207,21 @@ class Email
 	/**
 	 * fetch the specified message part number with the specified subtype
 	 *
-	 * @param Connection|resource $mbox    mailbox
-	 * @param integer             $uid     user id
-	 * @param object              $p       parts
-	 * @param integer             $partno  part number
-	 * @param string              $subtype sub type
+	 * @param Connection $mbox    mailbox
+	 * @param integer    $uid     user id
+	 * @param object     $p       parts
+	 * @param string|int    $partno  part number
+	 * @param string     $subtype sub type
 	 * @return string
 	 */
-	private static function messageGetPart($mbox, int $uid, $p, int $partno, string $subtype): string
+	private static function messageGetPart(Connection $mbox, int $uid, $p, string|int $partno, string $subtype): string
 	{
 		// $partno = '1', '2', '2.1', '2.1.3', etc for multipart, 0 if simple
 		global $htmlmsg,$plainmsg,$charset,$attachments;
 
 		// DECODE DATA
 		$data = ($partno)
-			? @imap_fetchbody($mbox, $uid, $partno, FT_UID | FT_PEEK)
+			? @imap_fetchbody($mbox, $uid, (string) $partno, FT_UID | FT_PEEK)
 		: @imap_body($mbox, $uid, FT_UID | FT_PEEK);
 
 		// Any part may be encoded, even plain text messages, so check everything.
@@ -236,13 +236,13 @@ class Email
 		$params = [];
 		if ($p->parameters) {
 			foreach ($p->parameters as $x) {
-				$params[strtolower($x->attribute)] = $x->value;
+				$params[strtolower((string) $x->attribute)] = $x->value;
 			}
 		}
 
 		if (isset($p->dparameters) && $p->dparameters) {
 			foreach ($p->dparameters as $x) {
-				$params[strtolower($x->attribute)] = $x->value;
+				$params[strtolower((string) $x->attribute)] = $x->value;
 			}
 		}
 
@@ -261,9 +261,9 @@ class Email
 		if ($p->type == 0 && $data) {
 			// Messages may be split in different parts because of inline attachments,
 			// so append parts together with blank row.
-			if (strtolower($p->subtype) == $subtype) {
-				$data = iconv($params['charset'], 'UTF-8//IGNORE', $data);
-				return (trim($data) ."\n\n");
+			if (strtolower((string) $p->subtype) == $subtype) {
+				$data = iconv((string) $params['charset'], 'UTF-8//IGNORE', $data);
+				return (trim($data) . "\n\n");
 			} else {
 				$data = '';
 			}
@@ -377,21 +377,21 @@ class Email
 		$html = Item::prepareBody($item);
 
 		$headers .= "Mime-Version: 1.0\n";
-		$headers .= 'Content-Type: multipart/alternative; boundary="=_'.$part.'"'."\n\n";
+		$headers .= 'Content-Type: multipart/alternative; boundary="=_' . $part . '"' . "\n\n";
 
-		$body = "\n--=_".$part."\n";
+		$body = "\n--=_" . $part . "\n";
 		$body .= "Content-Transfer-Encoding: 8bit\n";
 		$body .= "Content-Type: text/plain; charset=utf-8; format=flowed\n\n";
 
-		$body .= HTML::toPlaintext($html)."\n";
+		$body .= HTML::toPlaintext($html) . "\n";
 
-		$body .= "--=_".$part."\n";
+		$body .= "--=_" . $part . "\n";
 		$body .= "Content-Transfer-Encoding: 8bit\n";
 		$body .= "Content-Type: text/html; charset=utf-8\n\n";
 
-		$body .= '<html><head></head><body style="word-wrap: break-word; -webkit-nbsp-mode: space; -webkit-line-break: after-white-space; ">'.$html."</body></html>\n";
+		$body .= '<html><head></head><body style="word-wrap: break-word; -webkit-nbsp-mode: space; -webkit-line-break: after-white-space; ">' . $html . "</body></html>\n";
 
-		$body .= "--=_".$part."--";
+		$body .= "--=_" . $part . "--";
 
 		//$message = '<html><body>' . $html . '</body></html>';
 		//$message = html2plain($html);
@@ -467,75 +467,75 @@ class Email
 	{
 		$quotestr = ['quote', 'spoiler'];
 		foreach ($quotestr as $quote) {
-			$message = self::saveReplace('/----- Original Message -----\s.*?From: "([^<"].*?)" <(.*?)>\s.*?To: (.*?)\s*?Cc: (.*?)\s*?Sent: (.*?)\s.*?Subject: ([^\n].*)\s*\['.$quote.'\]/i', "[".$quote."='$1']\n", $message);
-			$message = self::saveReplace('/----- Original Message -----\s.*?From: "([^<"].*?)" <(.*?)>\s.*?To: (.*?)\s*?Sent: (.*?)\s.*?Subject: ([^\n].*)\s*\['.$quote.'\]/i', "[".$quote."='$1']\n", $message);
+			$message = self::saveReplace('/----- Original Message -----\s.*?From: "([^<"].*?)" <(.*?)>\s.*?To: (.*?)\s*?Cc: (.*?)\s*?Sent: (.*?)\s.*?Subject: ([^\n].*)\s*\[' . $quote . '\]/i', "[" . $quote . "='$1']\n", $message);
+			$message = self::saveReplace('/----- Original Message -----\s.*?From: "([^<"].*?)" <(.*?)>\s.*?To: (.*?)\s*?Sent: (.*?)\s.*?Subject: ([^\n].*)\s*\[' . $quote . '\]/i', "[" . $quote . "='$1']\n", $message);
 
-			$message = self::saveReplace('/-------- Original-Nachricht --------\s*\['.$quote.'\]\nDatum: (.*?)\nVon: (.*?) <(.*?)>\nAn: (.*?)\nBetreff: (.*?)\n/i', "[".$quote."='$2']\n", $message);
-			$message = self::saveReplace('/-------- Original-Nachricht --------\s*\['.$quote.'\]\sDatum: (.*?)\s.*Von: "([^<"].*?)" <(.*?)>\s.*An: (.*?)\n.*/i', "[".$quote."='$2']\n", $message);
-			$message = self::saveReplace('/-------- Original-Nachricht --------\s*\['.$quote.'\]\nDatum: (.*?)\nVon: (.*?)\nAn: (.*?)\nBetreff: (.*?)\n/i', "[".$quote."='$2']\n", $message);
+			$message = self::saveReplace('/-------- Original-Nachricht --------\s*\[' . $quote . '\]\nDatum: (.*?)\nVon: (.*?) <(.*?)>\nAn: (.*?)\nBetreff: (.*?)\n/i', "[" . $quote . "='$2']\n", $message);
+			$message = self::saveReplace('/-------- Original-Nachricht --------\s*\[' . $quote . '\]\sDatum: (.*?)\s.*Von: "([^<"].*?)" <(.*?)>\s.*An: (.*?)\n.*/i', "[" . $quote . "='$2']\n", $message);
+			$message = self::saveReplace('/-------- Original-Nachricht --------\s*\[' . $quote . '\]\nDatum: (.*?)\nVon: (.*?)\nAn: (.*?)\nBetreff: (.*?)\n/i', "[" . $quote . "='$2']\n", $message);
 
-			$message = self::saveReplace('/-----Urspr.*?ngliche Nachricht-----\sVon: "([^<"].*?)" <(.*?)>\s.*Gesendet: (.*?)\s.*An: (.*?)\s.*Betreff: ([^\n].*?).*:\s*\['.$quote.'\]/i', "[".$quote."='$1']\n", $message);
-			$message = self::saveReplace('/-----Urspr.*?ngliche Nachricht-----\sVon: "([^<"].*?)" <(.*?)>\s.*Gesendet: (.*?)\s.*An: (.*?)\s.*Betreff: ([^\n].*?)\s*\['.$quote.'\]/i', "[".$quote."='$1']\n", $message);
+			$message = self::saveReplace('/-----Urspr.*?ngliche Nachricht-----\sVon: "([^<"].*?)" <(.*?)>\s.*Gesendet: (.*?)\s.*An: (.*?)\s.*Betreff: ([^\n].*?).*:\s*\[' . $quote . '\]/i', "[" . $quote . "='$1']\n", $message);
+			$message = self::saveReplace('/-----Urspr.*?ngliche Nachricht-----\sVon: "([^<"].*?)" <(.*?)>\s.*Gesendet: (.*?)\s.*An: (.*?)\s.*Betreff: ([^\n].*?)\s*\[' . $quote . '\]/i', "[" . $quote . "='$1']\n", $message);
 
-			$message = self::saveReplace('/Am (.*?), schrieb (.*?):\s*\['.$quote.'\]/i', "[".$quote."='$2']\n", $message);
+			$message = self::saveReplace('/Am (.*?), schrieb (.*?):\s*\[' . $quote . '\]/i', "[" . $quote . "='$2']\n", $message);
 
-			$message = self::saveReplace('/Am .*?, \d+ .*? \d+ \d+:\d+:\d+ \+\d+\sschrieb\s(.*?)\s<(.*?)>:\s*\['.$quote.'\]/i', "[".$quote."='$1']\n", $message);
+			$message = self::saveReplace('/Am .*?, \d+ .*? \d+ \d+:\d+:\d+ \+\d+\sschrieb\s(.*?)\s<(.*?)>:\s*\[' . $quote . '\]/i', "[" . $quote . "='$1']\n", $message);
 
-			$message = self::saveReplace('/Am (.*?) schrieb (.*?) <(.*?)>:\s*\['.$quote.'\]/i', "[".$quote."='$2']\n", $message);
-			$message = self::saveReplace('/Am (.*?) schrieb <(.*?)>:\s*\['.$quote.'\]/i', "[".$quote."='$2']\n", $message);
-			$message = self::saveReplace('/Am (.*?) schrieb (.*?):\s*\['.$quote.'\]/i', "[".$quote."='$2']\n", $message);
-			$message = self::saveReplace('/Am (.*?) schrieb (.*?)\n(.*?):\s*\['.$quote.'\]/i', "[".$quote."='$2']\n", $message);
+			$message = self::saveReplace('/Am (.*?) schrieb (.*?) <(.*?)>:\s*\[' . $quote . '\]/i', "[" . $quote . "='$2']\n", $message);
+			$message = self::saveReplace('/Am (.*?) schrieb <(.*?)>:\s*\[' . $quote . '\]/i', "[" . $quote . "='$2']\n", $message);
+			$message = self::saveReplace('/Am (.*?) schrieb (.*?):\s*\[' . $quote . '\]/i', "[" . $quote . "='$2']\n", $message);
+			$message = self::saveReplace('/Am (.*?) schrieb (.*?)\n(.*?):\s*\[' . $quote . '\]/i', "[" . $quote . "='$2']\n", $message);
 
-			$message = self::saveReplace('/(\d+)\/(\d+)\/(\d+) ([^<"].*?) <(.*?)>\s*\['.$quote.'\]/i', "[".$quote."='$4']\n", $message);
+			$message = self::saveReplace('/(\d+)\/(\d+)\/(\d+) ([^<"].*?) <(.*?)>\s*\[' . $quote . '\]/i', "[" . $quote . "='$4']\n", $message);
 
-			$message = self::saveReplace('/On .*?, \d+ .*? \d+ \d+:\d+:\d+ \+\d+\s(.*?)\s<(.*?)>\swrote:\s*\['.$quote.'\]/i', "[".$quote."='$1']\n", $message);
+			$message = self::saveReplace('/On .*?, \d+ .*? \d+ \d+:\d+:\d+ \+\d+\s(.*?)\s<(.*?)>\swrote:\s*\[' . $quote . '\]/i', "[" . $quote . "='$1']\n", $message);
 
-			$message = self::saveReplace('/On (.*?) at (.*?), (.*?)\s<(.*?)>\swrote:\s*\['.$quote.'\]/i', "[".$quote."='$3']\n", $message);
-			$message = self::saveReplace('/On (.*?)\n([^<].*?)\s<(.*?)>\swrote:\s*\['.$quote.'\]/i', "[".$quote."='$2']\n", $message);
-			$message = self::saveReplace('/On (.*?), (.*?), (.*?)\s<(.*?)>\swrote:\s*\['.$quote.'\]/i', "[".$quote."='$3']\n", $message);
-			$message = self::saveReplace('/On ([^,].*?), (.*?)\swrote:\s*\['.$quote.'\]/i', "[".$quote."='$2']\n", $message);
-			$message = self::saveReplace('/On (.*?), (.*?)\swrote\s*\['.$quote.'\]/i', "[".$quote."='$2']\n", $message);
+			$message = self::saveReplace('/On (.*?) at (.*?), (.*?)\s<(.*?)>\swrote:\s*\[' . $quote . '\]/i', "[" . $quote . "='$3']\n", $message);
+			$message = self::saveReplace('/On (.*?)\n([^<].*?)\s<(.*?)>\swrote:\s*\[' . $quote . '\]/i', "[" . $quote . "='$2']\n", $message);
+			$message = self::saveReplace('/On (.*?), (.*?), (.*?)\s<(.*?)>\swrote:\s*\[' . $quote . '\]/i', "[" . $quote . "='$3']\n", $message);
+			$message = self::saveReplace('/On ([^,].*?), (.*?)\swrote:\s*\[' . $quote . '\]/i', "[" . $quote . "='$2']\n", $message);
+			$message = self::saveReplace('/On (.*?), (.*?)\swrote\s*\[' . $quote . '\]/i', "[" . $quote . "='$2']\n", $message);
 
 			// Der loescht manchmal den Body - was eigentlich unmoeglich ist
-			$message = self::saveReplace('/On (.*?),(.*?),(.*?),(.*?), (.*?) wrote:\s*\['.$quote.'\]/i', "[".$quote."='$5']\n", $message);
+			$message = self::saveReplace('/On (.*?),(.*?),(.*?),(.*?), (.*?) wrote:\s*\[' . $quote . '\]/i', "[" . $quote . "='$5']\n", $message);
 
-			$message = self::saveReplace('/Zitat von ([^<].*?) <(.*?)>:\s*\['.$quote.'\]/i', "[".$quote."='$1']\n", $message);
+			$message = self::saveReplace('/Zitat von ([^<].*?) <(.*?)>:\s*\[' . $quote . '\]/i', "[" . $quote . "='$1']\n", $message);
 
-			$message = self::saveReplace('/Quoting ([^<].*?) <(.*?)>:\s*\['.$quote.'\]/i', "[".$quote."='$1']\n", $message);
+			$message = self::saveReplace('/Quoting ([^<].*?) <(.*?)>:\s*\[' . $quote . '\]/i', "[" . $quote . "='$1']\n", $message);
 
-			$message = self::saveReplace('/From: "([^<"].*?)" <(.*?)>\s*\['.$quote.'\]/i', "[".$quote."='$1']\n", $message);
-			$message = self::saveReplace('/From: <(.*?)>\s*\['.$quote.'\]/i', "[".$quote."='$1']\n", $message);
+			$message = self::saveReplace('/From: "([^<"].*?)" <(.*?)>\s*\[' . $quote . '\]/i', "[" . $quote . "='$1']\n", $message);
+			$message = self::saveReplace('/From: <(.*?)>\s*\[' . $quote . '\]/i', "[" . $quote . "='$1']\n", $message);
 
-			$message = self::saveReplace('/Du \(([^)].*?)\) schreibst:\s*\['.$quote.'\]/i', "[".$quote."='$1']\n", $message);
+			$message = self::saveReplace('/Du \(([^)].*?)\) schreibst:\s*\[' . $quote . '\]/i', "[" . $quote . "='$1']\n", $message);
 
-			$message = self::saveReplace('/--- (.*?) <.*?> schrieb am (.*?):\s*\['.$quote.'\]/i', "[".$quote."='$1']\n", $message);
-			$message = self::saveReplace('/--- (.*?) schrieb am (.*?):\s*\['.$quote.'\]/i', "[".$quote."='$1']\n", $message);
+			$message = self::saveReplace('/--- (.*?) <.*?> schrieb am (.*?):\s*\[' . $quote . '\]/i', "[" . $quote . "='$1']\n", $message);
+			$message = self::saveReplace('/--- (.*?) schrieb am (.*?):\s*\[' . $quote . '\]/i', "[" . $quote . "='$1']\n", $message);
 
-			$message = self::saveReplace('/\* (.*?) <(.*?)> hat geschrieben:\s*\['.$quote.'\]/i', "[".$quote."='$1']\n", $message);
+			$message = self::saveReplace('/\* (.*?) <(.*?)> hat geschrieben:\s*\[' . $quote . '\]/i', "[" . $quote . "='$1']\n", $message);
 
-			$message = self::saveReplace('/(.*?) <(.*?)> schrieb (.*?)\):\s*\['.$quote.'\]/i', "[".$quote."='$1']\n", $message);
-			$message = self::saveReplace('/(.*?) <(.*?)> schrieb am (.*?) um (.*):\s*\['.$quote.'\]/i', "[".$quote."='$1']\n", $message);
-			$message = self::saveReplace('/(.*?) schrieb am (.*?) um (.*):\s*\['.$quote.'\]/i', "[".$quote."='$1']\n", $message);
-			$message = self::saveReplace('/(.*?) \((.*?)\) schrieb:\s*\['.$quote.'\]/i', "[".$quote."='$2']\n", $message);
-			$message = self::saveReplace('/(.*?) schrieb:\s*\['.$quote.'\]/i', "[".$quote."='$1']\n", $message);
+			$message = self::saveReplace('/(.*?) <(.*?)> schrieb (.*?)\):\s*\[' . $quote . '\]/i', "[" . $quote . "='$1']\n", $message);
+			$message = self::saveReplace('/(.*?) <(.*?)> schrieb am (.*?) um (.*):\s*\[' . $quote . '\]/i', "[" . $quote . "='$1']\n", $message);
+			$message = self::saveReplace('/(.*?) schrieb am (.*?) um (.*):\s*\[' . $quote . '\]/i', "[" . $quote . "='$1']\n", $message);
+			$message = self::saveReplace('/(.*?) \((.*?)\) schrieb:\s*\[' . $quote . '\]/i', "[" . $quote . "='$2']\n", $message);
+			$message = self::saveReplace('/(.*?) schrieb:\s*\[' . $quote . '\]/i', "[" . $quote . "='$1']\n", $message);
 
-			$message = self::saveReplace('/(.*?) <(.*?)> writes:\s*\['.$quote.'\]/i', "[".$quote."='$1']\n", $message);
-			$message = self::saveReplace('/(.*?) \((.*?)\) writes:\s*\['.$quote.'\]/i', "[".$quote."='$2']\n", $message);
-			$message = self::saveReplace('/(.*?) writes:\s*\['.$quote.'\]/i', "[".$quote."='$1']\n", $message);
+			$message = self::saveReplace('/(.*?) <(.*?)> writes:\s*\[' . $quote . '\]/i', "[" . $quote . "='$1']\n", $message);
+			$message = self::saveReplace('/(.*?) \((.*?)\) writes:\s*\[' . $quote . '\]/i', "[" . $quote . "='$2']\n", $message);
+			$message = self::saveReplace('/(.*?) writes:\s*\[' . $quote . '\]/i', "[" . $quote . "='$1']\n", $message);
 
-			$message = self::saveReplace('/\* (.*?) wrote:\s*\['.$quote.'\]/i', "[".$quote."='$1']\n", $message);
-			$message = self::saveReplace('/(.*?) wrote \(.*?\):\s*\['.$quote.'\]/i', "[".$quote."='$1']\n", $message);
-			$message = self::saveReplace('/(.*?) wrote:\s*\['.$quote.'\]/i', "[".$quote."='$1']\n", $message);
+			$message = self::saveReplace('/\* (.*?) wrote:\s*\[' . $quote . '\]/i', "[" . $quote . "='$1']\n", $message);
+			$message = self::saveReplace('/(.*?) wrote \(.*?\):\s*\[' . $quote . '\]/i', "[" . $quote . "='$1']\n", $message);
+			$message = self::saveReplace('/(.*?) wrote:\s*\[' . $quote . '\]/i', "[" . $quote . "='$1']\n", $message);
 
-			$message = self::saveReplace('/([^<].*?) <.*?> hat am (.*?)\sum\s(.*)\sgeschrieben:\s*\['.$quote.'\]/i', "[".$quote."='$1']\n", $message);
+			$message = self::saveReplace('/([^<].*?) <.*?> hat am (.*?)\sum\s(.*)\sgeschrieben:\s*\[' . $quote . '\]/i', "[" . $quote . "='$1']\n", $message);
 
-			$message = self::saveReplace('/(\d+)\/(\d+)\/(\d+) ([^<"].*?) <(.*?)>:\s*\['.$quote.'\]/i', "[".$quote."='$4']\n", $message);
-			$message = self::saveReplace('/(\d+)\/(\d+)\/(\d+) (.*?) <(.*?)>\s*\['.$quote.'\]/i', "[".$quote."='$4']\n", $message);
-			$message = self::saveReplace('/(\d+)\/(\d+)\/(\d+) <(.*?)>:\s*\['.$quote.'\]/i', "[".$quote."='$4']\n", $message);
-			$message = self::saveReplace('/(\d+)\/(\d+)\/(\d+) <(.*?)>\s*\['.$quote.'\]/i', "[".$quote."='$4']\n", $message);
+			$message = self::saveReplace('/(\d+)\/(\d+)\/(\d+) ([^<"].*?) <(.*?)>:\s*\[' . $quote . '\]/i', "[" . $quote . "='$4']\n", $message);
+			$message = self::saveReplace('/(\d+)\/(\d+)\/(\d+) (.*?) <(.*?)>\s*\[' . $quote . '\]/i', "[" . $quote . "='$4']\n", $message);
+			$message = self::saveReplace('/(\d+)\/(\d+)\/(\d+) <(.*?)>:\s*\[' . $quote . '\]/i', "[" . $quote . "='$4']\n", $message);
+			$message = self::saveReplace('/(\d+)\/(\d+)\/(\d+) <(.*?)>\s*\[' . $quote . '\]/i', "[" . $quote . "='$4']\n", $message);
 
-			$message = self::saveReplace('/(.*?) <(.*?)> schrubselte:\s*\['.$quote.'\]/i', "[".$quote."='$1']\n", $message);
-			$message = self::saveReplace('/(.*?) \((.*?)\) schrubselte:\s*\['.$quote.'\]/i', "[".$quote."='$2']\n", $message);
+			$message = self::saveReplace('/(.*?) <(.*?)> schrubselte:\s*\[' . $quote . '\]/i', "[" . $quote . "='$1']\n", $message);
+			$message = self::saveReplace('/(.*?) \((.*?)\) schrubselte:\s*\[' . $quote . '\]/i', "[" . $quote . "='$2']\n", $message);
 		}
 		return $message;
 	}
@@ -548,12 +548,12 @@ class Email
 	 */
 	private static function removeGPG(string $message): string
 	{
-		$pattern = '/(.*)\s*-----BEGIN PGP SIGNED MESSAGE-----\s*[\r\n].*Hash:.*?[\r\n](.*)'.
-			'[\r\n]\s*-----BEGIN PGP SIGNATURE-----\s*[\r\n].*'.
-			'[\r\n]\s*-----END PGP SIGNATURE-----(.*)/is';
+		$pattern = '/(.*)\s*-----BEGIN PGP SIGNED MESSAGE-----\s*[\r\n].*Hash:.*?[\r\n](.*)'
+			. '[\r\n]\s*-----BEGIN PGP SIGNATURE-----\s*[\r\n].*'
+			. '[\r\n]\s*-----END PGP SIGNATURE-----(.*)/is';
 
 		if (preg_match($pattern, $message, $result)) {
-			$cleaned = trim($result[1].$result[2].$result[3]);
+			$cleaned = trim($result[1] . $result[2] . $result[3]);
 
 			$cleaned = str_replace(["\n- --\n", "\n- -"], ["\n-- \n", "\n-"], $cleaned);
 		} else {
@@ -591,7 +591,7 @@ class Email
 		preg_match($pattern, $message, $result);
 
 		if (!empty($result[1]) && !empty($result[2])) {
-			$cleaned = trim($result[1])."\n";
+			$cleaned = trim($result[1]) . "\n";
 			$sig     = trim($result[2]);
 		} else {
 			$cleaned = $message;
@@ -617,9 +617,9 @@ class Email
 		foreach ($arrbody as $i => $line) {
 			$currquotelevel = 0;
 			$currline       = $line;
-			while ((strlen($currline) > 0) && ((substr($currline, 0, 1) == '>')
-				|| (substr($currline, 0, 1) == ' '))) {
-				if (substr($currline, 0, 1) == '>') {
+			while ((strlen($currline) > 0) && ((str_starts_with($currline, '>'))
+				|| (str_starts_with($currline, ' ')))) {
+				if (str_starts_with($currline, '>')) {
 					$currquotelevel++;
 				}
 
@@ -628,9 +628,9 @@ class Email
 
 			$quotelevel = 0;
 			$nextline   = trim($arrbody[$i + 1] ?? '');
-			while ((strlen($nextline) > 0) && ((substr($nextline, 0, 1) == '>')
-				|| (substr($nextline, 0, 1) == ' '))) {
-				if (substr($nextline, 0, 1) == '>') {
+			while ((strlen($nextline) > 0) && ((str_starts_with($nextline, '>'))
+				|| (str_starts_with($nextline, ' ')))) {
+				if (str_starts_with($nextline, '>')) {
 					$quotelevel++;
 				}
 
@@ -638,12 +638,12 @@ class Email
 			}
 
 			if (!empty($lines[$lineno])) {
-				if (substr($lines[$lineno], -1) != ' ') {
+				if (!str_ends_with($lines[$lineno], ' ')) {
 					$lines[$lineno] .= ' ';
 				}
 
-				while ((strlen($line) > 0) && ((substr($line, 0, 1) == '>')
-					|| (substr($line, 0, 1) == ' '))) {
+				while ((strlen($line) > 0) && ((str_starts_with($line, '>'))
+					|| (str_starts_with($line, ' ')))) {
 
 					$line = ltrim(substr($line, 1));
 				}
@@ -652,7 +652,7 @@ class Email
 			}
 
 			$lines[$lineno] .= $line;
-			if (((substr($line, -1, 1) != ' '))
+			if (((!str_ends_with($line, ' ')))
 				|| ($quotelevel != $currquotelevel)) {
 				$lineno++;
 			}
@@ -670,9 +670,9 @@ class Email
 			$quotelevel = 0;
 			$quoteline  = $arrbody[$i];
 
-			while ((strlen($quoteline) > 0) and ((substr($quoteline, 0, 1) == '>')
-				|| (substr($quoteline, 0, 1) == ' '))) {
-				if (substr($quoteline, 0, 1) == '>') {
+			while ((strlen($quoteline) > 0) and ((str_starts_with($quoteline, '>'))
+				|| (str_starts_with($quoteline, ' ')))) {
+				if (str_starts_with($quoteline, '>')) {
 					$quotelevel++;
 				}
 
@@ -692,12 +692,12 @@ class Email
 
 			while ($previousquote < $quotelevel) {
 				$quote       = "[quote]";
-				$arrbody[$i] = $quote.$arrbody[$i];
+				$arrbody[$i] = $quote . $arrbody[$i];
 				$previousquote++;
 			}
 
 			while ($previousquote > $quotelevel) {
-				$arrbody[$i] = '[/quote]'.$arrbody[$i];
+				$arrbody[$i] = '[/quote]' . $arrbody[$i];
 				$previousquote--;
 			}
 
@@ -711,7 +711,7 @@ class Email
 		$body = implode("\n", $arrbodyquoted);
 
 		if (strlen($body) > 0) {
-			$body = $body."\n\n";
+			$body = $body . "\n\n";
 		}
 
 		if ($reply) {
@@ -780,7 +780,7 @@ class Email
 		}
 
 		if ($quotestart != 0) {
-			$message = trim(substr($message, 0, $quotestart))."\n[spoiler]".substr($message, $quotestart + 7, -8) . '[/spoiler]';
+			$message = trim(substr($message, 0, $quotestart)) . "\n[spoiler]" . substr($message, $quotestart + 7, -8) . '[/spoiler]';
 		}
 
 		return $message;

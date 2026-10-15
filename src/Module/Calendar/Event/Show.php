@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -30,8 +30,18 @@ class Show extends BaseModule
 	/** @var AppHelper */
 	protected $appHelper;
 
-	public function __construct(AppHelper $appHelper, L10n $l10n, BaseURL $baseUrl, Arguments $args, LoggerInterface $logger, Profiler $profiler, Response $response, IHandleUserSessions $session, array $server, array $parameters = [])
-	{
+	public function __construct(
+		AppHelper $appHelper,
+		L10n $l10n,
+		BaseURL $baseUrl,
+		Arguments $args,
+		LoggerInterface $logger,
+		Profiler $profiler,
+		Response $response,
+		IHandleUserSessions $session,
+		array $server,
+		array $parameters = [],
+	) {
 		parent::__construct($l10n, $baseUrl, $args, $logger, $profiler, $response, $server, $parameters);
 
 		$this->session   = $session;
@@ -47,7 +57,7 @@ class Show extends BaseModule
 
 		$owner = Event::getOwnerForNickname($nickname);
 
-		$event = Event::getByIdAndUid($owner['uid'], (int)$this->parameters['id'] ?? 0);
+		$event = Event::getByIdAndUid($owner['uid'], (int) ($this->parameters['id'] ?? 0));
 		if (empty($event)) {
 			throw new HTTPException\NotFoundException($this->t('Event not found.'));
 		}
@@ -63,9 +73,13 @@ class Show extends BaseModule
 		$tpl = Renderer::getMarkupTemplate('calendar/event.tpl');
 
 		$o = Renderer::replaceMacros($tpl, [
-			'$event' => $tplEvent,
+			'$event'                 => $tplEvent,
+			'$action_edit_text'      => $this->t('Edit'),
+			'$action_duplicate_text' => $this->t('Duplicate'),
+			'$action_drop_text'      => $this->t('Delete'),
+			'$action_orig_text'      => $this->t('View related post'),
 		]);
 
-		$this->httpExit($o);
+		$this->earlyHttpExit($o);
 	}
 }

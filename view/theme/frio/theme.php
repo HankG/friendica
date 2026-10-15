@@ -1,7 +1,8 @@
 <?php
+
 /**
- * Copyright (C) 2010-2024, the Friendica project
- * SPDX-FileCopyrightText: 2010-2024 the Friendica project
+ * Copyright (C) 2010-2026, the Friendica project
+ * SPDX-FileCopyrightText: 2010-2026 the Friendica project
  *
  * SPDX-License-Identifier: AGPL-3.0-or-later
  *
@@ -13,14 +14,18 @@
  */
 
 use Friendica\App\Mode;
+use Friendica\App\Page;
 use Friendica\AppHelper;
 use Friendica\Content\Text\Plaintext;
 use Friendica\Core\Hook;
+use Friendica\Core\Protocol;
 use Friendica\Core\Renderer;
 use Friendica\Database\DBA;
 use Friendica\DI;
 use Friendica\Model\Contact;
 use Friendica\Model\Item;
+use Friendica\Core\PConfig\Capability\IManagePersonalConfigValues;
+use Friendica\Core\Session\Capability\IHandleUserSessions;
 
 const FRIO_SCHEME_ACCENT_BLUE   = '#1e87c2';
 const FRIO_SCHEME_ACCENT_RED    = '#b50404';
@@ -35,27 +40,31 @@ const FRIO_CUSTOM_SCHEME  = '---';
  * This script can be included even when the app is in maintenance mode which requires us to avoid any config call
  */
 
-function frio_init(AppHelper $appHelper)
+function frio_init(AppHelper $appHelper, IManagePersonalConfigValues $pConfig, IHandleUserSessions $userSession, Page $page, Mode $mode): void
 {
 	global $frio;
 	$frio = 'view/theme/frio';
-
-	$appHelper->setThemeInfoValue('videowidth', 622);
 
 	Renderer::setActiveTemplateEngine('smarty3');
 
 	// if the device is a mobile device set js is_mobile
 	// variable so the js scripts can use this information
-	if (DI::mode()->isMobile() || DI::mode()->isMobile()) {
-		DI::page()['htmlhead'] .= <<< EOT
+	if ($mode->isMobile()) {
+		$page['htmlhead'] .= <<< EOT
 			<script type="text/javascript">
 				var is_mobile = 1;
 			</script>
 EOT;
 	}
+
+	if ($pConfig->get($userSession->getLocalUserId(), 'system', 'enable_spa', false)) {
+		// Load SPA router for client-side routing on /network, /display, /profile
+		// This keeps the footer static (important for XMPP addon) and provides smooth transitions
+		$page->registerFooterScript($appHelper->getBasePath() . '/view/js/spa-router.js');
+	}
 }
 
-function frio_install()
+function frio_install(): void
 {
 	Hook::register('prepare_body_final', 'view/theme/frio/theme.php', 'frio_item_photo_links');
 	Hook::register('item_photo_menu', 'view/theme/frio/theme.php', 'frio_item_photo_menu');
@@ -77,12 +86,12 @@ function frio_install()
  *
  * @param array $body_info The item and its html output
  */
-function frio_item_photo_links(&$body_info)
+function frio_item_photo_links(&$body_info): void
 {
 	$occurence = 0;
 	$p         = Plaintext::getBoundariesPosition($body_info['html'], '<a', '>');
 	while ($p !== false && ($occurence++ < 500)) {
-		$link    = substr($body_info['html'], $p['start'], $p['end'] - $p['start']);
+		$link    = substr((string) $body_info['html'], $p['start'], $p['end'] - $p['start']);
 		$matches = [];
 
 		preg_match('/\/photos\/[\w]+\/image\/([\w]+)/', $link, $matches);
@@ -94,7 +103,7 @@ function frio_item_photo_links(&$body_info)
 			$newlink = preg_replace('#href="([^"]+)/contact/redir/(\d+)&url=([^"]+)"#', 'href="$1/contact/redir/$2&quiet=1&url=$3"', $newlink);
 
 			// Having any arguments to the link for Colorbox causes it to fetch base64 code instead of the image
-			$newlink = preg_replace('/\/[?&]zrl=([^&"]+)/', '', $newlink);
+			$newlink = preg_replace('/\/[?&]zrl=([^&"]+)/', '', (string) $newlink);
 
 			$body_info['html'] = str_replace($link, $newlink, $body_info['html']);
 		}
@@ -112,10 +121,10 @@ function frio_item_photo_links(&$body_info)
  *
  * @param array $arr Contains item data and the original photo_menu
  */
-function frio_item_photo_menu(&$arr)
+function frio_item_photo_menu(&$arr): void
 {
 	foreach ($arr['menu'] as $k => $v) {
-		if (strpos($v, 'message/new/') === 0) {
+		if (str_starts_with((string) $v, 'message/new/')) {
 			$v               = 'javascript:addToModal(\'' . $v . '\'); return false;';
 			$arr['menu'][$k] = $v;
 		}
@@ -133,7 +142,7 @@ function frio_item_photo_menu(&$arr)
  *
  * @param array $args Contains contact data and the original photo_menu
  */
-function frio_contact_photo_menu(&$args)
+function frio_contact_photo_menu(&$args): void
 {
 	$cid = $args['contact']['id'];
 
@@ -162,7 +171,7 @@ function frio_contact_photo_menu(&$args)
 	// Add to pm link a new key with the value 'modal'.
 	// Later we can make conditions in the corresponding templates (e.g.
 	// contact/entry.tpl)
-	if (strpos($pmlink, 'message/new/' . $cid) !== false) {
+	if (str_contains((string) $pmlink, 'message/new/' . $cid)) {
 		$args['menu']['pm'][3] = 'modal';
 	}
 }
@@ -181,7 +190,7 @@ function frio_contact_photo_menu(&$args)
  * @param array $nav_info The original nav info array: nav, banner, userinfo, sitelocation
  * @throws Exception
  */
-function frio_remote_nav(array &$nav_info)
+function frio_remote_nav(array &$nav_info): void
 {
 	if (DI::mode()->has(Mode::MAINTENANCEDISABLED)) {
 		// get the homelink from $_SESSION
@@ -206,36 +215,33 @@ function frio_remote_nav(array &$nav_info)
 		}
 
 		if (DBA::isResult($remoteUser)) {
+			$server_url           = $remoteUser['baseurl'];
 			$nav_info['userinfo'] = [
 				'icon' => Contact::getMicro($remoteUser),
 				'name' => $remoteUser['name'],
+				'link' => $server_url . '/profile/' . $remoteUser['nick'],
 			];
-			$server_url = $remoteUser['baseurl'];
 		}
 
 		if (!DI::userSession()->getLocalUserId() && !empty($server_url) && !is_null($remoteUser)) {
 			// user menu
-			$nav_info['nav']['usermenu'][] = [$server_url . '/profile/' . $remoteUser['nick'], DI::l10n()->t('Status'), '', DI::l10n()->t('Your posts and conversations')];
-			$nav_info['nav']['usermenu'][] = [$server_url . '/profile/' . $remoteUser['nick'] . '/profile', DI::l10n()->t('Profile'), '', DI::l10n()->t('Your profile page')];
-			// Kept for backwards-compatibility reasons, the remote server may not have updated to version 2022.12 yet
-			// @TODO Switch with the new routes by version 2023.12
-			//$nav_info['nav']['usermenu'][] = [$server_url . '/profile/' . $remoteUser['nick'] . '/photos', DI::l10n()->t('Photos'), '', DI::l10n()->t('Your photos')];
-			$nav_info['nav']['usermenu'][] = [$server_url . '/photos/' . $remoteUser['nick'], DI::l10n()->t('Photos'), '', DI::l10n()->t('Your photos')];
-			$nav_info['nav']['usermenu'][] = [$server_url . '/profile/' . $remoteUser['nick'] . '/media', DI::l10n()->t('Media'), '', DI::l10n()->t('Your postings with media')];
+			$nav_info['nav']['usermenu'][] = [$server_url . '/profile/' . $remoteUser['nick'] . '/photos', DI::l10n()->t('Photos'), '', DI::l10n()->t('My photos')];
 			$nav_info['nav']['usermenu'][] = [$server_url . '/calendar/', DI::l10n()->t('Calendar'), '', DI::l10n()->t('Your calendar')];
 
 			// navbar links
-			$nav_info['nav']['network']  = [$server_url . '/network', DI::l10n()->t('Network'), '', DI::l10n()->t('Conversations from your friends')];
+			// "Back" is exclusively visible when remote visiting another instance
+			$nav_info['nav']['back']     = [$server_url, DI::l10n()->t('Back home'), '', DI::l10n()->t('Back to my instance')];
+			$nav_info['nav']['network']  = [$server_url . '/network', DI::l10n()->t('Home'), '', DI::l10n()->t('Home')];
 			$nav_info['nav']['calendar'] = [$server_url . '/calendar', DI::l10n()->t('Calendar'), '', DI::l10n()->t('Calendar')];
-			$nav_info['nav']['messages'] = [$server_url . '/message', DI::l10n()->t('Messages'), '', DI::l10n()->t('Private mail')];
-			$nav_info['nav']['settings'] = [$server_url . '/settings', DI::l10n()->t('Settings'), '', DI::l10n()->t('Account settings')];
+			$nav_info['nav']['messages'] = [$server_url . '/message', DI::l10n()->t('Messages'), '', DI::l10n()->t('Messages')];
+			$nav_info['nav']['settings'] = [$server_url . '/settings', DI::l10n()->t('Settings'), '', DI::l10n()->t('Settings')];
 			$nav_info['nav']['contacts'] = [$server_url . '/contact', DI::l10n()->t('Contacts'), '', DI::l10n()->t('Manage/edit friends and contacts')];
 			$nav_info['nav']['sitename'] = DI::config()->get('config', 'sitename');
 		}
 	}
 }
 
-function frio_display_item(&$arr)
+function frio_display_item(&$arr): void
 {
 	// Add follow to the item menu
 	$followThread = [];
@@ -248,10 +254,27 @@ function frio_display_item(&$arr)
 	) {
 		$followThread = [
 			'menu'   => 'follow_thread',
-			'title'  => DI::l10n()->t('Follow Thread'),
+			'title'  => DI::l10n()->t('Turn on notifications for this post'),
 			'action' => 'doFollowThread(' . $arr['item']['id'] . ');',
-			'href'   => '#'
+			'href'   => '#',
 		];
 	}
 	$arr['output']['follow_thread'] = $followThread;
+
+	$completeThread = [];
+	if (
+		DI::userSession()->getLocalUserId()
+		&& in_array($arr['item']['uid'], [0, DI::userSession()->getLocalUserId()])
+		&& $arr['item']['network'] == Protocol::ACTIVITYPUB
+		&& $arr['item']['gravity'] == Item::GRAVITY_PARENT
+		&& !$arr['item']['self']
+	) {
+		$completeThread = [
+			'menu'   => 'complete_thread',
+			'title'  => DI::l10n()->t('Fetch more replies'),
+			'action' => 'doCompleteThread(' . $arr['item']['uri-id'] . ');',
+			'href'   => '#',
+		];
+	}
+	$arr['output']['complete_thread'] = $completeThread;
 }

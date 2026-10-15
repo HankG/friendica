@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -16,7 +16,7 @@ class CollectionTest extends MockedTestCase
 	/**
 	 * Test if the BaseCollection::column() works as expected
 	 */
-	public function testGetArrayCopy()
+	public function testGetArrayCopy(): void
 	{
 		$collection = new CollectionDouble();
 		$collection->append(new EntityDouble('test', 23, new \DateTime('now', new \DateTimeZone('UTC')), 'privTest'));

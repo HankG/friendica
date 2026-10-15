@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -12,24 +12,26 @@ use Friendica\Event\ArrayFilterEvent;
 
 class Feature
 {
-	const ACCOUNTS          = 'accounts';
-	const ADD_ABSTRACT      = 'add_abstract';
-	const ARCHIVE           = 'archive';
-	const CATEGORIES        = 'categories';
-	const CHANNELS          = 'channels';
-	const CIRCLES           = 'circles';
-	const COMMUNITY         = 'community';
-	const EXPLICIT_MENTIONS = 'explicit_mentions';
-	const FOLDERS           = 'folders';
-	const GROUPS            = 'forumlist_profile';
-	const MEMBER_SINCE      = 'profile_membersince';
-	const NETWORKS          = 'networks';
-	const NOSHARER          = 'nosharer';
-	const PHOTO_LOCATION    = 'photo_location';
-	const PUBLIC_CALENDAR   = 'public_calendar';
-	const SEARCHES          = 'searches';
-	const TAGCLOUD          = 'tagadelic';
-	const TRENDING_TAGS     = 'trending_tags';
+	public const ADD_ABSTRACT      = 'add_abstract';
+	public const CATEGORIES        = 'categories';
+	public const COMMUNITY         = 'community';
+	public const EXPLICIT_MENTIONS = 'explicit_mentions';
+	public const MEMBER_SINCE      = 'profile_membersince';
+	public const PUBLIC_CALENDAR   = 'public_calendar';
+	public const SUMMARY           = 'summary';
+	public const TAGCLOUD          = 'tagadelic';
+	// The different widgets:
+	public const ACCOUNTS      = 'accounts';
+	public const ARCHIVE       = 'archive';
+	public const CIRCLES       = 'circles';
+	public const CHANNELS      = 'channels';
+	public const FOLDERS       = 'folders';
+	public const GROUPS        = 'forumlist_profile';
+	public const PAGES         = 'pages';
+	public const NETWORKS      = 'networks';
+	public const NOSHARER      = 'nosharer';
+	public const SEARCHES      = 'searches';
+	public const TRENDING_TAGS = 'trending_tags';
 
 	/**
 	 * check if feature is enabled
@@ -55,10 +57,10 @@ class Feature
 		$arr = ['uid' => $uid, 'feature' => $feature, 'enabled' => $enabled];
 
 		$arr = $eventDispatcher->dispatch(
-			new ArrayFilterEvent(ArrayFilterEvent::FEATURE_ENABLED, $arr)
+			new ArrayFilterEvent(ArrayFilterEvent::FEATURE_ENABLED, $arr),
 		)->getArray();
 
-		return (bool)$arr['enabled'];
+		return (bool) $arr['enabled'];
 	}
 
 	/**
@@ -103,7 +105,6 @@ class Feature
 			'general' => [
 				$l10n->t('General Features'),
 				//array('expire', $l10n->t('Content Expiration'), $l10n->t('Remove old posts/comments after a period of time')),
-				[self::PHOTO_LOCATION, $l10n->t('Photo Location'), $l10n->t("Photo metadata is normally stripped. This extracts the location \x28if present\x29 prior to stripping metadata and links it to a map."), false, $config->get('feature_lock', self::PHOTO_LOCATION, false)],
 				[self::COMMUNITY, $l10n->t('Display the community in the navigation'), $l10n->t('If enabled, the community can be accessed via the navigation menu. Independent from this setting, the community timelines can always be accessed via the channels.'), true, $config->get('feature_lock', self::COMMUNITY, false)],
 			],
 
@@ -118,6 +119,7 @@ class Feature
 			'tools' => [
 				$l10n->t('Post/Comment Tools'),
 				[self::CATEGORIES, $l10n->t('Post Categories'),         $l10n->t('Add categories to your posts'), false, $config->get('feature_lock', self::CATEGORIES, false)],
+				[self::SUMMARY,    $l10n->t('Summary'),                 $l10n->t('Add a summary, abstract or spoiler text to your posts'), false, $config->get('feature_lock', self::SUMMARY, false)],
 			],
 
 			// Widget visibility on the network stream
@@ -125,6 +127,7 @@ class Feature
 				$l10n->t('Network Widgets'),
 				[self::CIRCLES, $l10n->t('Circles'), $l10n->t('Display posts that have been created by accounts of the selected circle.'), true, $config->get('feature_lock', self::CIRCLES, false)],
 				[self::GROUPS, $l10n->t('Groups'), $l10n->t('Display posts that have been distributed by the selected group.'), true, $config->get('feature_lock', self::GROUPS, false)],
+				[self::PAGES, $l10n->t('Pages'), $l10n->t('Display posts from Organization and News Pages.'), true, $config->get('feature_lock', self::PAGES, false)],
 				[self::ARCHIVE, $l10n->t('Archives'), $l10n->t('Display an archive where posts can be selected by month and year.'), true, $config->get('feature_lock', self::ARCHIVE, false)],
 				[self::NETWORKS, $l10n->t('Protocols'), $l10n->t('Display posts with the selected protocols.'), true, $config->get('feature_lock', self::NETWORKS, false)],
 				[self::ACCOUNTS, $l10n->t('Account Types'), $l10n->t('Display posts done by accounts with the selected account type.'), true, $config->get('feature_lock', self::ACCOUNTS, false)],
@@ -146,7 +149,7 @@ class Feature
 			'advanced_calendar' => [
 				$l10n->t('Advanced Calendar Settings'),
 				[self::PUBLIC_CALENDAR, $l10n->t('Allow anonymous access to your calendar'), $l10n->t('Allows anonymous visitors to consult your calendar and your public events. Contact birthday events are private to you.'), false, $config->get('feature_lock', self::PUBLIC_CALENDAR, false)],
-			]
+			],
 		];
 
 		// removed any locked features and remove the entire category if this makes it empty
@@ -171,7 +174,7 @@ class Feature
 		}
 
 		$arr = $eventDispatcher->dispatch(
-			new ArrayFilterEvent(ArrayFilterEvent::FEATURE_GET, $arr)
+			new ArrayFilterEvent(ArrayFilterEvent::FEATURE_GET, $arr),
 		)->getArray();
 
 		return $arr;

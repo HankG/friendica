@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -20,11 +20,11 @@ class Active extends BaseUsers
 
 		self::checkFormSecurityTokenRedirectOnError($this->baseUrl, 'moderation_users_active');
 
-		$users = $request['user'] ?? [];
+		$users = (array) ($request['user'] ?? []);
 
 		if (!empty($request['page_users_block'])) {
 			foreach ($users as $uid) {
-				User::block($uid);
+				User::block((int) $uid);
 			}
 			$this->systemMessages->addInfo($this->tt('%s user blocked', '%s users blocked', count($users)));
 		}
@@ -32,7 +32,7 @@ class Active extends BaseUsers
 		if (!empty($request['page_users_delete'])) {
 			foreach ($users as $uid) {
 				if ($this->session->getLocalUserId() != $uid) {
-					User::remove($uid);
+					User::remove((int) $uid);
 				} else {
 					$this->systemMessages->addNotice($this->t('You can\'t remove yourself'));
 				}
@@ -93,6 +93,7 @@ class Active extends BaseUsers
 			'$block'          => $this->t('Block'),
 			'$blocked'        => $this->t('User blocked'),
 			'$siteadmin'      => $this->t('Site admin'),
+			'$moderator'      => $this->t('Moderator'),
 			'$accountexpired' => $this->t('Account expired'),
 			'$h_newuser'      => $this->t('Create a new user'),
 

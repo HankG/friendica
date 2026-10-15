@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -22,7 +22,7 @@ class MemcacheCache extends AbstractCache implements ICanCacheInMemory
 	use CompareSetTrait;
 	use CompareDeleteTrait;
 	use MemcacheCommandTrait;
-	const NAME = 'memcache';
+	public const NAME = 'memcache';
 
 	/**
 	 * @var Memcache
@@ -115,13 +115,13 @@ class MemcacheCache extends AbstractCache implements ICanCacheInMemory
 				$cacheKey,
 				serialize($value),
 				MEMCACHE_COMPRESSED,
-				time() + $ttl
+				time() + $ttl,
 			);
 		} else {
 			return $this->memcache->set(
 				$cacheKey,
 				serialize($value),
-				MEMCACHE_COMPRESSED
+				MEMCACHE_COMPRESSED,
 			);
 		}
 	}

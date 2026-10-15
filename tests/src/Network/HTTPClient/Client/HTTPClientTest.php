@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -34,7 +34,7 @@ class HTTPClientTest extends MockedTestCase
 	/**
 	 * Test for issue https://github.com/friendica/friendica/issues/10473#issuecomment-907749093
 	 */
-	public function testInvalidURI()
+	public function testInvalidURI(): void
 	{
 		$this->httpRequestHandler->setHandler(new MockHandler([
 			new Response(301, ['Location' => 'https:///']),
@@ -46,7 +46,7 @@ class HTTPClientTest extends MockedTestCase
 	/**
 	 * Test for issue https://github.com/friendica/friendica/issues/11726
 	 */
-	public function testRedirect()
+	public function testRedirect(): void
 	{
 		$this->httpRequestHandler->setHandler(new MockHandler([
 			new Response(302, ['Location' => 'https://mastodon.social/about']),

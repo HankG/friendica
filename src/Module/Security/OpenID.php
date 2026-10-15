@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -47,11 +47,11 @@ class OpenID extends BaseModule
 				//       have left mixed records in the user table
 				//
 				$condition = ['verified' => true, 'blocked' => false, 'account_removed' => false, 'account_expired' => false,
-				              'openid' => [$authId, Strings::normaliseOpenID($authId)]];
+					'openid'                => [$authId, Strings::normaliseOpenID($authId)]];
 
 				$dba = DI::dba();
 
-				$user  = $dba->selectFirst('user', [], $condition);
+				$user = $dba->selectFirst('user', [], $condition);
 				if ($dba->isResult($user)) {
 
 					// successful OpenID login

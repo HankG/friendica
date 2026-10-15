@@ -1,13 +1,13 @@
 {{*
-  * Copyright (C) 2010-2024, the Friendica project
-  * SPDX-FileCopyrightText: 2010-2024 the Friendica project
+  * Copyright (C) 2010-2026, the Friendica project
+  * SPDX-FileCopyrightText: 2010-2026 the Friendica project
   *
   * SPDX-License-Identifier: AGPL-3.0-or-later
   *}}
 <div id="adminpage">
 	<h1>{{$title}} - {{$page}}</h1>
 
-	<h2>{{$logname}}</h2>
+	<p>{{$logname}}</p>
 	{{if $error }}
 		<div id="admin-error-message-wrapper" class="alert alert-warning">
 			<p>{{$error nofilter}}</p>

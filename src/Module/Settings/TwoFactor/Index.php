@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -50,7 +50,7 @@ class Index extends BaseSettings
 		try {
 			User::getIdFromPasswordAuthentication($this->session->getLocalUserId(), $request['password'] ?? '');
 
-			$has_secret = (bool)$this->pConfig->get($this->session->getLocalUserId(), '2fa', 'secret');
+			$has_secret = (bool) $this->pConfig->get($this->session->getLocalUserId(), '2fa', 'secret');
 			$verified   = $this->pConfig->get($this->session->getLocalUserId(), '2fa', 'verified');
 
 			switch ($request['action'] ?? '') {
@@ -117,7 +117,7 @@ class Index extends BaseSettings
 		parent::content();
 
 		$has_secret = (bool) $this->pConfig->get($this->session->getLocalUserId(), '2fa', 'secret');
-		$verified = $this->pConfig->get($this->session->getLocalUserId(), '2fa', 'verified');
+		$verified   = $this->pConfig->get($this->session->getLocalUserId(), '2fa', 'verified');
 
 		return Renderer::replaceMacros(Renderer::getMarkupTemplate('settings/twofactor/index.tpl'), [
 			'$form_security_token' => self::getFormSecurityToken('settings_2fa'),
@@ -143,14 +143,14 @@ class Index extends BaseSettings
 			'$app_specific_passwords_count'     => AppSpecificPassword::countForUser($this->session->getLocalUserId()),
 			'$app_specific_passwords_message'   => $this->t('<p>These randomly generated passwords allow you to authenticate on apps not supporting two-factor authentication.</p>'),
 
-			'$action_title'         => $this->t('Actions'),
-			'$password'             => ['password', $this->t('Current password:'), '', $this->t('You need to provide your current password to change two-factor authentication settings.'), $this->t('Required'), 'autofocus'],
-			'$enable_label'         => $this->t('Enable two-factor authentication'),
-			'$disable_label'        => $this->t('Disable two-factor authentication'),
-			'$recovery_codes_label' => $this->t('Show recovery codes'),
+			'$action_title'                 => $this->t('Actions'),
+			'$password'                     => ['password', $this->t('Current password:'), '', $this->t('You need to provide your current password to change two-factor authentication settings.'), $this->t('Required'), 'autofocus'],
+			'$enable_label'                 => $this->t('Enable two-factor authentication'),
+			'$disable_label'                => $this->t('Disable two-factor authentication'),
+			'$recovery_codes_label'         => $this->t('Show recovery codes'),
 			'$app_specific_passwords_label' => $this->t('Manage app-specific passwords'),
-			'$trusted_browsers_label' => $this->t('Manage trusted browsers'),
-			'$configure_label'      => $this->t('Finish app configuration'),
+			'$trusted_browsers_label'       => $this->t('Manage trusted browsers'),
+			'$configure_label'              => $this->t('Finish app configuration'),
 		]);
 	}
 }

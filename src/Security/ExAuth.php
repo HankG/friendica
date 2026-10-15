@@ -57,27 +57,6 @@ class ExAuth
 	private $host;
 
 	/**
-	 * @var App\Mode
-	 */
-	private $appMode;
-	/**
-	 * @var IManageConfigValues
-	 */
-	private $config;
-	/**
-	 * @var IManagePersonalConfigValues
-	 */
-	private $pConfig;
-	/**
-	 * @var Database
-	 */
-	private $dba;
-	/**
-	 * @var App\BaseURL
-	 */
-	private $baseURL;
-
-	/**
 	 * @param App\Mode                    $appMode
 	 * @param IManageConfigValues         $config
 	 * @param IManagePersonalConfigValues $pConfig
@@ -86,15 +65,9 @@ class ExAuth
 	 *
 	 * @throws Exception
 	 */
-	public function __construct(App\Mode $appMode, IManageConfigValues $config, IManagePersonalConfigValues $pConfig, Database $dba, App\BaseURL $baseURL)
+	public function __construct(private readonly App\Mode $appMode, private readonly IManageConfigValues $config, private readonly IManagePersonalConfigValues $pConfig, private readonly Database $dba, private readonly App\BaseURL $baseURL)
 	{
-		$this->appMode = $appMode;
-		$this->config  = $config;
-		$this->pConfig = $pConfig;
-		$this->dba     = $dba;
-		$this->baseURL = $baseURL;
-
-		$this->bDebug = (int)$config->get('jabber', 'debug');
+		$this->bDebug = (int) $this->config->get('jabber', 'debug');
 
 		openlog('auth_ejabberd', LOG_PID, LOG_USER);
 
@@ -140,30 +113,26 @@ class ExAuth
 			$sData = fgets(STDIN, $iLength + 1);
 			$this->writeLog(LOG_DEBUG, 'received data: ' . $sData);
 			$aCommand = explode(':', $sData);
-			if (is_array($aCommand)) {
-				switch ($aCommand[0]) {
-					case 'isuser':
-						// Check the existence of a given username
-						$this->isUser($aCommand);
-						break;
-					case 'auth':
-						// Check if the given password is correct
-						$this->auth($aCommand);
-						break;
-					case 'setpass':
-						// We don't accept the setting of passwords here
-						$this->writeLog(LOG_NOTICE, 'setpass command disabled');
-						fwrite(STDOUT, pack('nn', 2, 0));
-						break;
-					default:
-						// We don't know the given command
-						$this->writeLog(LOG_NOTICE, 'unknown command ' . $aCommand[0]);
-						fwrite(STDOUT, pack('nn', 2, 0));
-						break;
-				}
-			} else {
-				$this->writeLog(LOG_NOTICE, 'invalid command string ' . $sData);
-				fwrite(STDOUT, pack('nn', 2, 0));
+
+			switch ($aCommand[0]) {
+				case 'isuser':
+					// Check the existence of a given username
+					$this->isUser($aCommand);
+					break;
+				case 'auth':
+					// Check if the given password is correct
+					$this->auth($aCommand);
+					break;
+				case 'setpass':
+					// We don't accept the setting of passwords here
+					$this->writeLog(LOG_NOTICE, 'setpass command disabled');
+					fwrite(STDOUT, pack('nn', 2, 0));
+					break;
+				default:
+					// We don't know the given command
+					$this->writeLog(LOG_NOTICE, 'unknown command ' . $aCommand[0]);
+					fwrite(STDOUT, pack('nn', 2, 0));
+					break;
 			}
 		}
 	}
@@ -232,7 +201,7 @@ class ExAuth
 
 		try {
 			$curlResult = DI::httpClient()->get($url, HttpClientAccept::JSON, [HttpClientOptions::REQUEST => HttpClientRequest::CONTACTVERIFIER]);
-		} catch (\Throwable $th) {
+		} catch (\Throwable) {
 			return false;
 		}
 
@@ -280,12 +249,12 @@ class ExAuth
 			try {
 				$this->writeLog(LOG_INFO, 'internal auth for ' . $sUser . '@' . $aCommand[2]);
 				User::getIdFromPasswordAuthentication($sUser, $aCommand[3], true);
-			} catch (HTTPException\ForbiddenException $ex) {
+			} catch (HTTPException\ForbiddenException) {
 				// User exists, authentication failed
 				$this->writeLog(LOG_INFO, 'check against alternate password for ' . $sUser . '@' . $aCommand[2]);
-				$aUser = User::getByNickname($sUser, ['uid']);
+				$aUser     = User::getByNickname($sUser, ['uid']);
 				$sPassword = $this->pConfig->get($aUser['uid'], 'xmpp', 'password', null, true);
-				$Error = ($aCommand[3] != $sPassword);
+				$Error     = ($aCommand[3] != $sPassword);
 			} catch (\Throwable $ex) {
 				// User doesn't exist and any other failure case
 				$this->writeLog(LOG_WARNING, $ex->getMessage() . ': ' . $sUser);
@@ -323,7 +292,7 @@ class ExAuth
 
 		$ch = curl_init();
 		curl_setopt($ch, CURLOPT_URL, $url);
-		curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 		curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
 		curl_setopt($ch, CURLOPT_HEADER, true);
 		curl_setopt($ch, CURLOPT_NOBODY, true);
@@ -333,7 +302,6 @@ class ExAuth
 		curl_exec($ch);
 		$curl_info = @curl_getinfo($ch);
 		$http_code = $curl_info['http_code'];
-		curl_close($ch);
 
 		$this->writeLog(LOG_INFO, 'external auth for ' . $user . '@' . $host . ' returned ' . $http_code);
 

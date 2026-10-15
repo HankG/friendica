@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -66,7 +66,7 @@ class PushSubscription extends BaseApi
 		$this->logger->info('Subscription stored', ['ret' => $ret, 'subscription' => $subscription]);
 
 		$subscriptionObj = $this->subscriptionFac->createForApplicationIdAndUserId($application['id'], $uid);
-		$this->jsonExit($subscriptionObj->toArray());
+		$this->earlyJsonExit($subscriptionObj->toArray());
 	}
 
 	public function put(array $request = []): void
@@ -105,7 +105,7 @@ class PushSubscription extends BaseApi
 		]);
 
 		$subscriptionObj = $this->subscriptionFac->createForApplicationIdAndUserId($application['id'], $uid);
-		$this->jsonExit($subscriptionObj->toArray());
+		$this->earlyJsonExit($subscriptionObj->toArray());
 	}
 
 	private function setBoolean($input): bool
@@ -113,7 +113,7 @@ class PushSubscription extends BaseApi
 		if (is_bool($input)) {
 			return $input;
 		}
-		return strtolower($input) == 'true';
+		return strtolower((string) $input) == 'true';
 	}
 
 	protected function delete(array $request = []): void
@@ -130,7 +130,7 @@ class PushSubscription extends BaseApi
 			'uid'            => $uid,
 		]);
 
-		$this->jsonExit([]);
+		$this->earlyJsonExit([]);
 	}
 
 	protected function get(array $request = []): void

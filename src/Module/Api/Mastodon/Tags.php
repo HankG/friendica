@@ -1,15 +1,13 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Module\Api\Mastodon;
 
-use Friendica\Core\System;
 use Friendica\Database\DBA;
-use Friendica\DI;
 use Friendica\Module\BaseApi;
 
 /**
@@ -29,10 +27,10 @@ class Tags extends BaseApi
 			$this->logAndJsonError(422, $this->errorFactory->UnprocessableEntity());
 		}
 
-		$tag       = ltrim($this->parameters['hashtag'], '#');
+		$tag       = ltrim((string) $this->parameters['hashtag'], '#');
 		$following = DBA::exists('search', ['uid' => $uid, 'term' => '#' . $tag]);
 
 		$hashtag = new \Friendica\Object\Api\Mastodon\Tag($this->baseUrl, ['name' => $tag], [], $following);
-		$this->jsonExit($hashtag->toArray());
+		$this->earlyJsonExit($hashtag->toArray());
 	}
 }

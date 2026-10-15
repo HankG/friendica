@@ -1,13 +1,12 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Module\Api\Mastodon\Trends;
 
-use Friendica\Core\System;
 use Friendica\DI;
 use Friendica\Model\Tag;
 use Friendica\Module\BaseApi;
@@ -23,8 +22,8 @@ class Tags extends BaseApi
 	protected function rawContent(array $request = [])
 	{
 		$request = $this->getRequest([
-			'limit' => 20, // Maximum number of results to return. Defaults to 20.
-			'offset' => 0, // Offset in set. Defaults to 0.
+			'limit'           => 20, // Maximum number of results to return. Defaults to 20.
+			'offset'          => 0, // Offset in set. Defaults to 0.
 			'friendica_local' => false, // Whether to return local tag trends instead of global, defaults to false
 		], $request);
 
@@ -37,15 +36,15 @@ class Tags extends BaseApi
 
 		foreach ($tags as $tag) {
 			$tag['name'] = $tag['term'];
-			$history = [['day' => (string)time(), 'uses' => (string)$tag['score'], 'accounts' => (string)$tag['authors']]];
-			$hashtag = new \Friendica\Object\Api\Mastodon\Tag(DI::baseUrl(), $tag, $history);
-			$trending[] = $hashtag->toArray();
+			$history     = [['day' => (string) time(), 'uses' => (string) $tag['score'], 'accounts' => (string) $tag['authors']]];
+			$hashtag     = new \Friendica\Object\Api\Mastodon\Tag(DI::baseUrl(), $tag, $history);
+			$trending[]  = $hashtag->toArray();
 		}
 
 		if (!empty($trending)) {
-			self::setLinkHeaderByOffsetLimit($request['offset'], $request['limit']);
+			$this->setPaginationLinkHeaderByOffsetLimit($request['offset'], $request['limit']);
 		}
 
-		$this->jsonExit($trending);
+		$this->earlyJsonExit($trending);
 	}
 }

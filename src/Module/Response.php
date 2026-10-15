@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -83,19 +83,19 @@ class Response implements ICanCreateResponses
 
 		switch ($type) {
 			case static::TYPE_HTML:
-				$content_type = $content_type ?? 'text/html; charset=utf-8';
+				$content_type ??= 'text/html; charset=utf-8';
 				break;
 			case static::TYPE_JSON:
-				$content_type = $content_type ?? 'application/json';
+				$content_type ??= 'application/json';
 				break;
 			case static::TYPE_XML:
-				$content_type = $content_type ?? 'text/xml';
+				$content_type ??= 'text/xml';
 				break;
 			case static::TYPE_RSS:
-				$content_type = $content_type ?? 'application/rss+xml';
+				$content_type ??= 'application/rss+xml';
 				break;
 			case static::TYPE_ATOM:
-				$content_type = $content_type ?? 'application/atom+xml';
+				$content_type ??= 'application/atom+xml';
 				break;
 		}
 

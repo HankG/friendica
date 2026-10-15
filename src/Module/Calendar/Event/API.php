@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -41,12 +41,12 @@ use Psr\Log\LoggerInterface;
  */
 class API extends BaseModule
 {
-	const ACTION_CREATE   = 'create';
-	const ACTION_DELETE   = 'delete';
-	const ACTION_IGNORE   = 'ignore';
-	const ACTION_UNIGNORE = 'unignore';
+	public const ACTION_CREATE   = 'create';
+	public const ACTION_DELETE   = 'delete';
+	public const ACTION_IGNORE   = 'ignore';
+	public const ACTION_UNIGNORE = 'unignore';
 
-	const ALLOWED_ACTIONS = [
+	public const ALLOWED_ACTIONS = [
 		self::ACTION_CREATE,
 		self::ACTION_DELETE,
 		self::ACTION_IGNORE,
@@ -128,9 +128,9 @@ class API extends BaseModule
 	protected function createEvent(array $request)
 	{
 		$eventId = !empty($request['event_id']) ? intval($request['event_id']) : 0;
-		$uid     = (int)$this->session->getLocalUserId();
+		$uid     = (int) $this->session->getLocalUserId();
 		// No overwriting event.cid on edit
-		$cid     = !empty($request['cid']) && !$eventId ? intval($request['cid']) : 0;
+		$cid = !empty($request['cid']) && !$eventId ? intval($request['cid']) : 0;
 
 		$strStartDateTime  = Strings::escapeHtml($request['start_text'] ?? '');
 		$strFinishDateTime = Strings::escapeHtml($request['finish_text'] ?? '');
@@ -171,7 +171,7 @@ class API extends BaseModule
 
 		if (strcmp($finish, $start) < 0 && !$noFinish) {
 			if ($isPreview) {
-				$this->httpExit($this->t('Event can not end before it has started.'));
+				$this->earlyHttpExit($this->t('Event can not end before it has started.'));
 			} else {
 				$this->sysMessages->addNotice($this->t('Event can not end before it has started.'));
 				$this->baseUrl->redirect($redirectOnError);
@@ -180,7 +180,7 @@ class API extends BaseModule
 
 		if (empty($summary) || ($start === DBA::NULL_DATETIME)) {
 			if ($isPreview) {
-				$this->httpExit($this->t('Event title and start time are required.'));
+				$this->earlyHttpExit($this->t('Event title and start time are required.'));
 			} else {
 				$this->sysMessages->addNotice($this->t('Event title and start time are required.'));
 				$this->baseUrl->redirect($redirectOnError);
@@ -212,10 +212,10 @@ class API extends BaseModule
 				// Since we know from the visibility parameter the item should be private, we have to prevent the empty ACL
 				// case that would make it public. So we always append the author's contact id to the allowed contacts.
 				// See https://github.com/friendica/friendica/issues/9672
-				$strAclContactAllow .= $aclFormatter->toString($self);
+				$strAclContactAllow .= $aclFormatter->toString((string) $self);
 			}
 		} else {
-			$strAclContactAllow = $aclFormatter->toString($self);
+			$strAclContactAllow = $aclFormatter->toString((string) $self);
 			$strAclCircleAllow  = '';
 			$strContactDeny     = '';
 			$strCircleDeny      = '';
@@ -239,7 +239,7 @@ class API extends BaseModule
 		];
 
 		if (intval($request['preview'])) {
-			$this->httpExit(Event::getHTML($datarray));
+			$this->earlyHttpExit(Event::getHTML($datarray));
 		}
 
 		$eventId = Event::store($datarray);
@@ -247,10 +247,10 @@ class API extends BaseModule
 		$newItem = Event::getItemArrayForId($eventId, [
 			'network'   => Protocol::DFRN,
 			'protocol'  => Conversation::PARCEL_DIRECT,
-			'direction' => Conversation::PUSH
+			'direction' => Conversation::PUSH,
 		]);
 		if (Item::insert($newItem)) {
-			$uriId = (int)$newItem['uri-id'];
+			$uriId = (int) $newItem['uri-id'];
 		} else {
 			$uriId = 0;
 		}

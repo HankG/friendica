@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -10,6 +10,7 @@ namespace Friendica\Factory\Api\Mastodon;
 use Friendica\BaseFactory;
 use Friendica\Model\Post;
 use Friendica\Network\HTTPException;
+use Friendica\Content\Post\Entity\PostMedia;
 
 class Card extends BaseFactory
 {
@@ -24,17 +25,17 @@ class Card extends BaseFactory
 	 */
 	public function createFromUriId(int $uriId, array $history = []): \Friendica\Object\Api\Mastodon\Card
 	{
-		$media = Post\Media::getByURIId($uriId, [Post\Media::HTML]);
+		$media = Post\Media::getByURIId($uriId, [PostMedia::TYPE_HTML]);
 		if (empty($media) || (empty($media[0]['description']) && empty($media[0]['image']) && empty($media[0]['preview']))) {
 			return new \Friendica\Object\Api\Mastodon\Card([], $history);
 		}
 
-		$parts = parse_url($media[0]['url']);
+		$parts = parse_url((string) $media[0]['url']);
 		if (!empty($parts['scheme']) && !empty($parts['host'])) {
 			if (empty($media[0]['publisher-name'])) {
 				$media[0]['publisher-name'] = $parts['host'];
 			}
-			if (empty($media[0]['publisher-url']) || empty(parse_url($media[0]['publisher-url'], PHP_URL_SCHEME))) {
+			if (empty($media[0]['publisher-url']) || empty(parse_url((string) $media[0]['publisher-url'], PHP_URL_SCHEME))) {
 				$media[0]['publisher-url'] = $parts['scheme'] . '://' . $parts['host'];
 
 				if (!empty($parts['port'])) {

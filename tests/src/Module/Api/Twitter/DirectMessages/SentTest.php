@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -19,10 +19,11 @@ class SentTest extends ApiTestCase
 	 *
 	 * @return void
 	 */
-	public function testApiDirectMessagesBoxWithVerbose()
+	public function testApiDirectMessagesBoxWithVerbose(): void
 	{
 		$directMessage = new DirectMessage(DI::logger(), DI::dba(), DI::twitterUser());
 
+		// @phpstan-ignore method.deprecated
 		$response = (new Sent($directMessage, DI::dba(), DI::mstdnError(), DI::appHelper(), DI::l10n(), DI::baseUrl(), DI::args(), DI::logger(), DI::profiler(), DI::apiResponse(), [], ['extension' => 'json']))
 			->run($this->httpExceptionMock, [
 				'friendica_verbose' => true,
@@ -39,27 +40,14 @@ class SentTest extends ApiTestCase
 	 *
 	 * @return void
 	 */
-	public function testApiDirectMessagesBoxWithRss()
+	public function testApiDirectMessagesBoxWithRss(): void
 	{
 		$directMessage = new DirectMessage(DI::logger(), DI::dba(), DI::twitterUser());
 
+		// @phpstan-ignore method.deprecated
 		$response = (new Sent($directMessage, DI::dba(), DI::mstdnError(), DI::appHelper(), DI::l10n(), DI::baseUrl(), DI::args(), DI::logger(), DI::profiler(), DI::apiResponse(), [], ['extension' => 'rss']))
 			->run($this->httpExceptionMock);
 
-		self::assertXml((string)$response->getBody(), 'direct-messages');
-	}
-
-	/**
-	 * Test the api_direct_messages_box() function without an authenticated user.
-	 *
-	 * @return void
-	 */
-	public function testApiDirectMessagesBoxWithUnallowedUser()
-	{
-		self::markTestIncomplete('Needs BasicAuth as dynamic method for overriding first');
-
-		//$this->expectException(\Friendica\Network\HTTPException\UnauthorizedException::class);
-		//BasicAuth::setCurrentUserID();
-		//api_direct_messages_box('json', 'sentbox', 'false');
+		self::assertXml((string) $response->getBody(), 'direct-messages');
 	}
 }

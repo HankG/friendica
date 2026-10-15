@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -18,17 +18,17 @@ use Friendica\Database\Database;
  */
 class Mode
 {
-	const LOCALCONFIGPRESENT  = 1;
-	const DBAVAILABLE         = 2;
-	const DBCONFIGAVAILABLE   = 4;
-	const MAINTENANCEDISABLED = 8;
+	public const LOCALCONFIGPRESENT  = 1;
+	public const DBAVAILABLE         = 2;
+	public const DBCONFIGAVAILABLE   = 4;
+	public const MAINTENANCEDISABLED = 8;
 
-	const UNDEFINED = 0;
-	const INDEX = 1;
-	const DAEMON = 2;
-	const WORKER = 3;
+	public const UNDEFINED = 0;
+	public const INDEX     = 1;
+	public const DAEMON    = 2;
+	public const WORKER    = 3;
 
-	const BACKEND_CONTENT_TYPES = ['application/jrd+json', 'text/xml',
+	public const BACKEND_CONTENT_TYPES = ['application/jrd+json', 'text/xml',
 		'application/rss+xml', 'application/atom+xml', 'application/activity+json'];
 
 	/**
@@ -36,7 +36,7 @@ class Mode
 	 *
 	 * @var array
 	 */
-	const BACKEND_MODULES = [
+	public const BACKEND_MODULES = [
 		'_well_known',
 		'api',
 		'dfrn_notify',
@@ -60,45 +60,30 @@ class Mode
 	];
 
 	/***
-	 * @var int The mode of this Application
-	 *
-	 */
-	private $mode;
-
-	/***
 	 * @var int Who executes this Application
 	 *
 	 */
 	private $executor = self::UNDEFINED;
 
-	/**
-	 * @var bool True, if the call is a backend call
-	 */
-	private $isBackend;
-
-	/**
-	 * @var bool True, if the call is a ajax call
-	 */
-	private $isAjax;
-
-	/**
-	 * @var bool True, if the call is from a mobile device
-	 */
-	private $isMobile;
-
-	/**
-	 * @var bool True, if the call is from a tablet device
-	 */
-	private $isTablet;
-
-	public function __construct(int $mode = 0, bool $isBackend = false, bool $isAjax = false, bool $isMobile = false, bool $isTablet = false)
-	{
-		$this->mode      = $mode;
-		$this->isBackend = $isBackend;
-		$this->isAjax    = $isAjax;
-		$this->isMobile  = $isMobile;
-		$this->isTablet  = $isTablet;
-	}
+	public function __construct(
+		private readonly int $mode = 0,
+		/**
+		 * @var bool True, if the call is a backend call
+		 */
+		private bool $isBackend = false,
+		/**
+		 * @var bool True, if the call is a ajax call
+		 */
+		private readonly bool $isAjax = false,
+		/**
+		 * @var bool True, if the call is from a mobile device
+		 */
+		private readonly bool $isMobile = false,
+		/**
+		 * @var bool True, if the call is from a tablet device
+		 */
+		private readonly bool $isTablet = false,
+	) {}
 
 	/**
 	 * Sets the App mode
@@ -115,9 +100,9 @@ class Mode
 	{
 		$mode = 0;
 
-		if (!file_exists($basePath . '/config/local.config.php') &&
-			!file_exists($basePath . '/config/local.ini.php') &&
-			!file_exists($basePath . '/.htconfig.php')) {
+		if (!file_exists($basePath . '/config/local.config.php')
+			&& !file_exists($basePath . '/config/local.ini.php')
+			&& !file_exists($basePath . '/.htconfig.php')) {
 			return new Mode($mode);
 		}
 
@@ -151,7 +136,7 @@ class Mode
 	public function determineRunMode(bool $isBackend, array $server, Arguments $args, MobileDetect $mobileDetect): Mode
 	{
 		foreach (self::BACKEND_CONTENT_TYPES as $type) {
-			if (strpos(strtolower($server['HTTP_ACCEPT'] ?? ''), $type) !== false) {
+			if (str_contains(strtolower($server['HTTP_ACCEPT'] ?? ''), $type)) {
 				$isBackend = true;
 			}
 		}
@@ -209,8 +194,8 @@ class Mode
 	 */
 	public function isInstall(): bool
 	{
-		return !$this->has(Mode::LOCALCONFIGPRESENT) ||
-		       !$this->has(Mode::DBAVAILABLE);
+		return !$this->has(Mode::LOCALCONFIGPRESENT)
+			   || !$this->has(Mode::DBAVAILABLE);
 	}
 
 	/**
@@ -220,9 +205,9 @@ class Mode
 	 */
 	public function isNormal(): bool
 	{
-		return $this->has(Mode::LOCALCONFIGPRESENT) &&
-		       $this->has(Mode::DBAVAILABLE) &&
-		       $this->has(Mode::MAINTENANCEDISABLED);
+		return $this->has(Mode::LOCALCONFIGPRESENT)
+			   && $this->has(Mode::DBAVAILABLE)
+			   && $this->has(Mode::MAINTENANCEDISABLED);
 	}
 
 	/**

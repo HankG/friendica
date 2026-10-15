@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -14,7 +14,7 @@ use Friendica\Model\User;
 
 class Unfollow
 {
-	const WORKER_DEFER_LIMIT = 5;
+	public const WORKER_DEFER_LIMIT = 5;
 
 	/**
 	 * Issue asynchronous unfollow message to remote servers.
@@ -45,7 +45,7 @@ class Unfollow
 		$result = Protocol::unfollow($contact, $owner);
 		if ($result === false) {
 			if (!Worker::defer(self::WORKER_DEFER_LIMIT)) {
-				Contact::removeSharer($contact);	
+				Contact::removeSharer($contact);
 			}
 		} else {
 			Contact::removeSharer($contact);

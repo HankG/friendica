@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -7,9 +7,6 @@
 var batchConfirmed = false;
 
 $(document).ready(function () {
-	// Initiale autosize for the textareas.
-	autosize($("textarea.text-autosize"));
-
 	// Replace the drop contact link of the photo menu
 	// with a confirmation modal.
 	$("body").on("click", ".contact-photo-menu a", function (e) {

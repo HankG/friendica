@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -170,7 +170,7 @@ function jotTextOpenUI(obj) {
 	if (obj.value === "" || obj.value === obj.dataset.default) {
 		var $el = $(".modal-body #profile-jot-text");
 		$el.addClass("profile-jot-text-full").removeClass("profile-jot-text-empty");
-		// initiale autosize for the jot
+		// initialize autosize for the jot
 		autosize($el);
 	}
 }

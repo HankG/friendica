@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -27,10 +27,11 @@ class OptimizeTables
 
 		DBA::optimizeTable('cache');
 		DBA::optimizeTable('locks');
-		DBA::optimizeTable('oembed');
 		DBA::optimizeTable('parsed_url');
 		DBA::optimizeTable('session');
 		DBA::optimizeTable('post-engagement');
+		DBA::optimizeTable('channel-post');
+		DBA::optimizeTable('system-channel-post');
 		DBA::optimizeTable('check-full-text-search');
 
 		if (DI::config()->get('system', 'optimize_all_tables')) {
@@ -50,6 +51,7 @@ class OptimizeTables
 			DBA::optimizeTable('photo');
 			DBA::optimizeTable('post');
 			DBA::optimizeTable('post-content');
+			DBA::optimizeTable('post-quote');
 			DBA::optimizeTable('post-delivery-data');
 			DBA::optimizeTable('post-link');
 			DBA::optimizeTable('post-thread');

@@ -1,14 +1,13 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Module;
 
 use Friendica\BaseModule;
-use Friendica\Core\System;
 use Friendica\DI;
 use Friendica\Util\XML;
 
@@ -18,7 +17,7 @@ use Friendica\Util\XML;
  */
 class ReallySimpleDiscovery extends BaseModule
 {
-	protected function rawContent(array $request = [])
+	protected function rawContent(array $request = []): never
 	{
 		$content = XML::fromArray([
 			'rsd' => [
@@ -26,7 +25,7 @@ class ReallySimpleDiscovery extends BaseModule
 					'version' => '1.0',
 					'xmlns'   => 'http://archipelago.phrasewise.com/rsd',
 				],
-				'service'     => [
+				'service' => [
 					'engineName' => 'Friendica',
 					'engineLink' => 'http://friendica.com',
 					'apis'       => [
@@ -37,8 +36,8 @@ class ReallySimpleDiscovery extends BaseModule
 								'apiLink'   => DI::baseUrl(),
 								'blogID'    => '',
 							],
-							'settings'    => [
-								'docs'    => [
+							'settings' => [
+								'docs' => [
 									'http://status.net/wiki/TwitterCompatibleAPI',
 								],
 								'setting' => [
@@ -48,11 +47,11 @@ class ReallySimpleDiscovery extends BaseModule
 									'false',
 								],
 							],
-						]
+						],
 					],
 				],
 			],
 		]);
-		$this->httpExit($content, Response::TYPE_XML);
+		$this->earlyHttpExit($content, Response::TYPE_XML);
 	}
 }

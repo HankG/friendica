@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -20,11 +20,11 @@ class ShowTest extends ApiTestCase
 	 *
 	 * @return void
 	 */
-	public function testApiStatusesShow()
+	public function testApiStatusesShow(): void
 	{
 		$this->expectException(BadRequestException::class);
 
-
+		// @phpstan-ignore method.deprecated
 		(new Show(DI::mstdnError(), DI::appHelper(), DI::l10n(), DI::baseUrl(), DI::args(), DI::logger(), DI::profiler(), DI::apiResponse(), []))
 			->run($this->httpExceptionMock);
 	}
@@ -34,11 +34,12 @@ class ShowTest extends ApiTestCase
 	 *
 	 * @return void
 	 */
-	public function testApiStatusesShowWithId()
+	public function testApiStatusesShowWithId(): void
 	{
+		// @phpstan-ignore method.deprecated
 		$response = (new Show(DI::mstdnError(), DI::appHelper(), DI::l10n(), DI::baseUrl(), DI::args(), DI::logger(), DI::profiler(), DI::apiResponse(), []))
 			->run($this->httpExceptionMock, [
-				'id' => 1
+				'id' => 1,
 			]);
 
 		$json = $this->toJson($response);
@@ -52,15 +53,16 @@ class ShowTest extends ApiTestCase
 	 *
 	 * @return void
 	 */
-	public function testApiStatusesShowWithConversation()
+	public function testApiStatusesShowWithConversation(): void
 	{
 		// @todo: This call is needed for this test
-		Renderer::registerTemplateEngine('Friendica\Render\FriendicaSmartyEngine');
+		Renderer::registerTemplateEngine(\Friendica\Render\FriendicaSmartyEngine::class);
 
+		// @phpstan-ignore method.deprecated
 		$response = (new Show(DI::mstdnError(), DI::appHelper(), DI::l10n(), DI::baseUrl(), DI::args(), DI::logger(), DI::profiler(), DI::apiResponse(), []))
 			->run($this->httpExceptionMock, [
 				'id'           => 1,
-				'conversation' => 1
+				'conversation' => 1,
 			]);
 
 		$json = $this->toJson($response);
@@ -71,19 +73,5 @@ class ShowTest extends ApiTestCase
 			self::assertIsInt($status->id);
 			self::assertIsString($status->text);
 		}
-	}
-
-	/**
-	 * Test the api_statuses_show() function with an unallowed user.
-	 *
-	 * @return void
-	 */
-	public function testApiStatusesShowWithUnallowedUser()
-	{
-		self::markTestIncomplete('Needs BasicAuth as dynamic method for overriding first');
-
-		// $this->expectException(\Friendica\Network\HTTPException\UnauthorizedException::class);
-		// BasicAuth::setCurrentUserID();
-		// api_statuses_show('json');
 	}
 }

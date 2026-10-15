@@ -1,28 +1,23 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Factory\Api\Twitter;
 
-use Friendica\App\BaseURL;
 use Friendica\BaseFactory;
 use Friendica\Network\HTTPException;
 use Friendica\Model\Post;
 use Psr\Log\LoggerInterface;
+use Friendica\Content\Post\Entity\PostMedia;
 
 class Media extends BaseFactory
 {
-	/** @var BaseURL */
-	private $baseUrl;
-
-	public function __construct(LoggerInterface $logger, BaseURL $baseURL)
+	public function __construct(LoggerInterface $logger)
 	{
 		parent::__construct($logger);
-
-		$this->baseUrl = $baseURL;
 	}
 
 	/**
@@ -35,8 +30,8 @@ class Media extends BaseFactory
 	public function createFromUriId(int $uriId, string $text): array
 	{
 		$attachments = [];
-		foreach (Post\Media::getByURIId($uriId, [Post\Media::AUDIO, Post\Media::IMAGE, Post\Media::VIDEO]) as $attachment) {
-			if ($attachment['type'] == Post\Media::IMAGE) {
+		foreach (Post\Media::getByURIId($uriId, [PostMedia::TYPE_AUDIO, PostMedia::TYPE_IMAGE, PostMedia::TYPE_VIDEO]) as $attachment) {
+			if ($attachment['type'] == PostMedia::TYPE_IMAGE) {
 				$url = Post\Media::getUrlForId($attachment['id']);
 			} elseif (!empty($attachment['preview'])) {
 				$url = Post\Media::getPreviewUrlForId($attachment['id']);

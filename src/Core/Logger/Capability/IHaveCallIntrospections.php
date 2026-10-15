@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -15,8 +15,6 @@ interface IHaveCallIntrospections
 	 * @var string[]
 	 */
 	public const IGNORE_CLASS_LIST = [
-		\Friendica\Core\Logger::class,
-		\Friendica\Core\Logger\Factory\Logger::class,
 		'Friendica\\Core\\Logger\\Type',
 		\Friendica\Util\Profiler::class,
 	];

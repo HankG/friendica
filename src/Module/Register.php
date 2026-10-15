@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -32,26 +32,29 @@ use Psr\Log\LoggerInterface;
  */
 class Register extends BaseModule
 {
-	const CLOSED  = 0;
-	const APPROVE = 1;
-	const OPEN    = 2;
+	public const CLOSED  = 0;
+	public const APPROVE = 1;
+	public const OPEN    = 2;
 
 	/** @var Tos */
 	protected $tos;
 
-	/** @var IHandleUserSessions */
-	private $session;
-
-	private EventDispatcherInterface $eventDispatcher;
-
-	public function __construct(IHandleUserSessions $session, EventDispatcherInterface $eventDispatcher, L10n $l10n, BaseURL $baseUrl, Arguments $args, LoggerInterface $logger, Profiler $profiler, Response $response, IManageConfigValues $config, array $server, array $parameters = [])
-	{
+	public function __construct(
+		private readonly IHandleUserSessions $session,
+		private readonly EventDispatcherInterface $eventDispatcher,
+		L10n $l10n,
+		BaseURL $baseUrl,
+		Arguments $args,
+		LoggerInterface $logger,
+		Profiler $profiler,
+		Response $response,
+		IManageConfigValues $config,
+		array $server,
+		array $parameters = [],
+	) {
 		parent::__construct($l10n, $baseUrl, $args, $logger, $profiler, $response, $server, $parameters);
 
 		$this->tos = new Tos($l10n, $baseUrl, $args, $logger, $profiler, $response, $config, $server, $parameters);
-
-		$this->session         = $session;
-		$this->eventDispatcher = $eventDispatcher;
 	}
 
 	/**
@@ -84,8 +87,13 @@ class Register extends BaseModule
 		}
 
 		if (!DI::userSession()->getLocalUserId() && self::getPolicy() === self::CLOSED) {
-			DI::sysmsg()->addNotice(DI::l10n()->t('Permission denied.'));
-			return '';
+			$tpl = Renderer::getMarkupTemplate('register_closed.tpl');
+			return Renderer::replaceMacros($tpl, [
+				'$title'       => DI::l10n()->t('Registration Closed'),
+				'$message'     => DI::l10n()->t('Registration is currently closed on this node.'),
+				'$explanation' => DI::l10n()->t('The administrators have decided to limit new registrations. This could be temporary or permanent.'),
+				'$find_server' => BBCode::convertForUriId(User::getSystemUriId(), DI::l10n()->t('You can find other open Friendica servers at %s where you can register.', '[url=https://dir.friendica.social/servers]dir.friendica.social/servers[/url]')),
+			]);
 		}
 
 		$max_dailies = intval(DI::config()->get('system', 'max_daily_registrations'));
@@ -104,6 +112,8 @@ class Register extends BaseModule
 		$nickname   = $_REQUEST['nickname']   ?? '';
 		$photo      = $_REQUEST['photo']      ?? '';
 		$invite_id  = $_REQUEST['invite_id']  ?? '';
+
+		$which_types = $_GET['type'] ?? '';
 
 		if (DI::userSession()->getLocalUserId() || DI::config()->get('system', 'no_openid')) {
 			$fillwith = '';
@@ -129,7 +139,62 @@ class Register extends BaseModule
 			]);
 		}
 
+		$regbutton_label = DI::l10n()->t('Create Account');
+
+		/* ACCOUNT TYPE SELECT */
+		$acct_list = [	// value => label
+			User::PERSONAL => DI::l10n()->t('Personal (standard account)'),
+			User::SOAPBOX  => DI::l10n()->t('Soap-Box (auto-approve Follow requests)'),
+			User::LOVEALL  => DI::l10n()->t('Love-All (auto-approve Friend requests)'),
+			User::ORGPAGE  => DI::l10n()->t('Organization Page'),
+			User::NEWSPAGE => DI::l10n()->t('News Page'),
+			User::PUBGROUP => DI::l10n()->t('Public Group'),
+			User::RESGROUP => DI::l10n()->t('Restricted Group'),
+			User::PRIGROUP => DI::l10n()->t('Private Group'),
+		];
+		$selected = '';
+		/* get any URL params */
+		$which_types = $_GET['type'] ?? '';
+		/* tailor options based on type param */
+		if (!empty($which_types)) {
+			if ($which_types == User::PUBGROUP || $which_types == User::RESGROUP || $which_types == User::PRIGROUP) {
+				$acct_list = [
+					User::PUBGROUP => DI::l10n()->t('Public Group'),
+					User::RESGROUP => DI::l10n()->t('Restricted Group'),
+					User::PRIGROUP => DI::l10n()->t('Private Group'),
+				];
+				$regbutton_label = DI::l10n()->t('Create Group');
+			}
+			if ($which_types == User::ORGPAGE || $which_types == User::NEWSPAGE) {
+				$acct_list = [
+					User::ORGPAGE  => DI::l10n()->t('Organization Page'),
+					User::NEWSPAGE => DI::l10n()->t('News Page'),
+				];
+				$regbutton_label = DI::l10n()->t('Create Page');
+			}
+			if ($which_types == User::PERSONAL || $which_types == User::SOAPBOX || $which_types == User::LOVEALL) {
+				$acct_list = [
+					User::PERSONAL => DI::l10n()->t('Personal (standard account)'),
+					User::SOAPBOX  => DI::l10n()->t('Personal Soap-Box (auto-approve Follow requests)'),
+					User::LOVEALL  => DI::l10n()->t('Personal Love-All (auto-approve Friend requests)'),
+				];
+			}
+			/* select the option (if it is not valid it just won't select anything) */
+			$selected = $which_types;
+		}
+		/* build Select array */
+		$acct_type = [
+			'register_type', // id
+			DI::l10n()->t('Account type:'), //label
+			$selected,
+			DI::l10n()->t('You can change the account type later.') . ' <a href="' . DI::baseUrl() . '/help/user/accounts-groups-pages" target="_blank">' . DI::l10n()->t('(Account type help)') . '</a>',
+			$acct_list,
+		];
+
 		$ask_password = !DBA::count('contact');
+
+		// Retrieve system messages to display on the registration page
+		$notices = DI::sysmsg()->flushNotices();
 
 		$tpl = Renderer::getMarkupTemplate('register.tpl');
 
@@ -144,13 +209,14 @@ class Register extends BaseModule
 		$tpl = $hook_data['template'] ?? $tpl;
 
 		$o = Renderer::replaceMacros($tpl, [
+			'$notices'               => $notices,
 			'$invitations'           => DI::config()->get('system', 'invitation_only'),
 			'$permonly'              => self::getPolicy() === self::APPROVE,
 			'$permonlybox'           => ['permonlybox', DI::l10n()->t('Note for the admin'), '', DI::l10n()->t('Leave a message for the admin, why you want to join this node'), DI::l10n()->t('Required')],
 			'$invite_desc'           => DI::l10n()->t('Membership on this site is by invitation only.'),
 			'$invite_label'          => DI::l10n()->t('Your invitation code: '),
 			'$invite_id'             => $invite_id,
-			'$regtitle'              => DI::l10n()->t('Registration'),
+			'$regtitle'              => DI::l10n()->t('Create an account'),
 			'$registertext'          => BBCode::convertForUriId(User::getSystemUriId(), DI::config()->get('config', 'register_text', '')),
 			'$fillwith'              => $fillwith,
 			'$fillext'               => $fillext,
@@ -162,11 +228,11 @@ class Register extends BaseModule
 			'$ask_password'          => $ask_password,
 			'$password1'             => ['password1', DI::l10n()->t('New Password:'), '', DI::l10n()->t('Leave empty for an auto generated password.')],
 			'$password2'             => ['confirm', DI::l10n()->t('Confirm:'), '', ''],
-			'$nickdesc'              => DI::l10n()->t('Choose a profile nickname. This must begin with a text character. Your profile address on this site will then be "<strong>nickname@%s</strong>".', DI::baseUrl()->getHost()),
-			'$nicklabel'             => DI::l10n()->t('Choose a nickname: '),
+			'$nickdesc'              => DI::l10n()->t('Usernames must begin with a text character. Your handle on this site will then be "<strong>username@%s</strong>".', DI::baseUrl()->getHost()),
+			'$nicklabel'             => DI::l10n()->t('Choose a username: '),
 			'$photo'                 => $photo,
 			'$publish'               => $profile_publish,
-			'$regbutt'               => DI::l10n()->t('Register'),
+			'$regbutt'               => $regbutton_label,
 			'$username'              => $username,
 			'$email'                 => $email,
 			'$nickname'              => $nickname,
@@ -181,7 +247,8 @@ class Register extends BaseModule
 			'$explicit_content'      => DI::config()->get('system', 'explicit_content', false),
 			'$explicit_content_note' => DI::l10n()->t('Note: This node explicitly contains adult content'),
 			'$additional'            => !empty(DI::userSession()->getLocalUserId()),
-			'$parent_password'       => ['parent_password', DI::l10n()->t('Parent Password:'), '', DI::l10n()->t('Please enter the password of the parent account to legitimize your request.')]
+			'$parent_password'       => ['parent_password', DI::l10n()->t('Parent Password:'), '', DI::l10n()->t('Please enter the password of the parent account to legitimize your request.')],
+			'$acct_type'             => $acct_type,
 
 		]);
 
@@ -198,31 +265,28 @@ class Register extends BaseModule
 	{
 		BaseModule::checkFormSecurityTokenRedirectOnError('/register', 'register');
 
-		$arr = [
-			'post' => $_POST,
-		];
-
-		$arr = $this->eventDispatcher->dispatch(
-			new ArrayFilterEvent(ArrayFilterEvent::ACCOUNT_REGISTER_POST, $arr),
+		$eventData = $this->eventDispatcher->dispatch(
+			new ArrayFilterEvent(ArrayFilterEvent::ACCOUNT_REGISTER_POST, ['post' => $_POST]),
 		)->getArray();
 
-		$additional_account = false;
+		$post = $eventData['post'];
 
-		if (!DI::userSession()->getLocalUserId() && !empty($arr['post']['parent_password'])) {
+		$additional_account = false;
+		$regdata            = ['type' => $post['register_type'], 'nickname' => $post['nickname'], 'username' => $post['username']];
+
+		if (!DI::userSession()->getLocalUserId() && !empty($post['parent_password'])) {
 			DI::sysmsg()->addNotice(DI::l10n()->t('Permission denied.'));
 			return;
-		} elseif (DI::userSession()->getLocalUserId() && !empty($arr['post']['parent_password'])) {
+		} elseif (DI::userSession()->getLocalUserId() && !empty($post['parent_password'])) {
 			try {
-				Model\User::getIdFromPasswordAuthentication(DI::userSession()->getLocalUserId(), $arr['post']['parent_password']);
-			} catch (\Exception $ex) {
+				Model\User::getIdFromPasswordAuthentication(DI::userSession()->getLocalUserId(), $post['parent_password']);
+			} catch (\Exception) {
 				DI::sysmsg()->addNotice(DI::l10n()->t("Password doesn't match."));
-				$regdata = ['nickname' => $arr['post']['nickname'], 'username' => $arr['post']['username']];
 				DI::baseUrl()->redirect('register?' . http_build_query($regdata));
 			}
 			$additional_account = true;
 		} elseif (DI::userSession()->getLocalUserId()) {
 			DI::sysmsg()->addNotice(DI::l10n()->t('Please enter your password.'));
-			$regdata = ['nickname' => $arr['post']['nickname'], 'username' => $arr['post']['username']];
 			DI::baseUrl()->redirect('register?' . http_build_query($regdata));
 		}
 
@@ -258,12 +322,11 @@ class Register extends BaseModule
 
 		$netpublish = !empty($_POST['profile_publish_reg']);
 
-		$arr = $_POST;
-
 		// Is there text in the tar pit?
-		if (!empty($arr['email'])) {
-			$this->logger->info('Tar pit', $arr);
+		if (!empty($post['email'])) {
+			$this->logger->info('Tar pit', $post);
 			DI::sysmsg()->addNotice(DI::l10n()->t('You have entered too much information.'));
+
 			DI::baseUrl()->redirect('register/');
 		}
 
@@ -271,44 +334,44 @@ class Register extends BaseModule
 			$user = DBA::selectFirst('user', ['email'], ['uid' => DI::userSession()->getLocalUserId()]);
 			if (!DBA::isResult($user)) {
 				DI::sysmsg()->addNotice(DI::l10n()->t('User not found.'));
+
 				DI::baseUrl()->redirect('register');
 			}
 
 			$blocked  = 0;
 			$verified = 1;
 
-			$arr['password1'] = $arr['confirm'] = $arr['parent_password'];
-			$arr['repeat']    = $arr['email'] = $user['email'];
+			$post['password1'] = $post['confirm'] = $post['parent_password'];
+			$post['repeat']    = $post['email'] = $user['email'];
 		} else {
 			// Overwriting the "tar pit" field with the real one
-			$arr['email'] = $arr['field1'];
+			$post['email'] = $post['field1'];
 		}
 
-		if ($arr['email'] != $arr['repeat']) {
-			$this->logger->info('Mail mismatch', $arr);
+		if ($post['email'] != $post['repeat']) {
+			$this->logger->info('Mail mismatch', $post);
 			DI::sysmsg()->addNotice(DI::l10n()->t('Please enter the identical mail address in the second field.'));
-			$regdata = ['email' => $arr['email'], 'nickname' => $arr['nickname'], 'username' => $arr['username']];
+
 			DI::baseUrl()->redirect('register?' . http_build_query($regdata));
 		}
 
 		//Check if nickname contains only US-ASCII and do not start with a digit
-		if (!preg_match('/^[a-zA-Z][a-zA-Z0-9]*$/', $arr['nickname'])) {
-			if (is_numeric(substr($arr['nickname'], 0, 1))) {
-				DI::sysmsg()->addNotice(DI::l10n()->t("Nickname cannot start with a digit."));
+		if (!preg_match('/^[a-zA-Z][a-zA-Z0-9]*$/', (string) $post['nickname'])) {
+			if (is_numeric(substr((string) $post['nickname'], 0, 1))) {
+				DI::sysmsg()->addNotice(DI::l10n()->t("Username cannot start with a digit."));
 			} else {
-				DI::sysmsg()->addNotice(DI::l10n()->t("Nickname can only contain US-ASCII characters."));
+				DI::sysmsg()->addNotice(DI::l10n()->t("Usernames can only contain US-ASCII characters."));
 			}
-			$regdata = ['email' => $arr['email'], 'nickname' => $arr['nickname'], 'username' => $arr['username']];
+
 			DI::baseUrl()->redirect('register?' . http_build_query($regdata));
-			return;
 		}
 
-		$arr['blocked']  = $blocked;
-		$arr['verified'] = $verified;
-		$arr['language'] = L10n::detectLanguage($_SERVER, $_GET, DI::config()->get('system', 'language'));
+		$post['blocked']  = $blocked;
+		$post['verified'] = $verified;
+		$post['language'] = L10n::detectLanguage($_SERVER, $_GET, DI::config()->get('system', 'language'));
 
 		try {
-			$result = Model\User::create($arr);
+			$result = Model\User::create($post);
 		} catch (\Exception $e) {
 			DI::sysmsg()->addNotice($e->getMessage());
 			return;
@@ -316,7 +379,7 @@ class Register extends BaseModule
 
 		$user = $result['user'];
 
-		$base_url = (string)DI::baseUrl();
+		$base_url = (string) DI::baseUrl();
 
 		if ($netpublish && self::getPolicy() !== self::APPROVE) {
 			$url = $base_url . '/profile/' . $user['nickname'];
@@ -324,14 +387,57 @@ class Register extends BaseModule
 		}
 
 		if ($additional_account) {
-			DBA::update('user', ['parent-uid' => DI::userSession()->getLocalUserId()], ['uid' => $user['uid']]);
+			if (!empty($post['register_type'])) {
+				switch ($post['register_type']) {
+					case User::PERSONAL:
+						$acct_type = User::ACCOUNT_TYPE_PERSON;
+						$acct_flag = User::PAGE_FLAGS_NORMAL;
+						break;
+					case User::SOAPBOX:
+						$acct_type = User::ACCOUNT_TYPE_PERSON;
+						$acct_flag = User::PAGE_FLAGS_SOAPBOX;
+						break;
+					case User::LOVEALL:
+						$acct_type = User::ACCOUNT_TYPE_PERSON;
+						$acct_flag = User::PAGE_FLAGS_FREELOVE;
+						break;
+					case User::ORGPAGE:
+						$acct_type = User::ACCOUNT_TYPE_ORGANISATION;
+						$acct_flag = User::PAGE_FLAGS_NORMAL;
+						break;
+					case User::NEWSPAGE:
+						$acct_type = User::ACCOUNT_TYPE_NEWS;
+						$acct_flag = User::PAGE_FLAGS_NORMAL;
+						break;
+					case User::PUBGROUP:
+						$acct_type = User::ACCOUNT_TYPE_COMMUNITY;
+						$acct_flag = User::PAGE_FLAGS_COMMUNITY;
+						break;
+					case User::RESGROUP:
+						$acct_type = User::ACCOUNT_TYPE_COMMUNITY;
+						$acct_flag = User::PAGE_FLAGS_COMM_MAN;
+						break;
+					case User::PRIGROUP:
+						$acct_type = User::ACCOUNT_TYPE_COMMUNITY;
+						$acct_flag = User::PAGE_FLAGS_PRVGROUP;
+						break;
+					default:
+						$acct_type = User::ACCOUNT_TYPE_PERSON;
+						$acct_flag = User::PAGE_FLAGS_NORMAL;
+				};
+			} else {
+				$acct_type = User::ACCOUNT_TYPE_PERSON;
+				$acct_flag = User::PAGE_FLAGS_NORMAL;
+			}
+
+			DBA::update('user', ['parent-uid' => DI::userSession()->getLocalUserId(), 'account-type' => $acct_type, 'page-flags' => $acct_flag], ['uid' => $user['uid']]);
 			DI::sysmsg()->addInfo(DI::l10n()->t('The additional account was created.'));
 			DI::baseUrl()->redirect('delegation');
 		}
 
 		$using_invites = DI::config()->get('system', 'invitation_only');
 		$num_invites   = DI::config()->get('system', 'number_invites');
-		$invite_id     = (!empty($_POST['invite_id']) ? trim($_POST['invite_id']) : '');
+		$invite_id     = (!empty($_POST['invite_id']) ? trim((string) $_POST['invite_id']) : '');
 
 		if (self::getPolicy() === self::OPEN) {
 			if ($using_invites && $invite_id) {
@@ -342,11 +448,11 @@ class Register extends BaseModule
 			// Only send a password mail when the password wasn't manually provided
 			if (empty($_POST['password1']) || empty($_POST['confirm'])) {
 				$res = Model\User::sendRegisterOpenEmail(
-					DI::l10n()->withLang($arr['language']),
+					DI::l10n()->withLang($post['language']),
 					$user,
 					DI::config()->get('config', 'sitename'),
 					$base_url,
-					$result['password']
+					$result['password'],
 				);
 
 				if ($res) {
@@ -360,8 +466,8 @@ class Register extends BaseModule
 						DI::l10n()->t(
 							'Failed to send email message. Here your accout details:<br> login: %s<br> password: %s<br><br>You can change your password after login.',
 							$user['email'],
-							$result['password']
-						)
+							$result['password'],
+						),
 					);
 				}
 			} else {
@@ -388,7 +494,7 @@ class Register extends BaseModule
 
 			try {
 				Model\Register::createForApproval($user['uid'], DI::config()->get('system', 'language'), $_POST['permonlybox']);
-			} catch (\Throwable $e) {
+			} catch (\Throwable) {
 				$this->logger->error('Unable to create a `register` record.', ['user' => $user]);
 				DI::sysmsg()->addNotice(DI::l10n()->t('An internal error occured.')
 					. DI::l10n()->t('Your registration can not be processed.'));
@@ -409,7 +515,7 @@ class Register extends BaseModule
 				$user,
 				DI::config()->get('config', 'sitename'),
 				$base_url,
-				$result['password']
+				$result['password'],
 			);
 
 			DI::sysmsg()->addInfo(DI::l10n()->t('Your registration is pending approval by the site owner.'));
@@ -430,7 +536,7 @@ class Register extends BaseModule
 				'source_nick'               => $user['nickname'],
 				'source_link'               => DI::baseUrl() . '/moderation/users/',
 				'source_photo'              => User::getAvatarUrl($user, Proxy::SIZE_THUMB),
-				'show_in_notification_page' => false
+				'show_in_notification_page' => false,
 			]);
 		}
 	}
@@ -444,7 +550,7 @@ class Register extends BaseModule
 
 		$inactive_since = DateTimeFormat::utc('now - ' . $days . ' day');
 		foreach ($admins as $admin) {
-			if (strtotime($admin['login_date']) > strtotime($inactive_since)) {
+			if (strtotime((string) $admin['login_date']) > strtotime($inactive_since)) {
 				return intval(DI::config()->get('config', 'register_policy'));
 			}
 		}

@@ -1,14 +1,13 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Security;
 
 use Exception;
-use Friendica\Core\Hook;
 use Friendica\Database\DBA;
 use Friendica\DI;
 use Friendica\Event\ArrayFilterEvent;
@@ -43,10 +42,10 @@ class BasicAuth
 			self::$current_user_id = self::getUserIdByAuth($login);
 		}
 
-		return (int)self::$current_user_id;
+		return (int) self::$current_user_id;
 	}
 
-	public static function setCurrentUserID(int $uid = null)
+	public static function setCurrentUserID(?int $uid = null)
 	{
 		self::$current_user_id = $uid;
 	}
@@ -70,7 +69,7 @@ class BasicAuth
 
 		// Support for known clients that doesn't send a source name
 		if (empty($source) && !empty($_SERVER['HTTP_USER_AGENT'])) {
-			if(strpos($_SERVER['HTTP_USER_AGENT'], "Twidere") !== false) {
+			if (str_contains((string) $_SERVER['HTTP_USER_AGENT'], "Twidere")) {
 				$source = 'Twidere';
 			}
 
@@ -110,9 +109,9 @@ class BasicAuth
 
 		// workaround for HTTP-auth in CGI mode
 		if (!empty($_SERVER['REDIRECT_REMOTE_USER'])) {
-			$userpass = base64_decode(substr($_SERVER["REDIRECT_REMOTE_USER"], 6));
+			$userpass = base64_decode(substr((string) $_SERVER["REDIRECT_REMOTE_USER"], 6));
 			if (!empty($userpass) && strpos($userpass, ':')) {
-				list($name, $password)    = explode(':', $userpass);
+				[$name, $password]        = explode(':', $userpass);
 				$_SERVER['PHP_AUTH_USER'] = $name;
 				$_SERVER['PHP_AUTH_PW']   = $password;
 			}
@@ -122,7 +121,7 @@ class BasicAuth
 		$password = $_SERVER['PHP_AUTH_PW']   ?? '';
 
 		// allow "user@server" login (but ignore 'server' part)
-		$at = strstr($user, "@", true);
+		$at = strstr((string) $user, "@", true);
 		if ($at) {
 			$user = $at;
 		}
@@ -131,8 +130,8 @@ class BasicAuth
 		$record = null;
 
 		$addon_auth = [
-			'username'      => trim($user),
-			'password'      => trim($password),
+			'username'      => trim((string) $user),
+			'password'      => trim((string) $password),
 			'authenticated' => 0,
 			'user_record'   => null,
 		];
@@ -152,9 +151,9 @@ class BasicAuth
 			$record = $addon_auth['user_record'];
 		} else {
 			try {
-				$user_id = User::getIdFromPasswordAuthentication(trim($user), trim($password), true);
+				$user_id = User::getIdFromPasswordAuthentication(trim((string) $user), trim((string) $password), true);
 				$record  = DBA::selectFirst('user', [], ['uid' => $user_id]);
-			} catch (Exception $ex) {
+			} catch (Exception) {
 				$record = [];
 			}
 		}
@@ -173,7 +172,7 @@ class BasicAuth
 
 		DI::auth()->setForUser($record, false, false, false);
 
-		Hook::callAll('logged_in', $record);
+		DI::eventDispatcher()->dispatch(new ArrayFilterEvent(ArrayFilterEvent::LOGGED_IN, $record));
 
 		self::$current_user_id = DI::userSession()->getLocalUserId();
 

@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -14,17 +14,14 @@ use Friendica\Core\Cache\Capability\ICanCache;
  */
 abstract class AbstractCache implements ICanCache
 {
-	const NAME = '';
+	public const NAME = '';
 
-	/**
-	 * @var string The hostname
-	 */
-	private $hostName;
-
-	public function __construct(string $hostName)
-	{
-		$this->hostName = $hostName;
-	}
+	public function __construct(
+		/**
+		 * @var string The hostname
+		 */
+		private readonly string $hostName,
+	) {}
 
 	/**
 	 * Returns the prefix (to avoid namespace conflicts)
@@ -58,7 +55,7 @@ abstract class AbstractCache implements ICanCache
 			return [];
 		} else {
 			// Keys are prefixed with the node hostname, let's remove it
-			array_walk($keys, function (&$value) {
+			array_walk($keys, function (&$value): void {
 				$value = preg_replace('/^' . $this->hostName . ':/', '', $value);
 			});
 
@@ -77,7 +74,7 @@ abstract class AbstractCache implements ICanCache
 	 *
 	 * @return string[] The filtered array with just the keys
 	 */
-	protected function filterArrayKeysByPrefix(array $keys, string $prefix = null): array
+	protected function filterArrayKeysByPrefix(array $keys, ?string $prefix = null): array
 	{
 		if (empty($prefix)) {
 			return $keys;
@@ -85,7 +82,7 @@ abstract class AbstractCache implements ICanCache
 			$result = [];
 
 			foreach ($keys as $key) {
-				if (strpos($key, $prefix) === 0) {
+				if (str_starts_with($key, $prefix)) {
 					array_push($result, $key);
 				}
 			}

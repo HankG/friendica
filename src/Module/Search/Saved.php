@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -15,6 +15,7 @@ use Friendica\Database\Database;
 use Friendica\DI;
 use Friendica\Module\Response;
 use Friendica\Util\Profiler;
+use Friendica\Util\Strings;
 use Psr\Log\LoggerInterface;
 
 class Saved extends BaseModule
@@ -34,8 +35,8 @@ class Saved extends BaseModule
 		$action = $this->args->get(2, 'none');
 		$search = trim(rawurldecode($_GET['term'] ?? ''));
 
-		if (!empty($_GET['return_url'])) {
-			$return_url = hex2bin($_GET['return_url']);
+		if (!empty($_GET['return_url']) && Strings::isHex($_GET['return_url'])) {
+			$return_url = hex2bin((string) $_GET['return_url']);
 		} else {
 			$return_url = Search::getSearchPath($search);
 		}

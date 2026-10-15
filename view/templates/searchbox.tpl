@@ -1,6 +1,6 @@
 {{*
-  * Copyright (C) 2010-2024, the Friendica project
-  * SPDX-FileCopyrightText: 2010-2024 the Friendica project
+  * Copyright (C) 2010-2026, the Friendica project
+  * SPDX-FileCopyrightText: 2010-2026 the Friendica project
   *
   * SPDX-License-Identifier: AGPL-3.0-or-later
   *}}
@@ -17,7 +17,7 @@
     {{/if}}
 		<input type="submit" name="submit" id="search-submit" value="{{$search_label}}"/>
     {{if $s}}
-	    <a href="search/saved/add?term={{$q}}&amp;return_url={{$return_url}}">{{$save_label}}</a>
+	    <a href="search/saved/add?term={{$q}}&amp;return_url={{$return_url}}">{{$action_label}}</a>
     {{/if}}
 {{/strip}}
 	</form>

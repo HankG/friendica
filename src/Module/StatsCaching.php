@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -27,17 +27,9 @@ use Friendica\Network\HTTPException;
  */
 class StatsCaching extends BaseModule
 {
-	private IManageConfigValues $config;
-	private ICanCache $cache;
-	private ICanLock $lock;
-
-	public function __construct(L10n $l10n, App\BaseURL $baseUrl, App\Arguments $args, LoggerInterface $logger, Profiler $profiler, Response $response, array $server, IManageConfigValues $config, ICanCache $cache, ICanLock $lock, array $parameters = [])
+	public function __construct(L10n $l10n, App\BaseURL $baseUrl, App\Arguments $args, LoggerInterface $logger, Profiler $profiler, Response $response, array $server, private readonly IManageConfigValues $config, private readonly ICanCache $cache, private readonly ICanLock $lock, array $parameters = [])
 	{
 		parent::__construct($l10n, $baseUrl, $args, $logger, $profiler, $response, $server, $parameters);
-
-		$this->config = $config;
-		$this->cache  = $cache;
-		$this->lock   = $lock;
 	}
 
 	private function isAllowed(array $request): bool

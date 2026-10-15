@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -14,6 +14,7 @@ use Friendica\Model\GServer;
 use Friendica\Network\HTTPException\InternalServerErrorException;
 use Friendica\Util\Network;
 use Friendica\Util\Strings;
+use GuzzleHttp\Psr7\Uri;
 
 class UpdateGServer
 {
@@ -32,19 +33,21 @@ class UpdateGServer
 		}
 
 		$filtered = filter_var($server_url, FILTER_SANITIZE_URL);
-		if (substr(Strings::normaliseLink($filtered), 0, 7) != 'http://') {
+		if (!str_starts_with(Strings::normaliseLink($filtered), 'http://')) {
 			GServer::setFailureByUrl($server_url);
 			return;
 		}
 
-		// Silently dropping the worker task if the server domain is blocked
-		if (Network::isUrlBlocked($filtered)) {
-			GServer::setBlockedByUrl($filtered);
+		try {
+			$uri = new Uri($server_url);
+		} catch (\Throwable) {
+			DI::logger()->warning('Invalid URL', ['url' => $server_url]);
 			return;
 		}
 
 		// Silently dropping the worker task if the server domain is blocked
-		if (Network::isUrlBlocked($filtered)) {
+		if (Network::isUriBlocked($uri)) {
+			GServer::setBlockedByUrl($filtered);
 			return;
 		}
 
@@ -53,8 +56,9 @@ class UpdateGServer
 			return;
 		}
 
-		$cleaned = GServer::cleanURL($server_url);
-		if (($cleaned != $server_url) && DBA::exists('gserver', ['nurl' => Strings::normaliseLink($server_url)])) {
+		$cleanedUri = GServer::cleanUri($uri);
+
+		if (((string) $cleanedUri !== $server_url) && DBA::exists('gserver', ['nurl' => Strings::normaliseLink($server_url)])) {
 			GServer::setFailureByUrl($server_url);
 			return;
 		}
@@ -73,7 +77,7 @@ class UpdateGServer
 	public static function add($run_parameters, string $serverUrl, bool $onlyNodeInfo = false): int
 	{
 		// Dropping the worker task if the server domain is blocked
-		if (Network::isUrlBlocked($serverUrl)) {
+		if (Network::isUriBlocked(new Uri($serverUrl))) {
 			GServer::setBlockedByUrl($serverUrl);
 			return 0;
 		}

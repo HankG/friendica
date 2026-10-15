@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -61,7 +61,7 @@ class DatabaseConfig implements IManageConfigValues
 	}
 
 	/** {@inheritDoc} */
-	public function get(string $cat, string $key = null, $default_value = null)
+	public function get(string $cat, ?string $key = null, $default_value = null)
 	{
 		return $this->cache->get($cat, $key) ?? $default_value;
 	}

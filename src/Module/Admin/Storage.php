@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -11,9 +11,7 @@ use Friendica\Core\Renderer;
 use Friendica\DI;
 use Friendica\Core\Storage\Exception\InvalidClassStorageException;
 use Friendica\Core\Storage\Capability\ICanConfigureStorage;
-use Friendica\Core\Storage\Capability\ICanWriteToStorage;
 use Friendica\Module\BaseAdmin;
-use Friendica\Util\Strings;
 
 class Storage extends BaseAdmin
 {
@@ -28,7 +26,7 @@ class Storage extends BaseAdmin
 		try {
 			/** @var ICanConfigureStorage|false $newStorageConfig */
 			$newStorageConfig = DI::storageManager()->getConfigurationByName($storagebackend);
-		} catch (InvalidClassStorageException $storageException) {
+		} catch (InvalidClassStorageException) {
 			DI::sysmsg()->addNotice(DI::l10n()->t('Storage backend, %s is invalid.', $storagebackend));
 			DI::baseUrl()->redirect('admin/storage');
 		}
@@ -40,14 +38,10 @@ class Storage extends BaseAdmin
 			$storage_opts_data   = [];
 			foreach ($storage_opts as $name => $info) {
 				$fieldname = $storage_form_prefix . '_' . $name;
-				switch ($info[0]) { // type
-					case 'checkbox':
-					case 'yesno':
-						$value = !empty($_POST[$fieldname]);
-						break;
-					default:
-						$value = $_POST[$fieldname] ?? '';
-				}
+				$value     = match ($info[0]) {
+					'checkbox', 'yesno' => !empty($_POST[$fieldname]),
+					default => $_POST[$fieldname] ?? '',
+				};
 				$storage_opts_data[$name] = $value;
 			}
 			unset($name);
@@ -62,14 +56,14 @@ class Storage extends BaseAdmin
 			}
 		}
 
-		if (!empty($_POST['submit_save_set']) && DI::config()->isWritable('storage', 'name') ) {
+		if (!empty($_POST['submit_save_set']) && DI::config()->isWritable('storage', 'name')) {
 			try {
 				$newstorage = DI::storageManager()->getWritableStorageByName($storagebackend);
 
 				if (!DI::storageManager()->setBackend($newstorage)) {
 					DI::sysmsg()->addNotice(DI::l10n()->t('Invalid storage backend setting value.'));
 				}
-			} catch (InvalidClassStorageException $storageException) {
+			} catch (InvalidClassStorageException) {
 				DI::sysmsg()->addNotice(DI::l10n()->t('Invalid storage backend setting value.'));
 			}
 		}
@@ -114,7 +108,7 @@ class Storage extends BaseAdmin
 				'name'   => $name,
 				'prefix' => $storage_form_prefix,
 				'form'   => $storage_form,
-				'active' => $current_storage_backend instanceof ICanWriteToStorage && $name === $current_storage_backend::getName(),
+				'active' => $name === $current_storage_backend::getName(),
 			];
 		}
 
@@ -133,7 +127,7 @@ class Storage extends BaseAdmin
 			'$form_security_token'   => self::getFormSecurityToken("admin_storage"),
 			'$storagebackend_ro_txt' => !DI::config()->isWritable('storage', 'name') ? DI::l10n()->t('Changing the current backend is prohibited because it is set by an environment variable') : '',
 			'$is_writable'           => DI::config()->isWritable('storage', 'name'),
-			'$storagebackend'        => $current_storage_backend instanceof ICanWriteToStorage ? $current_storage_backend::getName() : DI::l10n()->t('Database (legacy)'),
+			'$storagebackend'        => $current_storage_backend::getName(),
 			'$availablestorageforms' => $available_storage_forms,
 		]);
 	}

@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -26,7 +26,7 @@ class UpdateTest extends ApiTestCase
 	 *
 	 * @return void
 	 */
-	public function testApiStatusesUpdate()
+	public function testApiStatusesUpdate(): void
 	{
 		$_FILES = [
 			'media' => [
@@ -36,10 +36,11 @@ class UpdateTest extends ApiTestCase
 				'height'   => 666,
 				'tmp_name' => $this->getTempImage(),
 				'name'     => 'spacer.png',
-				'type'     => 'image/png'
-			]
+				'type'     => 'image/png',
+			],
 		];
 
+		// @phpstan-ignore method.deprecated
 		$response = (new Update(DI::mstdnError(), DI::appHelper(), DI::l10n(), DI::baseUrl(), DI::args(), DI::logger(), DI::profiler(), DI::apiResponse(), []))
 			->run($this->httpExceptionMock, [
 				'status'                => 'Status content #friendica',
@@ -60,8 +61,9 @@ class UpdateTest extends ApiTestCase
 	 *
 	 * @return void
 	 */
-	public function testApiStatusesUpdateWithHtml()
+	public function testApiStatusesUpdateWithHtml(): void
 	{
+		// @phpstan-ignore method.deprecated
 		$response = (new Update(DI::mstdnError(), DI::appHelper(), DI::l10n(), DI::baseUrl(), DI::args(), DI::logger(), DI::profiler(), DI::apiResponse(), []))
 			->run($this->httpExceptionMock, [
 				'htmlstatus' => '<b>Status content</b>',
@@ -70,52 +72,5 @@ class UpdateTest extends ApiTestCase
 		$json = $this->toJson($response);
 
 		self::assertStatus($json);
-	}
-
-	/**
-	 * Test the api_statuses_update() function without an authenticated user.
-	 *
-	 * @return void
-	 */
-	public function testApiStatusesUpdateWithoutAuthenticatedUser()
-	{
-		self::markTestIncomplete('Needs BasicAuth as dynamic method for overriding first');
-
-		/*
-		$this->expectException(\Friendica\Network\HTTPException\UnauthorizedException::class);
-		BasicAuth::setCurrentUserID();
-		$_SESSION['authenticated'] = false;
-		api_statuses_update('json');
-		*/
-	}
-
-	/**
-	 * Test the api_statuses_update() function with a parent status.
-	 *
-	 * @return void
-	 */
-	public function testApiStatusesUpdateWithParent()
-	{
-		$this->markTestIncomplete('This triggers an exit() somewhere and kills PHPUnit.');
-	}
-
-	/**
-	 * Test the api_statuses_update() function with a media_ids parameter.
-	 *
-	 * @return void
-	 */
-	public function testApiStatusesUpdateWithMediaIds()
-	{
-		$this->markTestIncomplete();
-	}
-
-	/**
-	 * Test the api_statuses_update() function with the throttle limit reached.
-	 *
-	 * @return void
-	 */
-	public function testApiStatusesUpdateWithDayThrottleReached()
-	{
-		$this->markTestIncomplete();
 	}
 }

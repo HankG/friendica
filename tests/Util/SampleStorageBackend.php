@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -9,7 +9,6 @@ namespace Friendica\Test\Util;
 
 use Friendica\Core\Hook;
 use Friendica\Core\Storage\Capability\ICanWriteToStorage;
-
 use Friendica\Core\L10n;
 
 /**
@@ -17,10 +16,7 @@ use Friendica\Core\L10n;
  */
 class SampleStorageBackend implements ICanWriteToStorage
 {
-	const NAME = 'Sample Storage';
-
-	/** @var L10n */
-	private $l10n;
+	public const NAME = 'Sample Storage';
 
 	/** @var array */
 	private $options = [
@@ -43,10 +39,8 @@ class SampleStorageBackend implements ICanWriteToStorage
 	 * You can add here every dynamic class as dependency you like and add them to a private field
 	 * Friendica automatically creates these classes and passes them as argument to the constructor
 	 */
-	public function __construct(L10n $l10n)
-	{
-		$this->l10n = $l10n;
-	}
+	public function __construct(private readonly L10n $l10n) // @phpstan-ignore property.onlyWritten
+	{}
 
 	public function get(string $reference): string
 	{

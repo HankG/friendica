@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -46,27 +46,40 @@ class Edit extends BaseModule
 	/** @var AppHelper */
 	protected $appHelper;
 
-	private EventDispatcherInterface $eventDispatcher;
-
 	/** @var bool */
 	protected $isModal = false;
 
-	public function __construct(L10n $l10n, BaseURL $baseUrl, Arguments $args, LoggerInterface $logger, Profiler $profiler, Response $response, IHandleUserSessions $session, SystemMessages $sysMessages, Page $page, Mode $mode, AppHelper $appHelper, EventDispatcherInterface $eventDispatcher, array $server, array $parameters = [])
-	{
+	public function __construct(
+		L10n $l10n,
+		BaseURL $baseUrl,
+		Arguments $args,
+		LoggerInterface $logger,
+		Profiler $profiler,
+		Response $response,
+		IHandleUserSessions $session,
+		SystemMessages $sysMessages,
+		Page $page,
+		Mode $mode,
+		AppHelper $appHelper,
+		private readonly EventDispatcherInterface $eventDispatcher,
+		array $server,
+		array $parameters = [],
+	) {
 		parent::__construct($l10n, $baseUrl, $args, $logger, $profiler, $response, $server, $parameters);
 
-		$this->session         = $session;
-		$this->sysMessages     = $sysMessages;
-		$this->page            = $page;
-		$this->mode            = $mode;
-		$this->appHelper       = $appHelper;
-		$this->eventDispatcher = $eventDispatcher;
+		$this->session     = $session;
+		$this->sysMessages = $sysMessages;
+		$this->page        = $page;
+		$this->mode        = $mode;
+		$this->appHelper   = $appHelper;
 	}
 
 
 	protected function content(array $request = []): string
 	{
-		$this->isModal = $request['mode'] ?? '' === 'none';
+		$requestMode = array_key_exists('mode', $request) ? $request['mode'] : '';
+
+		$this->isModal = $requestMode === 'none';
 
 		if (!$this->session->getLocalUserId()) {
 			$this->errorExit($this->t('Permission denied.'), HTTPException\UnauthorizedException::class);
@@ -79,8 +92,8 @@ class Edit extends BaseModule
 		}
 
 		$fields = [
-			'allow_cid', 'allow_gid', 'deny_cid', 'deny_gid', 'gravity',
-			'body', 'title', 'uri-id', 'wall', 'post-type', 'guid'
+			'allow_cid', 'allow_gid', 'deny_cid', 'deny_gid', 'gravity', 'sensitive',
+			'body', 'title', 'content-warning', 'uri-id', 'wall', 'post-type', 'guid',
 		];
 
 		$item = Post::selectFirstForUser($this->session->getLocalUserId(), $fields, [
@@ -99,13 +112,15 @@ class Edit extends BaseModule
 		]);
 
 		$this->page['htmlhead'] .= Renderer::replaceMacros(Renderer::getMarkupTemplate('jot-header.tpl'), [
-			'$ispublic'  => '&nbsp;',
-			'$geotag'    => '',
-			'$nickname'  => $this->session->getLocalUserNickname(),
-			'$is_mobile' => $this->mode->isMobile(),
+			'$ispublic'      => '&nbsp;',
+			'$geotag'        => '',
+			'$nickname'      => $this->session->getLocalUserNickname(),
+			'$postPublished' => $this->t('Post published.'),
+			'$goToPost'      => $this->t('Go to post'),
+			'$is_mobile'     => $this->mode->isMobile(),
 		]);
 
-		if (strlen($item['allow_cid']) || strlen($item['allow_gid']) || strlen($item['deny_cid']) || strlen($item['deny_gid'])) {
+		if (strlen((string) $item['allow_cid']) || strlen((string) $item['allow_gid']) || strlen((string) $item['deny_cid']) || strlen((string) $item['deny_gid'])) {
 			$lockstate = 'lock';
 		} else {
 			$lockstate = 'unlock';
@@ -151,8 +166,10 @@ class Edit extends BaseModule
 			'$public'              => $this->t('Public post'),
 			'$title'               => $item['title'],
 			'$placeholdertitle'    => $this->t('Set title'),
+			'$summary'             => $item['content-warning'],
+			'$placeholdersummary'  => (Feature::isEnabled($this->session->getLocalUserId(), Feature::SUMMARY) ? $this->t('Set summary, abstract or spoiler text') : ''),
 			'$category'            => Post\Category::getCSVByURIId($item['uri-id'], $this->session->getLocalUserId(), Post\Category::CATEGORY),
-			'$placeholdercategory' => (Feature::isEnabled($this->session->getLocalUserId(), Feature::CATEGORIES) ? $this->t("Categories \x28comma-separated list\x29") : ''),
+			'$placeholdercategory' => (Feature::isEnabled($this->session->getLocalUserId(), Feature::CATEGORIES) ? $this->t("Categories (comma-separated list)") : ''),
 			'$emtitle'             => $this->t('Example: bob@example.com, mary@example.com'),
 			'$lockstate'           => $lockstate,
 			'$acl'                 => '',
@@ -175,7 +192,7 @@ class Edit extends BaseModule
 
 			//jot nav tab (used in some themes)
 			'$message'      => $this->t('Message'),
-			'$browser'      => $this->t('Browser'),
+			'$browser'      => $this->t('Add file'),
 			'$shortpermset' => $this->t('Permissions'),
 
 			'$compose_link_title' => $this->t('Open Compose page'),

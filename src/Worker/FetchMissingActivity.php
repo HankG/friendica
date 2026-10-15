@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -10,12 +10,13 @@ namespace Friendica\Worker;
 use Friendica\Core\Worker;
 use Friendica\DI;
 use Friendica\Protocol\ActivityPub;
+use Friendica\Protocol\ActivityPub\Fetch;
 use Friendica\Protocol\ActivityPub\Queue;
 use Friendica\Protocol\ActivityPub\Receiver;
 
 class FetchMissingActivity
 {
-	const WORKER_DEFER_LIMIT = 5;
+	public const WORKER_DEFER_LIMIT = 5;
 
 	/**
 	 * Fetch missing activities
@@ -46,5 +47,18 @@ class FetchMissingActivity
 		} else {
 			DI::logger()->info('Fetching deferred', ['url' => $url]);
 		}
+	}
+
+	public static function add($run_parameters, string $url, array $child = [], string $relay_actor = '', int $completion = Receiver::COMPLETION_MANUAL): int
+	{
+		if (Fetch::hasWorker($url)) {
+			DI::logger()->notice('Fetching is already added as worker task.', ['url' => $url]);
+			return 0;
+		}
+
+		DI::logger()->debug('Fetch Missing Activity', ['url' => $url]);
+		$wid = Worker::add($run_parameters, 'FetchMissingActivity', $url, $child, $relay_actor, $completion);
+		Fetch::setWorkerId($url, $wid);
+		return $wid;
 	}
 }

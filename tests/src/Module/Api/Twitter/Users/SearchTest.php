@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -21,14 +21,14 @@ class SearchTest extends ApiTestCase
 	 *
 	 * @return void
 	 */
-	public function testApiUsersSearch()
+	public function testApiUsersSearch(): void
 	{
 		// @todo: This call is needed for this test
-		Renderer::registerTemplateEngine('Friendica\Render\FriendicaSmartyEngine');
+		Renderer::registerTemplateEngine(\Friendica\Render\FriendicaSmartyEngine::class);
 
 		$response = (new Search(DI::mstdnError(), DI::appHelper(), DI::l10n(), DI::baseUrl(), DI::args(), DI::logger(), DI::profiler(), DI::apiResponse(), []))
 			->run($this->httpExceptionMock, [
-				'q' => static::OTHER_USER['name']
+				'q' => static::OTHER_USER['name'],
 			]);
 
 		$json = $this->toJson($response);
@@ -41,18 +41,18 @@ class SearchTest extends ApiTestCase
 	 *
 	 * @return void
 	 */
-	public function testApiUsersSearchWithXml()
+	public function testApiUsersSearchWithXml(): void
 	{
 		// @todo: This call is needed for this test
-		Renderer::registerTemplateEngine('Friendica\Render\FriendicaSmartyEngine');
+		Renderer::registerTemplateEngine(\Friendica\Render\FriendicaSmartyEngine::class);
 
 		$response = (new Search(DI::mstdnError(), DI::appHelper(), DI::l10n(), DI::baseUrl(), DI::args(), DI::logger(), DI::profiler(), DI::apiResponse(), [], [
-			'extension' => ICanCreateResponses::TYPE_XML
+			'extension' => ICanCreateResponses::TYPE_XML,
 		]))->run($this->httpExceptionMock, [
-			'q' => static::OTHER_USER['name']
+			'q' => static::OTHER_USER['name'],
 		]);
 
-		self::assertXml((string)$response->getBody(), 'users');
+		self::assertXml((string) $response->getBody(), 'users');
 	}
 
 	/**
@@ -60,7 +60,7 @@ class SearchTest extends ApiTestCase
 	 *
 	 * @return void
 	 */
-	public function testApiUsersSearchWithoutQuery()
+	public function testApiUsersSearchWithoutQuery(): void
 	{
 		$this->expectException(BadRequestException::class);
 

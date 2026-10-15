@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -59,14 +59,14 @@ class BasePathTest extends TestCase
 				],
 				'baseDir'  => '/noatgawe22fafa',
 				'expected' => $configPath,
-			]
+			],
 		];
 	}
 
 	/**
 	 * Test the basepath determination
-	 * @dataProvider getDataPaths
 	 */
+	#[\PHPUnit\Framework\Attributes\DataProvider('getDataPaths')]
 	public function testDetermineBasePath(array $server, string $baseDir, string $expected): void
 	{
 		$basepath = new BasePath($baseDir, $server);

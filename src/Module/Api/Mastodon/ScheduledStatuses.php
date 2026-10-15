@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -41,7 +41,7 @@ class ScheduledStatuses extends BaseApi
 
 		Post\Delayed::deleteById($this->parameters['id']);
 
-		$this->jsonExit([]);
+		$this->earlyJsonExit([]);
 	}
 
 	/**
@@ -53,7 +53,7 @@ class ScheduledStatuses extends BaseApi
 		$uid = self::getCurrentUserID();
 
 		if (isset($this->parameters['id'])) {
-			$this->jsonExit(DI::mstdnScheduledStatus()->createFromDelayedPostId($this->parameters['id'], $uid)->toArray());
+			$this->earlyJsonExit(DI::mstdnScheduledStatus()->createFromDelayedPostId($this->parameters['id'], $uid)->toArray());
 		}
 
 		$request = $this->getRequest([
@@ -93,7 +93,7 @@ class ScheduledStatuses extends BaseApi
 			$statuses = array_reverse($statuses);
 		}
 
-		self::setLinkHeader();
-		$this->jsonExit($statuses);
+		$this->setPaginationLinkHeader();
+		$this->earlyJsonExit($statuses);
 	}
 }

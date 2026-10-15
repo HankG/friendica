@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -92,7 +92,7 @@ class Trust extends BaseModule
 			try {
 				$this->auth->setForUser(User::getById($this->session->getLocalUserId()), true, true);
 				$this->baseUrl->redirect($this->session->pop('return_path', ''));
-			} catch (FoundException | TemporaryRedirectException | MovedPermanentlyException $e) {
+			} catch (FoundException|TemporaryRedirectException|MovedPermanentlyException $e) {
 				// exception wanted!
 				throw $e;
 			} catch (\Exception $e) {

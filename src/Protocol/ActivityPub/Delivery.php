@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -163,7 +163,17 @@ class Delivery
 
 					}
 
-					DI::logger()->notice('Delivery failed', ['retcode' => $response->getReturnCode() ?? 0, 'serverfailure' => $serverfail, 'drop' => $drop, 'runtime' => round($runtime, 3), 'uri-id' => $uri_id, 'uid' => $uid, 'item_id' => $item_id, 'cmd' => $cmd, 'inbox' => $inbox]);
+					DI::logger()->notice('Delivery failed', [
+						'retcode'       => $response->getReturnCode(),
+						'serverfailure' => $serverfail,
+						'drop'          => $drop,
+						'runtime'       => round($runtime, 3),
+						'uri-id'        => $uri_id,
+						'uid'           => $uid,
+						'item_id'       => $item_id,
+						'cmd'           => $cmd,
+						'inbox'         => $inbox,
+					]);
 				}
 				if ($uri_id) {
 					if ($success) {

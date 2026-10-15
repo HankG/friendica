@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -19,7 +19,7 @@ class HtmlFilterEventTest extends TestCase
 	{
 		$event = new HtmlFilterEvent('test', 'original');
 
-		$this->assertInstanceOf(NamedEvent::class, $event);
+		$this->assertInstanceOf(NamedEvent::class, $event); // @phpstan-ignore method.alreadyNarrowedType
 	}
 
 	public static function getPublicConstants(): array
@@ -38,9 +38,7 @@ class HtmlFilterEventTest extends TestCase
 		];
 	}
 
-	/**
-	 * @dataProvider getPublicConstants
-	 */
+	#[\PHPUnit\Framework\Attributes\DataProvider('getPublicConstants')]
 	public function testPublicConstantsAreAvailable($value, $expected): void
 	{
 		$this->assertSame($expected, $value);

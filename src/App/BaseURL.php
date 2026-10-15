@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -42,11 +42,11 @@ class BaseURL extends Uri implements UriInterface
 		/* Relative script path to the web server root
 		 * Not all of those $_SERVER properties can be present, so we do by inverse priority order
 		 */
-		$relativeScriptPath = ($server['REDIRECT_URL'] ?? '') ?:
-				($server['REDIRECT_URI'] ?? '') ?:
-					($server['REDIRECT_SCRIPT_URL'] ?? '') ?:
-						($server['SCRIPT_URL'] ?? '') ?:
-							$server['REQUEST_URI'] ?? '';
+		$relativeScriptPath = ($server['REDIRECT_URL'] ?? '')
+				?: ($server['REDIRECT_URI'] ?? '')
+					?: ($server['REDIRECT_SCRIPT_URL'] ?? '')
+						?: ($server['SCRIPT_URL'] ?? '')
+							?: $server['REQUEST_URI'] ?? '';
 
 		/* $relativeScriptPath gives /relative/path/to/friendica/module/parameter
 		 * QUERY_STRING gives pagename=module/parameter
@@ -56,10 +56,10 @@ class BaseURL extends Uri implements UriInterface
 		if (!empty($relativeScriptPath)) {
 			// Module
 			if (!empty($server['QUERY_STRING'])) {
-				return trim(dirname($relativeScriptPath, substr_count(trim($server['QUERY_STRING'], '/'), '/') + 1), '/');
+				return trim(dirname((string) $relativeScriptPath, substr_count(trim((string) $server['QUERY_STRING'], '/'), '/') + 1), '/');
 			} else {
 				// Root page
-				$scriptPathParts = explode('?', $relativeScriptPath, 2);
+				$scriptPathParts = explode('?', (string) $relativeScriptPath, 2);
 				return trim($scriptPathParts[0], '/');
 			}
 		}
@@ -116,11 +116,11 @@ class BaseURL extends Uri implements UriInterface
 
 	public function isLocalUrl(string $url): bool
 	{
-		return strpos(Strings::normaliseLink($url), Strings::normaliseLink((string)$this)) === 0;
+		return str_starts_with(Strings::normaliseLink($url), Strings::normaliseLink((string) $this));
 	}
 
 	public function isLocalUri(UriInterface $uri): bool
 	{
-		return $this->isLocalUrl((string)$uri);
+		return $this->isLocalUrl((string) $uri);
 	}
 }

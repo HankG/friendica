@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -35,9 +35,9 @@ use GuzzleHttp\Psr7\Uri;
 class PostUpdate
 {
 	// Needed for the helper function to read from the legacy term table
-	const OBJECT_TYPE_POST = 1;
+	public const OBJECT_TYPE_POST = 1;
 
-	const VERSION = 1550;
+	public const VERSION = 1550;
 
 	/**
 	 * Calls the post update functions
@@ -185,7 +185,7 @@ class PostUpdate
 			Protocol::DIASPORA,
 			Protocol::OSTATUS,
 			Protocol::ACTIVITYPUB,
-			0
+			0,
 		);
 
 		while ($contact = DBA::fetch($contacts)) {
@@ -348,7 +348,7 @@ class PostUpdate
 			Tag::MENTION,
 			Tag::EXCLUSIVE_MENTION,
 			Tag::IMPLICIT_MENTION,
-			$id
+			$id,
 		);
 
 		if (DBA::errorNo() != 0) {
@@ -357,7 +357,7 @@ class PostUpdate
 		}
 
 		while ($term = DBA::fetch($terms)) {
-			if (($term['type'] == Tag::MENTION) && !empty($term['url']) && !strstr($term['body'], $term['url'])) {
+			if (($term['type'] == Tag::MENTION) && !empty($term['url']) && !strstr((string) $term['body'], (string) $term['url'])) {
 				$condition = ['nurl' => Strings::normaliseLink($term['url']), 'uid' => 0, 'deleted' => false];
 				$contact   = DBA::selectFirst('contact', ['url', 'alias'], $condition, ['order' => ['id']]);
 				if (!DBA::isResult($contact)) {
@@ -366,7 +366,7 @@ class PostUpdate
 					$contact   = DBA::selectFirst('contact', ['url', 'alias'], $condition, ['order' => ['id']]);
 				}
 
-				if (DBA::isResult($contact) && (!strstr($term['body'], $contact['url']) && (empty($contact['alias']) || !strstr($term['body'], $contact['alias'])))) {
+				if (DBA::isResult($contact) && (!strstr((string) $term['body'], (string) $contact['url']) && (empty($contact['alias']) || !strstr((string) $term['body'], (string) $contact['alias'])))) {
 					$term['type'] = Tag::IMPLICIT_MENTION;
 				}
 			}
@@ -507,7 +507,7 @@ class PostUpdate
 			'term',
 			['oid'],
 			["`type` IN (?, ?) AND `oid` >= ?", Category::CATEGORY, Category::FILE, $id],
-			['order' => ['oid'], 'limit' => 1000, 'group_by' => ['oid']]
+			['order' => ['oid'], 'limit' => 1000, 'group_by' => ['oid']],
 		);
 
 		if (DBA::errorNo() != 0) {
@@ -650,8 +650,8 @@ class PostUpdate
 
 			DBA::update(
 				'contact',
-				['gsid' => GServer::getRealID($contact['baseurl'], true), 'baseurl' => GServer::cleanURL($contact['baseurl'])],
-				['id'   => $contact['id']]
+				['gsid' => GServer::getRealID($contact['baseurl'], true), 'baseurl' => (string) GServer::cleanUri(new Uri($contact['baseurl']))],
+				['id'   => $contact['id']],
 			);
 
 			++$rows;
@@ -705,8 +705,8 @@ class PostUpdate
 
 			DBA::update(
 				'apcontact',
-				['gsid' => GServer::getRealID($apcontact['baseurl'], true), 'baseurl' => GServer::cleanURL($apcontact['baseurl'])],
-				['url'  => $apcontact['url']]
+				['gsid' => GServer::getRealID($apcontact['baseurl'], true), 'baseurl' => (string) GServer::cleanUri(new Uri($apcontact['baseurl']))],
+				['url'  => $apcontact['url']],
 			);
 
 			++$rows;
@@ -794,7 +794,7 @@ class PostUpdate
 
 		while ($photo = DBA::fetch($photos)) {
 			$img = Photo::getImageForPhoto($photo);
-			$md5 = md5($img->asString());
+			$md5 = md5((string) $img->asString());
 
 			DBA::update('photo', ['hash' => $md5], ['id' => $photo['id']]);
 			++$rows;
@@ -1079,7 +1079,7 @@ class PostUpdate
 			WHERE NOT `source` IS NULL AND `conversation`.`protocol` = ? AND `uri-id` > ? LIMIT ?",
 			Conversation::PARCEL_ACTIVITYPUB,
 			$id,
-			1000
+			1000,
 		);
 
 		if (DBA::errorNo() != 0) {
@@ -1091,7 +1091,7 @@ class PostUpdate
 			$id       = $conversation['uri-id'];
 			$received = $conversation['received'];
 
-			$raw = json_decode($conversation['source'], true);
+			$raw = json_decode((string) $conversation['source'], true);
 			if (empty($raw)) {
 				continue;
 			}
@@ -1237,14 +1237,14 @@ class PostUpdate
 		while ($contact = DBA::fetch($contacts)) {
 			$id = $contact['id'];
 
-			$parts = parse_url($contact['url']);
+			$parts = parse_url((string) $contact['url']);
 			unset($parts['path']);
-			$server = (string)Uri::fromParts($parts);
+			$server = (string) Uri::fromParts($parts);
 
 			DBA::update(
 				'contact',
-				['gsid' => GServer::getRealID($server, true), 'baseurl' => GServer::cleanURL($server)],
-				['id'   => $contact['id']]
+				['gsid' => GServer::getRealID($server, true), 'baseurl' => (string) GServer::cleanUri(new Uri($server))],
+				['id'   => $contact['id']],
 			);
 
 			++$rows;
@@ -1333,10 +1333,10 @@ class PostUpdate
 			return true;
 		}
 
-		$id = (int)(DI::keyValue()->get('post_update_version_1544_id') ?? 0);
+		$id = (int) (DI::keyValue()->get('post_update_version_1544_id') ?? 0);
 		if ($id == 0) {
 			$post = Post::selectFirstPost(['uri-id'], [], ['order' => ['uri-id' => true]]);
-			$id   = (int)($post['uri-id'] ?? 0);
+			$id   = (int) ($post['uri-id'] ?? 0);
 		}
 
 		DI::logger()->info('Start', ['uri-id' => $id]);
@@ -1398,10 +1398,10 @@ class PostUpdate
 		}
 		DBA::close($engagements);
 
-		$id = (int)(DI::keyValue()->get('post_update_version_1550_id') ?? 0);
+		$id = (int) (DI::keyValue()->get('post_update_version_1550_id') ?? 0);
 		if ($id == 0) {
 			$post = Post::selectFirstPost(['uri-id'], [], ['order' => ['uri-id' => true]]);
-			$id   = (int)($post['uri-id'] ?? 0);
+			$id   = (int) ($post['uri-id'] ?? 0);
 		}
 
 		DI::logger()->info('Start', ['uri-id' => $id]);

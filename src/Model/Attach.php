@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -17,13 +17,13 @@ use Friendica\Object\Image;
 use Friendica\Util\DateTimeFormat;
 use Friendica\Util\Mimetype;
 use Friendica\Security\Security;
+use Friendica\Content\Post\Entity\PostMedia;
 
 /**
  * Class to handle attach database table
  */
 class Attach
 {
-
 	/**
 	 * Return a list of fields that are associated with the attach table
 	 *
@@ -33,7 +33,7 @@ class Attach
 	private static function getFields(): array
 	{
 		$allfields = DI::dbaDefinition()->getAll();
-		$fields = array_keys($allfields['attach']['fields']);
+		$fields    = array_keys($allfields['attach']['fields']);
 		array_splice($fields, array_search('data', $fields), 1);
 		return $fields;
 	}
@@ -130,7 +130,7 @@ class Attach
 
 		$conditions = [
 			'`id` = ?' . $sql_acl,
-			$id
+			$id,
 		];
 
 		$item = self::selectFirst([], $conditions);
@@ -156,7 +156,7 @@ class Attach
 			$backendClass = DI::storageManager()->getByName($item['backend-class'] ?? '');
 			$backendRef   = $item['backend-ref'];
 			return $backendClass->get($backendRef);
-		} catch (InvalidClassStorageException $storageException) {
+		} catch (InvalidClassStorageException) {
 			// legacy data storage in 'data' column
 			$i = self::selectFirst(['data'], ['id' => $item['id']]);
 			if ($i === false) {
@@ -185,7 +185,7 @@ class Attach
 	 * @return boolean|integer Row id on success, False on errors
 	 * @throws InternalServerErrorException
 	 */
-	public static function store(string $data, int $uid, string $filename, string $filetype = '', int $filesize = null, string $allow_cid = '', string $allow_gid = '', string $deny_cid = '', string $deny_gid = '')
+	public static function store(string $data, int $uid, string $filename, string $filetype = '', ?int $filesize = null, string $allow_cid = '', string $allow_gid = '', string $deny_cid = '', string $deny_gid = '')
 	{
 		if ($filetype === '') {
 			$filetype = Mimetype::getContentType($filename);
@@ -196,26 +196,26 @@ class Attach
 		}
 
 		$backend_ref = DI::storage()->put($data);
-		$data = '';
+		$data        = '';
 
-		$hash = System::createGUID(64);
+		$hash    = System::createGUID(64);
 		$created = DateTimeFormat::utcNow();
 
 		$fields = [
-			'uid' => $uid,
-			'hash' => $hash,
-			'filename' => $filename,
-			'filetype' => $filetype,
-			'filesize' => $filesize,
-			'data' => $data,
-			'created' => $created,
-			'edited' => $created,
-			'allow_cid' => $allow_cid,
-			'allow_gid' => $allow_gid,
-			'deny_cid' => $deny_cid,
-			'deny_gid' => $deny_gid,
-			'backend-class' => (string)DI::storage(),
-			'backend-ref' => $backend_ref
+			'uid'           => $uid,
+			'hash'          => $hash,
+			'filename'      => $filename,
+			'filetype'      => $filetype,
+			'filesize'      => $filesize,
+			'data'          => $data,
+			'created'       => $created,
+			'edited'        => $created,
+			'allow_cid'     => $allow_cid,
+			'allow_gid'     => $allow_gid,
+			'deny_cid'      => $deny_cid,
+			'deny_gid'      => $deny_gid,
+			'backend-class' => (string) DI::storage(),
+			'backend-ref'   => $backend_ref,
 		];
 
 		$r = DBA::insert('attach', $fields);
@@ -247,7 +247,7 @@ class Attach
 
 		$data = @file_get_contents($src);
 
-		return self::store($data, $uid, $filename, $filetype, null, $allow_cid, $allow_gid,  $deny_cid, $deny_gid);
+		return self::store($data, $uid, $filename, $filetype, null, $allow_cid, $allow_gid, $deny_cid, $deny_gid);
 	}
 
 
@@ -264,7 +264,7 @@ class Attach
 	 * @throws InternalServerErrorException
 	 * @see   \Friendica\Database\DBA::update
 	 */
-	public static function update(array $fields, array $conditions, Image $img = null, array $old_fields = []): bool
+	public static function update(array $fields, array $conditions, ?Image $img = null, array $old_fields = []): bool
 	{
 		if (!is_null($img)) {
 			// get items to update
@@ -318,12 +318,12 @@ class Attach
 
 	public static function setPermissionFromBody(array $post)
 	{
-		preg_match_all("/\[attachment\](.*?)\[\/attachment\]/ism", $post['body'], $matches, PREG_SET_ORDER);
+		preg_match_all("/\[attachment\](.*?)\[\/attachment\]/ism", (string) $post['body'], $matches, PREG_SET_ORDER);
 		foreach ($matches as $attachment) {
 			if (DI::baseUrl()->isLocalUrl($attachment[1]) && preg_match('|.*?/attach/(\d+)|', $attachment[1], $match)) {
 				$fields = [
 					'allow_cid' => $post['allow_cid'], 'allow_gid' => $post['allow_gid'],
-					'deny_cid' => $post['deny_cid'], 'deny_gid' => $post['deny_gid']
+					'deny_cid'  => $post['deny_cid'], 'deny_gid' => $post['deny_gid'],
 				];
 				self::update($fields, ['id' => $match[1], 'uid' => $post['uid']]);
 			}
@@ -334,7 +334,7 @@ class Attach
 	{
 		$fields = [
 			'allow_cid' => $str_contact_allow, 'allow_gid' => $str_circle_allow,
-			'deny_cid' => $str_contact_deny, 'deny_gid' => $str_circle_deny,
+			'deny_cid'  => $str_contact_deny, 'deny_gid' => $str_circle_deny,
 		];
 
 		self::update($fields, ['id' => $id, 'uid' => $uid]);
@@ -345,19 +345,19 @@ class Attach
 		preg_match_all("/\[attachment\](.*?)\[\/attachment\]/ism", $body, $matches, PREG_SET_ORDER);
 		foreach ($matches as $attachment) {
 			if (DI::baseUrl()->isLocalUrl($attachment[1]) && preg_match('|.*?/attach/(\d+)|', $attachment[1], $match)) {
-				$attach = self::getById($match[1], $uid);
+				$attach = self::getById((int) $match[1], $uid);
 				if (empty($attach)) {
 					return $body;
 				}
 				$media = [
-					'type'        => Post\Media::DOCUMENT,
+					'type'        => PostMedia::TYPE_DOCUMENT,
 					'url'         => $attachment[1],
 					'size'        => $attach['filesize'],
 					'mimetype'    => $attach['filetype'],
-					'description' => $attach['filename']
+					'description' => $attach['filename'],
 				];
 				$media = Post\Media::addType($media);
-				$body = str_replace($attachment[0], Post\Media::addAttachmentToBody($media, ''), $body);
+				$body  = str_replace($attachment[0], Post\Media::addAttachmentToBody($media, ''), $body);
 			}
 		}
 		return $body;

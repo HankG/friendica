@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -41,7 +41,7 @@ class ProfileFieldTest extends FixtureTestCase
 	/**
 	 * Test create ProfileField without a valid PermissionSet
 	 */
-	public function testSavingWithoutPermissionSet()
+	public function testSavingWithoutPermissionSet(): void
 	{
 		self::expectExceptionMessage('PermissionSet needs to be saved first.');
 		self::expectException(ProfileFieldPersistenceException::class);
@@ -56,7 +56,7 @@ class ProfileFieldTest extends FixtureTestCase
 	/**
 	 * Test saving a new entity
 	 */
-	public function testSaveNew()
+	public function testSaveNew(): void
 	{
 		$profileField = $this->factory->createFromValues(42, 0, 'public', 'value', $this->permissionSetRepository->save($this->permissionSetFactory->createFromString(42, '', '<~>')));
 
@@ -78,7 +78,7 @@ class ProfileFieldTest extends FixtureTestCase
 	/**
 	 * Test updating the order of a ProfileField
 	 */
-	public function testUpdateOrder()
+	public function testUpdateOrder(): void
 	{
 		$profileField = $this->factory->createFromValues(42, 0, 'public', 'value', $this->permissionSetRepository->save($this->permissionSetFactory->createFromString(42, '', '<~>')));
 
@@ -111,7 +111,7 @@ class ProfileFieldTest extends FixtureTestCase
 	/**
 	 * Test updating a whole entity
 	 */
-	public function testUpdate()
+	public function testUpdate(): void
 	{
 		$profileField = $this->factory->createFromValues(42, 0, 'public', 'value', $this->permissionSetRepository->save($this->permissionSetFactory->createFromString(42, '', '<~>')));
 

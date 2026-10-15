@@ -1,17 +1,19 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Content;
 
+use Friendica\App\BaseURL;
+use Friendica\Content\Contact\Repository\ContactByType;
 use Friendica\Content\Text\HTML;
-use Friendica\Core\Protocol;
+use Friendica\Core\Addon\AddonHelper;
+use Friendica\Core\L10n;
 use Friendica\Core\Renderer;
-use Friendica\Database\DBA;
-use Friendica\DI;
+use Friendica\Core\Session\Capability\IHandleUserSessions;
 use Friendica\Model\Contact;
 
 /**
@@ -19,6 +21,16 @@ use Friendica\Model\Contact;
  */
 class GroupManager
 {
+	private const CONTACT_TYPES = [Contact::TYPE_COMMUNITY];
+
+	public function __construct(
+		private readonly ContactByType $contacts,
+		private readonly AddonHelper $addonHelper,
+		private readonly BaseURL $baseUrl,
+		private readonly L10n $l10n,
+		private readonly IHandleUserSessions $session,
+	) {}
+
 	/**
 	 * Function to list all groups a user is connected with
 	 *
@@ -35,54 +47,9 @@ class GroupManager
 	 *    'thumb' => contact photo in format thumb
 	 * @throws \Exception
 	 */
-	public static function getList($uid, $lastitem, $showhidden = true, $showprivate = false)
+	public function getList(int $uid, bool $lastitem, bool $showhidden = true, bool $showprivate = false): array
 	{
-		if ($lastitem) {
-			$params = ['order' => ['last-item' => true]];
-		} else {
-			$params = ['order' => ['name']];
-		}
-
-		$condition = [
-			'contact-type' => Contact::TYPE_COMMUNITY,
-			'network'      => [Protocol::DFRN, Protocol::ACTIVITYPUB],
-			'uid'          => $uid,
-			'blocked'      => false,
-			'pending'      => false,
-			'archive'      => false,
-		];
-
-		$condition = DBA::mergeConditions($condition, ["`platform` NOT IN (?, ?)", 'peertube', 'wordpress']);
-
-		if (!$showprivate) {
-			$condition = DBA::mergeConditions($condition, ['manually-approve' => false]);
-		}
-
-		if (!$showhidden) {
-			$condition = DBA::mergeConditions($condition, ['hidden' => false]);
-		}
-
-		$groupList = [];
-
-		$fields   = ['id', 'url', 'alias', 'name', 'micro', 'thumb', 'avatar', 'network', 'uid'];
-		$contacts = DBA::select('account-user-view', $fields, $condition, $params);
-		if (!$contacts) {
-			return $groupList;
-		}
-
-		while ($contact = DBA::fetch($contacts)) {
-			$groupList[] = [
-				'url'   => $contact['url'],
-				'alias' => $contact['alias'],
-				'name'  => $contact['name'],
-				'id'    => $contact['id'],
-				'micro' => $contact['micro'],
-				'thumb' => $contact['thumb'],
-			];
-		}
-		DBA::close($contacts);
-
-		return($groupList);
+		return $this->contacts->selectForUser($uid, self::CONTACT_TYPES, $lastitem, $showhidden, $showprivate);
 	}
 
 
@@ -97,10 +64,10 @@ class GroupManager
 	 * @throws \Friendica\Network\HTTPException\InternalServerErrorException
 	 * @throws \ImagickException
 	 */
-	public static function widget(int $uid): string
+	public function widget(int $uid): string
 	{
 		//sort by last updated item
-		$contacts      = self::getList($uid, true, true, true);
+		$contacts      = $this->getList($uid, true, true, true);
 		$total         = count($contacts);
 		$visibleGroups = 10;
 
@@ -114,7 +81,7 @@ class GroupManager
 				'external_url' => Contact::magicLinkByContact($contact),
 				'name'         => $contact['name'],
 				'cid'          => $contact['id'],
-				'micro'        => DI::baseUrl()->remove(Contact::getMicro($contact)),
+				'micro'        => $this->baseUrl->remove(Contact::getMicro($contact)),
 				'id'           => ++$id,
 			];
 			$entries[] = $entry;
@@ -125,15 +92,17 @@ class GroupManager
 		return Renderer::replaceMacros(
 			$tpl,
 			[
-				'$title'            => DI::l10n()->t('Groups'),
-				'$groups'           => $entries,
-				'$link_desc'        => DI::l10n()->t('External link to group'),
-				'$new_group_page'   => 'register/',
-				'$total'            => $total,
-				'$visible_groups'   => $visibleGroups,
-				'$showless'         => DI::l10n()->t('show less'),
-				'$showmore'         => DI::l10n()->t('show more'),
-				'$create_new_group' => DI::l10n()->t('Create new group')
+				'$title'                         => $this->l10n->t('Groups'),
+				'$groups'                        => $entries,
+				'$link_desc'                     => $this->l10n->t('External link to group'),
+				'$new_group_page'                => 'register/?type=group',
+				'$total'                         => $total,
+				'$visible_groups'                => $visibleGroups,
+				'$showless'                      => $this->l10n->t('show less'),
+				'$showmore'                      => $this->l10n->t('show more'),
+				'$create_new_group'              => $this->l10n->t('Create new group'),
+				'$addon_group_directory_enabled' => $this->addonHelper->isAddonEnabled('groupdirectory'),
+				'$visit_groupdirectory'          => $this->l10n->t('Find groups to join'),
 			],
 		);
 	}
@@ -149,7 +118,7 @@ class GroupManager
 	 * @throws \Friendica\Network\HTTPException\InternalServerErrorException
 	 * @throws \ImagickException
 	 */
-	public static function profileAdvanced($uid)
+	public function profileAdvanced(int $uid): string
 	{
 		if (!Feature::isEnabled($uid, Feature::GROUPS)) {
 			return '';
@@ -163,7 +132,7 @@ class GroupManager
 		//don't sort by last updated item
 		$lastitem = false;
 
-		$contacts = self::getList($uid, $lastitem, false, false);
+		$contacts = $this->getList($uid, $lastitem, false, false);
 
 		$total_shown = 0;
 		foreach ($contacts as $contact) {
@@ -188,24 +157,13 @@ class GroupManager
 	 *    'count' => counted unseen group items
 	 * @throws \Exception
 	 */
-	public static function countUnseenItems()
+	public function countUnseenItems(): array
 	{
-		$stmtContacts = DBA::p(
-			"SELECT `contact`.`id`, `contact`.`name`, COUNT(*) AS `count` FROM `post-user-view`
-				INNER JOIN `contact` ON `post-user-view`.`contact-id` = `contact`.`id`
-				WHERE `post-user-view`.`uid` = ? AND `post-user-view`.`visible` AND NOT `post-user-view`.`deleted` AND `post-user-view`.`unseen`
-				AND `contact`.`network` IN (?, ?) AND `contact`.`contact-type` = ?
-				AND NOT `contact`.`blocked` AND NOT `contact`.`hidden`
-				AND NOT `contact`.`pending` AND NOT `contact`.`archive`
-				AND `contact`.`uid` = ?
-				GROUP BY `contact`.`id`",
-			DI::userSession()->getLocalUserId(),
-			Protocol::DFRN,
-			Protocol::ACTIVITYPUB,
-			Contact::TYPE_COMMUNITY,
-			DI::userSession()->getLocalUserId()
-		);
+		$uid = $this->session->getLocalUserId();
+		if (!is_int($uid)) {
+			return [];
+		}
 
-		return DBA::toArray($stmtContacts);
+		return $this->contacts->countUnseenItems($uid, self::CONTACT_TYPES);
 	}
 }

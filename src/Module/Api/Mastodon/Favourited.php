@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -56,13 +56,11 @@ class Favourited extends BaseApi
 
 		$items = Post::selectForUser($uid, ['thr-parent-id'], $condition, $params);
 
-		$display_quotes = self::appSupportsQuotes();
-
 		$statuses = [];
 		while ($item = Post::fetch($items)) {
 			self::setBoundaries($item['thr-parent-id']);
 			try {
-				$statuses[] = DI::mstdnStatus()->createFromUriId($item['thr-parent-id'], $uid, $display_quotes);
+				$statuses[] = DI::mstdnStatus()->createFromUriId($item['thr-parent-id'], $uid);
 			} catch (\Exception $exception) {
 				$this->logger->info('Post not fetchable', ['uri-id' => $item['thr-parent-id'], 'uid' => $uid, 'exception' => $exception]);
 			}
@@ -73,7 +71,7 @@ class Favourited extends BaseApi
 			$statuses = array_reverse($statuses);
 		}
 
-		self::setLinkHeader();
-		$this->jsonExit($statuses);
+		$this->setPaginationLinkHeader();
+		$this->earlyJsonExit($statuses);
 	}
 }

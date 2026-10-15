@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -14,7 +14,7 @@ final class UserDefinedChannel extends Timeline implements ICanCreateFromTableRo
 {
 	public function isTimeline(string $selectedTab, int $uid): bool
 	{
-		return is_numeric($selectedTab) && $uid && $this->channelRepository->existsById($selectedTab, $uid);
+		return is_numeric($selectedTab) && $uid && $this->channelRepository->existsById((int) $selectedTab, $uid);
 	}
 
 	public function createFromTableRow(array $row): Entity\UserDefinedChannel
@@ -27,19 +27,19 @@ final class UserDefinedChannel extends Timeline implements ICanCreateFromTableRo
 			$row['id'] ?? null,
 			$row['label'],
 			$row['description'] ?? null,
-			$row['access-key'] ?? null,
+			$row['access-key']  ?? null,
 			null,
 			$row['uid'],
-			$row['include-tags'] ?? null,
-			$row['exclude-tags'] ?? null,
+			$row['include-tags']     ?? null,
+			$row['exclude-tags']     ?? null,
 			$row['full-text-search'] ?? null,
-			$row['media-type'] ?? null,
-			$row['circle'] ?? null,
-			$row['languages'] ?? null,
-			$row['publish'] ?? null,
-			$row['valid'] ?? null,
-			$row['min-size'] ?? null,
-			$row['max-size'] ?? null,
+			$row['media-type']       ?? null,
+			$row['circle']           ?? null,
+			$row['languages']        ?? null,
+			$row['publish']          ?? null,
+			$row['valid']            ?? null,
+			$row['min-size']         ?? null,
+			$row['max-size']         ?? null,
 		);
 	}
 }

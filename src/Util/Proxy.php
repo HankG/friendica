@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -19,20 +19,20 @@ class Proxy
 	/**
 	 * Sizes constants
 	 */
-	const SIZE_MICRO  = 'micro'; // 48
-	const SIZE_THUMB  = 'thumb'; // 80
-	const SIZE_SMALL  = 'small'; // 320
-	const SIZE_MEDIUM = 'medium'; // 640
-	const SIZE_LARGE  = 'large'; // 1024
+	public const SIZE_MICRO  = 'micro'; // 48
+	public const SIZE_THUMB  = 'thumb'; // 80
+	public const SIZE_SMALL  = 'small'; // 320
+	public const SIZE_MEDIUM = 'medium'; // 640
+	public const SIZE_LARGE  = 'large'; // 1024
 
 	/**
 	 * Pixel Sizes
 	 */
-	const PIXEL_MICRO  = 48;
-	const PIXEL_THUMB  = 80;
-	const PIXEL_SMALL  = 320;
-	const PIXEL_MEDIUM = 640;
-	const PIXEL_LARGE  = 1024;
+	public const PIXEL_MICRO  = 48;
+	public const PIXEL_THUMB  = 80;
+	public const PIXEL_SMALL  = 320;
+	public const PIXEL_MEDIUM = 640;
+	public const PIXEL_LARGE  = 1024;
 
 	/**
 	 * Private constructor
@@ -79,7 +79,7 @@ class Proxy
 	 */
 	public static function isLocalImage(string $url): bool
 	{
-		if (substr($url, 0, 1) == '/') {
+		if (str_starts_with($url, '/')) {
 			return true;
 		}
 
@@ -105,7 +105,7 @@ class Proxy
 			parse_str($uri->getQuery(), $arr);
 
 			return $arr;
-		} catch (\Throwable $e) {
+		} catch (\Throwable) {
 			return [];
 		}
 	}
@@ -123,8 +123,8 @@ class Proxy
 		// if the picture seems to be from another picture cache then take the original source
 		$queryvar = self::parseQuery($matches[2]);
 
-		if (!empty($queryvar['url']) && substr($queryvar['url'], 0, 4) == 'http') {
-			$matches[2] = urldecode($queryvar['url']);
+		if (!empty($queryvar['url']) && str_starts_with((string) $queryvar['url'], 'http')) {
+			$matches[2] = urldecode((string) $queryvar['url']);
 		}
 
 		// Following line changed per bug #431
@@ -133,24 +133,18 @@ class Proxy
 		}
 
 		// Return proxified HTML
-		return $matches[1] . BBCode::proxyUrl(htmlspecialchars_decode($matches[2]), BBCode::INTERNAL, $uriid, Proxy::SIZE_MEDIUM) . $matches[3];
+		return $matches[1] . BBCode::proxyUrl(htmlspecialchars_decode((string) $matches[2]), BBCode::INTERNAL, $uriid, Proxy::SIZE_MEDIUM) . $matches[3];
 	}
 
 	public static function getPixelsFromSize(string $size): int
 	{
-		switch ($size) {
-			case Proxy::SIZE_MICRO:
-				return Proxy::PIXEL_MICRO;
-			case Proxy::SIZE_THUMB:
-				return Proxy::PIXEL_THUMB;
-			case Proxy::SIZE_SMALL:
-				return Proxy::PIXEL_SMALL;
-			case Proxy::SIZE_MEDIUM:
-				return Proxy::PIXEL_MEDIUM;
-			case Proxy::SIZE_LARGE:
-				return Proxy::PIXEL_LARGE;
-			default:
-				return 0;
-		}
+		return match ($size) {
+			Proxy::SIZE_MICRO  => Proxy::PIXEL_MICRO,
+			Proxy::SIZE_THUMB  => Proxy::PIXEL_THUMB,
+			Proxy::SIZE_SMALL  => Proxy::PIXEL_SMALL,
+			Proxy::SIZE_MEDIUM => Proxy::PIXEL_MEDIUM,
+			Proxy::SIZE_LARGE  => Proxy::PIXEL_LARGE,
+			default            => 0,
+		};
 	}
 }

@@ -1,13 +1,13 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Model\Post;
 
-use \BadMethodCallException;
+use BadMethodCallException;
 use Friendica\Database\Database;
 use Friendica\Database\DBA;
 use Friendica\DI;
@@ -72,5 +72,16 @@ class Thread
 	public static function delete(array $conditions)
 	{
 		return DBA::delete('post-thread', $conditions);
+	}
+
+	/**
+	 * Check if a post-thread entry exists for the given URI ID
+	 *
+	 * @param integer $uri_id
+	 * @return boolean exists?
+	 */
+	public static function exists(int $uri_id): bool
+	{
+		return DBA::exists('post-thread', ['uri-id' => $uri_id]);
 	}
 }

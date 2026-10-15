@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -72,7 +72,7 @@ class SemaphoreLock extends AbstractLock
 				$success = @sem_release(self::$semaphore[$key]);
 				unset(self::$semaphore[$key]);
 				$this->markRelease($key);
-			} catch (\Exception $exception) {
+			} catch (\Exception) {
 				$success = false;
 			}
 		}
@@ -111,7 +111,7 @@ class SemaphoreLock extends AbstractLock
 			$result = [];
 
 			foreach ($keys as $key) {
-				if (strpos($key, $prefix) === 0) {
+				if (str_starts_with((string) $key, $prefix)) {
 					array_push($result, $key);
 				}
 			}

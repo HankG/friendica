@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -85,13 +85,13 @@ class Notification extends BaseDataTransferObject
 
 		try {
 			$this->msg_html = BBCode::convertForUriId($notify->uriId, $this->msg, BBCode::EXTERNAL);
-		} catch (\Exception $e) {
+		} catch (\Exception) {
 			$this->msg_html = '';
 		}
 
 		try {
 			$this->msg_plain = explode("\n", trim(HTML::toPlaintext($this->msg_html, 0)))[0];
-		} catch (\Exception $e) {
+		} catch (\Exception) {
 			$this->msg_plain = '';
 		}
 	}

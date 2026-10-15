@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -21,16 +21,6 @@ use RuntimeException;
 class Lock extends \Asika\SimpleConsole\Console
 {
 	protected $helpOptions = ['h', 'help', '?'];
-
-	/**
-	 * @var Mode
-	 */
-	private $appMode;
-
-	/**
-	 * @var ICanLock
-	 */
-	private $lock;
 
 	protected function getHelp()
 	{
@@ -62,19 +52,16 @@ HELP;
 		return $help;
 	}
 
-	public function __construct(Mode $appMode, ICanLock $lock, array $argv = null)
+	public function __construct(private readonly Mode $appMode, private readonly ICanLock $lock, ?array $argv = null)
 	{
 		parent::__construct($argv);
-
-		$this->appMode = $appMode;
-		$this->lock    = $lock;
 	}
 
 	protected function doExecute(): int
 	{
 		if ($this->getOption('v')) {
 			$this->out('Executable: ' . $this->executable);
-			$this->out('Class: ' . __CLASS__);
+			$this->out('Class: ' . self::class);
 			$this->out('Arguments: ' . var_export($this->args, true));
 			$this->out('Options: ' . var_export($this->options, true));
 		}
@@ -85,7 +72,7 @@ HELP;
 
 		if ($this->getOption('v')) {
 			$this->out('Lock Driver Name: ' . $this->lock->getName());
-			$this->out('Lock Driver Class: ' . get_class($this->lock));
+			$this->out('Lock Driver Class: ' . $this->lock::class);
 		}
 
 		switch ($this->getArgument(0)) {

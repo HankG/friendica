@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -24,17 +24,12 @@ use Psr\Log\LoggerInterface;
 
 class Import extends \Friendica\Module\BaseModeration
 {
-	/** @var DomainPatternBlocklist */
-	private $localBlocklist;
-
 	/** @var array of blocked server domain patterns */
 	private $blocklist = [];
 
-	public function __construct(DomainPatternBlocklist $localBlocklist, Page $page, AppHelper $appHelper, SystemMessages $systemMessages, IHandleUserSessions $session, L10n $l10n, BaseURL $baseUrl, Arguments $args, LoggerInterface $logger, Profiler $profiler, Response $response, array $server, array $parameters = [])
+	public function __construct(private readonly DomainPatternBlocklist $localBlocklist, Page $page, AppHelper $appHelper, SystemMessages $systemMessages, IHandleUserSessions $session, L10n $l10n, BaseURL $baseUrl, Arguments $args, LoggerInterface $logger, Profiler $profiler, Response $response, array $server, array $parameters = [])
 	{
 		parent::__construct($page, $appHelper, $systemMessages, $session, $l10n, $baseUrl, $args, $logger, $profiler, $response, $server, $parameters);
-
-		$this->localBlocklist = $localBlocklist;
 	}
 
 	/**
@@ -59,13 +54,12 @@ class Import extends \Friendica\Module\BaseModeration
 		if (isset($request['page_blocklist_upload'])) {
 			try {
 				$this->blocklist = $this->localBlocklist::extractFromCSVFile($_FILES['listfile']['tmp_name']);
-			} catch (\Throwable $e) {
+			} catch (\Throwable) {
 				$this->systemMessages->addNotice($this->t('Error importing pattern file'));
 				return;
 			}
-		}
-		else if (isset($request['page_blocklist_import'])) {
-			$this->blocklist = json_decode($request['blocklist'], true);
+		} elseif (isset($request['page_blocklist_import'])) {
+			$this->blocklist = json_decode((string) $request['blocklist'], true);
 			if ($this->blocklist === null) {
 				$this->systemMessages->addNotice($this->t('Error importing pattern file'));
 				return;
@@ -117,7 +111,7 @@ class Import extends \Friendica\Module\BaseModeration
 			'$mode_append'         => ['mode', $this->t('Append'), 'append', $this->t('Imports patterns from the file that weren\'t already existing in the current blocklist.'), 'checked="checked"'],
 			'$mode_replace'        => ['mode', $this->t('Replace'), 'replace', $this->t('Replaces the current blocklist by the imported patterns.')],
 			'$blocklist'           => $this->blocklist,
-			'$form_security_token' => self::getFormSecurityToken('moderation_blocklist_import')
+			'$form_security_token' => self::getFormSecurityToken('moderation_blocklist_import'),
 		]);
 	}
 }

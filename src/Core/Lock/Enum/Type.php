@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -16,6 +16,6 @@ use Friendica\Core\Cache\Type\DatabaseCache;
  */
 abstract class Type
 {
-	const DATABASE  = DatabaseCache::NAME;
-	const SEMAPHORE = 'semaphore';
+	public const DATABASE  = DatabaseCache::NAME;
+	public const SEMAPHORE = 'semaphore';
 }

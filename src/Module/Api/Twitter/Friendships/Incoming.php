@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -35,7 +35,7 @@ class Incoming extends ContactEndpoint
 
 		$condition = ["`uid` = ? AND NOT `blocked` AND NOT `ignore` AND `contact-id` != 0 AND (`suggest-cid` = 0 OR `suggest-cid` IS NULL)", $uid];
 
-		$total_count = (int)DBA::count('intro', $condition);
+		$total_count = (int) DBA::count('intro', $condition);
 
 		if (!empty($max_id)) {
 			$condition = DBA::mergeConditions($condition, ["`contact-id` < ?", $max_id]);
@@ -66,7 +66,7 @@ class Incoming extends ContactEndpoint
 
 		$return = self::ids($ids, $total_count, $cursor, $count, $stringify_ids);
 
-		$this->response->setHeader(self::getLinkHeader());
+		$this->setPaginationLinkHeader();
 
 		$this->response->addFormattedContent('incoming', ['incoming' => $return]);
 	}

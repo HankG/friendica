@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -20,21 +20,22 @@ use Psr\Log\LoggerInterface;
  */
 class Process extends BaseRepository
 {
-	const NODE_ENV = 'NODE_ENV';
+	public const NODE_ENV = 'NODE_ENV';
 
 	protected static $table_name = 'process';
-
-	/** @var ProcessFactory */
-	protected $factory;
 
 	/** @var string */
 	private $currentHost;
 
-	public function __construct(Database $database, LoggerInterface $logger, ProcessFactory $factory, array $server)
-	{
-		parent::__construct($database, $logger, $factory);
+	public function __construct(
+		Database $database,
+		LoggerInterface $logger,
+		private readonly ProcessFactory $entityFactory,
+		array $server,
+	) {
+		parent::__construct($database, $logger, $entityFactory);
 
-		$this->currentHost = $factory->determineHost($server[self::NODE_ENV] ?? null);
+		$this->currentHost = $entityFactory->determineHost($server[self::NODE_ENV] ?? null);
 	}
 
 	/**
@@ -53,7 +54,7 @@ class Process extends BaseRepository
 					'pid'      => $pid,
 					'command'  => $command,
 					'hostname' => $this->currentHost,
-					'created'  => DateTimeFormat::utcNow()
+					'created'  => DateTimeFormat::utcNow(),
 				])) {
 					throw new ProcessPersistenceException(sprintf('The process with PID %s already exists.', $pid));
 				}
@@ -61,7 +62,7 @@ class Process extends BaseRepository
 
 			$fields = $this->_selectFirstRowAsArray(['pid' => $pid, 'hostname' => $this->currentHost]);
 
-			$result = $this->factory->createFromTableRow($fields);
+			$result = $this->getFactory()->createFromTableRow($fields);
 
 			$this->db->commit();
 
@@ -83,6 +84,12 @@ class Process extends BaseRepository
 		} catch (\Exception $exception) {
 			throw new ProcessPersistenceException(sprintf('Cannot delete process with PID %s.', $process->pid), $exception);
 		}
+	}
+
+	/** @not-deprecated */
+	protected function getFactory(): ProcessFactory
+	{
+		return $this->entityFactory;
 	}
 
 	/**

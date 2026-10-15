@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -33,14 +33,15 @@ use Friendica\Util\Profiler;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Log\LoggerInterface;
 
-class BaseApi extends BaseModule
+abstract class BaseApi extends BaseModule
 {
-	const LOG_PREFIX = 'API {action} - ';
+	public const LOG_PREFIX = 'API {action} - ';
 
-	const SCOPE_READ   = 'read';
-	const SCOPE_WRITE  = 'write';
-	const SCOPE_FOLLOW = 'follow';
-	const SCOPE_PUSH   = 'push';
+	public const SCOPE_READ   = 'read';
+	public const SCOPE_WRITE  = 'write';
+	public const SCOPE_FOLLOW = 'follow';
+	public const SCOPE_PUSH   = 'push';
+	public const SCOPE_ANY    = 'any';
 
 	/**
 	 * @var array
@@ -61,8 +62,18 @@ class BaseApi extends BaseModule
 	/** @var \Friendica\Factory\Api\Mastodon\Error */
 	protected $errorFactory;
 
-	public function __construct(\Friendica\Factory\Api\Mastodon\Error $errorFactory, AppHelper $appHelper, L10n $l10n, BaseURL $baseUrl, Arguments $args, LoggerInterface $logger, Profiler $profiler, ApiResponse $response, array $server, array $parameters = [])
-	{
+	public function __construct(
+		\Friendica\Factory\Api\Mastodon\Error $errorFactory,
+		AppHelper $appHelper,
+		L10n $l10n,
+		BaseURL $baseUrl,
+		Arguments $args,
+		LoggerInterface $logger,
+		Profiler $profiler,
+		ApiResponse $response,
+		array $server,
+		array $parameters = [],
+	) {
 		parent::__construct($l10n, $baseUrl, $args, $logger, $profiler, $response, $server, $parameters);
 
 		$this->appHelper    = $appHelper;
@@ -70,29 +81,37 @@ class BaseApi extends BaseModule
 	}
 
 	/**
+	 * {@inheritDoc}
+	 */
+	protected function checkScope(): void
+	{
+		switch ($this->args->getMethod()) {
+			case Router::DELETE:
+			case Router::PATCH:
+			case Router::POST:
+			case Router::PUT:
+				$this->checkAllowedScope(self::SCOPE_WRITE);
+
+				if (!self::getCurrentUserID()) {
+					throw new HTTPException\ForbiddenException($this->t('Permission denied.'));
+				}
+				break;
+		}
+	}
+
+	/**
 	 * Additionally checks, if the caller is permitted to do this action
 	 *
 	 * {@inheritDoc}
 	 *
+	 * @param bool $scopecheck Deprecated parameter kept for BC promise, scope is now checked via dispatch()
+	 *
 	 * @throws HTTPException\ForbiddenException
+	 *
+	 * @deprecated 2026.08 Use {@see IRequestHandler::handleRequest()} instead
 	 */
 	public function run(ModuleHTTPException $httpException, array $request = [], bool $scopecheck = true): ResponseInterface
 	{
-		if ($scopecheck) {
-			switch ($this->args->getMethod()) {
-				case Router::DELETE:
-				case Router::PATCH:
-				case Router::POST:
-				case Router::PUT:
-					$this->checkAllowedScope(self::SCOPE_WRITE);
-
-					if (!self::getCurrentUserID()) {
-						throw new HTTPException\ForbiddenException($this->t('Permission denied.'));
-					}
-					break;
-			}
-		}
-
 		return parent::run($httpException, $request);
 	}
 
@@ -120,17 +139,10 @@ class BaseApi extends BaseModule
 				$condition = DBA::mergeConditions($condition, ["`uri-id` > ?", intval($request['min_id'])]);
 			}
 		} else {
-			switch ($requested_order) {
-				case TimelineOrderByTypes::RECEIVED:
-				case TimelineOrderByTypes::CHANGED:
-				case TimelineOrderByTypes::EDITED:
-				case TimelineOrderByTypes::CREATED:
-				case TimelineOrderByTypes::COMMENTED:
-					$order_field = $requested_order;
-					break;
-				default:
-					throw new \Exception("Unrecognized request order: $requested_order");
-			}
+			$order_field = match ($requested_order) {
+				TimelineOrderByTypes::RECEIVED, TimelineOrderByTypes::CHANGED, TimelineOrderByTypes::EDITED, TimelineOrderByTypes::CREATED, TimelineOrderByTypes::COMMENTED => $requested_order,
+				default => throw new \Exception("Unrecognized request order: $requested_order"),
+			};
 
 			if (!empty($request['max_id'])) {
 				$condition = DBA::mergeConditions($condition, ["`$order_field` < ?", DateTimeFormat::convert($request['max_id'], DateTimeFormat::MYSQL)]);
@@ -159,18 +171,10 @@ class BaseApi extends BaseModule
 	protected function buildOrderAndLimitParams(array $request, array $params = []): array
 	{
 		$requested_order = $request['friendica_order'];
-		switch ($requested_order) {
-			case TimelineOrderByTypes::CHANGED:
-			case TimelineOrderByTypes::CREATED:
-			case TimelineOrderByTypes::COMMENTED:
-			case TimelineOrderByTypes::EDITED:
-			case TimelineOrderByTypes::RECEIVED:
-				$order_field = $requested_order;
-				break;
-			case TimelineOrderByTypes::ID:
-			default:
-				$order_field = 'uri-id';
-		}
+		$order_field     = match ($requested_order) {
+			TimelineOrderByTypes::CHANGED, TimelineOrderByTypes::CREATED, TimelineOrderByTypes::COMMENTED, TimelineOrderByTypes::EDITED, TimelineOrderByTypes::RECEIVED => $requested_order,
+			default => 'uri-id',
+		};
 
 		if (!empty($request['min_id'])) {
 			$params['order'] = [$order_field];
@@ -270,10 +274,13 @@ class BaseApi extends BaseModule
 
 	/**
 	 * Get the "link" header with "next" and "prev" links
+	 *
+	 * @deprecated 2026.08 Use {@see self::getPaginationLinkHeaderValue()} instead
 	 * @return string
 	 */
 	protected static function getLinkHeader(bool $asDate = false): string
 	{
+		@trigger_error('Method `' . __METHOD__ . '()` is deprecated since 2026.08 and will be removed after 5 months, use `BaseApi::getPaginationLinkHeaderValue()` instead.', E_USER_DEPRECATED);
 		if (empty(self::$boundaries)) {
 			return '';
 		}
@@ -306,10 +313,13 @@ class BaseApi extends BaseModule
 
 	/**
 	 * Get the "link" header with "next" and "prev" links for an offset/limit type call
+	 *
+	 * @deprecated 2026.08 Use {@see self::getOffsetAndLimitPaginationLinkHeaderValue()} instead
 	 * @return string
 	 */
 	protected static function getOffsetAndLimitLinkHeader(int $offset, int $limit): string
 	{
+		@trigger_error('Method `' . __METHOD__ . '()` is deprecated since 2026.08 and will be removed after 5 months, use `BaseApi::getOffsetAndLimitPaginationLinkHeaderValue()` instead.', E_USER_DEPRECATED);
 		$request = self::$request;
 
 		unset($request['offset']);
@@ -334,10 +344,13 @@ class BaseApi extends BaseModule
 
 	/**
 	 * Set the "link" header with "next" and "prev" links
+	 *
+	 * @deprecated 2026.08 Use {@see self::setPaginationLinkHeader()} instead
 	 * @return void
 	 */
 	protected static function setLinkHeader(bool $asDate = false)
 	{
+		@trigger_error('Method `' . __METHOD__ . '()` is deprecated since 2026.08 and will be removed after 5 months, use `BaseApi::setPaginationLinkHeader()` instead.', E_USER_DEPRECATED);
 		$header = self::getLinkHeader($asDate);
 		if (!empty($header)) {
 			header($header);
@@ -346,10 +359,13 @@ class BaseApi extends BaseModule
 
 	/**
 	 * Set the "link" header with "next" and "prev" links
+	 *
+	 * @deprecated 2026.08 Use {@see self::setPaginationLinkHeaderByOffsetLimit()} instead
 	 * @return void
 	 */
 	protected static function setLinkHeaderByOffsetLimit(int $offset, int $limit)
 	{
+		@trigger_error('Method `' . __METHOD__ . '()` is deprecated since 2026.08 and will be removed after 5 months, use `BaseApi::setPaginationLinkHeaderByOffsetLimit()` instead.', E_USER_DEPRECATED);
 		$header = self::getOffsetAndLimitLinkHeader($offset, $limit);
 		if (!empty($header)) {
 			header($header);
@@ -357,14 +373,95 @@ class BaseApi extends BaseModule
 	}
 
 	/**
-	 * Check if the app is known to support quoted posts
+	 * Get the pagination "link" header value with "next" and "prev" links
 	 *
-	 * @return bool
+	 * @return string
 	 */
-	public static function appSupportsQuotes(): bool
+	protected function getPaginationLinkHeaderValue(bool $asDate = false): string
 	{
-		$token = OAuth::getCurrentApplicationToken();
-		return (!empty($token['name']) && in_array($token['name'], ['Fedilab']));
+		if (empty(self::$boundaries)) {
+			return '';
+		}
+
+		$request = self::$request;
+
+		unset($request['min_id']);
+		unset($request['max_id']);
+		unset($request['since_id']);
+
+		$prev_request = $next_request = $request;
+
+		if ($asDate) {
+			$max_date               = self::$boundaries['max'];
+			$min_date               = self::$boundaries['min'];
+			$prev_request['min_id'] = $max_date->format(DateTimeFormat::JSON);
+			$next_request['max_id'] = $min_date->format(DateTimeFormat::JSON);
+		} else {
+			$prev_request['min_id'] = self::$boundaries['max'];
+			$next_request['max_id'] = self::$boundaries['min'];
+		}
+
+		$command = (string) $this->baseUrl . '/' . $this->args->getCommand();
+
+		$prev = $command . '?' . http_build_query($prev_request);
+		$next = $command . '?' . http_build_query($next_request);
+
+		return '<' . $next . '>; rel="next", <' . $prev . '>; rel="prev"';
+	}
+
+	/**
+	 * Get the pagination "link" header value with "next" and "prev" links for an offset/limit type call
+	 *
+	 * @return string
+	 */
+	protected function getOffsetAndLimitPaginationLinkHeaderValue(int $offset, int $limit): string
+	{
+		$request = self::$request;
+
+		unset($request['offset']);
+		$request['limit'] = $limit;
+
+		$prev_request = $next_request = $request;
+
+		$prev_request['offset'] = $offset - $limit;
+		$next_request['offset'] = $offset + $limit;
+
+		$command = (string) $this->baseUrl . '/' . $this->args->getCommand();
+
+		$prev = $command . '?' . http_build_query($prev_request);
+		$next = $command . '?' . http_build_query($next_request);
+
+		if ($prev_request['offset'] >= 0) {
+			return '<' . $next . '>; rel="next", <' . $prev . '>; rel="prev"';
+		} else {
+			return '<' . $next . '>; rel="next"';
+		}
+	}
+
+	/**
+	 * Set the pagination "link" header with "next" and "prev" links
+	 *
+	 * @return void
+	 */
+	protected function setPaginationLinkHeader(bool $asDate = false): void
+	{
+		$header = $this->getPaginationLinkHeaderValue($asDate);
+		if (!empty($header)) {
+			$this->response->setHeader($header, 'Link');
+		}
+	}
+
+	/**
+	 * Set the pagination "link" header with "next" and "prev" links for an offset/limit type call
+	 *
+	 * @return void
+	 */
+	protected function setPaginationLinkHeaderByOffsetLimit(int $offset, int $limit): void
+	{
+		$header = $this->getOffsetAndLimitPaginationLinkHeaderValue($offset, $limit);
+		if (!empty($header)) {
+			$this->response->setHeader($header, 'Link');
+		}
 	}
 
 	/**
@@ -396,22 +493,48 @@ class BaseApi extends BaseModule
 			$uid = BasicAuth::getCurrentUserID(false);
 		}
 
-		return (int)$uid;
+		return (int) $uid;
+	}
+
+	/**
+	 * Check whether the current API user has moderator privileges.
+	 * Halts execution with a 403 JSON error when access is missing.
+	 */
+	protected function checkModeratorAccess(): void
+	{
+		$uid = self::getCurrentUserID();
+		if (empty($uid) || !User::isModerator($uid)) {
+			$this->logger->warning('Denied access to moderation API endpoint', [
+				'uid'     => $uid,
+				'command' => $this->args->getCommand(),
+			]);
+			$this->logAndJsonError(403, $this->errorFactory->Forbidden());
+		}
 	}
 
 	/**
 	 * Check if the provided scope does exist.
 	 * halts execution on missing scope or when not logged in.
 	 *
-	 * @param string $scope the requested scope (read, write, follow, push)
+	 * @param string $scope the requested scope (read, write, follow, push, any)
 	 */
 	public function checkAllowedScope(string $scope)
 	{
-		$token = self::getCurrentApplication();
+		try {
+			$token = self::getCurrentApplication();
+		} catch (HTTPException\UnauthorizedException $th) {
+			$this->logAndJsonError(401, $this->errorFactory->Unauthorized($th->getMessage()));
+		} catch (\Throwable $th) {
+			$this->logAndJsonError(403, $this->errorFactory->Forbidden($th->getMessage()));
+		}
 
 		if (empty($token)) {
 			$this->logger->notice('Empty application token');
 			$this->logAndJsonError(403, $this->errorFactory->Forbidden());
+		}
+
+		if ($scope === self::SCOPE_ANY) {
+			return;
 		}
 
 		if (!isset($token[$scope])) {
@@ -442,7 +565,7 @@ class BaseApi extends BaseModule
 				$error             = $this->t('Too Many Requests');
 				$error_description = $this->tt("Daily posting limit of %d post reached. The post was rejected.", "Daily posting limit of %d posts reached. The post was rejected.", $throttle_day);
 				$errorobj          = new \Friendica\Object\Api\Mastodon\Error($error, $error_description);
-				$this->jsonError(429, $errorobj->toArray());
+				$this->earlyJsonError(429, $errorobj->toArray());
 			}
 		}
 
@@ -458,7 +581,7 @@ class BaseApi extends BaseModule
 				$error             = $this->t('Too Many Requests');
 				$error_description = $this->tt("Weekly posting limit of %d post reached. The post was rejected.", "Weekly posting limit of %d posts reached. The post was rejected.", $throttle_week);
 				$errorobj          = new \Friendica\Object\Api\Mastodon\Error($error, $error_description);
-				$this->jsonError(429, $errorobj->toArray());
+				$this->earlyJsonError(429, $errorobj->toArray());
 			}
 		}
 
@@ -474,12 +597,12 @@ class BaseApi extends BaseModule
 				$error             = $this->t('Too Many Requests');
 				$error_description = $this->tt('Monthly posting limit of %d post reached. The post was rejected.', 'Monthly posting limit of %d posts reached. The post was rejected.', $throttle_month);
 				$errorobj          = new \Friendica\Object\Api\Mastodon\Error($error, $error_description);
-				$this->jsonError(429, $errorobj->toArray());
+				$this->earlyJsonError(429, $errorobj->toArray());
 			}
 		}
 	}
 
-	public static function getContactIDForSearchterm(string $screen_name = null, string $profileurl = null, int $cid = null, int $uid)
+	public static function getContactIDForSearchterm(?string $screen_name, ?string $profileurl, ?int $cid, int $uid)
 	{
 		if (!empty($cid)) {
 			return $cid;
@@ -490,7 +613,7 @@ class BaseApi extends BaseModule
 		}
 
 		if (empty($cid) && !empty($screen_name)) {
-			if (strpos($screen_name, '@') !== false) {
+			if (str_contains($screen_name, '@')) {
 				return Contact::getIdForURL($screen_name, 0, false);
 			}
 
@@ -513,9 +636,9 @@ class BaseApi extends BaseModule
 	 * @return never
 	 * @throws HTTPException\InternalServerErrorException
 	 */
-	protected function logAndJsonError(int $errorno, Error $error)
+	protected function logAndJsonError(int $errorno, Error $error): never
 	{
 		$this->logger->info('API Error', ['no' => $errorno, 'error' => $error->toArray(), 'method' => $this->args->getMethod(), 'command' => $this->args->getQueryString(), 'user-agent' => $this->server['HTTP_USER_AGENT'] ?? '']);
-		$this->jsonError(403, $error->toArray());
+		$this->earlyJsonError($errorno, $error->toArray());
 	}
 }

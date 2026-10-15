@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -12,12 +12,12 @@ class OAuthUtil
 	public static function urlencode_rfc3986($input)
 	{
 		if (is_array($input)) {
-			return array_map(['Friendica\Security\OAuth1\OAuthUtil', 'urlencode_rfc3986'], $input);
-		} else if (is_scalar($input)) {
+			return array_map(\Friendica\Security\OAuth1\OAuthUtil::urlencode_rfc3986(...), $input);
+		} elseif (is_scalar($input)) {
 			return str_replace(
 				'+',
 				' ',
-				str_replace('%7E', '~', rawurlencode($input))
+				str_replace('%7E', '~', rawurlencode($input)),
 			);
 		} else {
 			return '';
@@ -30,7 +30,7 @@ class OAuthUtil
 	// seem to be used anywhere so leaving it as is.
 	public static function urldecode_rfc3986($string)
 	{
-		return urldecode($string);
+		return urldecode((string) $string);
 	}
 
 	// Utility function for turning the Authorization: header into
@@ -41,7 +41,7 @@ class OAuthUtil
 		$pattern = '/(([-_a-z]*)=("([^"]*)"|([^,]*)),?)/';
 		$offset  = 0;
 		$params  = [];
-		while (preg_match($pattern, $header, $matches, PREG_OFFSET_CAPTURE, $offset) > 0) {
+		while (preg_match($pattern, (string) $header, $matches, PREG_OFFSET_CAPTURE, $offset) > 0) {
 			$match          = $matches[0];
 			$header_name    = $matches[2][0];
 			$header_content = (isset($matches[5])) ? $matches[5][0] : $matches[4][0];
@@ -72,10 +72,10 @@ class OAuthUtil
 			// request
 			$out = [];
 			foreach ($headers as $key => $value) {
-				$key       = str_replace(
+				$key = str_replace(
 					" ",
 					"-",
-					ucwords(strtolower(str_replace("-", " ", $key)))
+					ucwords(strtolower(str_replace("-", " ", $key))),
 				);
 				$out[$key] = $value;
 			}
@@ -83,20 +83,22 @@ class OAuthUtil
 			// otherwise we don't have apache and are just going to have to hope
 			// that $_SERVER actually contains what we need
 			$out = [];
-			if (isset($_SERVER['CONTENT_TYPE']))
+			if (isset($_SERVER['CONTENT_TYPE'])) {
 				$out['Content-Type'] = $_SERVER['CONTENT_TYPE'];
-			if (isset($_ENV['CONTENT_TYPE']))
+			}
+			if (isset($_ENV['CONTENT_TYPE'])) {
 				$out['Content-Type'] = $_ENV['CONTENT_TYPE'];
+			}
 
 			foreach ($_SERVER as $key => $value) {
-				if (substr($key, 0, 5) == "HTTP_") {
+				if (str_starts_with((string) $key, "HTTP_")) {
 					// this is chaos, basically it is just there to capitalize the first
 					// letter of every word that is not an initial HTTP and strip HTTP
 					// code from przemek
-					$key       = str_replace(
+					$key = str_replace(
 						" ",
 						"-",
-						ucwords(strtolower(str_replace("_", " ", substr($key, 5))))
+						ucwords(strtolower(str_replace("_", " ", substr((string) $key, 5)))),
 					);
 					$out[$key] = $value;
 				}
@@ -110,9 +112,11 @@ class OAuthUtil
 	// array('a' => array('b','c'), 'd' => 'e')
 	public static function parse_parameters($input)
 	{
-		if (!isset($input) || !$input) return [];
+		if (!isset($input) || !$input) {
+			return [];
+		}
 
-		$pairs = explode('&', $input);
+		$pairs = explode('&', (string) $input);
 
 		$parsed_parameters = [];
 		foreach ($pairs as $pair) {
@@ -142,7 +146,7 @@ class OAuthUtil
 	{
 		// Parameters are sorted by name, using lexicographical byte value ordering.
 		// Ref: Spec: 9.1.1 (1)
-		uksort($params, 'strcmp');
+		uksort($params, strcmp(...));
 		return http_build_query($params, '', null, PHP_QUERY_RFC3986);
 	}
 }

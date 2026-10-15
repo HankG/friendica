@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -10,6 +10,7 @@ namespace Friendica\Worker;
 use Exception;
 use Friendica\Core\Hook;
 use Friendica\Core\Protocol;
+use Friendica\Event\ArrayFilterEvent;
 use Friendica\Core\Worker;
 use Friendica\Database\DBA;
 use Friendica\DI;
@@ -78,7 +79,7 @@ class Notifier
 					$inbox,
 					$uid,
 					$receivers,
-					$post_uriid
+					$post_uriid,
 				);
 			}
 		} elseif ($cmd == Delivery::SUGGESTION) {
@@ -103,12 +104,12 @@ class Notifier
 			// find ancestors
 			$condition   = ['id' => $target_id, 'visible' => true];
 			$target_item = Post::selectFirst(Item::DELIVER_FIELDLIST, $condition);
-			$target_item = Post\Media::addHTMLAttachmentToItem($target_item);
-
 			if (!DBA::isResult($target_item) || !intval($target_item['parent'])) {
 				DI::logger()->info('No target item', ['cmd' => $cmd, 'target' => $target_id]);
 				return;
 			}
+
+			$target_item = Post\Media::addHTMLAttachmentToItem($target_item);
 
 			if (!empty($target_item['contact-uid'])) {
 				$uid = $target_item['contact-uid'];
@@ -189,7 +190,7 @@ class Notifier
 					DI::logger()->debug('Post has got no Diaspora signature, so there will be no Diaspora delivery', ['guid' => $target_item['guid'], 'uri-id' => $target_item['uri-id']]);
 					$diaspora_delivery = false;
 				}
-				DI::logger()->info('Threaded comment', ['diaspora_delivery' => (int)$diaspora_delivery]);
+				DI::logger()->info('Threaded comment', ['diaspora_delivery' => (int) $diaspora_delivery]);
 			}
 
 			$unlisted = $target_item['private'] == Item::UNLISTED;
@@ -262,10 +263,10 @@ class Notifier
 				}
 
 				if (
-					strlen($parent['allow_cid'])
-					|| strlen($parent['allow_gid'])
-					|| strlen($parent['deny_cid'])
-					|| strlen($parent['deny_gid'])
+					strlen((string) $parent['allow_cid'])
+					|| strlen((string) $parent['allow_gid'])
+					|| strlen((string) $parent['deny_cid'])
+					|| strlen((string) $parent['deny_gid'])
 				) {
 					$public_message = false; // private recipients, not public
 				}
@@ -281,9 +282,9 @@ class Notifier
 					$recipients[] = $item['contact-id'];
 					// pull out additional tagged people to notify (if public message)
 					if ($public_message && $item['inform']) {
-						$people = explode(',', $item['inform']);
+						$people = explode(',', (string) $item['inform']);
 						foreach ($people as $person) {
-							if (substr($person, 0, 4) === 'cid:') {
+							if (str_starts_with($person, 'cid:')) {
 								$recipients[] = intval(substr($person, 4));
 							}
 						}
@@ -332,6 +333,11 @@ class Notifier
 		$ap_contacts = $apdelivery['contacts'];
 		$delivery_queue_count += $apdelivery['count'];
 
+		if (isset($target_item['verb']) && $target_item['verb'] === Activity::VIEW) {
+			DI::logger()->info('Not delivering view activities', ['guid' => $target_item['guid'], 'uri-id' => $target_item['uri-id']]);
+			return;
+		}
+
 		if (!$only_ap_delivery) {
 			if (empty($delivery_contacts_stmt)) {
 				$condition = ['id' => $recipients, 'self' => false, 'uid' => [0, $uid],
@@ -355,7 +361,7 @@ class Notifier
 						'contact',
 						['batch', 'network', 'protocol', 'baseurl', 'gsid', 'id', 'url', 'name'],
 						["`network` = ? AND `batch` != '' AND `uid` = ? AND `rel` != ? AND NOT `blocked` AND NOT `pending` AND NOT `archive`", Protocol::DIASPORA, $owner['uid'], Contact::SHARING],
-						['group_by' => ['batch', 'network', 'protocol']]
+						['group_by' => ['batch', 'network', 'protocol']],
 					);
 
 					// Fetch the participation list
@@ -370,7 +376,7 @@ class Notifier
 					'blocked' => false,
 					'pending' => false,
 					'archive' => false,
-					'rel'     => [Contact::FOLLOWER, Contact::FRIEND]
+					'rel'     => [Contact::FOLLOWER, Contact::FRIEND],
 				];
 
 				$contacts = DBA::selectToArray('contact', ['id', 'uri-id', 'url', 'addr', 'name', 'network', 'protocol', 'baseurl', 'gsid'], $condition);
@@ -384,12 +390,12 @@ class Notifier
 			$delivery_queue_count += self::delivery($cmd, $post_uriid, $sender_uid, $target_item, $parent, $thr_parent, $owner, $batch_delivery, false, $contacts, $ap_contacts, $conversants);
 		}
 
-		if (!empty($target_item)) {
+		if ($target_item) {
 			DI::logger()->info('Calling hooks for ' . $cmd . ' ' . $target_id);
 
 			Hook::fork($appHelper->getQueueValue('priority'), 'notifier_normal', $target_item);
 
-			Hook::callAll('notifier_end', $target_item);
+			DI::eventDispatcher()->dispatch(new ArrayFilterEvent(ArrayFilterEvent::NOTIFIER_END, $target_item));
 
 			// Workaround for pure connector posts
 			if ($cmd == Delivery::POST) {
@@ -400,6 +406,8 @@ class Notifier
 
 				Post\DeliveryData::incrementQueueCount($target_item['uri-id'], $delivery_queue_count);
 			}
+
+			Item::addPostToChannel($target_item['parent-uri-id'], $sender_uid);
 		}
 
 		return;
@@ -541,7 +549,7 @@ class Notifier
 				DI::deliveryQueueItemRepo()->save($deliveryQueueItem);
 				Worker::add(['priority' => Worker::PRIORITY_HIGH, 'dont_fork' => true], 'BulkDelivery', $contact['gsid']);
 			} else {
-				if (Worker::add($deliver_options, 'Delivery', $cmd, $post_uriid, (int)$contact['id'], $sender_uid)) {
+				if (Worker::add($deliver_options, 'Delivery', $cmd, $post_uriid, (int) $contact['id'], $sender_uid)) {
 					$delivery_queue_count++;
 				}
 			}
@@ -635,7 +643,7 @@ class Notifier
 				0,
 				$inbox,
 				$self_user_id,
-				$receivers
+				$receivers,
 			);
 			Worker::coolDown();
 		}
@@ -683,6 +691,12 @@ class Notifier
 			return ['count' => 0, 'contacts' => []];
 		}
 
+		// "View" is not delivered
+		if ($target_item['verb'] === Activity::VIEW) {
+			DI::logger()->info('Not delivering view activities', ['guid' => $target_item['guid'], 'uri-id' => $target_item['uri-id']]);
+			return ['count' => 0, 'contacts' => []];
+		}
+
 		$inboxes       = [];
 		$relay_inboxes = [];
 
@@ -699,7 +713,7 @@ class Notifier
 		if ($target_item['origin']) {
 			$inboxes = ActivityPub\Transmitter::fetchTargetInboxes($target_item, $uid);
 
-			if (in_array($target_item['private'], [Item::PUBLIC])) {
+			if (in_array($target_item['private'], [Item::PUBLIC]) && in_array($target_item['gravity'], [Item::GRAVITY_PARENT, Item::GRAVITY_COMMENT]) && !DI::pConfig()->get($uid, 'system', 'prevent-relay', false)) {
 				$inboxes       = ActivityPub\Transmitter::addRelayServerInboxesForItem($target_item['id'], $inboxes);
 				$relay_inboxes = ActivityPub\Transmitter::addRelayServerInboxes();
 			}
@@ -712,7 +726,7 @@ class Notifier
 		} elseif ($parent['origin'] && ($target_item['private'] != Item::PRIVATE) && (($target_item['gravity'] != Item::GRAVITY_ACTIVITY) || DI::config()->get('system', 'redistribute_activities'))) {
 			$inboxes = ActivityPub\Transmitter::fetchTargetInboxes($parent, $uid);
 
-			if (in_array($target_item['private'], [Item::PUBLIC])) {
+			if (in_array($target_item['private'], [Item::PUBLIC]) && in_array($target_item['gravity'], [Item::GRAVITY_PARENT, Item::GRAVITY_COMMENT]) && !DI::pConfig()->get($uid, 'system', 'prevent-relay', false)) {
 				$inboxes = ActivityPub\Transmitter::addRelayServerInboxesForItem($parent['id'], $inboxes);
 			}
 
@@ -789,7 +803,7 @@ class Notifier
 					$inbox,
 					$uid,
 					$receivers,
-					$target_item['uri-id']
+					$target_item['uri-id'],
 				)) {
 					$delivery_queue_count++;
 				}

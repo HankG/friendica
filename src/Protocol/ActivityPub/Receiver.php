@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -20,6 +20,7 @@ use Friendica\Model\Contact;
 use Friendica\Model\APContact;
 use Friendica\Model\Item;
 use Friendica\Model\Post;
+use Friendica\Model\Tag;
 use Friendica\Model\User;
 use Friendica\Protocol\Activity;
 use Friendica\Protocol\ActivityPub;
@@ -28,7 +29,9 @@ use Friendica\Util\HTTPSignature;
 use Friendica\Util\JsonLD;
 use Friendica\Util\LDSignature;
 use Friendica\Util\Network;
+use Friendica\Util\ParseUrl;
 use Friendica\Util\Strings;
+use Friendica\Content\Post\Entity\PostMedia;
 
 /**
  * ActivityPub Receiver Protocol class
@@ -45,29 +48,29 @@ use Friendica\Util\Strings;
  */
 class Receiver
 {
-	const PUBLIC_COLLECTION = 'as:Public';
+	public const PUBLIC_COLLECTION = 'as:Public';
 
-	const ACCOUNT_TYPES  = ['as:Person', 'as:Organization', 'as:Service', 'as:Group', 'as:Application'];
-	const CONTENT_TYPES  = ['as:Note', 'as:Article', 'as:Video', 'as:Image', 'as:Event', 'as:Audio', 'as:Page', 'as:Question'];
-	const ACTIVITY_TYPES = ['as:Like', 'as:Dislike', 'as:Accept', 'as:Reject', 'as:TentativeAccept', 'as:View', 'as:Read', 'litepub:EmojiReact'];
+	public const ACCOUNT_TYPES  = ['as:Person', 'as:Organization', 'as:Service', 'as:Group', 'as:Application'];
+	public const CONTENT_TYPES  = ['as:Note', 'as:Article', 'as:Video', 'as:Image', 'as:Event', 'as:Audio', 'as:Page', 'as:Question'];
+	public const ACTIVITY_TYPES = ['as:Like', 'as:Dislike', 'as:Accept', 'as:Reject', 'as:TentativeAccept', 'as:View', 'as:Read', 'litepub:EmojiReact'];
 
-	const TARGET_UNKNOWN  = 0;
-	const TARGET_TO       = 1;
-	const TARGET_CC       = 2;
-	const TARGET_BTO      = 3;
-	const TARGET_BCC      = 4;
-	const TARGET_FOLLOWER = 5;
-	const TARGET_ANSWER   = 6;
-	const TARGET_GLOBAL   = 7;
-	const TARGET_AUDIENCE = 8;
+	public const TARGET_UNKNOWN  = 0;
+	public const TARGET_TO       = 1;
+	public const TARGET_CC       = 2;
+	public const TARGET_BTO      = 3;
+	public const TARGET_BCC      = 4;
+	public const TARGET_FOLLOWER = 5;
+	public const TARGET_ANSWER   = 6;
+	public const TARGET_GLOBAL   = 7;
+	public const TARGET_AUDIENCE = 8;
 
-	const COMPLETION_NONE     = 0;
-	const COMPLETION_ANNOUNCE = 1;
-	const COMPLETION_RELAY    = 2;
-	const COMPLETION_MANUAL   = 3;
-	const COMPLETION_AUTO     = 4;
-	const COMPLETION_ASYNC    = 5;
-	const COMPLETION_REPLIES  = 6;
+	public const COMPLETION_NONE     = 0;
+	public const COMPLETION_ANNOUNCE = 1;
+	public const COMPLETION_RELAY    = 2;
+	public const COMPLETION_MANUAL   = 3;
+	public const COMPLETION_AUTO     = 4;
+	public const COMPLETION_ASYNC    = 5;
+	public const COMPLETION_REPLIES  = 6;
 
 	/**
 	 * Checks incoming message from the inbox
@@ -114,10 +117,10 @@ class Receiver
 			DI::logger()->notice('Invalid HTTP signature, message will not be trusted.', ['uid' => $uid, 'actor' => $actor, 'header' => $header, 'body' => $body]);
 			$signer = [];
 		} elseif (empty($http_signer)) {
-			DI::logger()->info('Signer is a tombstone. The message will be discarded, the signer account is deleted.');
+			DI::logger()->info('Signer is a tombstone. The message will be discarded, the signer account is deleted.', ['uid' => $uid, 'actor' => $actor]);
 			return;
 		} else {
-			DI::logger()->info('Valid HTTP signature', ['signer' => $http_signer]);
+			DI::logger()->info('Valid HTTP signature', ['uid' => $uid, 'actor' => $actor, 'signer' => $http_signer]);
 			$signer = [$http_signer];
 		}
 
@@ -220,6 +223,19 @@ class Receiver
 
 		DI::logger()->debug('Process post from relay server', ['type' => $type, 'object_type' => $object_type, 'object_id' => $object_id, 'actor' => $actor]);
 
+		self::handlePost($object_id, $actor, $activity);
+	}
+
+	/**
+	 * Handle incoming posts from relays
+	 *
+	 * @param string $object_id
+	 * @param string $actor
+	 * @param array  $activity
+	 * @return void
+	 */
+	public static function handlePost(string $object_id, string $actor, array $activity = []): void
+	{
 		$item_id = Item::searchByLink($object_id);
 		if ($item_id) {
 			DI::logger()->info('Relayed message already exists', ['id' => $object_id, 'item' => $item_id, 'actor' => $actor]);
@@ -418,7 +434,7 @@ class Receiver
 				$apcontact    = APContact::getByURL($object_data['object_id'], true);
 				$trust_source = empty($apcontact) || ($apcontact['type'] == 'Tombstone') || $apcontact['suspended'];
 			}
-		} elseif (in_array($type, ['as:Create', 'as:Update', 'as:Invite']) || strpos($type, '#emojiReaction')) {
+		} elseif (in_array($type, ['as:Create', 'as:Update', 'as:Invite']) || strpos((string) $type, '#emojiReaction')) {
 			// Fetch the content only on activities where this matters
 			// We can receive "#emojiReaction" when fetching content from Hubzilla systems
 			$object_data = self::fetchObject($object_id, $activity['as:object'], $trust_source, $fetch_uid);
@@ -452,6 +468,13 @@ class Receiver
 			$object_data['object_id']      = JsonLD::fetchElement($activity, 'as:object', '@id');
 			$object_data['object_type']    = JsonLD::fetchElement($activity['as:object'], '@type');
 			$object_data['object_content'] = JsonLD::fetchElement($activity['as:object'], 'as:content', '@type');
+		} elseif (in_array($type, ['quote:QuoteRequest'])) {
+			$object_data = [];
+
+			$object_data['id']          = JsonLD::fetchElement($activity, '@id');
+			$object_data['target_id']   = JsonLD::fetchElement($activity, 'as:instrument', '@id', '@type', 'as:Note');
+			$object_data['object_id']   = JsonLD::fetchElement($activity, 'as:object', '@id');
+			$object_data['object_type'] = JsonLD::fetchElement($activity['as:object'], '@type');
 		} else {
 			$object_data = [];
 
@@ -489,10 +512,13 @@ class Receiver
 		}
 
 		$object_data['type']           = $type;
-		$object_data['actor']          = $actor;
 		$object_data['item_receiver']  = $receivers;
 		$object_data['receiver']       = array_replace($object_data['receiver'] ?? [], $receivers);
 		$object_data['reception_type'] = array_replace($object_data['reception_type'] ?? [], $reception_types);
+
+		if (empty($object_data['actor'])) {
+			$object_data['actor'] = $actor;
+		}
 
 		$account  = Contact::selectFirstAccount(['platform'], ['nurl' => Strings::normaliseLink($actor)]);
 		$platform = $account['platform'] ?? '';
@@ -607,7 +633,7 @@ class Receiver
 	 * @throws \Friendica\Network\HTTPException\InternalServerErrorException
 	 * @throws \ImagickException
 	 */
-	public static function processActivity(array $activity, string $body = '', int $uid = null, bool $trust_source = false, bool $push = false, array $signer = [], string $http_signer = '', int $completion = Receiver::COMPLETION_AUTO): bool
+	public static function processActivity(array $activity, string $body = '', ?int $uid = null, bool $trust_source = false, bool $push = false, array $signer = [], string $http_signer = '', int $completion = Receiver::COMPLETION_AUTO): bool
 	{
 		$type = JsonLD::fetchElement($activity, '@type');
 		if (!$type) {
@@ -638,8 +664,16 @@ class Receiver
 			$id            = JsonLD::fetchElement($activity, '@id');
 			$object_id     = JsonLD::fetchElement($activity, 'as:object', '@id');
 
-			if (!empty($published) && $object_id !== null && in_array($type, ['as:Create', 'as:Update']) && in_array($object_type, self::CONTENT_TYPES)
-				&& ($push || ($completion != self::COMPLETION_MANUAL)) && DI::contentItem()->isTooOld($published) && !Post::exists(['uri' => $object_id])) {
+			if (
+				!empty($published)
+				/** @phpstan-ignore notIdentical.alwaysTrue(ignore false positive error of phpstan) */
+				&& $object_id !== null
+				&& in_array($type, ['as:Create', 'as:Update'])
+				&& in_array($object_type, self::CONTENT_TYPES)
+				&& ($push || ($completion != self::COMPLETION_MANUAL))
+				&& DI::contentItem()->isTooOld($published)
+				&& !Post::exists(['uri' => $object_id])
+			) {
 				DI::logger()->debug('Activity is too old. It will not be processed', ['push' => $push, 'completion' => $completion, 'type' => $type,  'object-type' => $object_type, 'published' => $published, 'id' => $id, 'object-id' => $object_id]);
 				return true;
 			}
@@ -838,6 +872,9 @@ class Receiver
 							Queue::remove($object_data);
 							return true;
 						}
+					} elseif (Queue::exists($object_data['object_id'], 'as:Create')) {
+						DI::logger()->info('Announced id will now be processed.', ['uid' => $uid, 'id' => $object_data['object_id']]);
+						Queue::processByUri($object_data['object_id'], 'as:Create');
 					} else {
 						DI::logger()->info('Announced id already exists', ['uid' => $uid, 'id' => $object_data['object_id']]);
 						Queue::remove($object_data);
@@ -982,27 +1019,27 @@ class Receiver
 				break;
 
 			case 'as:Undo':
-				if (($object_data['object_type'] == 'as:Follow') &&
-					in_array($object_data['object_object_type'], self::ACCOUNT_TYPES)) {
+				if (($object_data['object_type'] == 'as:Follow')
+					&& in_array($object_data['object_object_type'], self::ACCOUNT_TYPES)) {
 					ActivityPub\Processor::undoFollowUser($object_data);
-				} elseif (($object_data['object_type'] == 'as:Follow') &&
-					in_array($object_data['object_object_type'], self::CONTENT_TYPES)) {
+				} elseif (($object_data['object_type'] == 'as:Follow')
+					&& in_array($object_data['object_object_type'], self::CONTENT_TYPES)) {
 					ActivityPub\Processor::undoActivity($object_data);
-				} elseif (($object_data['object_type'] == 'as:Accept') &&
-					in_array($object_data['object_object_type'], self::ACCOUNT_TYPES)) {
+				} elseif (($object_data['object_type'] == 'as:Accept')
+					&& in_array($object_data['object_object_type'], self::ACCOUNT_TYPES)) {
 					ActivityPub\Processor::rejectFollowUser($object_data);
-				} elseif (($object_data['object_type'] == 'as:Block') &&
-					in_array($object_data['object_object_type'], self::ACCOUNT_TYPES)) {
+				} elseif (($object_data['object_type'] == 'as:Block')
+					&& in_array($object_data['object_object_type'], self::ACCOUNT_TYPES)) {
 					ActivityPub\Processor::unblockAccount($object_data);
-				} elseif (in_array($object_data['object_type'], array_merge(self::ACTIVITY_TYPES, ['as:Announce', 'as:Create', ''])) &&
-					empty($object_data['object_object_type'])) {
+				} elseif (in_array($object_data['object_type'], array_merge(self::ACTIVITY_TYPES, ['as:Announce', 'as:Create', '']))
+					&& empty($object_data['object_object_type'])) {
 					// We cannot detect the target object. So we can ignore it.
 					Queue::remove($object_data);
-				} elseif (in_array($object_data['object_type'], array_merge(self::ACTIVITY_TYPES, ['as:Announce'])) &&
-					in_array($object_data['object_object_type'], array_merge(['as:Tombstone'], self::CONTENT_TYPES))) {
+				} elseif (in_array($object_data['object_type'], array_merge(self::ACTIVITY_TYPES, ['as:Announce']))
+					&& in_array($object_data['object_object_type'], array_merge(['as:Tombstone'], self::CONTENT_TYPES))) {
 					ActivityPub\Processor::undoActivity($object_data);
-				} elseif (in_array($object_data['object_type'], ['as:Create']) &&
-					in_array($object_data['object_object_type'], ['pt:CacheFile'])) {
+				} elseif (in_array($object_data['object_type'], ['as:Create'])
+					&& in_array($object_data['object_object_type'], ['pt:CacheFile'])) {
 					// Unhandled Peertube activity
 					Queue::remove($object_data);
 				} elseif (in_array($object_data['object_type'], ['as:Delete'])) {
@@ -1048,6 +1085,10 @@ class Receiver
 				}
 				break;
 
+			case 'quote:QuoteRequest':
+				ActivityPub\Processor::processQuoteRequest($object_data);
+				break;
+
 			default:
 				DI::logger()->info('Unknown activity: ' . $type . ' ' . $object_data['object_type']);
 				return false;
@@ -1069,7 +1110,7 @@ class Receiver
 	 * @param array   $signer       The signer of the post
 	 * @return void
 	 */
-	private static function storeUnhandledActivity(bool $unknown, string $type, array $object_data, array $activity, string $body = '', int $uid = null, bool $trust_source = false, bool $push = false, array $signer = [])
+	private static function storeUnhandledActivity(bool $unknown, string $type, array $object_data, array $activity, string $body = '', ?int $uid = null, bool $trust_source = false, bool $push = false, array $signer = [])
 	{
 		if (!DI::config()->get('debug', 'ap_log_unknown')) {
 			return;
@@ -1249,7 +1290,7 @@ class Receiver
 					$networks  = Protocol::FEDERATED;
 					$condition = [
 						'nurl'    => Strings::normaliseLink($actor), 'rel' => [Contact::SHARING, Contact::FRIEND],
-						'network' => $networks, 'archive' => false, 'pending' => false, 'uid' => $contact['uid']
+						'network' => $networks, 'archive' => false, 'pending' => false, 'uid' => $contact['uid'],
 					];
 
 					// Group posts are only accepted from group contacts
@@ -1334,7 +1375,7 @@ class Receiver
 	{
 		$basecondition = [
 			'rel'     => [Contact::SHARING, Contact::FRIEND, Contact::FOLLOWER],
-			'network' => Protocol::FEDERATED, 'archive' => false, 'pending' => false
+			'network' => Protocol::FEDERATED, 'archive' => false, 'pending' => false,
 		];
 
 		$condition = DBA::mergeConditions($basecondition, ["`uri-id` = ? AND `uid` != ?", $profile['uri-id'], 0]);
@@ -1529,7 +1570,7 @@ class Receiver
 				'type'      => str_replace('as:', '', JsonLD::fetchElement($tag, '@type') ?? ''),
 				'href'      => JsonLD::fetchElement($tag, 'as:href', '@id'),
 				'name'      => JsonLD::fetchElement($tag, 'as:name', '@value'),
-				'mediaType' => JsonLD::fetchElement($tag, 'as:mediaType', '@value')
+				'mediaType' => JsonLD::fetchElement($tag, 'as:mediaType', '@value'),
 			];
 
 			if (empty($element['type'])) {
@@ -1562,7 +1603,7 @@ class Receiver
 
 			$element = [
 				'name' => JsonLD::fetchElement($emoji, 'as:name', '@value'),
-				'href' => JsonLD::fetchElement($emoji['as:icon'], 'as:url', '@id')
+				'href' => JsonLD::fetchElement($emoji['as:icon'], 'as:url', '@id'),
 			];
 
 			$emojilist[] = $element;
@@ -1670,9 +1711,15 @@ class Receiver
 						'name'      => JsonLD::fetchElement($attachment, 'as:name', '@value'),
 						'url'       => $imageFullUrl,
 						'image'     => $imagePreviewUrl !== $imageFullUrl ? $imagePreviewUrl : null,
+						'blurhash'  => JsonLD::fetchElement($attachment, 'toot:blurhash', '@value'),
 					];
 					break;
 				default:
+					if (!empty($attachment['as:icon'])) {
+						$icon = JsonLD::fetchElement($attachment['as:icon'], 'as:url', '@id');
+					} else {
+						$icon = null;
+					}
 					$attachlist[] = [
 						'type'      => str_replace('as:', '', JsonLD::fetchElement($attachment, '@type')),
 						'mediaType' => JsonLD::fetchElement($attachment, 'as:mediaType', '@value'),
@@ -1680,7 +1727,8 @@ class Receiver
 						'url'       => JsonLD::fetchElement($attachment, 'as:url', '@id') ?? JsonLD::fetchElement($attachment, 'as:href', '@id'),
 						'height'    => JsonLD::fetchElement($attachment, 'as:height', '@value'),
 						'width'     => JsonLD::fetchElement($attachment, 'as:width', '@value'),
-						'image'     => JsonLD::fetchElement($attachment, 'as:image', '@id')
+						'image'     => JsonLD::fetchElement($attachment, 'as:image', '@id') ?? $icon,
+						'blurhash'  => JsonLD::fetchElement($attachment, 'toot:blurhash', '@value'),
 					];
 			}
 		}
@@ -1716,7 +1764,7 @@ class Receiver
 			$question['end-time'] = JsonLD::fetchElement($object, 'as:endTime', '@value');
 		}
 
-		$question['voters']  = (int)JsonLD::fetchElement($object, 'toot:votersCount', '@value');
+		$question['voters']  = (int) JsonLD::fetchElement($object, 'toot:votersCount', '@value');
 		$question['options'] = [];
 
 		$voters = 0;
@@ -1736,7 +1784,7 @@ class Receiver
 
 			$question['options'][] = ['name' => $name, 'replies' => $replies];
 
-			$voters += (int)$replies;
+			$voters += (int) $replies;
 		}
 
 		// For single choice question we can count the number of voters if not provided (like with Misskey)
@@ -1745,6 +1793,33 @@ class Receiver
 		}
 
 		return $question;
+	}
+
+	/**
+	 * Process the icon of an object
+	 *
+	 * @param array $object The object to process
+	 *
+	 * @return string|null The icon URL or null if not found
+	 */
+	private static function processIcon(array $object): ?string
+	{
+		if (empty($object['as:icon'])) {
+			return null;
+		}
+
+		$icon     = null;
+		$width    = 0;
+		$previous = 0;
+		foreach (JsonLD::fetchElementArray($object, 'as:icon') as $element) {
+			$width = (int) JsonLD::fetchElement($element, 'as:width', '@value');
+			if ($previous < $width) {
+				$icon     = JsonLD::fetchElement($element, 'as:url', '@id');
+				$previous = $width;
+			}
+		}
+
+		return $icon;
 	}
 
 	/**
@@ -1787,7 +1862,7 @@ class Receiver
 	 * @param array $urls
 	 * @return string
 	 */
-	private static function extractAlternateUrl(array $urls): string
+	private static function extractAlternateUrl(array $urls, string $id): string
 	{
 		$alternateUrl = '';
 		foreach ($urls as $key => $url) {
@@ -1810,7 +1885,7 @@ class Receiver
 				continue;
 			}
 
-			if ($mediatype == 'text/html') {
+			if ($mediatype === 'text/html' && ($href != $id || $alternateUrl === '')) {
 				$alternateUrl = $href;
 			}
 		}
@@ -1823,10 +1898,13 @@ class Receiver
 	 * This is the case with audio and video posts.
 	 * Then the links are added as attachments
 	 *
-	 * @param array $urls The object URL list
+	 * @param array       $urls   The object URL list
+	 * @param string|null $icon   The icon URL to use for the attachments
+	 * @param array       $player Embedded player data (url, width, height)
+	 * @param array       $embed  oEmbed data (html, width, height)
 	 * @return array an array of attachments
 	 */
-	private static function processAttachmentUrls(array $urls): array
+	private static function processAttachmentUrls(array $urls, ?string $icon, array $player, array $embed): array
 	{
 		$attachments = [];
 		foreach ($urls as $key => $url) {
@@ -1849,32 +1927,58 @@ class Receiver
 				continue;
 			}
 
-			$filetype = strtolower(substr($mediatype, 0, strpos($mediatype, '/')));
+			$filetype = strtolower(substr((string) $mediatype, 0, strpos((string) $mediatype, '/')));
+			$type     = Post\Media::getType($mediatype);
 
-			if ($filetype == 'audio') {
-				$attachments[] = ['type' => $filetype, 'mediaType' => $mediatype, 'url' => $href, 'height' => null, 'size' => null, 'name' => ''];
-			} elseif ($filetype == 'video') {
-				$height = (int)JsonLD::fetchElement($url, 'as:height', '@value');
+			$height = JsonLD::fetchElement($url, 'as:height', '@value');
+			$width  = JsonLD::fetchElement($url, 'as:width', '@value');
+
+			if ($type == PostMedia::TYPE_AUDIO) {
+				$attachments[] = ['type' => $filetype, 'mediaType' => $mediatype, 'url' => $href, 'height' => $height, 'width' => $width, 'size' => null, 'name' => '', 'image' => $icon];
+			} elseif ($type == PostMedia::TYPE_VIDEO) {
 				// PeerTube audio-only track
-				if ($height === 0) {
+				if (!$height) {
 					continue;
 				}
 
-				$size = (int)JsonLD::fetchElement($url, 'pt:size', '@value');
+				$size = (int) JsonLD::fetchElement($url, 'pt:size', '@value');
 
-				$attachments[] = ['type' => $filetype, 'mediaType' => $mediatype, 'url' => $href, 'height' => $height, 'size' => $size, 'name' => ''];
-			} elseif (in_array($mediatype, ['application/x-bittorrent', 'application/x-bittorrent;x-scheme-handler/magnet'])) {
-				$height = (int)JsonLD::fetchElement($url, 'as:height', '@value');
-
+				$attachments[] = ['type' => $filetype, 'mediaType' => $mediatype, 'url' => $href, 'height' => $height, 'width' => $width, 'size' => $size, 'name' => '', 'image' => $icon];
+			} elseif ($type == PostMedia::TYPE_TORRENT) {
 				// For Torrent links we always store the highest resolution
 				if (!empty($attachments[$mediatype]['height']) && ($height < $attachments[$mediatype]['height'])) {
 					continue;
 				}
 
-				$attachments[$mediatype] = ['type' => $mediatype, 'mediaType' => $mediatype, 'url' => $href, 'height' => $height, 'size' => null, 'name' => ''];
-			} elseif ($mediatype == 'application/x-mpegURL') {
-				// PeerTube exception, actual video link is in the tags of this URL element
-				$attachments = array_merge($attachments, self::processAttachmentUrls($url['as:tag']));
+				$attachments[$mediatype] = ['type' => $mediatype, 'mediaType' => $mediatype, 'url' => $href, 'height' => $height, 'width' => $width, 'size' => null, 'name' => ''];
+			} elseif ($type == PostMedia::TYPE_HLS) {
+				$attachment = [
+					'type'      => $filetype,
+					'mediaType' => $mediatype,
+					'url'       => $href,
+					'height'    => $height,
+					'width'     => $width,
+					'size'      => null,
+					'name'      => '',
+					'image'     => $icon,
+				];
+
+				$attachment['player-url']    = $player['embed']  ?? null;
+				$attachment['player-height'] = $player['height'] ?? null;
+				$attachment['player-width']  = $player['width']  ?? null;
+
+				if (!$height && !$width) {
+					$attachment['height'] = $attachment['player-height'];
+					$attachment['width']  = $attachment['player-width'];
+				}
+
+				$attachment['embed-type']   = $embed['type']   ?? null;
+				$attachment['embed-html']   = $embed['html']   ?? null;
+				$attachment['embed-height'] = $embed['height'] ?? null;
+				$attachment['embed-width']  = $embed['width']  ?? null;
+
+				DI::logger()->info('Adding video attachment', ['attachment' => $attachment]);
+				$attachments[] = $attachment;
 			}
 		}
 
@@ -1917,11 +2021,43 @@ class Receiver
 			}
 		}
 
+		if (!empty($object['gts:interactionPolicy'])) {
+			$object_data['interaction'] = self::getinteractionPolicy($object['gts:interactionPolicy']);
+		}
+
 		if (!empty($object['pixelfed:capabilities'])) {
 			$object_data['capabilities'] = self::getCapabilities($object);
 		}
 
 		return $object_data;
+	}
+
+	/**
+	 * Import GoToSocial's interaction policx
+	 * @see https://docs.gotosocial.org/en/latest/federation/interaction_policy/
+	 *
+	 * @param array $object
+	 * @return array
+	 */
+	private static function getinteractionPolicy(array $object): array
+	{
+		$interactions = [];
+		foreach ([Tag::CAN_ANNOUNCE => 'gts:canAnnounce', Tag::CAN_LIKE => 'gts:canLike', Tag::CAN_REPLY => 'gts:canReply', Tag::CAN_QUOTE => 'gts:canQuote'] as $key => $element) {
+			foreach (['gts:automaticApproval', 'gts:manualApproval'] as $approval) {
+				if (!isset($object[$element][$approval])) {
+					continue;
+				}
+				$interaction = JsonLD::fetchElement($object[$element][$approval], '@id');
+				if (empty($interaction)) {
+					continue;
+				}
+				if ($interaction == self::PUBLIC_COLLECTION) {
+					$interaction = ActivityPub::PUBLIC_COLLECTION;
+				}
+				$interactions[$key][] = $interaction;
+			}
+		}
+		return $interactions;
 	}
 
 	private static function getCapabilities($object)
@@ -1932,7 +2068,13 @@ class Receiver
 			if (empty($capabilities_list)) {
 				continue;
 			}
-			$capabilities[$element] = $capabilities_list;
+
+			foreach ($capabilities_list as $capability) {
+				if ($capability == self::PUBLIC_COLLECTION) {
+					$capability = ActivityPub::PUBLIC_COLLECTION;
+				}
+				$capabilities[$element][] = $capability;
+			}
 		}
 		return $capabilities;
 	}
@@ -1983,9 +2125,18 @@ class Receiver
 			$object_data['published'] = $object_data['updated'];
 		}
 
-		$actor = JsonLD::fetchElement($object, 'as:attributedTo', '@id');
-		if (empty($actor)) {
-			$actor = JsonLD::fetchElement($object, 'as:actor', '@id');
+		$actor  = JsonLD::fetchElement($object, 'as:attributedTo', '@id');
+		$author = JsonLD::fetchElement($object, 'as:actor', '@id') ?? $actor;
+
+		if (!empty($actor)) {
+			foreach (JsonLD::fetchElementArray($object, 'as:attributedTo', '@id') as $element) {
+				if ($element != $author) {
+					$actor = $element;
+					break;
+				}
+			}
+		} else {
+			$actor = $author;
 		}
 
 		$location = JsonLD::fetchElement($object, 'as:location', 'as:name', '@type', 'as:Place');
@@ -2001,7 +2152,8 @@ class Receiver
 		$object_data['diaspora:guid']         = JsonLD::fetchElement($object, 'diaspora:guid', '@value');
 		$object_data['diaspora:comment']      = JsonLD::fetchElement($object, 'diaspora:comment', '@value');
 		$object_data['diaspora:like']         = JsonLD::fetchElement($object, 'diaspora:like', '@value');
-		$object_data['actor']                 = $object_data['author'] = $actor;
+		$object_data['author']                = $author;
+		$object_data['actor']                 = $actor;
 		$element                              = JsonLD::fetchElement($object, 'as:context', '@id');
 		$object_data['context']               = $element != './' ? $element : null;
 		$element                              = JsonLD::fetchElement($object, 'ostatus:conversation', '@id');
@@ -2043,13 +2195,21 @@ class Receiver
 		}
 
 		if (in_array($object_data['object_type'], ['as:Audio', 'as:Video'])) {
-			$object_data['alternate-url'] = self::extractAlternateUrl($object['as:url'] ?? []) ?: $object_data['alternate-url'];
-			$object_data['attachments']   = array_merge($object_data['attachments'], self::processAttachmentUrls($object['as:url'] ?? []));
-		}
+			$object_data['alternate-url'] = self::extractAlternateUrl($object['as:url'] ?? [], $object_data['id']) ?: $object_data['alternate-url'];
 
-		$object_data['can-comment'] = JsonLD::fetchElement($object, 'pt:commentsEnabled', '@value');
-		if (is_null($object_data['can-comment'])) {
-			$object_data['can-comment'] = JsonLD::fetchElement($object, 'pixelfed:commentsEnabled', '@value');
+			$siteinfo = ParseUrl::getSiteinfoCached($object_data['alternate-url'] ?? '');
+			if (isset($siteinfo['player'])) {
+				$player = $siteinfo['player'];
+			} else {
+				$player = [];
+			}
+			if (isset($siteinfo['embed'])) {
+				$embed = $siteinfo['embed'];
+			} else {
+				$embed = [];
+			}
+
+			$object_data['attachments'] = array_merge($object_data['attachments'], self::processAttachmentUrls($object['as:url'] ?? [], self::processIcon($object), $player, $embed));
 		}
 
 		// Support for quoted posts (Pleroma, Fedibird and Misskey)
@@ -2066,6 +2226,13 @@ class Receiver
 		if (empty($object_data['quote-url'])) {
 			$object_data['quote-url'] = JsonLD::fetchElement($object, 'misskey:_misskey_quote', '@id');
 		}
+		if (empty($object_data['quote-url'])) {
+			$object_data['quote-url'] = JsonLD::fetchElement($object, 'quote:quote');
+		}
+
+		if (!is_null($object_data['quote-url']) && !is_null($object_data['content'])) {
+			$object_data['content'] = HTML::removeElementByClass($object_data['content'], 'quote-inline');
+		}
 
 		foreach ($object_data['tags'] as $tag) {
 			if (HTTPSignature::isValidContentType($tag['mediaType'] ?? '', $tag['href'] ?? '')) {
@@ -2075,12 +2242,13 @@ class Receiver
 
 		// Misskey adds some data to the standard "content" value for quoted posts for backwards compatibility.
 		// Their own "_misskey_content" value does then contain the content without this extra data.
-		if (!empty($object_data['quote-url'])) {
-			$misskey_content = JsonLD::fetchElement($object, 'misskey:_misskey_content', '@value');
-			if (!empty($misskey_content)) {
-				$object_data['content'] = $misskey_content;
-			}
-		}
+		// Currently deactivated until we now the format, see https://github.com/friendica/friendica/issues/15688#issuecomment-4470527471
+		// if (!empty($object_data['quote-url'])) {
+		//	$misskey_content = JsonLD::fetchElement($object, 'misskey:_misskey_content', '@value');
+		//	if (!empty($misskey_content)) {
+		//		$object_data['content'] = $misskey_content;
+		//	}
+		//}
 
 		// For page types we expect that the alternate url posts to some page.
 		// So we add this to the attachments if it differs from the id.

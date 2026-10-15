@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -39,7 +39,7 @@ class Lists extends ContactEndpoint
 
 			$condition = ['uid' => $uid, 'self' => false, 'pending' => false, 'rel' => [Contact::SHARING, Contact::FRIEND]];
 
-			$total_count = (int)DBA::count('contact', $condition);
+			$total_count = (int) DBA::count('contact', $condition);
 
 			if (!empty($max_id)) {
 				$condition = DBA::mergeConditions($condition, ["`pid` < ?", $max_id]);
@@ -66,7 +66,7 @@ class Lists extends ContactEndpoint
 
 			$condition = ['relation-cid' => $cid, 'follows' => true];
 
-			$total_count = (int)DBA::count('contact-relation', $condition);
+			$total_count = (int) DBA::count('contact-relation', $condition);
 
 			if (!empty($max_id)) {
 				$condition = DBA::mergeConditions($condition, ["`cid` < ?", $max_id]);
@@ -98,7 +98,7 @@ class Lists extends ContactEndpoint
 
 		$return = self::list($ids, $total_count, $uid, $cursor, $count, $skip_status, $include_user_entities);
 
-		$this->response->setHeader(self::getLinkHeader());
+		$this->setPaginationLinkHeader();
 
 		$this->response->addFormattedContent('lists', ['lists' => $return]);
 	}

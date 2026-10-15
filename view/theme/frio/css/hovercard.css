@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2010-2024 the Friendica project
+ * SPDX-FileCopyrightText: 2010-2026 the Friendica project
  *
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
@@ -9,17 +9,17 @@
 	top: 0;
 	left: 0;
 	z-index: 1040;
-	display: none;
-	max-width: 400px;
-	padding: 1px;
-	text-align: left;
 	background-color: #ffffff;
 	background-clip: padding-box;
-	border: 1px solid #cccccc;
+	border: 1px solid rgba(0, 0, 0, 0);
+	border-radius: 4px;
 	border: 1px solid rgba(0, 0, 0, 0.2);
-	border-radius: 200px;
-	-webkit-box-shadow: 0 5px 10px rgba(0, 0, 0, 0.2);
-	box-shadow: 0 5px 10px rgba(0, 0, 0, 0.2);
+	box-shadow: 0 10px 100px rgba(0, 0, 0, 0.25);
+	display: none;
+	padding: 1px;
+	text-align: left;
+	width: clamp(250px, 90vw, 400px);
+	max-width: 400px;
 	white-space: normal;
 }
 
@@ -29,6 +29,10 @@
 
 .hovercard.right {
 	margin-left: 10px;
+}
+
+.hovercard .thumbnail {
+	margin-bottom: 0px;
 }
 
 .hovercard.bottom {
@@ -45,7 +49,6 @@
 	font-size: 14px;
 	font-weight: normal;
 	line-height: 18px;
-	background-color: #f7f7f7;
 	border-bottom: 1px solid #ebebeb;
 	border-radius: 199px 199px 0 0;
 	display: none;
@@ -234,56 +237,15 @@
 	margin-bottom: 0;
 }
 
-.hovercard {
-	-webkit-border-radius: 4px;
-	-moz-border-radius: 4px;
-	border-radius: 4px;
-	/*max-width: 250px;*/
-	max-width: 400px;
-	width: 350px;
-	-webkit-box-shadow: 0 10px 100px rgba(0, 0, 0, 0.25);
-	-moz-box-shadow: 0 10px 100px rgba(0, 0, 0, 0.25);
-	box-shadow: 0 10px 100px rgba(0, 0, 0, 0.25);
-	border: 1px solid rgba(0, 0, 0, 0);
-}
-
 .hovercard a:hover {
 	text-decoration: none;
 }
 
-.hovercard.right > .arrow {
-	border-right-color: rgba(0, 0, 0, 0.05);
-}
-
-.hovercard.left > .arrow {
-	border-left-color: rgba(0, 0, 0, 0.05);
-}
-
 .hovercard.bottom > .arrow {
-	border-bottom-color: rgba(0, 0, 0, 0.05);
+	border-color: rgba(0, 0, 0, 0.05);
 }
 
-.hovercard.top > .arrow {
-	border-top-color: rgba(0, 0, 0, 0.05);
-}
-
-.advance-hovercard + .hovercard {
-	max-width: 445px;
-}
-
-.advance-hovercard + .hovercard .hovercard-content {
-	padding: 5px;
-}
-
-.basic-hovercard + .hovercard {
-	max-width: 445px;
-}
-
-.basic-hovercard + .hovercard .hovercard-content {
-	padding: 5px;
-}
-
-.hover-card-header {
+.hover-card-header, .hover-card-details, .hover-card-content {
 	width: 100%;
 }
 
@@ -295,10 +257,6 @@
 	font-size: 18px;
 	font-weight: bold;
 	letter-spacing: 0.03rem;
-}
-
-.hover-card-details {
-	width: 100%;
 }
 
 .hover-card-pic {
@@ -314,13 +272,8 @@
 
 .hover-card-content {
 	list-style-type: none;
-	width: 100%;
 	display: block;
-	padding: 0.3em 0 1em;
-}
-
-.hover-card-content .profile-details {
-	font-size: 13px;
+	padding: 0.3em 0 0.3em;
 }
 
 .hover-card-content .profile-addr {
@@ -329,12 +282,14 @@
 	text-overflow: ellipsis;
 }
 
-.hover-card-actions {
+.hover-card-actions, .hover-card-actions-connection {
 	display: flex;
+	gap: 5px;
+	flex-wrap: wrap;
 }
 
-.hover-card-actions-connection {
-	margin-left: 10px;
+.hover-card-actions {
+	margin-bottom: 5px;
 }
 
 .hovercard .hovercard-content .hover-card-actions a.btn {

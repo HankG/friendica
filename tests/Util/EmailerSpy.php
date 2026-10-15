@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -28,10 +28,10 @@ class EmailerSpy extends Emailer
 	protected function mail(string $to, string $subject, string $body, string $headers, string $parameters)
 	{
 		self::$MAIL_DATA = [
-			'to' => $to,
-			'subject' => $subject,
-			'body' => $body,
-			'headers' => $headers,
+			'to'         => $to,
+			'subject'    => $subject,
+			'body'       => $body,
+			'headers'    => $headers,
 			'parameters' => $parameters,
 		];
 

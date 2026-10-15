@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -36,6 +36,7 @@ use Friendica\Util\Proxy;
 use Friendica\Util\Strings;
 use Friendica\Util\XML;
 use GuzzleHttp\Exception\TransferException;
+use Friendica\Content\Post\Entity\PostMedia;
 
 /**
  * This class contain functions to import feeds (RSS/RDF/Atom)
@@ -279,8 +280,7 @@ class Feed
 			return [];
 		}
 
-		$items          = [];
-		$creation_dates = [];
+		$items = [];
 
 		// Limit the number of items that are about to be fetched
 		$total_items = ($entries->length - 1);
@@ -289,15 +289,20 @@ class Feed
 			$total_items = $max_items;
 		}
 
-		$postings = self::importOlderEntries($entries, $total_items, $header, $author, $contact, $importer, $xpath, $atomns, $basepath, $dryRun);
+		$processed = self::processEntries($entries, $total_items, $header, $author, $contact, $importer, $xpath, $atomns, $basepath, $dryRun);
+
+		$postings       = $processed['postings'];
+		$creation_dates = $processed['creation_dates'];
 
 		if (!empty($postings)) {
-			$min_posting = DI::config()->get('system', 'minimum_posting_interval', 0);
-			$total       = count($postings);
+			$system_min_posting = DI::config()->get('system', 'minimum_posting_interval');
+			$user_min_posting   = DI::pConfig()->get($importer['uid'], 'system', 'minimum_posting_interval', 0, true);
+			$min_posting        = max($system_min_posting, $user_min_posting) * 60;
+			$total              = count($postings);
 			if ($total > 1) {
 				// Posts shouldn't be delayed more than a day
 				$interval = min(1440, self::getPollInterval($contact));
-				$delay    = max(round(($interval * 60) / $total), 60 * $min_posting);
+				$delay    = max(round(($interval * 60) / $total), $min_posting);
 				DI::logger()->info('Got posting delay', ['delay' => $delay, 'interval' => $interval, 'items' => $total, 'cid' => $contact['id'], 'url' => $contact['url']]);
 			} else {
 				$delay = 0;
@@ -314,7 +319,7 @@ class Feed
 				}
 
 				$last_publish = DI::pConfig()->get($posting['item']['uid'], 'system', 'last_publish', 0, true);
-				$next_publish = max($last_publish + (60 * $min_posting), time());
+				$next_publish = max($last_publish + $min_posting, time());
 				if ($publish_time < $next_publish) {
 					$publish_time = $next_publish;
 				}
@@ -358,9 +363,10 @@ class Feed
 		return $title;
 	}
 
-	private static function importOlderEntries(DOMNodeList $entries, int $total_items, array $header, array $author, array $contact, array $importer, DOMXPath $xpath, string $atomns, string $basepath, bool $dryRun): array
+	private static function processEntries(DOMNodeList $entries, int $total_items, array $header, array $author, array $contact, array $importer, DOMXPath $xpath, string $atomns, string $basepath, bool $dryRun): array
 	{
-		$postings = [];
+		$postings       = [];
+		$creation_dates = [];
 
 		// Importing older entries first
 		for ($i = $total_items; $i >= 0; --$i) {
@@ -438,14 +444,14 @@ class Feed
 				}
 
 				// Don't use the GUID value directly but instead use it as a basis for the GUID
-				$item['guid'] = Item::guidFromUri($guid, $host);
+				$item['guid'] = DI::postUriGenerator()->guidFromUri($guid, $host);
 			}
 
 			if (empty($item['uri'])) {
 				$item['uri'] = $item['plink'];
 			}
 
-			if (!parse_url($item['uri'], PHP_URL_HOST)) {
+			if (!parse_url((string) $item['uri'], PHP_URL_HOST)) {
 				$item['uri'] = 'feed::' . $host . ':' . $item['uri'];
 			}
 
@@ -492,7 +498,7 @@ class Feed
 			if (!$dryRun) {
 				$condition = [
 					"`uid` = ? AND `uri` = ? AND `network` IN (?, ?)",
-					$importer['uid'], $item['uri'], Protocol::FEED, Protocol::DFRN
+					$importer['uid'], $item['uri'], Protocol::FEED, Protocol::DFRN,
 				];
 				$previous = Post::selectFirst(['id', 'created'], $condition);
 				if (DBA::isResult($previous)) {
@@ -541,21 +547,21 @@ class Feed
 						if (in_array($attribute->name, ['url', 'href'])) {
 							$href = $attribute->textContent;
 						} elseif ($attribute->name == 'length') {
-							$length = (int)$attribute->textContent;
+							$length = (int) $attribute->textContent;
 						} elseif ($attribute->name == 'type') {
 							$type = $attribute->textContent;
 						}
 					}
 
 					if (!empty($href)) {
-						$attachment = ['uri-id' => -1, 'type' => Post\Media::UNKNOWN, 'url' => $href, 'mimetype' => $type, 'size' => $length];
+						$attachment = ['uri-id' => -1, 'type' => PostMedia::TYPE_UNKNOWN, 'url' => $href, 'mimetype' => $type, 'size' => $length];
 
 						$attachment = Post\Media::fetchAdditionalData($attachment);
 
 						// By now we separate the visible media types (audio, video, image) from the rest
 						// In the future we should try to avoid the DOCUMENT type and only use the real one - but not in the RC phase.
-						if (!in_array($attachment['type'], [Post\Media::AUDIO, Post\Media::IMAGE, Post\Media::VIDEO])) {
-							$attachment['type'] = Post\Media::DOCUMENT;
+						if (!in_array($attachment['type'], [PostMedia::TYPE_AUDIO, PostMedia::TYPE_IMAGE, PostMedia::TYPE_VIDEO])) {
+							$attachment['type'] = PostMedia::TYPE_DOCUMENT;
 						}
 						$attachments[] = $attachment;
 					}
@@ -630,10 +636,10 @@ class Feed
 
 				// Remove a possible link to the item itself
 				$item['body'] = str_replace($item['plink'], '', $item['body']);
-				$item['body'] = trim(preg_replace('/\[url\=\](\w+.*?)\[\/url\]/i', '', $item['body']));
+				$item['body'] = trim((string) preg_replace('/\[url\=\](\w+.*?)\[\/url\]/i', '', $item['body']));
 
 				$summary = str_replace($item['plink'], '', $summary);
-				$summary = trim(preg_replace('/\[url\=\](\w+.*?)\[\/url\]/i', '', $summary));
+				$summary = trim((string) preg_replace('/\[url\=\](\w+.*?)\[\/url\]/i', '', $summary));
 
 				if (!empty($summary) && self::replaceBodyWithTitle($summary, $item['title'])) {
 					$summary = '';
@@ -647,9 +653,9 @@ class Feed
 				}
 
 				$data = ParseUrl::getSiteinfoCached($item['plink']);
-				if (!empty($data['text']) && !empty($data['title']) && (mb_strlen($item['body']) < mb_strlen($data['text']))) {
+				if (!empty($data['text']) && !empty($data['title']) && (mb_strlen($item['body']) < mb_strlen((string) $data['text']))) {
 					// When the fetched page info text is longer than the body, we do try to enhance the body
-					if (!empty($item['body']) && (strpos($data['title'], $item['body']) === false) && (strpos($data['text'], $item['body']) === false)) {
+					if (!empty($item['body']) && (!str_contains((string) $data['title'], $item['body'])) && (!str_contains((string) $data['text'], $item['body']))) {
 						// The body is not part of the fetched page info title or page info text. So we add the text to the body
 						$item['body'] .= "\n\n" . $data['text'];
 					} else {
@@ -660,9 +666,9 @@ class Feed
 
 				$data = PageInfo::queryUrl(
 					$item['plink'],
-					false,
+					'',
 					$fetch_further_information == LocalRelationship::FFI_BOTH,
-					$contact['ffi_keyword_denylist'] ?? ''
+					$contact['ffi_keyword_denylist'] ?? '',
 				);
 
 				if (!empty($data)) {
@@ -685,29 +691,6 @@ class Feed
 					$taglist             = $fetch_further_information == LocalRelationship::FFI_BOTH ? PageInfo::getTagsFromUrl($item['plink'], $preview, $contact['ffi_keyword_denylist'] ?? '') : [];
 					$item['object-type'] = Activity\ObjectType::BOOKMARK;
 					$attachments         = [];
-
-					foreach (['audio', 'video'] as $elementname) {
-						if (!empty($data[$elementname])) {
-							foreach ($data[$elementname] as $element) {
-								if (!empty($element['src'])) {
-									$src = $element['src'];
-								} elseif (!empty($element['content'])) {
-									$src = $element['content'];
-								} else {
-									continue;
-								}
-
-								$attachments[] = [
-									'type'        => ($elementname == 'audio') ? Post\Media::AUDIO : Post\Media::VIDEO,
-									'url'         => $src,
-									'preview'     => $element['image']       ?? null,
-									'mimetype'    => $element['contenttype'] ?? null,
-									'name'        => $element['name']        ?? null,
-									'description' => $element['description'] ?? null,
-								];
-							}
-						}
-					}
 				}
 			} else {
 				if ($fetch_further_information == LocalRelationship::FFI_KEYWORD) {
@@ -732,13 +715,13 @@ class Feed
 			DI::logger()->info('Stored feed', ['item' => $item]);
 
 			$notify       = Item::isRemoteSelf($contact, $item);
-			$item['wall'] = (bool)$notify;
+			$item['wall'] = (bool) $notify;
 
 			// Distributed items should have a well-formatted URI.
 			// Additionally, we have to avoid conflicts with identical URI between imported feeds and these items.
 			if ($notify) {
-				$item['guid'] = Item::guidFromUri($orig_plink, DI::baseUrl()->getHost());
-				$item['uri']  = Item::newURI($item['guid']);
+				$item['guid'] = DI::postUriGenerator()->guidFromUri($orig_plink, DI::baseUrl()->getHost());
+				$item['uri']  = DI::postUriGenerator()->newURI($item['guid']);
 				unset($item['plink']);
 				unset($item['thr-parent']);
 				unset($item['parent-uri']);
@@ -750,11 +733,11 @@ class Feed
 			$condition = ['uid' => $item['uid'], 'uri' => $item['uri']];
 			if (!Post::exists($condition) && !Post\Delayed::exists($item['uri'], $item['uid'])) {
 				if (!$notify) {
-					Post\Delayed::publish($item, $notify, $taglist, $attachments);
+					Post\Delayed::publish($item, (int) $notify, $taglist, $attachments);
 				} else {
 					$postings[] = [
 						'item'    => $item, 'notify' => $notify,
-						'taglist' => $taglist, 'attachments' => $attachments
+						'taglist' => $taglist, 'attachments' => $attachments,
 					];
 				}
 			} else {
@@ -762,7 +745,7 @@ class Feed
 			}
 		}
 
-		return $postings;
+		return ['postings' => $postings, 'creation_dates' => $creation_dates];
 	}
 
 	/**
@@ -773,29 +756,29 @@ class Feed
 	 * @param string|null $basepath
 	 * @return string
 	 */
-	private static function getHostname(array $item, string $guid = null, string $basepath = null): string
+	private static function getHostname(array $item, ?string $guid = null, ?string $basepath = null): string
 	{
-		$host = parse_url($item['plink'], PHP_URL_HOST);
+		$host = parse_url((string) $item['plink'], PHP_URL_HOST);
 		if (!empty($host)) {
 			return $host;
 		}
 
-		$host = parse_url($item['uri'], PHP_URL_HOST);
+		$host = parse_url((string) $item['uri'], PHP_URL_HOST);
 		if (!empty($host)) {
 			return $host;
 		}
 
-		$host = parse_url($guid, PHP_URL_HOST);
+		$host = parse_url((string) $guid, PHP_URL_HOST);
 		if (!empty($host)) {
 			return $host;
 		}
 
-		$host = parse_url($item['author-link'], PHP_URL_HOST);
+		$host = parse_url((string) $item['author-link'], PHP_URL_HOST);
 		if (!empty($host)) {
 			return $host;
 		}
 
-		return parse_url($basepath, PHP_URL_HOST);
+		return parse_url((string) $basepath, PHP_URL_HOST);
 	}
 	/**
 	 * Automatically adjust the poll frequency according to the post frequency
@@ -819,7 +802,7 @@ class Feed
 			$newest_date = '';
 
 			foreach ($creation_dates as $date) {
-				$timestamp = strtotime($date);
+				$timestamp = strtotime((string) $date);
 				$day       = intdiv($timestamp, 86400);
 				$hour      = $timestamp % 86400;
 
@@ -972,7 +955,7 @@ class Feed
 				$tagstr .= ', ';
 			}
 
-			$tagstr .= '#[url=' . DI::baseUrl() . '/search?tag=' . urlencode($tag) . ']' . $tag . '[/url]';
+			$tagstr .= '#[url=' . DI::baseUrl() . '/search?tag=' . urlencode((string) $tag) . ']' . $tag . '[/url]';
 		}
 
 		return $tagstr;
@@ -994,7 +977,7 @@ class Feed
 			$body = substr($body, 0, strlen($title));
 		}
 
-		if (($title != $body) && (substr($title, -3) == '...')) {
+		if (($title != $body) && (str_ends_with($title, '...'))) {
 			$pos = strrpos($title, '...');
 			if ($pos > 0) {
 				$title = substr($title, 0, $pos);
@@ -1030,7 +1013,7 @@ class Feed
 		$stamp = microtime(true);
 
 		// Display events in the user's timezone
-		if (strlen($owner['timezone'])) {
+		if (strlen((string) $owner['timezone'])) {
 			DI::appHelper()->setTimeZone($owner['timezone']);
 		}
 
@@ -1047,7 +1030,7 @@ class Feed
 			$owner['uid'], $check_date, Item::GRAVITY_PARENT, Item::GRAVITY_COMMENT,
 			Item::GRAVITY_ACTIVITY, Activity::ANNOUNCE,
 			Item::PRIVATE, Protocol::ACTIVITYPUB, Protocol::DFRN, Protocol::DIASPORA,
-			$authorid
+			$authorid,
 		];
 
 		if ($filter === 'comments') {
@@ -1112,6 +1095,7 @@ class Feed
 	{
 		$root = $doc->createElementNS(ActivityNamespace::ATOM1, 'feed');
 		$doc->appendChild($root);
+		$root->setAttribute("xmlns:thr", ActivityNamespace::THREAD);
 
 		$title   = '';
 		$selfUri = '/feed/' . $owner['nick'] . '/';
@@ -1227,8 +1211,8 @@ class Feed
 			'',
 			[
 				'rel'  => 'alternate', 'type' => 'text/html',
-				'href' => DI::baseUrl() . '/display/' . $item['guid']
-			]
+				'href' => DI::baseUrl() . '/display/' . $item['guid'],
+			],
 		);
 
 		XML::addElement($doc, $entry, 'published', DateTimeFormat::utc($item['created'] . '+00:00', DateTimeFormat::ATOM));
@@ -1269,13 +1253,13 @@ class Feed
 			if (isset($parent_plink)) {
 				$attributes = [
 					'ref'  => $item['thr-parent'],
-					'href' => $parent_plink
+					'href' => $parent_plink,
 				];
 				XML::addElement($doc, $entry, 'thr:in-reply-to', '', $attributes);
 
 				$attributes = [
 					'rel'  => 'related',
-					'href' => $parent_plink
+					'href' => $parent_plink,
 				];
 				XML::addElement($doc, $entry, 'link', '', $attributes);
 			}
@@ -1309,14 +1293,14 @@ class Feed
 		}
 
 		// Fetch information about the post
-		$media = Post\Media::getByURIId($item['uri-id'], [Post\Media::HTML]);
+		$media = Post\Media::getByURIId($item['uri-id'], [PostMedia::TYPE_HTML]);
 		if (!empty($media) && !empty($media[0]['name']) && ($media[0]['name'] != $media[0]['url'])) {
 			return $media[0]['name'];
 		}
 
 		// If no bookmark is found then take the first line
 		// Remove the share element before fetching the first line
-		$title = trim(preg_replace("/\[share.*?\](.*?)\[\/share\]/ism", "\n$1\n", $item['body']));
+		$title = trim((string) preg_replace("/\[share.*?\](.*?)\[\/share\]/ism", "\n$1\n", (string) $item['body']));
 
 		$title   = BBCode::toPlaintext($title) . "\n";
 		$pos     = strpos($title, "\n");
@@ -1373,7 +1357,7 @@ class Feed
 	 */
 	private static function getAttachment(DOMDocument $doc, DOMElement $root, array $item)
 	{
-		foreach (Post\Media::getByURIId($item['uri-id'], [Post\Media::AUDIO, Post\Media::IMAGE, Post\Media::VIDEO, Post\Media::DOCUMENT, Post\Media::TORRENT]) as $attachment) {
+		foreach (Post\Media::getByURIId($item['uri-id'], [PostMedia::TYPE_AUDIO, PostMedia::TYPE_IMAGE, PostMedia::TYPE_VIDEO, PostMedia::TYPE_DOCUMENT, PostMedia::TYPE_TORRENT]) as $attachment) {
 			$attributes = ['rel' => 'enclosure',
 				'href'              => $attachment['url'],
 				'type'              => $attachment['mimetype']];
@@ -1429,9 +1413,9 @@ class Feed
 			if ($owner['contact-type'] == Contact::TYPE_COMMUNITY) {
 				$entry->setAttribute('xmlns:activity', ActivityNamespace::ACTIVITY);
 
-				$contact             = Contact::getByURL($item['author-link']) ?: $owner;
-				$contact['nickname'] = $contact['nickname'] ?? $contact['nick'];
-				$author              = self::addAuthor($doc, $contact);
+				$contact = Contact::getByURL($item['author-link']) ?: $owner;
+				$contact['nickname'] ??= $contact['nick'];
+				$author = self::addAuthor($doc, $contact);
 				$entry->appendChild($author);
 			}
 		} else {

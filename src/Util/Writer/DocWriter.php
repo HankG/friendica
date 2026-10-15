@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -16,6 +16,9 @@ use Friendica\Network\HTTPException\ServiceUnavailableException;
  */
 class DocWriter
 {
+	/** @var string the relativ path to the database specification */
+	public const DOC_PATH_PREFIX = '/doc/en/spec/database/';
+
 	/**
 	 * Creates all database definitions as Markdown fields and create the mkdoc config file.
 	 *
@@ -28,7 +31,7 @@ class DocWriter
 	public static function writeDbDefinition(DbaDefinition $definition, string $basePath)
 	{
 		$tables = [];
-		foreach ($definition->getAll() as $name => $definition) {
+		foreach ($definition->load(false)->getAll() as $name => $definition) {
 			$indexes = [
 				[
 					'name'   => 'Name',
@@ -37,19 +40,19 @@ class DocWriter
 				[
 					'name'   => '-',
 					'fields' => '-',
-				]
+				],
 			];
 
 			$lengths = ['name' => 4, 'fields' => 6];
 			foreach ($definition['indexes'] as $key => $value) {
 				$fieldlist         = implode(', ', $value);
 				$indexes[]         = ['name' => $key, 'fields' => $fieldlist];
-				$lengths['name']   = max($lengths['name'], strlen($key));
+				$lengths['name']   = max($lengths['name'], strlen((string) $key));
 				$lengths['fields'] = max($lengths['fields'], strlen($fieldlist));
 			}
 
-			array_walk_recursive($indexes, function (&$value, $key) use ($lengths) {
-				$value = str_pad($value, $lengths[$key], $value === '-' ? '-' : ' ');
+			array_walk_recursive($indexes, function (&$value, $key) use ($lengths): void {
+				$value = str_pad((string) $value, $lengths[$key], $value === '-' ? '-' : ' ');
 			});
 
 			$foreign = [];
@@ -71,7 +74,7 @@ class DocWriter
 					'primary' => '-',
 					'default' => '-',
 					'extra'   => '-',
-				]
+				],
 			];
 			$lengths = [
 				'name'    => 5,
@@ -83,17 +86,18 @@ class DocWriter
 				'extra'   => 5,
 			];
 			foreach ($definition['fields'] as $key => $value) {
-				$field            = [];
-				$field['name']    = $key;
-				$field['comment'] = $value['comment'] ?? '';
-				$field['type']    = $value['type'];
-				$field['null']    = ($value['not null'] ?? false) ? 'NO' : 'YES';
-				$field['primary'] = ($value['primary'] ?? false) ? 'PRI' : '';
-				$field['default'] = $value['default'] ?? 'NULL';
-				$field['extra']   = $value['extra']   ?? '';
+				$field = [
+					'name'    => $key,
+					'comment' => $value['comment'] ?? '',
+					'type'    => $value['type'],
+					'null'    => ($value['not null'] ?? false) ? 'NO' : 'YES',
+					'primary' => ($value['primary'] ?? false) ? 'PRI' : '',
+					'default' => $value['default'] ?? 'NULL',
+					'extra'   => $value['extra']   ?? '',
+				];
 
 				foreach ($field as $fieldName => $fieldvalue) {
-					$lengths[$fieldName] = max($lengths[$fieldName] ?? 0, strlen($fieldvalue));
+					$lengths[$fieldName] = max($lengths[$fieldName], strlen((string) $fieldvalue));
 				}
 				$fields[] = $field;
 
@@ -101,13 +105,13 @@ class DocWriter
 					$foreign[] = [
 						'field'       => $key,
 						'targettable' => array_keys($value['foreign'])[0],
-						'targetfield' => array_values($value['foreign'])[0]
+						'targetfield' => array_values($value['foreign'])[0],
 					];
 				}
 			}
 
-			array_walk_recursive($fields, function (&$value, $key) use ($lengths) {
-				$value = str_pad($value, $lengths[$key], $value === '-' ? '-' : ' ');
+			array_walk_recursive($fields, function (&$value, $key) use ($lengths): void {
+				$value = str_pad((string) $value, $lengths[$key], $value === '-' ? '-' : ' ');
 			});
 
 			$tables[] = ['name' => $name, 'comment' => $definition['comment']];
@@ -118,14 +122,14 @@ class DocWriter
 				'$indexes' => $indexes,
 				'$foreign' => $foreign,
 			]);
-			$filename = $basePath . '/doc/database/db_' . $name . '.md';
+			$filename = $basePath . static::DOC_PATH_PREFIX . 'db-' . $name . '.md';
 			file_put_contents($filename, $content);
 		}
 		asort($tables);
 		$content = Renderer::replaceMacros(Renderer::getMarkupTemplate('tables.tpl'), [
 			'$tables' => $tables,
 		]);
-		$filename = $basePath . '/doc/database.md';
+		$filename = $basePath . static::DOC_PATH_PREFIX . 'index.md';
 		file_put_contents($filename, $content);
 	}
 }

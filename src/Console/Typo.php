@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -16,11 +16,6 @@ use Friendica\Core\Config\Capability\IManageConfigValues;
 class Typo extends \Asika\SimpleConsole\Console
 {
 	protected $helpOptions = ['h', 'help', '?'];
-
-	/**
-	 * @var IManageConfigValues
-	 */
-	private $config;
 
 	protected function getHelp()
 	{
@@ -39,17 +34,17 @@ HELP;
 		return $help;
 	}
 
-	public function __construct(IManageConfigValues $config, array $argv = null)
-	{
+	public function __construct(
+		private readonly IManageConfigValues $config,
+		?array $argv = null,
+	) {
 		parent::__construct($argv);
-
-		$this->config = $config;
 	}
 
 	protected function doExecute(): int
 	{
 		if ($this->getOption('v')) {
-			$this->out('Class: ' . __CLASS__);
+			$this->out('Class: ' . self::class);
 			$this->out('Arguments: ' . var_export($this->args, true));
 			$this->out('Options: ' . var_export($this->options, true));
 		}
@@ -67,7 +62,7 @@ HELP;
 		$Iterator = new \RecursiveDirectoryIterator('src');
 
 		foreach (new \RecursiveIteratorIterator($Iterator) as $file) {
-			if (substr($file, -4) === '.php') {
+			if (str_ends_with((string) $file, '.php')) {
 				$this->checkFile($php_path, $file);
 			}
 		}
@@ -79,7 +74,7 @@ HELP;
 		$Iterator = new \RecursiveDirectoryIterator('tests');
 
 		foreach (new \RecursiveIteratorIterator($Iterator) as $file) {
-			if (substr($file, -4) === '.php') {
+			if (str_ends_with((string) $file, '.php')) {
 				$this->checkFile($php_path, $file);
 			}
 		}
@@ -128,7 +123,7 @@ HELP;
 		}
 
 		$output = [];
-		$ret = 0;
+		$ret    = 0;
 		exec("$php_path -l $file", $output, $ret);
 		if ($ret !== 0) {
 			throw new \RuntimeException('Parse error found in ' . $file . ', scan stopped.');

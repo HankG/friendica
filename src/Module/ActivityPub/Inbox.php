@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -14,21 +14,19 @@ use Friendica\DI;
 use Friendica\Model\Item;
 use Friendica\Model\User;
 use Friendica\Module\BaseApi;
-use Friendica\Module\Special\HTTPException;
 use Friendica\Protocol\ActivityPub;
 use Friendica\Util\HTTPSignature;
 use Friendica\Util\Network;
-use Psr\Http\Message\ResponseInterface;
 
 /**
  * ActivityPub Inbox
  */
 class Inbox extends BaseApi
 {
-	public function run(HTTPException $httpException, array $request = [], bool $scopecheck = true): ResponseInterface
-	{
-		return parent::run($httpException, $request, false);
-	}
+	/**
+	 * @internal
+	 */
+	protected function checkScope(): void {}
 
 	protected function rawContent(array $request = [])
 	{
@@ -48,12 +46,15 @@ class Inbox extends BaseApi
 			if ($owner['uid'] != $uid) {
 				throw new \Friendica\Network\HTTPException\ForbiddenException();
 			}
-			$inbox = ActivityPub\ClientToServer::getInbox($uid, $page, $request['max_id'] ?? null);
+			$inbox = ActivityPub\ClientToServer::getInbox($uid, $page, !empty($request['max_id']) ? (int) $request['max_id'] : null);
 		} else {
-			$inbox = ActivityPub\ClientToServer::getPublicInbox($uid, $page, $request['max_id'] ?? null);
+			$inbox = ActivityPub\ClientToServer::getPublicInbox($uid, $page, !empty($request['max_id']) ? (int) $request['max_id'] : null);
 		}
 
-		$this->jsonExit($inbox, 'application/activity+json');
+		// Relaxed CORS header already authorized
+		header('Access-Control-Allow-Origin: *');
+
+		$this->earlyJsonExit($inbox, 'application/activity+json');
 	}
 
 	protected function post(array $request = [])

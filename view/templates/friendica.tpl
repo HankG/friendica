@@ -1,6 +1,6 @@
 {{*
-  * Copyright (C) 2010-2024, the Friendica project
-  * SPDX-FileCopyrightText: 2010-2024 the Friendica project
+  * Copyright (C) 2010-2026, the Friendica project
+  * SPDX-FileCopyrightText: 2010-2026 the Friendica project
   *
   * SPDX-License-Identifier: AGPL-3.0-or-later
   *}}
@@ -39,7 +39,7 @@
 			{{/foreach}}
 			</tbody>
 		</table>
-		<p><a rel="nofollow" href="/blocklist/domain/download"><i class="fa fa-download"></i> {{$block_list.download}}</a></p>
+		<p><a rel="nofollow" href="/blocklist/domain/download"><i class="ri ri-download-line"></i> {{$block_list.download}}</a></p>
 	</div>
 {{/if}}
 

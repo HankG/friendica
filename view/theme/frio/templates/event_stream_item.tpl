@@ -1,6 +1,6 @@
 {{*
-  * Copyright (C) 2010-2024, the Friendica project
-  * SPDX-FileCopyrightText: 2010-2024 the Friendica project
+  * Copyright (C) 2010-2026, the Friendica project
+  * SPDX-FileCopyrightText: 2010-2026 the Friendica project
   *
   * SPDX-License-Identifier: AGPL-3.0-or-later
   *}}
@@ -26,6 +26,7 @@
 						<span class="event-date">
 							<span class="event-start dtstart" title="{{$dtstart_title}}">{{$start_short}}</span>
 							{{if $finish}} - <span class="event-end dtend" title="{{$dtend_title}}">{{if $same_date}}{{$end_time}}{{else}}{{$end_short}}{{/if}}</span>{{/if}}
+							{{$timezone}}
 						</span>
 						{{if $location.name}}
 						<span aria-hidden="true"> · </span>

@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -15,17 +15,10 @@ use Friendica\Factory\Api\Twitter\User as TwitterUser;
 
 class Circle extends BaseFactory
 {
-	/** @var twitterUser entity */
-	private $twitterUser;
-	/** @var Database */
-	private $dba;
-
-	public function __construct(LoggerInterface $logger, TwitterUser $twitteruser, Database $dba)
+	public function __construct(LoggerInterface $logger, /** @var twitterUser entity */
+		private readonly TwitterUser $twitterUser, private readonly Database $dba)
 	{
 		parent::__construct($logger);
-
-		$this->twitterUser = $twitteruser;
-		$this->dba         = $dba;
 	}
 
 	/**

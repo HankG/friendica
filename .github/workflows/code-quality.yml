@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2010 - 2024 the Friendica project
+# SPDX-FileCopyrightText: 2010-2026 the Friendica project
 #
 # SPDX-License-Identifier: CC0-1.0
 
@@ -19,11 +19,11 @@ jobs:
       fail-fast: false
       matrix:
         operating-system: ['ubuntu-latest']
-        php: ['8.3']
+        php: ['8.5']
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
         with:
           fetch-depth: 2
 
@@ -35,14 +35,14 @@ jobs:
           tools: none
 
       - name: Clone addon repository
-        run: git clone -b develop --single-branch https://git.friendi.ca/friendica/friendica-addons.git addon
+        run: git clone -b develop --single-branch https://github.com/friendica/friendica-addons.git addon
 
-      - name: Install PHP-CS-Fixer
-        run: composer install --working-dir=bin/dev/php-cs-fixer
+      - name: Install Composer dependencies
+        uses: "ramsey/composer-install@v4"
 
       - name: Run PHP-CS-Fixer
         continue-on-error: true
-        run: bin/dev/php-cs-fixer/vendor/bin/php-cs-fixer fix --diff --dry-run
+        run: vendor/bin/php-cs-fixer fix --diff --dry-run
 
   phpstan:
     name: PHPStan (PHP ${{ matrix.php }})
@@ -52,11 +52,11 @@ jobs:
       fail-fast: false
       matrix:
         operating-system: ['ubuntu-latest']
-        php: ['8.4']
+        php: ['8.5']
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
         with:
           fetch-depth: 2
 
@@ -68,10 +68,10 @@ jobs:
           tools: none
 
       - name: Clone addon repository
-        run: git clone -b develop --single-branch https://git.friendi.ca/friendica/friendica-addons.git addon
+        run: git clone -b develop --single-branch https://github.com/friendica/friendica-addons.git addon
 
       - name: Install Composer dependencies
-        uses: "ramsey/composer-install@v2"
+        uses: "ramsey/composer-install@v4"
 
       - name: Run PHPStan
         run: composer run phpstan
@@ -84,11 +84,11 @@ jobs:
       fail-fast: false
       matrix:
         operating-system: ['ubuntu-latest']
-        php: ['8.4']
+        php: ['8.5']
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
         with:
           fetch-depth: 2
 
@@ -100,13 +100,60 @@ jobs:
           tools: none
 
       - name: Clone addon repository
-        run: git clone -b develop --single-branch https://git.friendi.ca/friendica/friendica-addons.git addon
+        run: git clone -b develop --single-branch https://github.com/friendica/friendica-addons.git addon
 
       - name: Install Composer dependencies
-        uses: "ramsey/composer-install@v2"
+        uses: "ramsey/composer-install@v4"
 
+      # Non-blocking: friendica-addons lives on git.friendi.ca and has no CI of its own,
+      # so faulty addon code only surfaces here, after it was merged - turning this
+      # repository's pipeline red for changes that aren't ours. The findings stay
+      # visible in the log, the annotations and the job summary below.
       - name: Run PHPStan in addons
-        run: composer run phpstan-addons
+        id: phpstan_addons
+        continue-on-error: true
+        run: 'composer run addons:phpstan'
+
+      - name: Report addon PHPStan findings
+        if: steps.phpstan_addons.outcome == 'failure'
+        run: |
+          {
+            echo '### :warning: PHPStan found errors in friendica-addons'
+            echo
+            echo 'These come from the addon repository on git.friendi.ca, not from this pull request,'
+            echo 'so they do not fail this workflow. See the "Run PHPStan in addons" step for details.'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  rector:
+    name: Rector (PHP ${{ matrix.php }})
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        operating-system: ['ubuntu-latest']
+        php: ['8.5']
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 2
+
+      - name: Setup PHP with composer and extensions
+        uses: shivammathur/setup-php@v2 #https://github.com/shivammathur/setup-php
+        with:
+          php-version: ${{ matrix.php }}
+          tools: none
+
+      - name: Clone addon repository
+        run: git clone -b develop --single-branch https://github.com/friendica/friendica-addons.git addon
+
+      - name: Install Composer dependencies
+        uses: "ramsey/composer-install@v4"
+
+      - name: Run Rector
+        run: composer run rector:check
 
   phpmd:
     name: PHPMD (PHP ${{ matrix.php }})
@@ -116,11 +163,11 @@ jobs:
       fail-fast: false
       matrix:
         operating-system: ['ubuntu-latest']
-        php: ['8.4']
+        php: ['8.5']
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
         with:
           fetch-depth: 2
 
@@ -132,10 +179,66 @@ jobs:
           tools: none
 
       - name: Clone addon repository
-        run: git clone -b develop --single-branch https://git.friendi.ca/friendica/friendica-addons.git addon
+        run: git clone -b develop --single-branch https://github.com/friendica/friendica-addons.git addon
 
       - name: Install Composer dependencies
-        uses: "ramsey/composer-install@v2"
+        uses: "ramsey/composer-install@v4"
 
       - name: Run PHPMD
         run: vendor/bin/phpmd src/ text .phpmd-ruleset.xml --color
+
+  eslint:
+    name: ESLint (Node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        operating-system: ['ubuntu-latest']
+        node: ['24']
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Run ESLint
+        run: npm run lint:js
+
+  stylelint:
+    name: Stylelint (Node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        operating-system: ['ubuntu-latest']
+        node: ['24']
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Run Stylelint
+        run: npm run lint:css

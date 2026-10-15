@@ -1,6 +1,6 @@
 {{*
-  * Copyright (C) 2010-2024, the Friendica project
-  * SPDX-FileCopyrightText: 2010-2024 the Friendica project
+  * Copyright (C) 2010-2026, the Friendica project
+  * SPDX-FileCopyrightText: 2010-2026 the Friendica project
   *
   * SPDX-License-Identifier: AGPL-3.0-or-later
   *}}
@@ -12,7 +12,6 @@
 <meta name="viewport" content="initial-scale=1.0">
 
 {{* All needed css files - Note: css must be inserted before js files *}}
-<link rel="stylesheet" href="view/global.css?v={{$VERSION}}" type="text/css" media="all" />
 <link rel="stylesheet" href="view/asset/jquery-colorbox/example5/colorbox.css?v={{$VERSION}}"
 	type="text/css" media="screen" />
 <link rel="stylesheet" href="view/asset/jgrowl/jquery.jgrowl.min.css?v={{$VERSION}}"
@@ -30,7 +29,7 @@
 <link rel="stylesheet"
 	href="view/theme/frio/frameworks/bootstrap/css/bootstrap-theme.min.css?v={{$VERSION}}"
 	type="text/css" media="screen" />
-<link rel="stylesheet" href="view/asset/fork-awesome/css/fork-awesome.min.css?v={{$VERSION}}"
+<link rel="stylesheet" href="view/asset/remixicon/fonts/remixicon.css?v={{$VERSION}}"
 	type="text/css" media="screen" />
 <link rel="stylesheet"
 	href="view/theme/frio/frameworks/jasny/css/jasny-bootstrap.min.css?v={{$VERSION}}"
@@ -59,6 +58,7 @@
 	type="text/css" media="screen" />
 
 {{* own css files *}}
+<link rel="stylesheet" href="view/global.css?v={{$VERSION}}" type="text/css" media="all" />
 <link rel="stylesheet" href="view/theme/frio/css/hovercard.css?v={{$VERSION}}" type="text/css"
 	media="screen" />
 <link rel="stylesheet" href="view/theme/frio/css/font-awesome.custom.css?v={{$VERSION}}"
@@ -94,7 +94,7 @@
 	</script>
 	<script type="text/javascript" src="view/js/jquery.textinputs.js?v={{$VERSION}}"></script>
 	<script type="text/javascript"
-		src="view/asset/textcomplete/dist/textcomplete.min.js?v={{$VERSION}}"></script>
+		src="view/asset/jquery-textcomplete/dist/jquery.textcomplete.min.js?v={{$VERSION}}"></script>
 	<script type="text/javascript" src="view/js/autocomplete.js?v={{$VERSION}}"></script>
 	<script type="text/javascript"
 		src="view/asset/jquery-colorbox/jquery.colorbox-min.js?v={{$VERSION}}"></script>
@@ -115,7 +115,28 @@
 		const updateContent = {{$update_content}};
 		const localUser = {{if $local_user}}{{$local_user}}{{else}}false{{/if}};
 	</script>
+	<script type="text/javascript" src="view/js/loading-indicator.js?v={{$VERSION}}"></script>
 	<script type="text/javascript" src="view/js/main.js?v={{$VERSION}}"></script>
+	<script>
+	// Loading indicator translations with delay messages
+	window.spaLoadingTexts = {
+		fetching: "{{$loading.fetching nofilter}}",
+		receiving: "{{$loading.receiving nofilter}}",
+		processing: "{{$loading.processing nofilter}}",
+		posting: "{{$loading.posting nofilter}}",
+		delay_messages: {{$loading.delay_messages_json nofilter}}
+	};
+	
+	// SPA error translations
+	window.spaErrorTexts = {
+		timeout: "{{$spaErrors.timeout nofilter}}",
+		timeout_message: "{{$spaErrors.timeout_message nofilter}}",
+		close: "{{$spaErrors.close nofilter}}",
+		delay_title: "{{$spaErrors.delay_title nofilter}}"
+	};
+	</script>
+	<link rel="stylesheet" href="view/loading-indicator.css?v={{$VERSION}}" type="text/css" media="all" />
+	<link rel="stylesheet" href="view/spa-router.css?v={{$VERSION}}" type="text/css" media="all" />
 
 	<script type="text/javascript"
 		src="view/theme/frio/frameworks/bootstrap/js/bootstrap.min.js?v={{$VERSION}}"></script>
@@ -143,8 +164,10 @@
 		src="view/theme/frio/frameworks/sticky-kit/jquery.sticky-kit.min.js?v={{$VERSION}}"></script>
 
 	{{* own js files *}}
+	<script type="text/javascript" src="view/theme/frio/js/jot.js?v={{$VERSION}}"></script>
 	<script type="text/javascript" src="view/theme/frio/js/theme.js?v={{$VERSION}}"></script>
 	<script type="text/javascript" src="view/theme/frio/js/modal.js?v={{$VERSION}}"></script>
+	<script type="text/javascript" src="view/js/ajaxupload.js?v={{$VERSION}}"></script>
 	{{if ! $block_public}}
 		<script type="text/javascript" src="view/theme/frio/js/hovercard.js?v={{$VERSION}}"></script>
 	{{/if}}
@@ -161,7 +184,7 @@
 			trigger: [
 				{
 					selector: '.emojis',
-					insertInto: ['#comment-edit-text-0', '.profile-jot-text-full', '.comment-edit-text-full']
+					insertInto: ['#comment-edit-text-0', '#profile-jot-text', '.profile-jot-text-full', '.comment-edit-text-full', '.prvmail-text', '.emojis-target']
 				}
 			],
 			closeButton: true

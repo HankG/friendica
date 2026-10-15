@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -19,9 +19,18 @@ final class DeliveryQueueItem extends \Friendica\BaseRepository
 {
 	protected static $table_name = 'delivery-queue';
 
-	public function __construct(Database $database, LoggerInterface $logger, Factory\DeliveryQueueItem $factory)
+	public function __construct(
+		Database $database,
+		LoggerInterface $logger,
+		private readonly Factory\DeliveryQueueItem $entityFactory,
+	) {
+		parent::__construct($database, $logger, $entityFactory);
+	}
+
+	/** @not-deprecated */
+	protected function getFactory(): Factory\DeliveryQueueItem
 	{
-		parent::__construct($database, $logger, $factory);
+		return $this->entityFactory;
 	}
 
 	public function selectByServerId(int $gsid, int $maxFailedCount): Collection\DeliveryQueueItems
@@ -32,10 +41,10 @@ final class DeliveryQueueItem extends \Friendica\BaseRepository
 			self::$table_name,
 			[],
 			["`gsid` = ? AND `failed` < ?", $gsid, $maxFailedCount],
-			['order' => ['created']]
+			['order' => ['created']],
 		);
 		while ($deliveryQueueItem = $this->db->fetch($deliveryQueueItems)) {
-			$Entities[] = $this->factory->createFromTableRow($deliveryQueueItem);
+			$Entities[] = $this->getFactory()->createFromTableRow($deliveryQueueItem);
 		}
 
 		$this->db->close($deliveryQueueItems);
@@ -76,7 +85,7 @@ final class DeliveryQueueItem extends \Friendica\BaseRepository
 	{
 		return $this->db->delete(self::$table_name, [
 			'uri-id' => $deliveryQueueItem->postUriId,
-			'gsid'   => $deliveryQueueItem->targetServerId
+			'gsid'   => $deliveryQueueItem->targetServerId,
 		]);
 	}
 
@@ -88,11 +97,11 @@ final class DeliveryQueueItem extends \Friendica\BaseRepository
 	public function incrementFailed(Entity\DeliveryQueueItem $deliveryQueueItem): bool
 	{
 		return $this->db->update(self::$table_name, [
-			"`failed` = `failed` + 1"
+			"`failed` = `failed` + 1",
 		], [
 			"`uri-id` = ? AND `gsid` = ?",
 			$deliveryQueueItem->postUriId,
-			$deliveryQueueItem->targetServerId
+			$deliveryQueueItem->targetServerId,
 		]);
 	}
 

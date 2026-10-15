@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -30,15 +30,15 @@ abstract class OAuthSignatureMethod_RSA_SHA1 extends OAuthSignatureMethod
 	// (3) some sort of specific discovery code based on request
 	//
 	// Either way should return a string representation of the certificate
-	protected abstract function fetch_public_cert(&$request);
+	abstract protected function fetch_public_cert(&$request);
 
 	// Up to the SP to implement this lookup of keys. Possible ideas are:
 	// (1) do a lookup in a table of trusted certs keyed off of consumer
 	//
 	// Either way should return a string representation of the certificate
-	protected abstract function fetch_private_cert(&$request);
+	abstract protected function fetch_private_cert(&$request);
 
-	public function build_signature(OAuthRequest $request, \Friendica\Security\OAuth1\OAuthConsumer $consumer, \Friendica\Security\OAuth1\OAuthToken $token = null)
+	public function build_signature(OAuthRequest $request, \Friendica\Security\OAuth1\OAuthConsumer $consumer, ?\Friendica\Security\OAuth1\OAuthToken $token = null)
 	{
 		$base_string          = $request->get_signature_base_string();
 		$request->base_string = $base_string;
@@ -52,13 +52,10 @@ abstract class OAuthSignatureMethod_RSA_SHA1 extends OAuthSignatureMethod
 		// Sign using the key
 		openssl_sign($base_string, $signature, $privatekeyid);
 
-		// Release the key resource
-		openssl_free_key($privatekeyid);
-
-		return base64_encode($signature);
+		return base64_encode((string) $signature);
 	}
 
-	public function check_signature(OAuthRequest $request, \Friendica\Security\OAuth1\OAuthConsumer $consumer, $signature, \Friendica\Security\OAuth1\OAuthToken $token = null)
+	public function check_signature(OAuthRequest $request, \Friendica\Security\OAuth1\OAuthConsumer $consumer, $signature, ?\Friendica\Security\OAuth1\OAuthToken $token = null)
 	{
 		$decoded_sig = base64_decode($signature);
 
@@ -72,9 +69,6 @@ abstract class OAuthSignatureMethod_RSA_SHA1 extends OAuthSignatureMethod
 
 		// Check the computed signature against the one passed in the query
 		$ok = openssl_verify($base_string, $decoded_sig, $publickeyid);
-
-		// Release the key resource
-		openssl_free_key($publickeyid);
 
 		return $ok == 1;
 	}

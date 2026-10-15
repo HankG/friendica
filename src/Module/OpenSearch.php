@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -26,17 +26,12 @@ use Psr\Log\LoggerInterface;
  */
 class OpenSearch extends BaseModule
 {
-	/** @var IManageConfigValues */
-	private $config;
-
 	/** @var string */
 	private $basePath;
 
-	public function __construct(BasePath $basePath, IManageConfigValues $config, L10n $l10n, BaseURL $baseUrl, Arguments $args, LoggerInterface $logger, Profiler $profiler, Response $response, array $server, array $parameters = [])
+	public function __construct(BasePath $basePath, private readonly IManageConfigValues $config, L10n $l10n, BaseURL $baseUrl, Arguments $args, LoggerInterface $logger, Profiler $profiler, Response $response, array $server, array $parameters = [])
 	{
 		parent::__construct($l10n, $baseUrl, $args, $logger, $profiler, $response, $server, $parameters);
-
-		$this->config   = $config;
 		$this->basePath = $basePath->getPath();
 	}
 
@@ -60,7 +55,7 @@ class OpenSearch extends BaseModule
 				],
 			],
 			/** @var DOMDocument $xml */
-			$xml
+			$xml,
 		);
 
 		/** @var DOMElement $parent */
@@ -74,7 +69,7 @@ class OpenSearch extends BaseModule
 
 		if (!empty($shortcut_icon)) {
 			$shortcut_icon = Network::addBasePath($shortcut_icon, $this->baseUrl);
-			$imagedata = getimagesize($shortcut_icon);
+			$imagedata     = getimagesize($shortcut_icon);
 		}
 
 		if (!empty($imagedata)) {
@@ -84,12 +79,17 @@ class OpenSearch extends BaseModule
 				'type'   => $imagedata['mime'],
 			]);
 		} else {
-			XML::addElement($xml, $parent, 'Image',
-			$this->baseUrl . '/images/friendica-16.png', [
-				'height' => 16,
-				'width'  => 16,
-				'type'   => 'image/png',
-			]);
+			XML::addElement(
+				$xml,
+				$parent,
+				'Image',
+				$this->baseUrl . '/images/friendica-16.png',
+				[
+					'height' => 16,
+					'width'  => 16,
+					'type'   => 'image/png',
+				],
+			);
 		}
 
 		XML::addElement($xml, $parent, 'Url', '', [
@@ -104,6 +104,6 @@ class OpenSearch extends BaseModule
 			'template' => $this->baseUrl . '/opensearch',
 		]);
 
-		$this->httpExit($xml->saveXML(), Response::TYPE_XML, 'application/opensearchdescription+xml');
+		$this->earlyHttpExit($xml->saveXML(), Response::TYPE_XML, 'application/opensearchdescription+xml');
 	}
 }

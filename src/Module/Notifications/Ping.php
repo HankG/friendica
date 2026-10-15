@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -9,7 +9,6 @@ namespace Friendica\Module\Notifications;
 
 use Friendica\App\Arguments;
 use Friendica\App\BaseURL;
-use Friendica\AppHelper;
 use Friendica\BaseModule;
 use Friendica\Contact\Introduction\Repository\Introduction;
 use Friendica\Content\GroupManager;
@@ -42,44 +41,28 @@ use Psr\Log\LoggerInterface;
 
 class Ping extends BaseModule
 {
-	/** @var SystemMessages */
-	private $systemMessages;
-	/** @var Repository\Notification */
-	private $notificationRepo;
-	/** @var Introduction */
-	private $introductionRepo;
-	/** @var Factory\FormattedNavNotification */
-	private $formattedNavNotification;
-	/** @var IHandleUserSessions */
-	private $session;
-	/** @var IManageConfigValues */
-	private $config;
-	/** @var IManagePersonalConfigValues */
-	private $pconfig;
-	/** @var Database */
-	private $database;
-	/** @var ICanCache */
-	private $cache;
-	/** @var Repository\Notify */
-	private $notify;
-	/** @var AppHelper */
-	private $appHelper;
-
-	public function __construct(AppHelper $appHelper, Repository\Notify $notify, ICanCache $cache, Database $database, IManagePersonalConfigValues $pconfig, IManageConfigValues $config, IHandleUserSessions $session, SystemMessages $systemMessages, Repository\Notification $notificationRepo, Introduction $introductionRepo, Factory\FormattedNavNotification $formattedNavNotification, L10n $l10n, BaseURL $baseUrl, Arguments $args, LoggerInterface $logger, Profiler $profiler, Response $response, array $server, array $parameters = [])
-	{
+	public function __construct(
+		private readonly Repository\Notify $notify,
+		private readonly ICanCache $cache,
+		private readonly Database $database,
+		private readonly IManagePersonalConfigValues $pconfig,
+		private readonly IManageConfigValues $config,
+		private readonly IHandleUserSessions $session,
+		private readonly SystemMessages $systemMessages,
+		private readonly Repository\Notification $notificationRepo,
+		private readonly Introduction $introductionRepo,
+		private readonly Factory\FormattedNavNotification $formattedNavNotification,
+		private readonly GroupManager $groupManager,
+		L10n $l10n,
+		BaseURL $baseUrl,
+		Arguments $args,
+		LoggerInterface $logger,
+		Profiler $profiler,
+		Response $response,
+		array $server,
+		array $parameters = [],
+	) {
 		parent::__construct($l10n, $baseUrl, $args, $logger, $profiler, $response, $server, $parameters);
-
-		$this->systemMessages           = $systemMessages;
-		$this->notificationRepo         = $notificationRepo;
-		$this->introductionRepo         = $introductionRepo;
-		$this->formattedNavNotification = $formattedNavNotification;
-		$this->session                  = $session;
-		$this->config                   = $config;
-		$this->pconfig                  = $pconfig;
-		$this->database                 = $database;
-		$this->cache                    = $cache;
-		$this->notify                   = $notify;
-		$this->appHelper                = $appHelper;
 	}
 
 	protected function rawContent(array $request = [])
@@ -92,7 +75,7 @@ class Ping extends BaseModule
 		$home_count      = 0;
 		$register_count  = 0;
 		$sysnotify_count = 0;
-		$circles_unseen   = [];
+		$circles_unseen  = [];
 		$groups_unseen   = [];
 
 		$event_count          = 0;
@@ -110,12 +93,12 @@ class Ping extends BaseModule
 
 			$condition = [
 				"`unseen` AND `uid` = ? AND NOT `origin` AND `wall` AND (`vid` != ? OR `vid` IS NULL)",
-				$this->session->getLocalUserId(), Verb::getID(Activity::FOLLOW)
+				$this->session->getLocalUserId(), Verb::getID(Activity::FOLLOW),
 			];
 
 			$home_count = Post::count($condition);
 
-			if ($this->config->get('system','compute_circle_counts')) {
+			if ($this->config->get('system', 'compute_circle_counts')) {
 				// Find out how unseen network posts are spread across circles
 				foreach (Circle::countUnseen($this->session->getLocalUserId()) as $circle_count) {
 					if ($circle_count['count'] > 0) {
@@ -123,7 +106,7 @@ class Ping extends BaseModule
 					}
 				}
 
-				foreach (GroupManager::countUnseenItems() as $group_count) {
+				foreach ($this->groupManager->countUnseenItems() as $group_count) {
 					if ($group_count['count'] > 0) {
 						$groups_unseen[] = $group_count;
 					}
@@ -138,16 +121,19 @@ class Ping extends BaseModule
 			$mail_count = $this->database->count('mail', ["`uid` = ? AND NOT `seen` AND `from-url` != ?", $this->session->getLocalUserId(), $myurl]);
 
 			if (Register::getPolicy() === Register::APPROVE && $this->session->isSiteAdmin()) {
-				$registrations = \Friendica\Model\Register::getPending();
+				$registrations  = \Friendica\Model\Register::getPending();
 				$register_count = count($registrations);
 			}
 
 			$cachekey = 'ping:events:' . $this->session->getLocalUserId();
 			$events   = $this->cache->get($cachekey);
 			if (is_null($events)) {
-				$events = $this->database->selectToArray('event', ['type', 'start'],
+				$events = $this->database->selectToArray(
+					'event',
+					['type', 'start'],
 					["`uid` = ? AND `start` < ? AND `finish` > ? AND NOT `ignore`",
-						$this->session->getLocalUserId(), DateTimeFormat::utc('now + 7 days'), DateTimeFormat::utcNow()]);
+						$this->session->getLocalUserId(), DateTimeFormat::utc('now + 7 days'), DateTimeFormat::utcNow()],
+				);
 				$this->cache->set($cachekey, $events, Duration::HOUR);
 			}
 
@@ -181,7 +167,7 @@ class Ping extends BaseModule
 				}
 				try {
 					return $this->formattedNavNotification->createFromNotification($notification);
-				} catch (NoMessageException $e) {
+				} catch (NoMessageException) {
 					return null;
 				}
 			}, $notifications->getArrayCopy());
@@ -195,7 +181,7 @@ class Ping extends BaseModule
 			foreach ($intros as $intro) {
 				try {
 					$navNotifications[] = $this->formattedNavNotification->createFromIntro($intro);
-				} catch (HTTPException\NotFoundException $e) {
+				} catch (HTTPException\NotFoundException) {
 					$this->introductionRepo->delete($intro);
 				}
 			}
@@ -207,7 +193,7 @@ class Ping extends BaseModule
 						$registration['url'],
 						$this->l10n->t('{0} requested registration'),
 						new \DateTime($registration['created'], new \DateTimeZone('UTC')),
-						new Uri($this->baseUrl . '/moderation/users/pending')
+						new Uri($this->baseUrl . '/moderation/users/pending'),
 					);
 				}
 			} else {
@@ -216,7 +202,7 @@ class Ping extends BaseModule
 					$registrations[0]['url'],
 					$this->l10n->t('{0} and %d others requested registration', count($registrations) - 1),
 					new \DateTime($registrations[0]['created'], new \DateTimeZone('UTC')),
-					new Uri($this->baseUrl . '/moderation/users/pending')
+					new Uri($this->baseUrl . '/moderation/users/pending'),
 				);
 			}
 
@@ -227,11 +213,7 @@ class Ping extends BaseModule
 
 				// Unseen messages are kept at the top
 				if ($a['seen'] == $b['seen']) {
-					if ($a['timestamp'] == $b['timestamp']) {
-						return 0;
-					} else {
-						return $a['timestamp'] < $b['timestamp'] ? 1 : -1;
-					}
+					return $b['timestamp'] <=> $a['timestamp'];
 				} else {
 					return $a['seen'] ? 1 : -1;
 				}
@@ -258,15 +240,15 @@ class Ping extends BaseModule
 		$data['notifications'] = $navNotifications;
 
 		$data['sysmsgs'] = [
-			'notice' => array_map([Strings::class, 'escapeHtml'], $this->systemMessages->flushNotices()),
-			'info'   => array_map([Strings::class, 'escapeHtml'], $this->systemMessages->flushInfos()),
+			'notice' => array_map(Strings::escapeHtml(...), $this->systemMessages->flushNotices()),
+			'info'   => array_map(Strings::escapeHtml(...), $this->systemMessages->flushInfos()),
 		];
 
 		if (isset($_GET['callback'])) {
 			// JSONP support
-			$this->httpExit($_GET['callback'] . '(' . json_encode(['result' => $data]) . ')', Response::TYPE_BLANK, 'application/javascript');
+			$this->earlyHttpExit($_GET['callback'] . '(' . json_encode(['result' => $data]) . ')', Response::TYPE_BLANK, 'application/javascript');
 		} else {
-			$this->jsonExit(['result' => $data]);
+			$this->earlyJsonExit(['result' => $data]);
 		}
 	}
 }

@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -36,9 +36,9 @@ class HTMLPurifier_URIScheme_cid extends HTMLPurifier_URIScheme
 	public function doValidate(&$uri, $config, $context)
 	{
 		$uri->userinfo = null;
-		$uri->host = null;
-		$uri->port = null;
-		$uri->query = null;
+		$uri->host     = null;
+		$uri->port     = null;
+		$uri->query    = null;
 		// typecode check needed on path
 		return true;
 	}

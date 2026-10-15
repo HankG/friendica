@@ -1,6 +1,6 @@
 {{*
-  * Copyright (C) 2010-2024, the Friendica project
-  * SPDX-FileCopyrightText: 2010-2024 the Friendica project
+  * Copyright (C) 2010-2026, the Friendica project
+  * SPDX-FileCopyrightText: 2010-2026 the Friendica project
   *
   * SPDX-License-Identifier: AGPL-3.0-or-later
   *}}
@@ -39,6 +39,8 @@
 					{{include file="field_checkbox.tpl" field=$api_auto_attach}}
 
 					{{include file="field_select.tpl" field=$article_mode}}
+
+					{{include file="field_input.tpl" field=$minimum_posting_interval}}
 				</div>
 				<div class="panel-footer">
 					<button type="submit" id="general-submit" name="general-submit" class="btn btn-primary" value="{{$submit}}">{{$submit}}</button>

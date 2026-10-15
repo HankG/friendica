@@ -1,7 +1,7 @@
 <?php
 
-/* Copyright (C) 2010-2024, the Friendica project
- * SPDX-FileCopyrightText: 2010-2024 the Friendica project
+/* Copyright (C) 2010-2026, the Friendica project
+ * SPDX-FileCopyrightText: 2010-2026 the Friendica project
  *
  * SPDX-License-Identifier: AGPL-3.0-or-later
  *
@@ -21,15 +21,7 @@ use Friendica\Core\Session\Capability\IHandleSessions;
 
 class SystemMessages
 {
-	/**
-	 * @var IHandleSessions
-	 */
-	private $session;
-
-	public function __construct(IHandleSessions $session)
-	{
-		$this->session = $session;
-	}
+	public function __construct(private readonly IHandleSessions $session) {}
 
 	public function addNotice(string $message)
 	{
@@ -54,7 +46,7 @@ class SystemMessages
 
 	public function addInfo(string $message)
 	{
-		$sysmsg = $this->getNotices();
+		$sysmsg = $this->getInfos();
 
 		$sysmsg[] = $message;
 

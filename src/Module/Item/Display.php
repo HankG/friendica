@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -10,7 +10,8 @@ namespace Friendica\Module\Item;
 use Friendica\App;
 use Friendica\AppHelper;
 use Friendica\BaseModule;
-use Friendica\Content\Conversation;
+use Friendica\Content\Conversation\StatusEditor;
+use Friendica\Content\Conversation\ConversationRenderer;
 use Friendica\Content\Item as ContentItem;
 use Friendica\Content\Text\BBCode;
 use Friendica\Core\Config\Capability\IManageConfigValues;
@@ -28,10 +29,11 @@ use Friendica\Module\Special\DisplayNotFound;
 use Friendica\Navigation\Notifications\Repository\Notification;
 use Friendica\Navigation\Notifications\Repository\Notify;
 use Friendica\Protocol\ActivityPub;
-use Friendica\Util\Network;
 use Friendica\Util\Profiler;
 use Friendica\Network\HTTPException;
 use Friendica\Content\Widget;
+use Friendica\Core\System;
+use Friendica\DI;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -51,14 +53,16 @@ class Display extends BaseModule
 	protected $appHelper;
 	/** @var ContentItem */
 	protected $contentItem;
-	/** @var Conversation */
-	protected $conversation;
+	/** @var StatusEditor */
+	protected $statusEditor;
+	/** @var ConversationRenderer */
+	protected $htmlRenderer;
 	/** @var Notification */
 	protected $notification;
 	/** @var Notify */
 	protected $notify;
 
-	public function __construct(L10n $l10n, App\BaseURL $baseUrl, App\Arguments $args, LoggerInterface $logger, Profiler $profiler, Response $response, IManageConfigValues $config, IManagePersonalConfigValues $pConfig, IHandleUserSessions $session, AppHelper $appHelper, App\Page $page, ContentItem $contentItem, Conversation $conversation, Notification $notification, Notify $notify, array $server, array $parameters = [])
+	public function __construct(L10n $l10n, App\BaseURL $baseUrl, App\Arguments $args, LoggerInterface $logger, Profiler $profiler, Response $response, IManageConfigValues $config, IManagePersonalConfigValues $pConfig, IHandleUserSessions $session, AppHelper $appHelper, App\Page $page, ContentItem $contentItem, StatusEditor $statusEditor, ConversationRenderer $htmlRenderer, Notification $notification, Notify $notify, array $server, array $parameters = [])
 	{
 		parent::__construct($l10n, $baseUrl, $args, $logger, $profiler, $response, $server, $parameters);
 
@@ -68,7 +72,8 @@ class Display extends BaseModule
 		$this->session      = $session;
 		$this->appHelper    = $appHelper;
 		$this->contentItem  = $contentItem;
-		$this->conversation = $conversation;
+		$this->statusEditor = $statusEditor;
+		$this->htmlRenderer = $htmlRenderer;
 		$this->notification = $notification;
 		$this->notify       = $notify;
 	}
@@ -88,13 +93,15 @@ class Display extends BaseModule
 		$item    = null;
 		$itemUid = $this->session->getLocalUserId();
 
-		$fields = ['uri-id', 'parent-uri-id', 'author-id', 'author-link', 'body', 'uid', 'guid', 'gravity'];
+		$fields = ['id', 'uri-id', 'parent-uri-id', 'author-id', 'author-link', 'contact-id', 'contact-contact-type', 'body', 'uid', 'guid', 'gravity',
+			'plink', 'origin', 'uri', 'post-reason', 'owner-contact-type', 'owner-network', 'owner-id', 'guid',
+			'author-network', 'author-alias', 'private', 'network'];
 
 		// Does the local user have this item?
 		if ($this->session->getLocalUserId()) {
 			$item = Post::selectFirstForUser($this->session->getLocalUserId(), $fields, [
 				'guid' => $guid,
-				'uid'  => $this->session->getLocalUserId()
+				'uid'  => $this->session->getLocalUserId(),
 			]);
 		}
 
@@ -115,20 +122,26 @@ class Display extends BaseModule
 			$item = Post::selectFirstForUser($this->session->getLocalUserId(), $fields, [
 				'guid'    => $guid,
 				'private' => [Item::PUBLIC, Item::UNLISTED],
-				'uid'     => 0
+				'uid'     => 0,
 			]);
 		}
 
 		if (empty($item)) {
 			$this->page['aside'] = '';
-			$displayNotFound = new DisplayNotFound($this->l10n, $this->baseUrl, $this->args, $this->logger, $this->profiler, $this->response, $this->server, $this->parameters);
+			$displayNotFound     = new DisplayNotFound($this->l10n, $this->baseUrl, $this->args, $this->logger, $this->profiler, $this->response, $this->server, $this->parameters);
 			return $displayNotFound->content();
+		}
+
+		$plink = Item::getPlink($item);
+
+		if (!$this->session->getLocalUserId() && isset($plink['href']) && !DI::baseUrl()->isLocalUrl($plink['href'])) {
+			System::externalRedirect($plink['href']);
 		}
 
 		if ($item['gravity'] != Item::GRAVITY_PARENT) {
 			$parent = Post::selectFirst($fields, [
 				'uid'    => [0, $itemUid],
-				'uri-id' => $item['parent-uri-id']
+				'uri-id' => $item['parent-uri-id'],
 			], ['order' => ['uid' => true]]);
 
 			$item = $parent ?: $item;
@@ -137,6 +150,10 @@ class Display extends BaseModule
 		if (!$this->pConfig->get($this->session->getLocalUserId(), 'system', 'detailed_notif')) {
 			$this->notification->setAllSeenForUser($this->session->getLocalUserId(), ['parent-uri-id' => $item['parent-uri-id']]);
 			$this->notify->setAllSeenForUser($this->session->getLocalUserId(), ['parent-uri-id' => $item['parent-uri-id']]);
+		}
+
+		if ($this->session->getLocalUserId() != 0) {
+			$this->contentItem->setViewed($item['uri-id'], $this->session->getLocalUserId());
 		}
 
 		$this->displaySidebar($item);
@@ -149,7 +166,10 @@ class Display extends BaseModule
 			$output .= "<script> var netargs = '?uri_id=" . $item['uri-id'] . "'; </script>";
 		}
 
-		$output .= $this->getDisplayData($item);
+		$output .= $this->getDisplayData($item, false, false);
+
+		$author              = Contact::getByURLForUser($item['author-link'], $this->session->getLocalUserId());
+		$this->page['title'] = $this->l10n->t("Post by %s", $author['name']);
 
 		return $output;
 	}
@@ -173,7 +193,11 @@ class Display extends BaseModule
 		}
 
 		if ($author === []) {
-			$author = Contact::getById($item['author-id']);
+			if ($item['contact-contact-type'] == Contact::TYPE_COMMUNITY) {
+				$author = Contact::getById($item['contact-id']);
+			} else {
+				$author = Contact::getById($item['author-id']);
+			}
 		}
 
 		if ($this->baseUrl->isLocalUrl($author['url'])) {
@@ -185,7 +209,7 @@ class Display extends BaseModule
 		$this->appHelper->setProfileOwner($item['uid']);
 	}
 
-	protected function getDisplayData(array $item, bool $update = false, int $updateUid = 0, bool $force = false): string
+	protected function getDisplayData(array $item, bool $update = false, bool $force = false): string
 	{
 		$itemUid = $this->session->getLocalUserId();
 
@@ -195,7 +219,7 @@ class Display extends BaseModule
 		}
 
 		if (!empty($parent)) {
-			$pageUid         = $parent['uid'];
+			$pageUid = $parent['uid'];
 			if ($this->session->getRemoteContactID($pageUid)) {
 				$itemUid = $parent['uid'];
 			}
@@ -217,7 +241,7 @@ class Display extends BaseModule
 			$unseen = Post::exists([
 				'parent-uri-id' => $item['parent-uri-id'],
 				'uid'           => $this->session->getLocalUserId(),
-				'unseen'        => true
+				'unseen'        => true,
 			]);
 		} else {
 			$unseen = false;
@@ -230,14 +254,14 @@ class Display extends BaseModule
 		$condition = ["`uri-id` = ? AND `uid` IN (0, ?) " . $sql_extra, $item['uri-id'], $itemUid];
 		$fields    = [
 			'parent-uri-id', 'body', 'title', 'author-name', 'author-avatar', 'plink', 'author-id',
-			'owner-id', 'contact-id'
+			'owner-id', 'contact-id', 'uid',
 		];
 
 		$item = Post::selectFirstForUser($pageUid, $fields, $condition);
 
 		if (empty($item)) {
 			$this->page['aside'] = '';
-			$displayNotFound = new DisplayNotFound($this->l10n, $this->baseUrl, $this->args, $this->logger, $this->profiler, $this->response, $this->server, $this->parameters);
+			$displayNotFound     = new DisplayNotFound($this->l10n, $this->baseUrl, $this->args, $this->logger, $this->profiler, $this->response, $this->server, $this->parameters);
 			return $displayNotFound->content();
 		}
 
@@ -247,7 +271,7 @@ class Display extends BaseModule
 			$condition = [
 				'parent-uri-id' => $item['parent-uri-id'],
 				'uid'           => $this->session->getLocalUserId(),
-				'unseen'        => true
+				'unseen'        => true,
 			];
 			Item::update(['unseen' => false], $condition);
 		}
@@ -260,10 +284,10 @@ class Display extends BaseModule
 
 		// We need the editor here to be able to reshare an item.
 		if ($is_owner && !$update) {
-			$output .= $this->conversation->statusEditor([], 0, true);
+			$output .= $this->statusEditor->renderEditor([], 0, true);
 		}
 
-		$output .= $this->conversation->render([$item], Conversation::MODE_DISPLAY, $updateUid, false, 'commented', $itemUid);
+		$output .= $this->htmlRenderer->renderThreadByItem($item, $update, $itemUid, ConversationRenderer::MODE_DISPLAY);
 
 		return $output;
 	}
@@ -275,7 +299,7 @@ class Display extends BaseModule
 			// For the atom feed the nickname doesn't matter at all, we only need the item id.
 			$this->page['htmlhead'] .= Renderer::replaceMacros(Renderer::getMarkupTemplate('display-head.tpl'), [
 				'$alternate'    => sprintf('display/feed-item/%s.atom', $uriId),
-				'$conversation' => sprintf('display/feed-item/%s/conversation.atom', $parentUriId)
+				'$conversation' => sprintf('display/feed-item/%s/conversation.atom', $parentUriId),
 			]);
 		}
 	}
@@ -307,13 +331,13 @@ class Display extends BaseModule
 		}
 
 		$description = htmlspecialchars($description, ENT_COMPAT, 'UTF-8', true); // allow double encoding here
-		$title       = htmlspecialchars($title, ENT_COMPAT, 'UTF-8', true); // allow double encoding here
-		$author_name = htmlspecialchars($author_name, ENT_COMPAT, 'UTF-8', true); // allow double encoding here
+		$title       = htmlspecialchars((string) $title, ENT_COMPAT, 'UTF-8', true); // allow double encoding here
+		$author_name = htmlspecialchars((string) $author_name, ENT_COMPAT, 'UTF-8', true); // allow double encoding here
 
 		$page = $this->page;
 
 		if (Contact::exists([
-			'unsearchable' => true, 'id' => [$item['contact-id'], $item['author-id'], $item['owner-id']]
+			'unsearchable' => true, 'id' => [$item['contact-id'], $item['author-id'], $item['owner-id']],
 		])) {
 			$page['htmlhead'] .= "<meta content=\"noindex, noarchive\" name=\"robots\" />\n";
 		}

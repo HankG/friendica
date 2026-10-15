@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -12,14 +12,13 @@ use Friendica\App\BaseURL;
 use Friendica\App\Page;
 use Friendica\BaseModule;
 use Friendica\Contact\LocalRelationship\Repository\LocalRelationship;
-use Friendica\Content\Conversation;
+use Friendica\Content\Conversation\StatusEditor;
 use Friendica\Content\Nav;
 use Friendica\Content\Widget\VCard;
 use Friendica\Core\ACL;
 use Friendica\Core\L10n;
 use Friendica\Core\Protocol;
 use Friendica\Core\Session\Capability\IHandleUserSessions;
-use Friendica\Core\Theme;
 use Friendica\Model\Contact as ModelContact;
 use Friendica\Module\Contact;
 use Friendica\Module\Response;
@@ -33,31 +32,9 @@ use Psr\Log\LoggerInterface;
  */
 class Conversations extends BaseModule
 {
-	/**
-	 * @var Page
-	 */
-	private $page;
-	/**
-	 * @var Conversation
-	 */
-	private $conversation;
-	/**
-	 * @var LocalRelationship
-	 */
-	private $localRelationship;
-	/**
-	 * @var IHandleUserSessions
-	 */
-	private $userSession;
-
-	public function __construct(L10n $l10n, LocalRelationship $localRelationship, BaseURL $baseUrl, Arguments $args, LoggerInterface $logger, Profiler $profiler, Response $response, Page $page, Conversation $conversation, IHandleUserSessions $userSession, $server, array $parameters = [])
+	public function __construct(L10n $l10n, private readonly LocalRelationship $localRelationship, BaseURL $baseUrl, Arguments $args, LoggerInterface $logger, Profiler $profiler, Response $response, private Page $page, private readonly StatusEditor $statusEditor, private readonly IHandleUserSessions $userSession, $server, array $parameters = [])
 	{
 		parent::__construct($l10n, $baseUrl, $args, $logger, $profiler, $response, $server, $parameters);
-
-		$this->page              = $page;
-		$this->conversation      = $conversation;
-		$this->localRelationship = $localRelationship;
-		$this->userSession       = $userSession;
 	}
 
 	protected function content(array $request = []): string
@@ -88,30 +65,34 @@ class Conversations extends BaseModule
 			$this->baseUrl->redirect('profile/' . $contact['nick']);
 		}
 
-		// Load necessary libraries for the status editor
-		$this->page->registerFooterScript(Theme::getPathForFile('asset/typeahead.js/dist/typeahead.bundle.js'));
-		$this->page->registerFooterScript(Theme::getPathForFile('js/friendica-tagsinput/friendica-tagsinput.js'));
-		$this->page->registerStylesheet(Theme::getPathForFile('js/friendica-tagsinput/friendica-tagsinput.css'));
-		$this->page->registerStylesheet(Theme::getPathForFile('js/friendica-tagsinput/friendica-tagsinput-typeahead.css'));
+		$raw = isset($request['mode']) && ($request['mode'] == 'raw');
 
-		$this->page['aside'] .= VCard::getHTML($contact, true);
+		if (!$raw) {
+			$this->statusEditor->registerAssets();
 
-		Nav::setSelected('contact');
+			$this->page['aside'] .= VCard::getHTML($contact, true);
+		}
+
+		Nav::setSelected('contacts');
 
 		$output = '';
 
-		if (!$contact['ap-posting-restricted']) {
+		if (!$contact['ap-posting-restricted'] && !$raw) {
 			$options = [
-				'lockstate' => ACL::getLockstateForUserId($this->userSession->getLocalUserId()) ? 'lock' : 'unlock',
-				'acl' => ACL::getFullSelectorHTML($this->page, $this->userSession->getLocalUserId(), true, []),
-				'bang' => '',
-				'content' => ($contact['contact-type'] == ModelContact::TYPE_COMMUNITY ? '!' : '@') . ($contact['addr'] ?: $contact['url']),
+				'lockstate'            => ACL::getLockstateForUserId($this->userSession->getLocalUserId()) ? 'lock' : 'unlock',
+				'acl'                  => ACL::getFullSelectorHTML($this->page, $this->userSession->getLocalUserId(), true, []),
+				'bang'                 => '',
+				'content'              => ($contact['contact-type'] == ModelContact::TYPE_COMMUNITY ? '!' : '@') . ($contact['addr'] ?: $contact['url']),
+				'contact_account_type' => $contact['contact-type'],
 			];
-			$output = $this->conversation->statusEditor($options);
+			$output = $this->statusEditor->renderEditor($options);
 		}
 
-		$output .= Contact::getTabsHTML($contact, Contact::TAB_CONVERSATIONS);
-		$output .= ModelContact::getThreadsFromId($contact['id'], $this->userSession->getLocalUserId(), 0, 0, $request['last_created'] ?? '');
+		Contact::setPageTitle($contact);
+		if (!$raw) {
+			$output .= Contact::getTabsHTML($contact, Contact::TAB_CONVERSATIONS);
+		}
+		$output .= ModelContact::getThreadsFromId($contact['id'], $this->userSession->getLocalUserId(), 0, 0, $request);
 
 		return $output;
 	}

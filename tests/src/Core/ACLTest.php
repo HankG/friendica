@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -17,9 +17,9 @@ class ACLTest extends FixtureTestCase
 	 *
 	 * @return void
 	 */
-	public function testCheckAclInput()
+	public function testCheckAclInput(): void
 	{
-		$result = ACL::isValidContact('<aclstring>', '42');
+		$result = ACL::isValidContact('<aclstring>', 42);
 		self::assertFalse($result);
 	}
 
@@ -28,9 +28,9 @@ class ACLTest extends FixtureTestCase
 	 *
 	 * @return void
 	 */
-	public function testCheckAclInputWithEmptyAclString()
+	public function testCheckAclInputWithEmptyAclString(): void
 	{
-		$result = ACL::isValidContact('', '42');
+		$result = ACL::isValidContact('', 42);
 		self::assertTrue($result);
 	}
 }

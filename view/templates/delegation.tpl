@@ -1,6 +1,6 @@
 {{*
-  * Copyright (C) 2010-2024, the Friendica project
-  * SPDX-FileCopyrightText: 2010-2024 the Friendica project
+  * Copyright (C) 2010-2026, the Friendica project
+  * SPDX-FileCopyrightText: 2010-2026 the Friendica project
   *
   * SPDX-License-Identifier: AGPL-3.0-or-later
   *}}
@@ -43,6 +43,6 @@
 	</div>
 
 	<p>
-		<a href="settings/delegation" class="btn btn-primary"><i class="fa fa-cog"></i> {{$l10n.settings_label}}</a>
+		<a href="settings/delegation" class="btn btn-primary"><i class="ri ri-settings-3-line"></i> {{$l10n.settings_label}}</a>
 	</p>
 </div>

@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -18,7 +18,7 @@ class ActivitiesTest extends FixtureTestCase
 	 *
 	 * @return void
 	 */
-	public function testApiFormatItemsActivities()
+	public function testApiFormatItemsActivities(): void
 	{
 		$item = ['uid' => 0, 'uri-id' => 1];
 
@@ -37,7 +37,7 @@ class ActivitiesTest extends FixtureTestCase
 	 *
 	 * @return void
 	 */
-	public function testApiFormatItemsActivitiesWithXml()
+	public function testApiFormatItemsActivitiesWithXml(): void
 	{
 		$item = ['uid' => 0, 'uri-id' => 1];
 

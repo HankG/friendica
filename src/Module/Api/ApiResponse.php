@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -38,14 +38,21 @@ class ApiResponse extends Response
 	/** @var string */
 	protected $jsonpCallback;
 
-	public function __construct(L10n $l10n, Arguments $args, LoggerInterface $logger, BaseURL $baseUrl, TwitterUser $twitterUser, array $server = [], string $jsonpCallback = '')
-	{
-		$this->l10n        = $l10n;
-		$this->args        = $args;
-		$this->logger      = $logger;
-		$this->baseUrl     = $baseUrl;
-		$this->twitterUser = $twitterUser;
-		$this->server      = $server;
+	public function __construct(
+		L10n $l10n,
+		Arguments $args,
+		LoggerInterface $logger,
+		BaseURL $baseUrl,
+		TwitterUser $twitterUser,
+		array $server = [],
+		string $jsonpCallback = '',
+	) {
+		$this->l10n          = $l10n;
+		$this->args          = $args;
+		$this->logger        = $logger;
+		$this->baseUrl       = $baseUrl;
+		$this->twitterUser   = $twitterUser;
+		$this->server        = $server;
 		$this->jsonpCallback = $jsonpCallback;
 	}
 
@@ -67,7 +74,7 @@ class ApiResponse extends Response
 			''          => 'http://api.twitter.com',
 			'statusnet' => 'http://status.net/schema/api/1/',
 			'friendica' => 'http://friendi.ca/schema/api/1/',
-			'georss'    => 'http://www.georss.org/georss'
+			'georss'    => 'http://www.georss.org/georss',
 		];
 
 		/// @todo Auto detection of needed namespaces
@@ -77,7 +84,7 @@ class ApiResponse extends Response
 
 		if (is_array($data2)) {
 			$key = key($data2);
-			Arrays::walkRecursive($data2, ['Friendica\Module\Api\ApiResponse', 'reformatXML']);
+			Arrays::walkRecursive($data2, [\Friendica\Module\Api\ApiResponse::class, 'reformatXML']);
 
 			if ($key == '0') {
 				$data4 = [];
@@ -114,7 +121,7 @@ class ApiResponse extends Response
 		$user_info = $this->twitterUser->createFromContactId($cid)->toArray();
 
 		$arr['$user'] = $user_info;
-		$arr['$rss'] = [
+		$arr['$rss']  = [
 			'alternate'    => $user_info['url'],
 			'self'         => $this->baseUrl . '/' . $this->args->getQueryString(),
 			'base'         => $this->baseUrl,
@@ -143,6 +150,7 @@ class ApiResponse extends Response
 		switch ($type) {
 			case 'rss':
 				$data = $this->addRSSValues($data, $cid);
+				// no break
 			case 'atom':
 			case 'xml':
 				return $this->createXML($data, $root_element);
@@ -167,9 +175,9 @@ class ApiResponse extends Response
 			$item = ($item ? 'true' : 'false');
 		}
 
-		if (substr($key, 0, 10) == 'statusnet_') {
+		if (str_starts_with($key, 'statusnet_')) {
 			$key = 'statusnet:' . substr($key, 10);
-		} elseif (substr($key, 0, 10) == 'friendica_') {
+		} elseif (str_starts_with($key, 'friendica_')) {
 			$key = 'friendica:' . substr($key, 10);
 		}
 		return true;
@@ -186,12 +194,12 @@ class ApiResponse extends Response
 	 * @return void
 	 * @throws HTTPException\InternalServerErrorException
 	 */
-	public function error(int $code, string $description, string $message, string $format = null)
+	public function error(int $code, string $description, string $message, ?string $format = null)
 	{
 		$error = [
 			'error'   => $message ?: $description,
 			'code'    => $code . ' ' . $description,
-			'request' => $this->args->getQueryString()
+			'request' => $this->args->getQueryString(),
 		];
 
 		$this->setHeader(($this->server['SERVER_PROTOCOL'] ?? 'HTTP/1.1') . ' ' . $code . ' ' . $description);
@@ -210,9 +218,9 @@ class ApiResponse extends Response
 	 * @return void
 	 * @throws HTTPException\InternalServerErrorException
 	 */
-	public function addFormattedContent(string $root_element, array $data, string $format = null, int $cid = 0)
+	public function addFormattedContent(string $root_element, array $data, ?string $format = null, int $cid = 0)
 	{
-		$format = $format ?? 'json';
+		$format ??= 'json';
 
 		$return = $this->formatData($root_element, $format, $data, $cid);
 
@@ -269,13 +277,15 @@ class ApiResponse extends Response
 	public function unsupported(string $method = 'all', array $request = [])
 	{
 		$path = $this->args->getQueryString();
-		$this->logger->info('Unimplemented API call',
+		$this->logger->info(
+			'Unimplemented API call',
 			[
 				'method'  => $method,
 				'path'    => $path,
 				'agent'   => $this->server['HTTP_USER_AGENT'] ?? '',
 				'request' => $request,
-			]);
+			],
+		);
 		$error = $this->l10n->t('API endpoint %s %s is not implemented but might be in the future.', strtoupper($method), $path);
 
 		$this->error(501, 'Not Implemented', $error);

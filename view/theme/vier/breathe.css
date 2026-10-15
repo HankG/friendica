@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2010-2024 the Friendica project
+ * SPDX-FileCopyrightText: 2010-2026 the Friendica project
  *
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
@@ -106,7 +106,7 @@ ul.tabs a {
 }
 
 ul.tabs li .active {
-  border-bottom: 3x solid #737373;
+  border-bottom: 3px solid #737373;
 }
 
 #birthday-notice, #event-notice {

@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -46,19 +46,42 @@ use Friendica\Util\JsonLD;
  */
 class ActivityPub
 {
-	const PUBLIC_COLLECTION = 'https://www.w3.org/ns/activitystreams#Public';
-	const CONTEXT           = [
+	public const PUBLIC_COLLECTION = 'https://www.w3.org/ns/activitystreams#Public';
+	public const CONTEXT           = [
 		'https://www.w3.org/ns/activitystreams', 'https://w3id.org/security/v1',
 		[
-			'ostatus'  => 'http://ostatus.org#',
-			'vcard'    => 'http://www.w3.org/2006/vcard/ns#',
-			'dfrn'     => 'http://purl.org/macgirvin/dfrn/1.0/',
-			'diaspora' => 'https://diasporafoundation.org/ns/',
-			'litepub'  => 'http://litepub.social/ns#',
-			'toot'     => 'http://joinmastodon.org/ns#',
+			'ostatus'            => 'http://ostatus.org#',
+			'vcard'              => 'http://www.w3.org/2006/vcard/ns#',
+			'dfrn'               => 'http://purl.org/macgirvin/dfrn/1.0/',
+			'diaspora'           => 'https://diasporafoundation.org/ns/',
+			'litepub'            => 'http://litepub.social/ns#',
+			'toot'               => 'http://joinmastodon.org/ns#',
+			'quote'              => 'https://w3id.org/fep/044f#quote',
+			'quoteUri'           => 'http://fedibird.com/ns#quoteUri',
+			'quoteAuthorization' => [
+				'@id'   => 'https://w3id.org/fep/044f#quoteAuthorization',
+				'@type' => '@id',
+			],
+			'gts'               => 'https://gotosocial.org/ns#',
+			'interactionPolicy' => [
+				'@id'   => 'gts:interactionPolicy',
+				'@type' => '@id',
+			],
+			'canQuote' => [
+				'@id'   => 'gts:canQuote',
+				'@type' => '@id',
+			],
+			'automaticApproval' => [
+				'@id'   => 'gts:automaticApproval',
+				'@type' => '@id',
+			],
+			'manualApproval' => [
+				'@id'   => 'gts:manualApproval',
+				'@type' => '@id',
+			],
 			'featured' => [
-				"@id"   => "toot:featured",
-				"@type" => "@id",
+				"@id"   => 'toot:featured',
+				"@type" => '@id',
 			],
 			'schema'                    => 'http://schema.org#',
 			'manuallyApprovesFollowers' => 'as:manuallyApprovesFollowers',
@@ -67,15 +90,16 @@ class ActivityPub
 			'conversation'              => 'ostatus:conversation',
 			'directMessage'             => 'litepub:directMessage',
 			'discoverable'              => 'toot:discoverable',
+			'indexable'                 => 'toot:indexable',
 			'PropertyValue'             => 'schema:PropertyValue',
 			'value'                     => 'schema:value',
-		]
+		],
 	];
-	const ACCOUNT_TYPES = ['Person', 'Organization', 'Service', 'Group', 'Application', 'Tombstone'];
+	public const ACCOUNT_TYPES = ['Person', 'Organization', 'Service', 'Group', 'Application', 'Tombstone'];
 
-	const ARTICLE_DEFAULT     = 0;
-	const ARTICLE_USE_SUMMARY = 1;
-	const ARTICLE_EMBED_TITLE = 2;
+	public const ARTICLE_DEFAULT     = 0;
+	public const ARTICLE_USE_SUMMARY = 1;
+	public const ARTICLE_EMBED_TITLE = 2;
 
 	/**
 	 * Checks if the web request is done for the AP protocol
@@ -102,26 +126,15 @@ class ActivityPub
 	{
 		$accounttype = -1;
 
-		switch ($apcontact['type']) {
-			case 'Person':
-				$accounttype = User::ACCOUNT_TYPE_PERSON;
-				break;
-			case 'Organization':
-				$accounttype = User::ACCOUNT_TYPE_ORGANISATION;
-				break;
-			case 'Service':
-				$accounttype = User::ACCOUNT_TYPE_NEWS;
-				break;
-			case 'Group':
-				$accounttype = User::ACCOUNT_TYPE_COMMUNITY;
-				break;
-			case 'Application':
-				$accounttype = User::ACCOUNT_TYPE_RELAY;
-				break;
-			case 'Tombstone':
-				$accounttype = User::ACCOUNT_TYPE_DELETED;
-				break;
-		}
+		$accounttype = match ($apcontact['type']) {
+			'Person'       => User::ACCOUNT_TYPE_PERSON,
+			'Organization' => User::ACCOUNT_TYPE_ORGANISATION,
+			'Service'      => User::ACCOUNT_TYPE_NEWS,
+			'Group'        => User::ACCOUNT_TYPE_COMMUNITY,
+			'Application'  => User::ACCOUNT_TYPE_RELAY,
+			'Tombstone'    => User::ACCOUNT_TYPE_DELETED,
+			default        => $accounttype,
+		};
 
 		return $accounttype;
 	}
@@ -176,6 +189,10 @@ class ActivityPub
 			$profile['hide'] = !$apcontact['discoverable'];
 		}
 
+		if (!is_null($apcontact['indexable']) && !$apcontact['indexable']) {
+			$profile['hide'] = true;
+		}
+
 		// Remove all "null" fields
 		foreach ($profile as $field => $content) {
 			if (is_null($content)) {
@@ -191,10 +208,11 @@ class ActivityPub
 	 *
 	 * @param string  $url
 	 * @param integer $uid User ID
+	 * @param integer $max Maximum number of activities to fetch (0 = all)
 	 * @return void
 	 * @throws \Friendica\Network\HTTPException\InternalServerErrorException
 	 */
-	public static function fetchOutbox(string $url, int $uid)
+	public static function fetchOutbox(string $url, int $uid, int $max = 0)
 	{
 		$data = HTTPSignature::fetch($url, $uid);
 		if (empty($data)) {
@@ -212,9 +230,14 @@ class ActivityPub
 			$items = [];
 		}
 
+		$count = 0;
 		foreach ($items as $activity) {
 			$ldactivity = JsonLD::compact($activity);
 			ActivityPub\Receiver::processActivity($ldactivity, '', $uid, true);
+			if ($max > 0 && ++$count >= $max) {
+				DI::logger()->info('Reached maximum number of activities to fetch', ['url' => $url, 'uid' => $uid, 'max' => $max]);
+				return;
+			}
 		}
 	}
 
@@ -250,6 +273,8 @@ class ActivityPub
 			$items = $data['first']['items'];
 		} elseif (!empty($data['first']) && is_string($data['first']) && ($data['first'] != $url)) {
 			return self::fetchItems($data['first'], $uid, $start_timestamp);
+		} elseif (isset($data['first']) && isset($data['first']['next']) && ($data['first']['next'] != $url)) {
+			return self::fetchItems($data['first']['next'], $uid, $start_timestamp);
 		} else {
 			return [];
 		}
@@ -307,7 +332,7 @@ class ActivityPub
 		$limited = DI::config()->get('system', 'limited_servers');
 		if (!empty($limited)) {
 			$servers = explode(',', str_replace(' ', '', $limited));
-			$host    = parse_url($apcontact['baseurl'], PHP_URL_HOST);
+			$host    = parse_url((string) $apcontact['baseurl'], PHP_URL_HOST);
 			if (!empty($host) && in_array($host, $servers)) {
 				return false;
 			}

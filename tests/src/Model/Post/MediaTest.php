@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -14,9 +14,8 @@ class MediaTest extends MockedTestCase
 	/**
 	 * Test the api_get_attachments() function.
 	 *
-	 * @return void
 	 */
-	public function testApiGetAttachments()
+	public function testApiGetAttachments(): void
 	{
 		self::markTestIncomplete('Needs Model\Post\Media refactoring first.');
 
@@ -27,9 +26,8 @@ class MediaTest extends MockedTestCase
 	/**
 	 * Test the api_get_attachments() function with an img tag.
 	 *
-	 * @return void
 	 */
-	public function testApiGetAttachmentsWithImage()
+	public function testApiGetAttachmentsWithImage(): void
 	{
 		self::markTestIncomplete('Needs Model\Post\Media refactoring first.');
 
@@ -40,9 +38,8 @@ class MediaTest extends MockedTestCase
 	/**
 	 * Test the api_get_attachments() function with an img tag and an AndStatus user agent.
 	 *
-	 * @return void
 	 */
-	public function testApiGetAttachmentsWithImageAndAndStatus()
+	public function testApiGetAttachmentsWithImageAndAndStatus(): void
 	{
 		self::markTestIncomplete('Needs Model\Post\Media refactoring first.');
 

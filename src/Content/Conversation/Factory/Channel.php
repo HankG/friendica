@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -10,6 +10,7 @@ namespace Friendica\Content\Conversation\Factory;
 use Friendica\Content\Conversation\Collection\Timelines;
 use Friendica\Content\Conversation\Entity\Channel as ChannelEntity;
 use Friendica\Model\User;
+use Friendica\Util\Strings;
 
 final class Channel extends Timeline
 {
@@ -21,8 +22,8 @@ final class Channel extends Timeline
 	 */
 	public function getTimelines(int $uid): Timelines
 	{
-		$iso639 = new \Matriphe\ISO639\ISO639;
-		$native = $iso639->nativeByCode1(User::getLanguageCode($uid));
+		$iso639 = new \Matriphe\ISO639\ISO639();
+		$native = Strings::ucFirst($iso639->nativeByCode1(User::getLanguageCode($uid)));
 
 		$tabs = [
 			new ChannelEntity(ChannelEntity::FORYOU, $this->l10n->t('For you'), $this->l10n->t('Posts from contacts you interact with and who interact with you'), 'y'),

@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -20,18 +20,12 @@ use Friendica\Database\Database as DBA;
  */
 class Database implements ICanWriteToStorage
 {
-	const NAME = 'Database';
-
-	/** @var DBA */
-	private $dba;
+	public const NAME = 'Database';
 
 	/**
 	 * @param DBA             $dba
 	 */
-	public function __construct(DBA $dba)
-	{
-		$this->dba = $dba;
-	}
+	public function __construct(private readonly DBA $dba) {}
 
 	/**
 	 * @inheritDoc

@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -18,7 +18,7 @@ class UserGServer extends \Friendica\BaseFactory implements ICanCreateFromTableR
 	 * @param GServer|null $server Corresponding GServer entity
 	 * @return Entity\UserGServer
 	 */
-	public function createFromTableRow(array $row, GServer $server = null): Entity\UserGServer
+	public function createFromTableRow(array $row, ?GServer $server = null): Entity\UserGServer
 	{
 		return new Entity\UserGServer(
 			$row['uid'],
@@ -34,7 +34,7 @@ class UserGServer extends \Friendica\BaseFactory implements ICanCreateFromTableR
 	 * @param GServer|null $gserver Corresponding GServer entity
 	 * @return Entity\UserGServer
 	 */
-	public function createFromUserAndServer(int $uid, int $gsid, GServer $gserver = null): Entity\UserGServer
+	public function createFromUserAndServer(int $uid, int $gsid, ?GServer $gserver = null): Entity\UserGServer
 	{
 		return new Entity\UserGServer(
 			$uid,

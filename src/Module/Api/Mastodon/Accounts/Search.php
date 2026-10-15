@@ -1,14 +1,12 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Module\Api\Mastodon\Accounts;
 
-use Friendica\Core\System;
-use Friendica\Database\DBA;
 use Friendica\DI;
 use Friendica\Model\Contact;
 use Friendica\Module\BaseApi;
@@ -37,7 +35,7 @@ class Search extends BaseApi
 
 		$accounts = [];
 
-		if (($request['offset'] == 0) && (Network::isValidHttpUrl($request['q']) || (strrpos($request['q'], '@') > 0))) {
+		if (($request['offset'] == 0) && (Network::isValidHttpUrl($request['q']) || (strrpos((string) $request['q'], '@') > 0))) {
 			$id = Contact::getIdForURL($request['q'], 0, $request['resolve'] ? null : false);
 
 			if (!empty($id)) {
@@ -50,9 +48,8 @@ class Search extends BaseApi
 			foreach ($contacts as $contact) {
 				$accounts[] = DI::mstdnAccount()->createFromContactId($contact['id'], $uid);
 			}
-			DBA::close($contacts);
 		}
 
-		$this->jsonExit($accounts);
+		$this->earlyJsonExit($accounts);
 	}
 }

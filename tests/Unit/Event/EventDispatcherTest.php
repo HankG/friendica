@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -21,14 +21,14 @@ class EventDispatcherTest extends TestCase
 	{
 		$eventDispatcher = new EventDispatcher();
 
-		$this->assertInstanceOf(EventDispatcherInterface::class, $eventDispatcher);
+		$this->assertInstanceOf(EventDispatcherInterface::class, $eventDispatcher); // @phpstan-ignore method.alreadyNarrowedType
 	}
 
 	public function testDispatchANamedEventUsesNameAsEventName(): void
 	{
 		$eventDispatcher = new EventDispatcher();
 
-		$eventDispatcher->addListener('test', function (NamedEvent $event) {
+		$eventDispatcher->addListener('test', function (NamedEvent $event): void {
 			$this->assertSame('test', $event->getName());
 		});
 

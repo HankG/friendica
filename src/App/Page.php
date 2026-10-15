@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -17,7 +17,7 @@ use Friendica\Core\Config\Capability\IManageConfigValues;
 use Friendica\Core\L10n;
 use Friendica\Core\PConfig\Capability\IManagePersonalConfigValues;
 use Friendica\Core\Renderer;
-use Friendica\Core\Session\Model\UserSession;
+use Friendica\Core\Session\Capability\IHandleUserSessions;
 use Friendica\Core\System;
 use Friendica\Core\Theme;
 use Friendica\DI;
@@ -66,12 +66,6 @@ class Page implements ArrayAccess
 		'section'     => '',
 		'module'      => '',
 	];
-	/**
-	 * @var string The basepath of the page
-	 */
-	private $basePath;
-
-	private EventDispatcherInterface $eventDispatcher;
 
 	private $timestamp = 0;
 	private $method    = '';
@@ -79,13 +73,13 @@ class Page implements ArrayAccess
 	private $command   = '';
 
 	/**
-	 * @param string $basepath The Page basepath
+	 * @param string $basePath The Page basepath
 	 */
-	public function __construct(string $basepath, EventDispatcherInterface $eventDispatcher)
-	{
-		$this->timestamp       = microtime(true);
-		$this->basePath        = $basepath;
-		$this->eventDispatcher = $eventDispatcher;
+	public function __construct(
+		private readonly string $basePath,
+		private readonly EventDispatcherInterface $eventDispatcher,
+	) {
+		$this->timestamp = microtime(true);
 	}
 
 	public function setLogging(string $method, string $module, string $command)
@@ -194,7 +188,7 @@ class Page implements ArrayAccess
 		L10n $l10n,
 		IManageConfigValues $config,
 		IManagePersonalConfigValues $pConfig,
-		int $localUID
+		int $localUID,
 	) {
 		// Default title: current module called
 		if (empty($this->page['title']) && $args->getModuleName()) {
@@ -223,7 +217,7 @@ class Page implements ArrayAccess
 		}
 
 		$this->page['htmlhead'] = $this->eventDispatcher->dispatch(
-			new HtmlFilterEvent(HtmlFilterEvent::HEAD, $this->page['htmlhead'])
+			new HtmlFilterEvent(HtmlFilterEvent::HEAD, $this->page['htmlhead']),
 		)->getHtml();
 
 		$tpl = Renderer::getMarkupTemplate('head.tpl');
@@ -263,11 +257,25 @@ class Page implements ArrayAccess
 
 			'$local_user'     => $localUID,
 			'$generator'      => 'Friendica' . ' ' . App::VERSION,
-			'$update_content' => (int)$pConfig->get($localUID, 'system', 'update_content'),
+			'$update_content' => (int) $pConfig->get($localUID, 'system', 'update_content'),
 			'$shortcut_icon'  => $shortcut_icon,
 			'$touch_icon'     => $touch_icon,
 			'$block_public'   => intval($config->get('system', 'block_public')),
 			'$stylesheets'    => $this->stylesheets,
+			'$loading'        => [
+				'fetching'            => $l10n->t('Fetching...'),
+				'receiving'           => $l10n->t('Receiving data...'),
+				'processing'          => $l10n->t('Processing...'),
+				'posting'             => $l10n->t('Posting...'),
+				'delay_messages_json' => json_encode($l10n->getDelayMessages(), JSON_UNESCAPED_UNICODE),
+			],
+
+			'$spaErrors' => [
+				'timeout'         => $l10n->t('Timeout'),
+				'timeout_message' => $l10n->t('The request took too long. Please try again.'),
+				'close'           => $l10n->t('Close'),
+				'delay_title'     => $l10n->t('Please wait'),
+			],
 
 			// Dropzone
 			'$max_imagesize' => round(Images::getMaxUploadBytes() / 1000000, 0),
@@ -275,7 +283,7 @@ class Page implements ArrayAccess
 		]) . $this->page['htmlhead'];
 
 		if ($pConfig->get($localUID, 'accessibility', 'hide_empty_descriptions')) {
-			$this->page['htmlhead'] .= "<style>.empty-description {display: none;}</style>\n";
+			$this->page['htmlhead'] .= "<style>a[data-alt='']{display:none;} a:has(.empty-description){display:none;} .empty-description {display: none;}</style>\n";
 		}
 		if ($pConfig->get($localUID, 'accessibility', 'hide_custom_emojis')) {
 			$this->page['htmlhead'] .= "<style>span.emoji.mastodon img {display: none;}</style>\n";
@@ -318,7 +326,7 @@ class Page implements ArrayAccess
 	 *
 	 * @throws HTTPException\InternalServerErrorException
 	 */
-	private function initFooter(UserSession $session, Mode $mode, L10n $l10n)
+	private function initFooter(IHandleUserSessions $session, Mode $mode, L10n $l10n)
 	{
 		// If you're just visiting, let javascript take you home
 		if (!empty($_SESSION['visitor_home'])) {
@@ -342,12 +350,12 @@ class Page implements ArrayAccess
 			}
 			$this->page['footer'] .= Renderer::replaceMacros(Renderer::getMarkupTemplate("toggle_mobile_footer.tpl"), [
 				'$toggle_link' => $link,
-				'$toggle_text' => $l10n->t('toggle mobile')
+				'$toggle_text' => $l10n->t('toggle mobile'),
 			]);
 		}
 
 		$this->page['footer'] = $this->eventDispatcher->dispatch(
-			new HtmlFilterEvent(HtmlFilterEvent::FOOTER, $this->page['footer'])
+			new HtmlFilterEvent(HtmlFilterEvent::FOOTER, $this->page['footer']),
 		)->getHtml();
 
 		$tpl                  = Renderer::getMarkupTemplate('footer.tpl');
@@ -374,11 +382,11 @@ class Page implements ArrayAccess
 		// initialise content region
 		if ($mode->isNormal()) {
 			$this->page['content'] = $this->eventDispatcher->dispatch(
-				new HtmlFilterEvent(HtmlFilterEvent::PAGE_CONTENT_TOP, $this->page['content'])
+				new HtmlFilterEvent(HtmlFilterEvent::PAGE_CONTENT_TOP, $this->page['content']),
 			)->getHtml();
 		}
 
-		$this->page['content'] .= (string)$response->getBody();
+		$this->page['content'] .= (string) $response->getBody();
 	}
 
 	/**
@@ -419,7 +427,7 @@ class Page implements ArrayAccess
 	 */
 	public function run(
 		AppHelper $appHelper,
-		UserSession $session,
+		IHandleUserSessions $session,
 		BaseURL $baseURL,
 		Arguments $args,
 		Mode $mode,
@@ -429,7 +437,7 @@ class Page implements ArrayAccess
 		IManageConfigValues $config,
 		IManagePersonalConfigValues $pconfig,
 		Nav $nav,
-		int $localUID
+		int $localUID,
 	) {
 		$moduleName = $args->getModuleName();
 
@@ -453,7 +461,7 @@ class Page implements ArrayAccess
 
 		if (function_exists(str_replace('-', '_', $currentTheme) . '_init')) {
 			$func = str_replace('-', '_', $currentTheme) . '_init';
-			$func($appHelper);
+			$func($appHelper, $pconfig, $session, $this, $mode);
 		}
 
 		/* Create the page head after setting the language
@@ -474,7 +482,7 @@ class Page implements ArrayAccess
 
 		if (!$mode->isAjax()) {
 			$this->page['content'] = $this->eventDispatcher->dispatch(
-				new HtmlFilterEvent(HtmlFilterEvent::PAGE_END, $this->page['content'])
+				new HtmlFilterEvent(HtmlFilterEvent::PAGE_END, $this->page['content']),
 			)->getHtml();
 		}
 
@@ -519,7 +527,7 @@ class Page implements ArrayAccess
 		// add and escape some common but crucial content for direct "echo" in HTML (security)
 		$page['title']   = htmlspecialchars($page['title'] ?? '');
 		$page['section'] = htmlspecialchars($args->get(0) ?? 'generic');
-		$page['module']  = htmlspecialchars($args->getModuleName() ?? '');
+		$page['module']  = htmlspecialchars($args->getModuleName());
 
 		header("X-Friendica-Version: " . App::VERSION);
 		header("Content-type: text/html; charset=utf-8");

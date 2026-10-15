@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -9,10 +9,12 @@ namespace Friendica\Worker;
 
 use Friendica\Core\Worker;
 use Friendica\DI;
+use Friendica\Model\Circle;
 use Friendica\Model\Contact;
 use Friendica\Network\HTTPException\InternalServerErrorException;
 use Friendica\Network\HTTPException\NotFoundException;
 use Friendica\Util\Network;
+use GuzzleHttp\Psr7\Uri;
 
 class AddContact
 {
@@ -20,8 +22,9 @@ class AddContact
 	 * Add contact data via probe
 	 * @param int    $uid User ID
 	 * @param string $url Contact link
+	 * @param string $circle Circle name
 	 */
-	public static function execute(int $uid, string $url)
+	public static function execute(int $uid, string $url, string $circle = '')
 	{
 		try {
 			if ($uid == 0) {
@@ -32,6 +35,21 @@ class AddContact
 			}
 
 			$result = Contact::createFromProbeForUser($uid, $url);
+			if ($result['success'] && $result['cid'] > 0 && $circle !== '') {
+				$gid = Circle::getIdByName($uid, $circle);
+				if ($gid === false) {
+					Circle::create($uid, $circle);
+					$gid = Circle::getIdByName($uid, $circle);
+				}
+				if ($gid !== false) {
+					try {
+						Circle::addMember($gid, $result['cid']);
+						DI::logger()->info('Added contact to circle', ['uid' => $uid, 'cid' => $result['cid'], 'circle' => $circle, 'gid' => $gid]);
+					} catch (\Exception $e) {
+						DI::logger()->warning('Failed to add contact to circle', ['uid' => $uid, 'cid' => $result['cid'], 'circle' => $circle, 'exception' => $e]);
+					}
+				}
+			}
 			DI::logger()->info('Added contact for user', ['uid' => $uid, 'url' => $url, 'result' => $result]);
 		} catch (InternalServerErrorException $e) {
 			DI::logger()->warning('Internal server error.', ['exception' => $e, 'uid' => $uid, 'url' => $url]);
@@ -48,13 +66,50 @@ class AddContact
 	 * @param string $url Contact link
 	 * @return int
 	 */
-	public static function add($run_parameters, int $uid, string $url): int
+	public static function add($run_parameters, int $uid, string $url, string $circle = ''): int
 	{
-		if (Network::isUrlBlocked($url)) {
+		if (Network::isUriBlocked(new Uri($url))) {
 			return 0;
 		}
 
-		DI::logger()->debug('Add contact', ['uid' => $uid, 'url' => $url]);
-		return Worker::add($run_parameters, 'AddContact', 0, $url);
+		DI::logger()->debug('Add contact', ['uid' => $uid, 'url' => $url, 'circle' => $circle]);
+		return Worker::add($run_parameters, 'AddContact', $uid, $url, $circle);
+	}
+
+	/**
+	 * Checks if the maximum number of allowed workers for this task is reached
+	 *
+	 * @return boolean
+	 */
+	public static function workerLimitReached(): bool
+	{
+		$add_limit = (int) DI::config()->get('system', 'contact_add_limit');
+		$adding    = Worker::countWorkersByCommand('AddContact');
+		if ($adding >= $add_limit) {
+			DI::logger()->info('The number of currently running jobs exceed the limit', ['adding' => $adding, 'limit' => $add_limit]);
+		}
+		return ($adding >= $add_limit);
+	}
+
+	/**
+	 * Add contact data via probe for multiple contacts
+	 * @param array $urls Array of contact links
+	 * @param int   $uid  User ID
+	 */
+	public static function addByArray(array $urls, int $uid)
+	{
+		$added  = 0;
+		$failed = 0;
+		foreach ($urls as $url) {
+			$url = trim((string) $url, '@');
+			if (str_contains($url, '@') || Network::isValidHttpUrl($url) || Network::isValidAtUrl($url)) {
+				AddContact::add(Worker::PRIORITY_MEDIUM, $uid, $url);
+				$added++;
+			} else {
+				DI::logger()->notice('Invalid account', ['url' => $url]);
+				$failed++;
+			}
+		}
+		DI::logger()->notice('Import done', ['added' => $added, 'failed' => $failed]);
 	}
 }

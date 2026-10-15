@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -35,20 +35,20 @@ class Fetch extends BaseModule
 
 		// Fetch the item
 		$condition = ['origin' => true, 'private' => [Item::PUBLIC, Item::UNLISTED], 'guid' => $guid,
-			'gravity' => [Item::GRAVITY_PARENT, Item::GRAVITY_COMMENT], 'network' => [Protocol::DFRN, Protocol::DIASPORA]];
+			'gravity'             => [Item::GRAVITY_PARENT, Item::GRAVITY_COMMENT], 'network' => [Protocol::DFRN, Protocol::DIASPORA]];
 		$item = Post::selectFirst([], $condition);
 		if (empty($item)) {
 			$condition = ['guid' => $guid, 'network' => [Protocol::DFRN, Protocol::DIASPORA]];
-			$item = Post::selectFirst(['author-link'], $condition);
+			$item      = Post::selectFirst(['author-link'], $condition);
 			if (!empty($item["author-link"])) {
-				$parts = parse_url($item["author-link"]);
+				$parts = parse_url((string) $item["author-link"]);
 				if (empty($parts["scheme"]) || empty($parts["host"])) {
 					throw new HTTPException\InternalServerErrorException();
 				}
 				$host = $parts["scheme"] . "://" . $parts["host"];
 
 				if (Strings::normaliseLink($host) != Strings::normaliseLink(DI::baseUrl())) {
-					$location = $host . "/fetch/" . DI::args()->getArgv()[1] . "/" . urlencode($guid);
+					$location = $host . "/fetch/" . DI::args()->getArgv()[1] . "/" . urlencode((string) $guid);
 					System::externalRedirect($location, 301);
 				}
 			}
@@ -71,6 +71,6 @@ class Fetch extends BaseModule
 		$xml = Diaspora::buildPostXml($status["type"], $status["message"]);
 
 		// Send the envelope
-		$this->httpExit(Diaspora::buildMagicEnvelope($xml, $user), Response::TYPE_XML, 'application/magic-envelope+xml');
+		$this->earlyHttpExit(Diaspora::buildMagicEnvelope($xml, $user), Response::TYPE_XML, 'application/magic-envelope+xml');
 	}
 }

@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -30,7 +30,7 @@ class ProbeTest extends MockedTestCase
 		parent::tearDown();
 	}
 
-	const TEMPLATENOBASE = '
+	public const TEMPLATENOBASE = '
 <!DOCTYPE html>
 <html lang="en-us">
 <head>
@@ -43,7 +43,7 @@ class ProbeTest extends MockedTestCase
 </body>
 </html>';
 
-	const TEMPLATEBASE = '
+	public const TEMPLATEBASE = '
 <!DOCTYPE html>
 <html lang="en-us">
 <head>
@@ -57,7 +57,7 @@ class ProbeTest extends MockedTestCase
 </body>
 </html>';
 
-	const EXPECTED = [
+	public const EXPECTED = [
 		'https://example.org/path/to/blog/index.php' => [
 			'index.xml'               => 'https://example.org/path/to/blog/index.xml',
 			'./index.xml'             => 'https://example.org/path/to/blog/index.xml',
@@ -97,10 +97,7 @@ class ProbeTest extends MockedTestCase
 		return $template;
 	}
 
-	/**
-	 * @small
-	 */
-	public function testGetFeedLinkNoBase()
+	public function testGetFeedLinkNoBase(): void
 	{
 		foreach (self::EXPECTED as $url => $hrefs) {
 			foreach ($hrefs as $href => $expected) {
@@ -113,10 +110,7 @@ class ProbeTest extends MockedTestCase
 		}
 	}
 
-	/**
-	 * @small
-	 */
-	public function testGetFeedLinkBase()
+	public function testGetFeedLinkBase(): void
 	{
 		foreach (self::EXPECTED as $url => $hrefs) {
 			foreach ($hrefs as $href => $expected) {
@@ -129,7 +123,7 @@ class ProbeTest extends MockedTestCase
 		}
 	}
 
-	public function dataCleanUri(): array
+	public static function dataCleanUri(): array
 	{
 		return [
 			'@-first' => [
@@ -158,15 +152,13 @@ class ProbeTest extends MockedTestCase
 		];
 	}
 
-	/**
-	 * @dataProvider dataCleanUri
-	 */
-	public function testCleanUri(string $expected, string $uri)
+	#[\PHPUnit\Framework\Attributes\DataProvider('dataCleanUri')]
+	public function testCleanUri(string $expected, string $uri): void
 	{
 		self::assertEquals($expected, Probe::cleanURI($uri));
 	}
 
-	public function dataUri(): array
+	public static function dataUri(): array
 	{
 		return [
 			'Artists4Future_Muenchen@climatejustice.global' => [
@@ -203,15 +195,13 @@ xQIDAQAB
 -----END PUBLIC KEY-----',
 					'manually-approve' => 0,
 					'baseurl'          => 'https://climatejustice.global',
-				]
-			]
+				],
+			],
 		];
 	}
 
-	/**
-	 * @dataProvider dataUri
-	 */
-	public function testProbeUri(string $uri, array $assertInfos)
+	#[\PHPUnit\Framework\Attributes\DataProvider('dataUri')]
+	public function testProbeUri(string $uri, array $assertInfos): void
 	{
 		self::markTestIncomplete('hard work due mocking 19 different http-requests');
 
@@ -259,12 +249,17 @@ xQIDAQAB
 		 *
 		 */
 
-		$container = [];
+		$container = []; // @phpstan-ignore deadCode.unreachable (skipped test)
 		$history   = Middleware::history($container);
 
 		$this->httpRequestHandler->push($history);
 
-		self::assertArraySubset($assertInfos, Probe::uri($uri, '', 0));
+		$result = Probe::uri($uri, '', 0);
+
+		foreach ($assertInfos as $key => $value) {
+			self::assertArrayHasKey($key, $result);
+			self::assertEquals($value, $result[$key]);
+		}
 
 		// Iterate over the requests and responses
 		foreach ($container as $transaction) {
@@ -272,7 +267,7 @@ xQIDAQAB
 			//> GET, HEAD
 			if ($transaction['response']) {
 				echo $transaction['response']->getStatusCode() . PHP_EOL;
-			//> 200, 200
+				//> 200, 200
 			} elseif ($transaction['error']) {
 				echo $transaction['error'];
 				//> exception

@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -35,11 +35,11 @@ class DiceInstanceManager implements ICanCreateInstances, ICanRegisterStrategies
 	/** {@inheritDoc} */
 	public function registerStrategy(string $interface, string $class, ?string $name = null): ICanRegisterStrategies
 	{
-		if (!empty($this->instance[$interface][strtolower($name)])) {
+		if (!empty($this->instance[$interface][strtolower((string) $name)])) {
 			throw new HookRegisterArgumentException(sprintf('A class with the name %s is already set for the interface %s', $name, $interface));
 		}
 
-		$this->instance[$interface][strtolower($name)] = $class;
+		$this->instance[$interface][strtolower((string) $name)] = $class;
 
 		return $this;
 	}

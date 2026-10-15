@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -364,8 +364,8 @@ function toggleEventNav(elm) {
 
 // Disable the input for the finish date if it is not available.
 function enableDisableFinishDate() {
-	if ($("#id_nofinish").is(":checked")) $("#id_finish_text").prop("disabled", true);
-	else $("#id_finish_text").prop("disabled", false);
+	if ($("#id_nofinish").is(":checked")) $("#id_finish_text_wrapper").prop("disabled", true).css("visibility", "hidden");
+	else $("#id_finish_text_wrapper").prop("disabled", false).css("visibility", "visible");
 }
 
 // @license-end

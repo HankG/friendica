@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -18,6 +18,7 @@ use Friendica\Model\Item;
 use Friendica\Model\Post;
 use Friendica\Model\Tag;
 use Friendica\Module\Response;
+use Friendica\Post\UriGenerator;
 use Friendica\Protocol\Activity;
 use Friendica\Protocol\Delivery;
 use Friendica\Util\Profiler;
@@ -30,16 +31,20 @@ use Psr\Log\LoggerInterface;
  */
 class Add extends \Friendica\BaseModule
 {
-	/** @var IHandleUserSessions */
-	private $session;
-	private EventDispatcherInterface $eventDispatcher;
-
-	public function __construct(IHandleUserSessions $session, EventDispatcherInterface $eventDispatcher, L10n $l10n, App\BaseURL $baseUrl, App\Arguments $args, LoggerInterface $logger, Profiler $profiler, Response $response, array $server, array $parameters = [])
-	{
+	public function __construct(
+		private readonly IHandleUserSessions $session,
+		private readonly EventDispatcherInterface $eventDispatcher,
+		private readonly UriGenerator $postUriGenerator,
+		L10n $l10n,
+		App\BaseURL $baseUrl,
+		App\Arguments $args,
+		LoggerInterface $logger,
+		Profiler $profiler,
+		Response $response,
+		array $server,
+		array $parameters = [],
+	) {
 		parent::__construct($l10n, $baseUrl, $args, $logger, $profiler, $response, $server, $parameters);
-
-		$this->session         = $session;
-		$this->eventDispatcher = $eventDispatcher;
 	}
 
 	protected function post(array $request = [])
@@ -114,7 +119,7 @@ EOT;
 
 		$post = [
 			'guid'          => System::createUUID(),
-			'uri'           => Item::newURI(),
+			'uri'           => $this->postUriGenerator->newURI(),
 			'uid'           => $owner_uid,
 			'contact-id'    => $contact['id'],
 			'wall'          => $item['wall'],
@@ -158,7 +163,7 @@ EOT;
 		];
 
 		$hook_data = $this->eventDispatcher->dispatch(
-			new ArrayFilterEvent(ArrayFilterEvent::INSERT_POST_LOCAL_END, $hook_data)
+			new ArrayFilterEvent(ArrayFilterEvent::INSERT_POST_LOCAL_END, $hook_data),
 		)->getArray();
 
 		$post = $hook_data['item'] ?? $post;

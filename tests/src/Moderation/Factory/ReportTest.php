@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -18,21 +18,21 @@ use Psr\Log\NullLogger;
 
 class ReportTest extends MockedTestCase
 {
-	public function dataCreateFromTableRow(): array
+	public static function dataCreateFromTableRow(): array
 	{
 		$clock = new FrozenClock();
 
 		// We need to strip the microseconds part to match database stored timestamps
 		$nowSeconds = $clock->now()->setTime(
-			$clock->now()->format('H'),
-			$clock->now()->format('i'),
-			$clock->now()->format('s')
+			(int) $clock->now()->format('H'),
+			(int) $clock->now()->format('i'),
+			(int) $clock->now()->format('s'),
 		);
 
 		return [
 			'default' => [
 				'clock' => $clock,
-				'row' => [
+				'row'   => [
 					'id'              => 11,
 					'reporter-id'     => 12,
 					'uid'             => null,
@@ -50,9 +50,9 @@ class ReportTest extends MockedTestCase
 					'created'         => $nowSeconds->format(DateTimeFormat::MYSQL),
 					'edited'          => null,
 				],
-				'posts' => new Collection\Report\Posts(),
-				'rules' => new Collection\Report\Rules(),
-				'assertion'  => new Entity\Report(
+				'posts'     => new Collection\Report\Posts(),
+				'rules'     => new Collection\Report\Rules(),
+				'assertion' => new Entity\Report(
 					12,
 					13,
 					14,
@@ -70,12 +70,12 @@ class ReportTest extends MockedTestCase
 					null,
 					null,
 					null,
-					11
+					11,
 				),
 			],
 			'full' => [
 				'clock' => $clock,
-				'row' => [
+				'row'   => [
 					'id'              => 11,
 					'reporter-id'     => 42,
 					'uid'             => 12,
@@ -101,7 +101,7 @@ class ReportTest extends MockedTestCase
 					new Entity\Report\Rule(1, 'No hate speech'),
 					new Entity\Report\Rule(3, 'No commercial promotion'),
 				]),
-				'assertion'  => new Entity\Report(
+				'assertion' => new Entity\Report(
 					42,
 					13,
 					14,
@@ -125,23 +125,21 @@ class ReportTest extends MockedTestCase
 					Entity\Report::RESOLUTION_ACCEPTED,
 					16,
 					15,
-					11
+					11,
 				),
 			],
 		];
 	}
 
-	/**
-	 * @dataProvider dataCreateFromTableRow
-	 */
-	public function testCreateFromTableRow(ClockInterface $clock, array $row, Collection\Report\Posts $posts, Collection\Report\Rules $rules, Entity\Report $assertion)
+	#[\PHPUnit\Framework\Attributes\DataProvider('dataCreateFromTableRow')]
+	public function testCreateFromTableRow(ClockInterface $clock, array $row, Collection\Report\Posts $posts, Collection\Report\Rules $rules, Entity\Report $assertion): void
 	{
 		$factory = new Factory\Report(new NullLogger(), $clock);
 
 		$this->assertEquals($factory->createFromTableRow($row, $posts, $rules), $assertion);
 	}
 
-	public function dataCreateFromReportsRequest(): array
+	public static function dataCreateFromReportsRequest(): array
 	{
 		$clock = new FrozenClock();
 
@@ -189,7 +187,7 @@ class ReportTest extends MockedTestCase
 					true,
 					new Collection\Report\Posts([
 						new Entity\Report\Post(89),
-						new Entity\Report\Post(90)
+						new Entity\Report\Post(90),
 					]),
 					new Collection\Report\Rules([
 						new Entity\Report\Rule(1, 'Rule 1'),
@@ -248,10 +246,8 @@ class ReportTest extends MockedTestCase
 		];
 	}
 
-	/**
-	 * @dataProvider dataCreateFromReportsRequest
-	 */
-	public function testCreateFromReportsRequest(ClockInterface $clock, array $rules, int $reporterId, int $cid, int $gsid, string $comment, string $category, bool $forward, array $postUriIds, array $ruleIds, int $uid = null, Entity\Report $assertion)
+	#[\PHPUnit\Framework\Attributes\DataProvider('dataCreateFromReportsRequest')]
+	public function testCreateFromReportsRequest(ClockInterface $clock, array $rules, int $reporterId, int $cid, int $gsid, string $comment, string $category, bool $forward, array $postUriIds, array $ruleIds, ?int $uid, Entity\Report $assertion): void
 	{
 		$factory = new Factory\Report(new NullLogger(), $clock);
 

@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -28,7 +28,7 @@ class UploadTest extends ApiTestCase
 	/**
 	 * Test the \Friendica\Module\Api\Twitter\Media\Upload module.
 	 */
-	public function testApiMediaUpload()
+	public function testApiMediaUpload(): void
 	{
 		$this->expectException(BadRequestException::class);
 
@@ -41,13 +41,21 @@ class UploadTest extends ApiTestCase
 	 *
 	 * @return void
 	 */
-	public function testApiMediaUploadWithoutAuthenticatedUser()
+	public function testApiMediaUploadWithoutAuthenticatedUser(): void
 	{
 		$this->expectException(UnauthorizedException::class);
 		AuthTestConfig::$authenticated = false;
 
-		(new Upload(DI::mstdnError(), DI::appHelper(), DI::l10n(), DI::baseUrl(), DI::args(), DI::logger(), DI::profiler(), DI::apiResponse(), []))
-			->run($this->httpExceptionMock);
+		(new class (DI::mstdnError(), DI::appHelper(), DI::l10n(), DI::baseUrl(), DI::args(), DI::logger(), DI::profiler(), DI::apiResponse(), []) extends Upload {
+			public function earlyJsonError(int $httpCode, mixed $content, string $contentType = 'application/json'): never
+			{
+				if ($httpCode === 401) {
+					throw new UnauthorizedException(json_encode($content));
+				}
+
+				parent::earlyJsonError($httpCode, $content, $contentType);
+			}
+		})->run($this->httpExceptionMock);
 	}
 
 	/**
@@ -55,14 +63,14 @@ class UploadTest extends ApiTestCase
 	 *
 	 * @return void
 	 */
-	public function testApiMediaUploadWithMedia()
+	public function testApiMediaUploadWithMedia(): void
 	{
 		$this->expectException(InternalServerErrorException::class);
 		$_FILES = [
 			'media' => [
 				'id'       => 666,
-				'tmp_name' => 'tmp_name'
-			]
+				'tmp_name' => 'tmp_name',
+			],
 		];
 
 		(new Upload(DI::mstdnError(), DI::appHelper(), DI::l10n(), DI::baseUrl(), DI::args(), DI::logger(), DI::profiler(), DI::apiResponse(), []))
@@ -74,7 +82,7 @@ class UploadTest extends ApiTestCase
 	 *
 	 * @return void
 	 */
-	public function testApiMediaUploadWithValidMedia()
+	public function testApiMediaUploadWithValidMedia(): void
 	{
 		$_FILES = [
 			'media' => [
@@ -84,8 +92,8 @@ class UploadTest extends ApiTestCase
 				'height'   => 666,
 				'tmp_name' => $this->getTempImage(),
 				'name'     => 'spacer.png',
-				'type'     => 'image/png'
-			]
+				'type'     => 'image/png',
+			],
 		];
 
 		$response = (new Upload(DI::mstdnError(), DI::appHelper(), DI::l10n(), DI::baseUrl(), DI::args(), DI::logger(), DI::profiler(), DI::apiResponse(), []))

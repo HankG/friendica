@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -28,15 +28,9 @@ use Psr\Log\LoggerInterface;
  */
 class Statuses extends BaseApi
 {
-	/**
-	 * @var IManageConfigValues
-	 */
-	private $config;
-
-	public function __construct(IManageConfigValues $config, \Friendica\Factory\Api\Mastodon\Error $errorFactory, AppHelper $appHelper, L10n $l10n, BaseURL $baseUrl, Arguments $args, LoggerInterface $logger, Profiler $profiler, ApiResponse $response, array $server, array $parameters = [])
+	public function __construct(private readonly IManageConfigValues $config, \Friendica\Factory\Api\Mastodon\Error $errorFactory, AppHelper $appHelper, L10n $l10n, BaseURL $baseUrl, Arguments $args, LoggerInterface $logger, Profiler $profiler, ApiResponse $response, array $server, array $parameters = [])
 	{
 		parent::__construct($errorFactory, $appHelper, $l10n, $baseUrl, $args, $logger, $profiler, $response, $server, $parameters);
-		$this->config = $config;
 	}
 
 	/**
@@ -58,13 +52,11 @@ class Statuses extends BaseApi
 		$condition = ["NOT `private` AND `commented` > ? AND `created` > ?", DateTimeFormat::utc('now -1 day'), DateTimeFormat::utc('now -1 week')];
 		$condition = DBA::mergeConditions($condition, ['network' => Protocol::FEDERATED]);
 
-		$display_quotes = self::appSupportsQuotes();
-
 		$trending = [];
 		$statuses = Post::selectPostThread(['uri-id'], $condition, ['limit' => [$request['offset'], $request['limit']],  'order' => ['total-actors' => true]]);
 		while ($status = Post::fetch($statuses)) {
 			try {
-				$trending[] = DI::mstdnStatus()->createFromUriId($status['uri-id'], $uid, $display_quotes);
+				$trending[] = DI::mstdnStatus()->createFromUriId($status['uri-id'], $uid);
 			} catch (\Exception $exception) {
 				$this->logger->info('Post not fetchable', ['uri-id' => $status['uri-id'], 'uid' => $uid, 'exception' => $exception]);
 			}
@@ -72,9 +64,9 @@ class Statuses extends BaseApi
 		DBA::close($statuses);
 
 		if (!empty($trending)) {
-			self::setLinkHeaderByOffsetLimit($request['offset'], $request['limit']);
+			$this->setPaginationLinkHeaderByOffsetLimit($request['offset'], $request['limit']);
 		}
 
-		$this->jsonExit($trending);
+		$this->earlyJsonExit($trending);
 	}
 }

@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -12,7 +12,6 @@ use Friendica\BaseModule;
 use Friendica\Core\L10n;
 use Friendica\Core\Renderer;
 use Friendica\Core\Session\Capability\IHandleUserSessions;
-use Friendica\DI;
 use Friendica\Model\User\Cookie;
 use Friendica\Module\Response;
 use Friendica\Util\Profiler;
@@ -35,8 +34,19 @@ class SignOut extends BaseModule
 	/** @var TwoFactor\Repository\TrustedBrowser  */
 	protected $trustedBrowserRepository;
 
-	public function __construct(L10n $l10n, App\BaseURL $baseUrl, App\Arguments $args, LoggerInterface $logger, IHandleUserSessions $session, Cookie $cookie, TwoFactor\Repository\TrustedBrowser $trustedBrowserRepository, Profiler $profiler, Response $response, array $server, array $parameters = [])
-	{
+	public function __construct(
+		L10n $l10n,
+		App\BaseURL $baseUrl,
+		App\Arguments $args,
+		LoggerInterface $logger,
+		IHandleUserSessions $session,
+		Cookie $cookie,
+		TwoFactor\Repository\TrustedBrowser $trustedBrowserRepository,
+		Profiler $profiler,
+		Response $response,
+		array $server,
+		array $parameters = [],
+	) {
 		parent::__construct($l10n, $baseUrl, $args, $logger, $profiler, $response, $server, $parameters);
 
 		$this->session                  = $session;
@@ -61,20 +71,16 @@ class SignOut extends BaseModule
 					$this->cookie->reset(['2fa_cookie_hash' => $trusted]);
 					$this->session->clear();
 
-					DI::sysmsg()->addInfo($this->t('Logged out.'));
-					$this->baseUrl->redirect();
 					break;
 				case 'sign_out':
 					$this->trustedBrowserRepository->removeForUser($this->session->getLocalUserId(), $this->cookie->get('2fa_cookie_hash'));
 					$this->cookie->clear();
 					$this->session->clear();
 
-					DI::sysmsg()->addInfo($this->t('Logged out.'));
-					$this->baseUrl->redirect();
 					break;
-				default:
-					$this->baseUrl->redirect();
 			}
+
+			$this->baseUrl->redirect();
 		}
 	}
 
@@ -91,14 +97,12 @@ class SignOut extends BaseModule
 				$this->cookie->reset(['2fa_cookie_hash' => $trusted]);
 				$this->session->clear();
 
-				DI::sysmsg()->addInfo($this->t('Logged out.'));
 				$this->baseUrl->redirect();
 			}
-		} catch (TwoFactor\Exception\TrustedBrowserNotFoundException $exception) {
+		} catch (TwoFactor\Exception\TrustedBrowserNotFoundException) {
 			$this->cookie->clear();
 			$this->session->clear();
 
-			DI::sysmsg()->addInfo($this->t('Logged out.'));
 			$this->baseUrl->redirect();
 		}
 

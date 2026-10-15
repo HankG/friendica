@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -22,8 +22,8 @@ use Friendica\Protocol\ActivityPub;
  */
 class Circle
 {
-	const FOLLOWERS = '~';
-	const MUTUALS   = '&';
+	public const FOLLOWERS = '~';
+	public const MUTUALS   = '&';
 
 	/**
 	 * Fetches circle record by user id and maybe includes deleted circles as well
@@ -51,13 +51,13 @@ class Circle
 	 * @return bool
 	 * @throws \Exception
 	 */
-	public static function exists(int $circle_id, int $uid = null): bool
+	public static function exists(int $circle_id, ?int $uid = null): bool
 	{
 		$condition = ['id' => $circle_id, 'deleted' => false];
 
 		if (!is_null($uid)) {
 			$condition = [
-				'uid' => $uid
+				'uid' => $uid,
 			];
 		}
 
@@ -104,15 +104,21 @@ class Circle
 	/**
 	 * Update circle information.
 	 *
-	 * @param int    $id   Circle ID
-	 * @param string $name Circle name
+	 * @param int       $id     Circle ID
+	 * @param string    $name   Circle name
+	 * @param bool|null $public Circle public state (null to keep unchanged)
 	 *
 	 * @return bool Was the update successful?
 	 * @throws \Exception
 	 */
-	public static function update(int $id, string $name): bool
+	public static function update(int $id, string $name, ?bool $public = null): bool
 	{
-		return DBA::update('group', ['name' => $name], ['id' => $id]);
+		$fields = ['name' => $name];
+		if ($public !== null) {
+			$fields['public'] = $public;
+		}
+
+		return DBA::update('group', $fields, ['id' => $id]);
 	}
 
 	/**
@@ -176,7 +182,7 @@ class Circle
 				FROM `group` AS `circle`
 				WHERE `circle`.`uid` = ?;",
 			$uid,
-			$uid
+			$uid,
 		);
 
 		return DBA::toArray($stmt);
@@ -233,11 +239,11 @@ class Circle
 				$user['def_gid'] = 0;
 				$change          = true;
 			}
-			if (strpos($user['allow_gid'], '<' . $gid . '>') !== false) {
+			if (str_contains((string) $user['allow_gid'], '<' . $gid . '>')) {
 				$user['allow_gid'] = str_replace('<' . $gid . '>', '', $user['allow_gid']);
 				$change            = true;
 			}
-			if (strpos($user['deny_gid'], '<' . $gid . '>') !== false) {
+			if (str_contains((string) $user['deny_gid'], '<' . $gid . '>')) {
 				$user['deny_gid'] = str_replace('<' . $gid . '>', '', $user['deny_gid']);
 				$change           = true;
 			}
@@ -280,7 +286,7 @@ class Circle
 		if (!$ucid) {
 			throw new HTTPException\NotFoundException('Invalid contact.');
 		}
-
+		DI::logger()->debug('Adding contact to circle', ['gid' => $gid, 'cid' => $cid, 'ucid' => $ucid]);
 		return DBA::insert('group_member', ['gid' => $gid, 'contact-id' => $ucid], Database::INSERT_IGNORE);
 	}
 
@@ -389,7 +395,7 @@ class Circle
 	 */
 	public static function expand(int $uid, array $circle_ids, bool $check_dead = false, bool $expand_followers = true): array
 	{
-		if (!is_array($circle_ids) || !count($circle_ids)) {
+		if (count($circle_ids) === 0) {
 			return [];
 		}
 
@@ -481,8 +487,8 @@ class Circle
 			[
 				'name'     => '',
 				'id'       => '0',
-				'selected' => ''
-			]
+				'selected' => '',
+			],
 		];
 
 		$stmt = DBA::select('group', [], ['deleted' => false, 'uid' => $uid, 'cid' => null], ['order' => ['name']]);
@@ -490,7 +496,7 @@ class Circle
 			$display_circles[] = [
 				'name'     => $circle['name'],
 				'id'       => $circle['id'],
-				'selected' => $gid == $circle['id'] ? 'true' : ''
+				'selected' => $gid == $circle['id'] ? 'true' : '',
 			];
 		}
 		DBA::close($stmt);
@@ -500,7 +506,7 @@ class Circle
 		$o = Renderer::replaceMacros(Renderer::getMarkupTemplate('circle_selection.tpl'), [
 			'$id'      => $id,
 			'$label'   => $label,
-			'$circles' => $display_circles
+			'$circles' => $display_circles,
 		]);
 		return $o;
 	}
@@ -531,7 +537,7 @@ class Circle
 				'id'       => 0,
 				'selected' => (($circle_id === 'everyone') ? 'circle-selected' : ''),
 				'href'     => $every,
-			]
+			],
 		];
 
 		$member_of = [];

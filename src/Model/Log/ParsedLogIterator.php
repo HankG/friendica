@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -18,9 +18,6 @@ use Friendica\Object\Log\ParsedLogLine;
  */
 class ParsedLogIterator implements \Iterator
 {
-	/** @var ReversedFileReader */
-	private $reader;
-
 	/** @var ParsedLogLine|null current iterator value*/
 	private $value = null;
 
@@ -33,10 +30,7 @@ class ParsedLogIterator implements \Iterator
 	/** @var string search term */
 	private $search = '';
 
-	public function __construct(ReversedFileReader $reader)
-	{
-		$this->reader = $reader;
-	}
+	public function __construct(private readonly ReversedFileReader $reader) {}
 
 	/**
 	 * @param string $filename	File to open
@@ -91,7 +85,7 @@ class ParsedLogIterator implements \Iterator
 		foreach ($this->filters as $filter => $filtervalue) {
 			switch ($filter) {
 				case 'level':
-					$match = $match && ($parsedlogline->level == strtoupper($filtervalue));
+					$match = $match && ($parsedlogline->level == strtoupper((string) $filtervalue));
 					break;
 
 				case 'context':
@@ -112,7 +106,7 @@ class ParsedLogIterator implements \Iterator
 	private function search(ParsedLogLine $parsedlogline): bool
 	{
 		if ($this->search != '') {
-			return strstr($parsedlogline->logline, $this->search) !== false;
+			return str_contains($parsedlogline->logline, $this->search);
 		}
 		return true;
 	}

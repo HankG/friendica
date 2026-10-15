@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -24,8 +24,8 @@ class Image
 				$media = self::getHorizontalMasonryHtml($PostMediaImages);
 			} elseif (count($PostMediaImages) == 1) {
 				$media = Renderer::replaceMacros(Renderer::getMarkupTemplate('content/image/single_with_height_allocation.tpl'), [
-					'$image' => $PostMediaImages[0],
-					'$allocated_height' => $PostMediaImages[0]->getAllocatedHeight(),
+					'$image'               => $PostMediaImages[0],
+					'$allocated_height'    => $PostMediaImages[0]->getAllocatedHeight(),
 					'$allocated_max_width' => ($PostMediaImages[0]->previewWidth ?? $PostMediaImages[0]->width) . 'px',
 				]);
 			}
@@ -47,19 +47,16 @@ class Image
 	 */
 	private static function getImageGridHtml(PostMedias $images): string
 	{
-		// Image for first column (fc) and second column (sc)
-		$images_fc = [];
-		$images_sc = [];
+		// Pair images into rows
+		$images_rows = [];
 
-		for ($i = 0; $i < count($images); $i++) {
-			($i % 2 == 0) ? ($images_fc[] = $images[$i]) : ($images_sc[] = $images[$i]);
+		// Two images per row, the last row may hold a single image
+		for ($i = 0; $i < count($images); $i += 2) {
+			$images_rows[] = isset($images[$i + 1]) ? [$images[$i], $images[$i + 1]] : [$images[$i]];
 		}
 
 		return Renderer::replaceMacros(Renderer::getMarkupTemplate('content/image/grid.tpl'), [
-			'columns' => [
-				'fc' => $images_fc,
-				'sc' => $images_sc,
-			],
+			'$rows' => $images_rows,
 		]);
 	}
 
@@ -77,18 +74,14 @@ class Image
 
 		$rows = array_map(
 			function (PostMedias $PostMediaImages) {
-				if ($singleImageInRow = count($PostMediaImages) == 1) {
-					$PostMediaImages[] = $PostMediaImages[0];
-				}
-
-				$widths = [];
+				$widths  = [];
 				$heights = [];
 				foreach ($PostMediaImages as $PostMediaImage) {
 					if ($PostMediaImage->width && $PostMediaImage->height) {
-						$widths[] = $PostMediaImage->width;
+						$widths[]  = $PostMediaImage->width;
 						$heights[] = $PostMediaImage->height;
 					} else {
-						$widths[] = $PostMediaImage->previewWidth;
+						$widths[]  = $PostMediaImage->previewWidth;
 						$heights[] = $PostMediaImage->previewHeight;
 					}
 				}
@@ -105,10 +98,6 @@ class Image
 
 				$row_images2 = [];
 
-				if ($singleImageInRow) {
-					unset($PostMediaImages[1]);
-				}
-
 				foreach ($PostMediaImages as $i => $PostMediaImage) {
 					$row_images2[] = new MasonryImage(
 						$PostMediaImage->uriId,
@@ -116,7 +105,7 @@ class Image
 						$PostMediaImage->preview,
 						$PostMediaImage->description ?? '',
 						100 * $correctedWidths[$i] / $totalWidth,
-						100 * $maxHeight / $correctedWidths[$i]
+						100 * $maxHeight / $correctedWidths[$i],
 					);
 				}
 
@@ -126,11 +115,11 @@ class Image
 
 				return new MasonryImageRow($row_images2, count($row_images2), $commonHeightRatio);
 			},
-			$images->chunk($column_size)
+			$images->chunk($column_size),
 		);
 
 		return Renderer::replaceMacros(Renderer::getMarkupTemplate('content/image/horizontal_masonry.tpl'), [
-			'$rows' => $rows,
+			'$rows'        => $rows,
 			'$column_size' => $column_size,
 		]);
 	}

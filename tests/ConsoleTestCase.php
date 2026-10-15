@@ -1,14 +1,13 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Test;
 
 use Asika\SimpleConsole\Console;
-use Friendica\Test\MockedTestCase;
 use Friendica\Test\Util\Intercept;
 
 abstract class ConsoleTestCase extends MockedTestCase
@@ -18,7 +17,7 @@ abstract class ConsoleTestCase extends MockedTestCase
 	 */
 	protected $consoleArgv = [ 'consoleTest.php' ];
 
-	protected function setUp() : void
+	protected function setUp(): void
 	{
 		parent::setUp();
 

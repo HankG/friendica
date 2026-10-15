@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -22,10 +22,10 @@ use PDOException;
  */
 class User
 {
-	const FREQUENCY_DEFAULT = 0;
-	const FREQUENCY_NEVER   = 1;
-	const FREQUENCY_ALWAYS  = 2;
-	const FREQUENCY_REDUCED = 3;
+	public const FREQUENCY_DEFAULT = 0;
+	public const FREQUENCY_NEVER   = 1;
+	public const FREQUENCY_ALWAYS  = 2;
+	public const FREQUENCY_REDUCED = 3;
 	/**
 	 * Insert a user-contact for a given contact array
 	 *

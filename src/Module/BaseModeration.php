@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -116,7 +116,7 @@ abstract class BaseModeration extends BaseModule
 			'$subpages'  => $aside_sub,
 			'$admtxt'    => $this->t('Moderation'),
 			'$h_pending' => $this->t('User registrations waiting for confirmation'),
-			'$modurl'    => 'moderation/'
+			'$modurl'    => 'moderation/',
 		]);
 
 		return '';

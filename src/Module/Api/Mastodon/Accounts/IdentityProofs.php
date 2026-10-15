@@ -1,13 +1,12 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Module\Api\Mastodon\Accounts;
 
-use Friendica\Core\System;
 use Friendica\Module\BaseApi;
 
 /**
@@ -18,10 +17,10 @@ class IdentityProofs extends BaseApi
 	/**
 	 * @throws \Friendica\Network\HTTPException\InternalServerErrorException
 	 */
-	protected function rawContent(array $request = [])
+	protected function rawContent(array $request = []): never
 	{
 		$this->checkAllowedScope(self::SCOPE_READ);
 
-		$this->jsonExit([]);
+		$this->earlyJsonExit([]);
 	}
 }

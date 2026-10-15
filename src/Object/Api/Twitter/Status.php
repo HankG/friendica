@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -86,17 +86,17 @@ class Status extends BaseDataTransferObject
 	 */
 	public function __construct(string $text, string $statusnetHtml, string $friendicaHtml, array $item, User $author, User $owner, array $retweeted, array $quoted, array $geo, array $friendica_activities, array $entities, array $attachments, int $friendica_comments, bool $liked)
 	{
-		$this->id                        = (int)$item['uri-id'];
-		$this->id_str                    = (string)$item['uri-id'];
-		$this->statusnet_conversation_id = (int)$item['parent-uri-id'];
+		$this->id                        = (int) $item['uri-id'];
+		$this->id_str                    = (string) $item['uri-id'];
+		$this->statusnet_conversation_id = (int) $item['parent-uri-id'];
 
 		$this->created_at = DateTimeFormat::utc($item['created'], DateTimeFormat::API);
 
 		if ($item['gravity'] == Item::GRAVITY_COMMENT) {
-			$this->in_reply_to_status_id     = (int)$item['thr-parent-id'];
-			$this->in_reply_to_status_id_str = (string)$item['thr-parent-id'];
-			$this->in_reply_to_user_id       = (int)$item['parent-author-id'];
-			$this->in_reply_to_user_id_str   = (string)$item['parent-author-id'];
+			$this->in_reply_to_status_id     = (int) $item['thr-parent-id'];
+			$this->in_reply_to_status_id_str = (string) $item['thr-parent-id'];
+			$this->in_reply_to_user_id       = (int) $item['parent-author-id'];
+			$this->in_reply_to_user_id_str   = (string) $item['parent-author-id'];
 			$this->in_reply_to_screen_name   = $item['parent-author-nick'];
 		}
 
@@ -126,7 +126,7 @@ class Status extends BaseDataTransferObject
 		if (empty($this->source)) {
 			$this->source = $origin;
 		} elseif ($origin != $this->source) {
-			$this->source = trim($this->source. ' (' . $origin . ')');
+			$this->source = trim($this->source . ' (' . $origin . ')');
 		}
 	}
 

@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -37,11 +37,11 @@ class CheckVersion
 				// don't check
 				return;
 		}
-		DI::logger()->info("Checking VERSION from: ".$checked_url);
+		DI::logger()->info("Checking VERSION from: " . $checked_url);
 
 		// fetch the VERSION file
 		$gitversion = DBA::escape(trim(DI::httpClient()->fetch($checked_url, HttpClientAccept::TEXT)));
-		DI::logger()->notice("Upstream VERSION is: ".$gitversion);
+		DI::logger()->notice("Upstream VERSION is: " . $gitversion);
 
 		DI::keyValue()->set('git_friendica_version', $gitversion);
 

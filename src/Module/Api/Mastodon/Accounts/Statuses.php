@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -17,6 +17,7 @@ use Friendica\Model\Verb;
 use Friendica\Module\BaseApi;
 use Friendica\Object\Api\Mastodon\TimelineOrderByTypes;
 use Friendica\Protocol\Activity;
+use Friendica\Content\Post\Entity\PostMedia;
 
 /**
  * @see https://docs.joinmastodon.org/methods/accounts/
@@ -56,11 +57,11 @@ class Statuses extends BaseApi
 		if ($request['pinned']) {
 			$condition = ['author-id' => $id, 'private' => [Item::PUBLIC, Item::UNLISTED], 'type' => Post\Collection::FEATURED];
 		} elseif ($request['only_media']) {
-			$condition = ['author-id' => $id, 'private' => [Item::PUBLIC, Item::UNLISTED], 'type' => [Post\Media::AUDIO, Post\Media::IMAGE, Post\Media::VIDEO]];
+			$condition = ['author-id' => $id, 'private' => [Item::PUBLIC, Item::UNLISTED], 'type' => [PostMedia::TYPE_AUDIO, PostMedia::TYPE_IMAGE, PostMedia::TYPE_VIDEO, PostMedia::TYPE_HLS]];
 		} elseif (!$uid) {
 			$condition = [
 				'author-id' => $id, 'private' => [Item::PUBLIC, Item::UNLISTED],
-				'uid'       => 0, 'network' => Protocol::FEDERATED
+				'uid'       => 0, 'network' => Protocol::FEDERATED,
 			];
 		} else {
 			$condition = ["`author-id` = ? AND (`uid` = 0 OR (`uid` = ? AND NOT `global`))", $id, $uid];
@@ -73,12 +74,12 @@ class Statuses extends BaseApi
 			if ($request['exclude_replies']) {
 				$condition = DBA::mergeConditions($condition, [
 					"(`gravity` = ? OR (`gravity` = ? AND `vid` = ? AND `protocol` != ?))",
-					Item::GRAVITY_PARENT, Item::GRAVITY_ACTIVITY, Verb::getID(Activity::ANNOUNCE), Conversation::PARCEL_DIASPORA
+					Item::GRAVITY_PARENT, Item::GRAVITY_ACTIVITY, Verb::getID(Activity::ANNOUNCE), Conversation::PARCEL_DIASPORA,
 				]);
 			} else {
 				$condition = DBA::mergeConditions($condition, [
 					"(`gravity` IN (?, ?) OR (`gravity` = ? AND `vid` = ? AND `protocol` != ?))",
-					Item::GRAVITY_PARENT, Item::GRAVITY_COMMENT, Item::GRAVITY_ACTIVITY, Verb::getID(Activity::ANNOUNCE), Conversation::PARCEL_DIASPORA
+					Item::GRAVITY_PARENT, Item::GRAVITY_COMMENT, Item::GRAVITY_ACTIVITY, Verb::getID(Activity::ANNOUNCE), Conversation::PARCEL_DIASPORA,
 				]);
 			}
 		} elseif ($request['exclude_replies']) {
@@ -89,16 +90,16 @@ class Statuses extends BaseApi
 			$items = DBA::select('collection-view', ['uri-id'], $condition, $params);
 		} elseif ($request['only_media']) {
 			$items = DBA::select('media-view', ['uri-id'], $condition, $params);
+		} elseif ($request['exclude_replies']) {
+			$items = Post::selectTimelineThreadForUser($uid, ['uri-id'], $condition, $params);
 		} else {
 			$items = Post::selectTimelineForUser($uid, ['uri-id'], $condition, $params);
 		}
 
-		$display_quotes = self::appSupportsQuotes();
-
 		$statuses = [];
 		while ($item = Post::fetch($items)) {
 			try {
-				$status = DI::mstdnStatus()->createFromUriId($item['uri-id'], $uid, $display_quotes);
+				$status = DI::mstdnStatus()->createFromUriId($item['uri-id'], $uid);
 				$this->updateBoundaries($status, $item, $request['friendica_order']);
 				$statuses[] = $status;
 			} catch (\Throwable $th) {
@@ -111,7 +112,7 @@ class Statuses extends BaseApi
 			$statuses = array_reverse($statuses);
 		}
 
-		self::setLinkHeader($request['friendica_order'] != TimelineOrderByTypes::ID);
-		$this->jsonExit($statuses);
+		$this->setPaginationLinkHeader($request['friendica_order'] != TimelineOrderByTypes::ID);
+		$this->earlyJsonExit($statuses);
 	}
 }

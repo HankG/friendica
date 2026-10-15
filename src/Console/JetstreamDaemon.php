@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2025, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -24,13 +24,6 @@ use RuntimeException;
  */
 final class JetstreamDaemon extends Console
 {
-	private Mode $mode;
-	private IManageConfigValues $config;
-	private IManageKeyValuePairs $keyValue;
-	private SysDaemon $daemon;
-	private Jetstream $jetstream;
-	private AddonHelper $addonHelper;
-
 	/**
 	 * @param Mode                 $mode
 	 * @param IManageConfigValues  $config
@@ -39,16 +32,16 @@ final class JetstreamDaemon extends Console
 	 * @param Jetstream            $jetstream
 	 * @param array|null           $argv
 	 */
-	public function __construct(Mode $mode, IManageConfigValues $config, IManageKeyValuePairs $keyValue, SysDaemon $daemon, Jetstream $jetstream, AddonHelper $addonHelper, array $argv = null)
-	{
+	public function __construct(
+		private readonly Mode $mode,
+		private readonly IManageConfigValues $config,
+		private readonly IManageKeyValuePairs $keyValue,
+		private readonly SysDaemon $daemon,
+		private readonly Jetstream $jetstream,
+		private readonly AddonHelper $addonHelper,
+		?array $argv = null,
+	) {
 		parent::__construct($argv);
-
-		$this->mode        = $mode;
-		$this->config      = $config;
-		$this->keyValue    = $keyValue;
-		$this->jetstream   = $jetstream;
-		$this->daemon      = $daemon;
-		$this->addonHelper = $addonHelper;
 	}
 
 	protected function getHelp(): string
@@ -93,7 +86,7 @@ HELP;
 						'jetstream' => [
 							'pidfile' => '/path/to/jetstream.pid',
 						],
-					TXT
+					TXT,
 			);
 		}
 
@@ -101,7 +94,7 @@ HELP;
 		Hook::loadHooks();
 
 		if (!$this->addonHelper->isAddonEnabled('bluesky')) {
-			throw new RuntimeException("Bluesky has to be enabled.\n");
+			throw new RuntimeException("the AT Protocol addon has to be enabled.\n");
 		}
 
 		$pidfile = $this->config->get('jetstream', 'pidfile');
@@ -147,7 +140,7 @@ HELP;
 		if ($daemonMode == "start") {
 			$this->out("Starting Jetstream daemon");
 
-			$this->daemon->start(function () {
+			$this->daemon->start(function (): void {
 				$this->jetstream->listen();
 			}, $foreground);
 

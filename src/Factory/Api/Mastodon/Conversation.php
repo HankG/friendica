@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -16,19 +16,9 @@ use Psr\Log\LoggerInterface;
 
 class Conversation extends BaseFactory
 {
-	/** @var Database */
-	private $dba;
-	/** @var Status */
-	private $mstdnStatusFactory;
-	/** @var Account */
-	private $mstdnAccountFactory;
-
-	public function __construct(LoggerInterface $logger, Database $dba, Status $mstdnStatusFactory, Account $mstdnAccountFactoryFactory)
+	public function __construct(LoggerInterface $logger, private readonly Database $dba, private readonly Status $mstdnStatusFactory, private readonly Account $mstdnAccountFactory)
 	{
 		parent::__construct($logger);
-		$this->dba                 = $dba;
-		$this->mstdnStatusFactory  = $mstdnStatusFactory;
-		$this->mstdnAccountFactory = $mstdnAccountFactoryFactory;
 	}
 
 	/**
@@ -65,6 +55,6 @@ class Conversation extends BaseFactory
 			$accounts[] = $this->mstdnAccountFactory->createFromContactId($id, 0);
 		}
 
-		return new \Friendica\Object\Api\Mastodon\Conversation($id, $accounts, $unread, $last_status);
+		return new \Friendica\Object\Api\Mastodon\Conversation((string) $id, $accounts, $unread, $last_status);
 	}
 }

@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -34,7 +34,7 @@ abstract class OAuthSignatureMethod
 	 *
 	 * @return string
 	 */
-	abstract public function build_signature(OAuthRequest $request, \Friendica\Security\OAuth1\OAuthConsumer $consumer, \Friendica\Security\OAuth1\OAuthToken $token = null);
+	abstract public function build_signature(OAuthRequest $request, \Friendica\Security\OAuth1\OAuthConsumer $consumer, ?\Friendica\Security\OAuth1\OAuthToken $token = null);
 
 	/**
 	 * Verifies that a given signature is correct
@@ -46,7 +46,7 @@ abstract class OAuthSignatureMethod
 	 *
 	 * @return bool
 	 */
-	public function check_signature(OAuthRequest $request, \Friendica\Security\OAuth1\OAuthConsumer $consumer, $signature, \Friendica\Security\OAuth1\OAuthToken $token = null)
+	public function check_signature(OAuthRequest $request, \Friendica\Security\OAuth1\OAuthConsumer $consumer, $signature, ?\Friendica\Security\OAuth1\OAuthToken $token = null)
 	{
 		$built = $this->build_signature($request, $consumer, $token);
 		return ($built == $signature);

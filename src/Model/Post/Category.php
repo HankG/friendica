@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -19,10 +19,10 @@ use Friendica\Model\Tag;
  */
 class Category
 {
-	const UNKNOWN           = 0;
-	const CATEGORY          = 3;
-	const FILE              = 5;
-	const SUBCRIPTION       = 10;
+	public const UNKNOWN     = 0;
+	public const CATEGORY    = 3;
+	public const FILE        = 5;
+	public const SUBCRIPTION = 10;
 
 	/**
 	 * Delete all categories and files from a given uri-id and user
@@ -89,8 +89,12 @@ class Category
 	 */
 	public static function getArray(int $uid, int $type)
 	{
-		$tags = DBA::selectToArray('category-view', ['name'], ['uid' => $uid, 'type' => $type],
-			['group_by' => ['name'], 'order' => ['name']]);
+		$tags = DBA::selectToArray(
+			'category-view',
+			['name'],
+			['uid'      => $uid, 'type' => $type],
+			['group_by' => ['name'], 'order' => ['name']],
+		);
 		if (empty($tags)) {
 			return [];
 		}
@@ -187,9 +191,9 @@ class Category
 	{
 		return DBA::replace('post-category', [
 			'uri-id' => $uri_id,
-			'uid' => $uid,
-			'type' => $type,
-			'tid' => $tagid
+			'uid'    => $uid,
+			'type'   => $type,
+			'tid'    => $tagid,
 		]);
 	}
 }

@@ -1,13 +1,12 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Module\Api\Mastodon\Statuses;
 
-use Friendica\Core\System;
 use Friendica\Database\DBA;
 use Friendica\DI;
 use Friendica\Model\Item;
@@ -37,13 +36,13 @@ class Unmute extends BaseApi
 			$this->logAndJsonError(422, $this->errorFactory->UnprocessableEntity($this->t('Only starting posts can be unmuted')));
 		}
 
-		Post\ThreadUser::setIgnored($item['uri-id'], $uid, false);
+		Post\ThreadUser::setIgnored($item['uri-id'], $uid, 0);
 
 		// @TODO Remove once mstdnStatus()->createFromUriId is fixed so that it returns posts not reshared posts if given an ID to an original post that has been reshared
 		// Introduced in this PR: https://github.com/friendica/friendica/pull/13175
 		// Issue tracking the behavior of createFromUriId: https://github.com/friendica/friendica/issues/13350
 		$isReblog = $item['uri-id'] != $this->parameters['id'];
 
-		$this->jsonExit(DI::mstdnStatus()->createFromUriId($this->parameters['id'], $uid, self::appSupportsQuotes(), $isReblog)->toArray());
+		$this->earlyJsonExit(DI::mstdnStatus()->createFromUriId($this->parameters['id'], $uid, $isReblog)->toArray());
 	}
 }

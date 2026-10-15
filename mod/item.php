@@ -1,7 +1,8 @@
 <?php
+
 /**
- * Copyright (C) 2010-2024, the Friendica project
- * SPDX-FileCopyrightText: 2010-2024 the Friendica project
+ * Copyright (C) 2010-2026, the Friendica project
+ * SPDX-FileCopyrightText: 2010-2026 the Friendica project
  *
  * SPDX-License-Identifier: AGPL-3.0-or-later
  *
@@ -16,7 +17,7 @@
  * information.
  */
 
-use Friendica\Content\Conversation;
+use Friendica\Content\Conversation\ConversationRenderer;
 use Friendica\Content\Text\BBCode;
 use Friendica\Core\Protocol;
 use Friendica\Core\System;
@@ -30,8 +31,9 @@ use Friendica\Model\ItemURI;
 use Friendica\Model\Post;
 use Friendica\Network\HTTPException;
 use Friendica\Util\DateTimeFormat;
+use Friendica\Content\Post\Entity\PostMedia;
 
-function item_post()
+function item_post(): void
 {
 	$uid = DI::userSession()->getLocalUserId();
 
@@ -46,7 +48,7 @@ function item_post()
 	$eventDispatcher = DI::eventDispatcher();
 
 	$_REQUEST = $eventDispatcher->dispatch(
-		new ArrayFilterEvent(ArrayFilterEvent::INSERT_POST_LOCAL_START, $_REQUEST)
+		new ArrayFilterEvent(ArrayFilterEvent::INSERT_POST_LOCAL_START, $_REQUEST),
 	)->getArray();
 
 	$return_path = $_REQUEST['return'] ?? '';
@@ -73,7 +75,7 @@ function item_post()
 	}
 }
 
-function item_drop(int $uid, string $dropitems)
+function item_drop(int $uid, string $dropitems): void
 {
 	$arr_drop = explode(',', $dropitems);
 	foreach ($arr_drop as $item) {
@@ -83,7 +85,7 @@ function item_drop(int $uid, string $dropitems)
 	System::jsonExit(['success' => 1]);
 }
 
-function item_edit(int $uid, array $request, bool $preview, string $return_path)
+function item_edit(int $uid, array $request, bool $preview, string $return_path): void
 {
 	$post = Post::selectFirst(Item::ITEM_FIELDLIST, ['id' => $request['post_id'], 'uid' => $uid]);
 	if (!DBA::isResult($post)) {
@@ -97,18 +99,20 @@ function item_edit(int $uid, array $request, bool $preview, string $return_path)
 	$post['edit'] = $post;
 	$post['file'] = Post\Category::getTextByURIId($post['uri-id'], $post['uid']);
 
-	Post\Media::deleteByURIId($post['uri-id'], [Post\Media::AUDIO, Post\Media::VIDEO, Post\Media::IMAGE, Post\Media::HTML]);
+	Post\Media::deleteByURIId($post['uri-id'], [PostMedia::TYPE_AUDIO, PostMedia::TYPE_VIDEO, PostMedia::TYPE_IMAGE, PostMedia::TYPE_HTML, PostMedia::TYPE_HLS]);
 	$post = item_process($post, $request, $preview, $return_path);
 
 	$fields = [
-		'title'    => $post['title'],
-		'body'     => $post['body'],
-		'attach'   => $post['attach'],
-		'file'     => $post['file'],
-		'location' => $post['location'],
-		'coord'    => $post['coord'],
-		'edited'   => DateTimeFormat::utcNow(),
-		'changed'  => DateTimeFormat::utcNow()
+		'title'           => $post['title'],
+		'content-warning' => $post['content-warning'],
+		'sensitive'       => $post['sensitive'],
+		'body'            => $post['body'],
+		'attach'          => $post['attach'],
+		'file'            => $post['file'],
+		'location'        => $post['location'],
+		'coord'           => $post['coord'],
+		'edited'          => DateTimeFormat::utcNow(),
+		'changed'         => DateTimeFormat::utcNow(),
 	];
 
 	$fields['body'] = Item::setHashtags($fields['body']);
@@ -129,7 +133,7 @@ function item_edit(int $uid, array $request, bool $preview, string $return_path)
 	throw new HTTPException\OKException(DI::l10n()->t('Post updated.'));
 }
 
-function item_insert(int $uid, array $request, bool $preview, string $return_path)
+function item_insert(int $uid, array $request, bool $preview, string $return_path): void
 {
 	$post = ['uid' => $uid];
 	$post = DI::contentItem()->initializePost($post);
@@ -218,7 +222,7 @@ function item_insert(int $uid, array $request, bool $preview, string $return_pat
 
 	DI::logger()->debug('post_complete');
 
-	item_post_return(DI::baseUrl(), $return_path);
+	item_post_return(DI::baseUrl(), $return_path, $post);
 	// NOTREACHED
 }
 
@@ -243,7 +247,7 @@ function item_process(array $post, array $request, bool $preview, string $return
 
 	$post = DI::contentItem()->finalizePost($post, $preview);
 
-	if (!strlen($post['body'])) {
+	if (!strlen((string) $post['body'])) {
 		if ($preview) {
 			System::jsonExit(['preview' => '']);
 		}
@@ -259,22 +263,24 @@ function item_process(array $post, array $request, bool $preview, string $return
 	// preview mode - prepare the body for display and send it via json
 	if ($preview) {
 		// We have to preset some fields, so that the conversation can be displayed
-		$post['id']             = -1;
-		$post['uri-id']         = -1;
-		$post['author-network'] = Protocol::DFRN;
-		$post['author-updated'] = '';
-		$post['author-alias']   = '';
-		$post['author-gsid']    = 0;
-		$post['author-uri-id']  = ItemURI::getIdByURI($post['author-link']);
-		$post['owner-updated']  = '';
-		$post['has-media']      = false;
-		$post['quote-uri-id']   = Item::getQuoteUriId($post['body'], $post['uid']);
-		$post['body']           = BBCode::removeSharedData(Item::setHashtags($post['body']));
-		$post['writable']       = true;
-		$post['sensitive']      = false;
-		$post['post-reason']    = Item::PR_LOCAL;
+		$post['id']                 = -1;
+		$post['uri-id']             = -1;
+		$post['author-network']     = Protocol::DFRN;
+		$post['author-updated']     = '';
+		$post['author-alias']       = '';
+		$post['author-gsid']        = 0;
+		$post['author-uri-id']      = ItemURI::getIdByURI($post['author-link']);
+		$post['owner-updated']      = '';
+		$post['has-media']          = false;
+		$post['quote-uri-id']       = Item::getQuoteUriId($post['body'], $post['uid']);
+		$post['body']               = BBCode::removeSharedData(Item::setHashtags($post['body']));
+		$post['writable']           = true;
+		$post['sensitive']          = false;
+		$post['post-reason']        = Item::PR_LOCAL;
+		$post['owner-contact-type'] = Contact::TYPE_PERSON;
+		$post['owner-network']      = Protocol::DFRN;
 
-		$o = DI::conversation()->render([$post], Conversation::MODE_SEARCH, false, true);
+		$o = DI::conversationRenderer()->renderFlat([$post], ConversationRenderer::MODE_SEARCH, true, DI::userSession()->getLocalUserId());
 
 		System::jsonExit(['preview' => $o]);
 	}
@@ -286,7 +292,7 @@ function item_process(array $post, array $request, bool $preview, string $return
 	];
 
 	$hook_data = $eventDispatcher->dispatch(
-		new ArrayFilterEvent(ArrayFilterEvent::INSERT_POST_LOCAL, $hook_data)
+		new ArrayFilterEvent(ArrayFilterEvent::INSERT_POST_LOCAL, $hook_data),
 	)->getArray();
 
 	$post = $hook_data['item'] ?? $post;
@@ -295,18 +301,31 @@ function item_process(array $post, array $request, bool $preview, string $return
 	unset($post['self']);
 	unset($post['api_source']);
 
+	$scheduled_at = '';
 	if (!empty($request['scheduled_at'])) {
 		$scheduled_at = DateTimeFormat::convert($request['scheduled_at'], 'UTC', DI::appHelper()->getTimeZone());
-		if ($scheduled_at > DateTimeFormat::utcNow()) {
-			unset($post['created']);
-			unset($post['edited']);
-			unset($post['commented']);
-			unset($post['received']);
-			unset($post['changed']);
+	} else {
+		$scheduled_at = DI::contentItem()->getAutomaticScheduledAt($post['uid']);
+	}
 
-			Post\Delayed::add($post['uri'], $post, Worker::PRIORITY_HIGH, Post\Delayed::PREPARED_NO_HOOK, $scheduled_at);
-			item_post_return(DI::baseUrl(), $return_path);
+	if ($scheduled_at > DateTimeFormat::utcNow()) {
+		unset($post['created']);
+		unset($post['edited']);
+		unset($post['commented']);
+		unset($post['received']);
+		unset($post['changed']);
+
+		$id = Post\Delayed::add($post['uri'], $post, Worker::PRIORITY_HIGH, Post\Delayed::PREPARED_NO_HOOK, $scheduled_at);
+		if ($id && empty($request['scheduled_at'])) {
+			DI::contentItem()->setAutomaticScheduledAt($post['uid'], $scheduled_at);
 		}
+
+		item_post_return(DI::baseUrl(), $return_path);
+	} elseif (!empty($request['scheduled_at'])) {
+		$post['created'] = $scheduled_at;
+		unset($post['edited']);
+		unset($post['commented']);
+		unset($post['changed']);
 	}
 
 	if (!empty($post['cancel'])) {
@@ -326,7 +345,7 @@ function item_process(array $post, array $request, bool $preview, string $return
 	return $post;
 }
 
-function item_post_return($baseurl, $return_path)
+function item_post_return(string $baseurl, string $return_path, array $item = []): void
 {
 	if ($return_path) {
 		DI::baseUrl()->redirect($return_path);
@@ -335,6 +354,10 @@ function item_post_return($baseurl, $return_path)
 	$json = ['success' => 1];
 	if (!empty($_REQUEST['jsreload'])) {
 		$json['reload'] = $baseurl . '/' . $_REQUEST['jsreload'];
+	}
+
+	if (isset($item['guid'])) {
+		$json['guid'] = $item['guid'];
 	}
 
 	DI::logger()->debug('post_json', ['json' => $json]);
@@ -466,7 +489,7 @@ function drop_item(int $id, string $return = ''): string
 	return '';
 }
 
-function item_redirect_after_action(array $item, string $returnUrlHex)
+function item_redirect_after_action(array $item, string $returnUrlHex): void
 {
 	$return_url = hex2bin($returnUrlHex);
 
@@ -490,7 +513,7 @@ function item_redirect_after_action(array $item, string $returnUrlHex)
 		}
 	} else {
 		// if unknown location or deleting top level post called from display
-		if (empty($return_url) || strpos($return_url, 'display') !== false) {
+		if (empty($return_url) || str_contains($return_url, 'display')) {
 			DI::baseUrl()->redirect('network');
 			//NOTREACHED
 		} else {

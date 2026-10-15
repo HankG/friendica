@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -44,13 +44,14 @@ class UserAttributes
 	public function __construct(bool $favourited, bool $reblogged, bool $muted, bool $bookmarked, bool $pinned)
 	{
 		$this->favourited = $favourited;
-		$this->reblogged = $reblogged;
-		$this->muted = $muted;
+		$this->reblogged  = $reblogged;
+		$this->muted      = $muted;
 		$this->bookmarked = $bookmarked;
-		$this->pinned = $pinned;
+		$this->pinned     = $pinned;
 	}
 
-	public function __get($name) {
+	public function __get($name)
+	{
 		return $this->$name;
 	}
 }

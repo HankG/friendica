@@ -1,14 +1,13 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Module\ActivityPub;
 
 use Friendica\BaseModule;
-use Friendica\Core\System;
 use Friendica\Model\Contact;
 use Friendica\Model\User;
 use Friendica\Protocol\ActivityPub;
@@ -29,10 +28,10 @@ class Following extends BaseModule
 			throw new \Friendica\Network\HTTPException\NotFoundException();
 		}
 
-		$page = !empty($request['page']) ? (int)$request['page'] : null;
+		$page = !empty($request['page']) ? (int) $request['page'] : null;
 
 		$following = ActivityPub\Transmitter::getContacts($owner, [Contact::SHARING, Contact::FRIEND], 'following', $page);
 
-		$this->jsonExit($following, 'application/activity+json');
+		$this->earlyJsonExit($following, 'application/activity+json');
 	}
 }

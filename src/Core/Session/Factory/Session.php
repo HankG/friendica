@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -28,13 +28,13 @@ use Throwable;
 class Session
 {
 	/** @var string The plain, PHP internal session management */
-	const HANDLER_NATIVE = 'native';
+	public const HANDLER_NATIVE = 'native';
 	/** @var string Using the database for session management */
-	const HANDLER_DATABASE = 'database';
+	public const HANDLER_DATABASE = 'database';
 	/** @var string Using the cache for session management */
-	const HANDLER_CACHE = 'cache';
+	public const HANDLER_CACHE = 'cache';
 
-	const HANDLER_DEFAULT = self::HANDLER_DATABASE;
+	public const HANDLER_DEFAULT = self::HANDLER_DATABASE;
 
 	/**
 	 * @param Mode                $mode

@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -27,17 +27,9 @@ use Psr\Log\LoggerInterface;
  */
 class Delegation extends BaseSettings
 {
-	/** @var SystemMessages */
-	private $systemMessages;
-	/** @var Database */
-	private $db;
-
-	public function __construct(Database $db, SystemMessages $systemMessages, IHandleUserSessions $session, App\Page $page, L10n $l10n, App\BaseURL $baseUrl, App\Arguments $args, LoggerInterface $logger, Profiler $profiler, Response $response, array $server, array $parameters = [])
+	public function __construct(private readonly Database $db, private readonly SystemMessages $systemMessages, IHandleUserSessions $session, App\Page $page, L10n $l10n, App\BaseURL $baseUrl, App\Arguments $args, LoggerInterface $logger, Profiler $profiler, Response $response, array $server, array $parameters = [])
 	{
 		parent::__construct($session, $page, $l10n, $baseUrl, $args, $logger, $profiler, $response, $server, $parameters);
-
-		$this->systemMessages = $systemMessages;
-		$this->db             = $db;
 	}
 
 	protected function post(array $request = [])
@@ -48,16 +40,16 @@ class Delegation extends BaseSettings
 
 		BaseModule::checkFormSecurityTokenRedirectOnError('settings/delegation', 'delegate');
 
-		$parent_uid      = $request['parent_user'] ?? null;
+		$parent_uid      = $request['parent_user']     ?? null;
 		$parent_password = $request['parent_password'] ?? '';
 
 		if ($parent_uid) {
 			try {
 				// An integer value will trigger the direct user query on uid in User::getAuthenticationInfo
-				$parent_uid = (int)$parent_uid;
+				$parent_uid = (int) $parent_uid;
 				User::getIdFromPasswordAuthentication($parent_uid, $parent_password);
 				$this->systemMessages->addInfo($this->t('Delegation successfully granted.'));
-			} catch (\Exception $ex) {
+			} catch (\Exception) {
 				$this->systemMessages->addNotice($this->t('Parent user not found, unavailable or password doesn\'t match.'));
 				return;
 			}
@@ -76,7 +68,7 @@ class Delegation extends BaseSettings
 			throw new HTTPException\ForbiddenException($this->t('Permission denied.'));
 		}
 
-		$action  = $this->parameters['action'] ?? '';
+		$action  = $this->parameters['action']  ?? '';
 		$user_id = $this->parameters['user_id'] ?? 0;
 
 		if ($action === 'add' && $user_id) {
@@ -89,7 +81,7 @@ class Delegation extends BaseSettings
 			if ($this->db->isResult($user)) {
 				$condition = [
 					'uid'  => $this->session->getLocalUserId(),
-					'nurl' => Strings::normaliseLink($this->baseUrl . '/profile/' . $user['nickname'])
+					'nurl' => Strings::normaliseLink($this->baseUrl . '/profile/' . $user['nickname']),
 				];
 				if ($this->db->exists('contact', $condition)) {
 					$this->db->insert('manage', ['uid' => $user_id, 'mid' => $this->session->getLocalUserId()]);
@@ -139,7 +131,7 @@ class Delegation extends BaseSettings
 				'account_removed' => false,
 				'account_expired' => false,
 				'blocked'         => false,
-			]
+			],
 		);
 		foreach ($potentialDelegateUsers as $user) {
 			if (!in_array($user['uid'], $uids)) {

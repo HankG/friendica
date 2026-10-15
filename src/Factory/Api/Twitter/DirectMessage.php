@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -18,16 +18,10 @@ use Psr\Log\LoggerInterface;
 
 class DirectMessage extends BaseFactory
 {
-	/** @var Database */
-	private $dba;
-	/** @var twitterUser entity */
-	private $twitterUser;
-
-	public function __construct(LoggerInterface $logger, Database $dba, TwitterUser $twitteruser)
+	public function __construct(LoggerInterface $logger, private readonly Database $dba, /** @var twitterUser entity */
+		private readonly TwitterUser $twitterUser)
 	{
 		parent::__construct($logger);
-		$this->dba         = $dba;
-		$this->twitterUser = $twitteruser;
 	}
 
 	/**
@@ -59,7 +53,7 @@ class DirectMessage extends BaseFactory
 				$text = HTML::toPlaintext(BBCode::convertForUriId($mail['uri-id'], $mail['body'], BBCode::TWITTER_API), 0);
 			}
 		} else {
-			$text  = $mail['title'] . "\n" . HTML::toPlaintext(BBCode::convertForUriId($mail['uri-id'], $mail['body'], BBCode::TWITTER_API), 0);
+			$text = $mail['title'] . "\n" . HTML::toPlaintext(BBCode::convertForUriId($mail['uri-id'], $mail['body'], BBCode::TWITTER_API), 0);
 		}
 
 		$pcid = Contact::getPublicIdByUserId($uid);

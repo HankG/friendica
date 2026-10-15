@@ -1,14 +1,13 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 namespace Friendica\Module;
 
 use Friendica\BaseModule;
-use Friendica\Core\System;
 use Friendica\Database\DBA;
 use Friendica\Util\Strings;
 
@@ -22,20 +21,20 @@ class Hashtag extends BaseModule
 		$result = [];
 
 		if (empty($request['t'])) {
-			$this->jsonExit($result);
+			$this->earlyJsonExit($result);
 		}
 
 		$taglist = DBA::select(
 			'tag',
 			['name'],
 			["`name` LIKE ?", Strings::escapeHtml($request['t']) . "%"],
-			['order' => ['name'], 'limit' => 100]
+			['order' => ['name'], 'limit' => 100],
 		);
 		while ($tag = DBA::fetch($taglist)) {
 			$result[] = ['text' => $tag['name']];
 		}
 		DBA::close($taglist);
 
-		$this->jsonExit($result);
+		$this->earlyJsonExit($result);
 	}
 }

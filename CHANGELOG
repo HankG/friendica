@@ -1,11 +1,221 @@
-Version 2025.02 (unreleased)
+Version 2026-08 (unrelease)
   Friendica Core
-    Deprecated bin/daemon in favor of bin/console daemon (PR 14642) [nupplaphil]
-    Deprecated bin/jetstream in favor of bin/console jetstream (PR 14655) [nupplaphil]
+    This release of Friendica will require PHP 8.2 or higher
 
   Friendica Addons
 
   Closed Issues
+
+Version 2026.05-1 (2026-05-21)
+  Friendica Core
+    Fixed the releaser* steps in the CI to generate archives [tobiasd]
+
+Version 2026.05 (2026-05-20)
+  Friendica Core
+    Updated the documentation [Alkarex]
+    Updated the translations [ar bg ca cs da-dk de en-gb en-us eo es et fi-fi fr gd hu is it ga hb-no nl pl pt-br ru sv zh-cn zh-tw]
+    Updated the themes [annando, loma-one, marcusxss, Raroun, Tealk, tobiasd]
+    General code cleanup [annando, Art4, Espionage724, mohanedsherif, Raroun]
+    Added additional feature for Summary field during post creation (PR 14019) [annando]
+    Added possibility to embed system channels into user channels (PR 15448) [annando]
+    Added federation of event participation to Mobilizon and Soapbox (PR 15488) [samuel-asleep]
+    Added handling of robots.txt for server detection (PR 15500) [annando]
+    Added mark all as read button to circles (PR 15436) [annando]
+    Added storage of EXIF data (PR 15585) [annando]
+    Added partial support of FEP-3b86 Activity Intents (#14829, PR 15683) [annando]
+    Fixed returned format of API errors (#14840, PR 15664) [annando]
+    Fixed issues with the API handling of albums (#14595, PR 15702) [annando]
+    Fixed issue causing empty trending links in the API (#14583, PR 15493) [annando]
+    Fixed notification filtering (#14427, #14582, PR 15700, PR 15701) [annando]
+    Fixed issue leading to empty circles (#15475, PR 15491) [annando]
+    Fixed display of comments from blocked contacts (#15478, PR 15495) [annando]
+    Fixed pagination of system channels (#15470, PR 15507) [Raroun]
+    Fixed handling of sort-able lists (PR 15541, PR 15542) [randompenguin1]
+    Fixed handling of system actor (#15607, PR 15617) [annando]
+    Fixed contact import (PR 15644) [annando]
+    Fixed a bug that prevented API postings in the past (#15545, PR 15731) [annando]
+    Improved performance of channels (PR 15446) [annando]
+    Improved database performance (PR 15499) [annando]
+    Improved API (PR 15621, PR 15621) [annando]
+    Improved CI of addons and core [Art4, nupplaphil]
+    Improved DB structure (PR 15684) [annando]
+    Improved display of moderation reports (#14489, PR 15648, PR 15368) [marcusxss]
+    Improved API handling of quoted postings (#15395, PR 15449, PR 15673) [annando]
+    Improved handling of view activity (PR 15489) [annando]
+    Improved interaction with Bridgy Fed (#15456, PR 15494) [annando]
+    Improved handling of quoted posts (PR 15496, PR 15522) [annando]
+    Improved handling of global contact directory (PR 15451) [marcusxss]
+    Improved registration form (PR 15532) [Raroun]
+    Improved display of date/time in local format (#15553, PR 15556, PR 15560, PR 15620, PR 15641) [annando]
+    Improved account listing on server (PR 15563) [Raroun]
+    Improved image link generation BBCode (PR 15582) [loma-one]
+    Improved atproto handling (PR 15596, PR 15611, PR 15612, PR 15619, PR 15629, PR 15632, PR 15637, PR 15646, PR 15663, PR 15699, PR 15741) [annando]
+    Removed support of salmon (PR 15558) [annando]
+    Improved handling of deleted posts (#14721, PR 15665) [annando]
+    Improved federation with misskey (#15688, PR 15691) [annando]
+    Improved handling of web-finger (#15686, PR 15693, PR 15758, PR 15766) [annando]
+    Improved handling of Json-LD documents (PR 15698) [annando]
+    Improved expiration of posts (#15720, PR 15729) [annando]
+    Removed deprecated themes duepuntozero, quattro, smoothly (PR 15651) [marcusxss]
+
+    This is the last release of Friendica with support for PHP version before 8.2
+
+  Friendica Addons
+    Updated the translations
+    bluesky
+      Fixed handling of expiration date (#14439) [annando]
+      Fixed issue with fetching missing postings [annando]
+    IRC
+      Enhanced nickname suggestion [marcusxss]
+    invidious
+      Added support for YouTube Shorts, Music and Embed links [loma-one]
+      Improved link detection [loma-one]
+      Improved performance [loma-one]
+    js_upload
+      Fixed failing image upload (#14836) [annando]
+    Mailstream
+      Fixed handling of postings from blocked etc. contacts [mexon]
+      Improved cookie handling [mexon]
+    QuickPhoto
+      Added addon simplifying BBCode for images [loma-one]
+
+  Closed Issues
+    12536, 12840, 14427, 14439, 14489, 14554, 14560, 14582, 14583,
+    14595, 14721, 14771, 14827, 14829, 14836, 14840, 14850, 14917,
+    14947, 15301, 15395, 15456, 15460, 15464, 15470, 15473, 15475,
+    15478, 15483, 15516, 15520, 15553, 15588, 15600, 15686, 15688,
+    15704, 15750
+
+Version 2026.01 (2026-01-27)
+  Friendica Core
+    Updates to the translations
+    Updates to the themes (frio, vier) [annando, haheute, loma-one, mfxa, marcusxss, MarekBenjamin, MrPetovan, Raroun]
+    Updated to the documentation [Art4, MarekBenjamin, MrPetovan, tobiasd]
+    Added the possibility to apply filter addons to the API (#15048) [annando]
+    Added caching for system and user defined channels [annando]
+    Added missing category to reports to the admin panel (#14525) [marcusxss]
+    Added setting the item read state after accessing it via API (#13996) [annando]
+    Added partial support of FEP-044f (#15096 PR 15261) [annando]
+    Added the possibility for users to sort widgets and timelines [randompenguin1]
+    Added admin setting to not show media for non logged in visitors (#15257 #15343) [annando]
+    Added import/export functionality for contact blocklists in admin panel (#15339) [Raroun]
+    Added support for Songlink (Odesli) for embedded music (#15359) [annando]
+    Deprecated bin/daemon in favor of bin/console daemon (#14650; PR 14642) [nupplaphil]
+    Deprecated bin/jetstream in favor of bin/console jetstream (PR 14655) [nupplaphil]
+    Deprecated hooks in favor of EventDispatcher (PR 14640) [Art4]
+    Deprecated Addon class in favor of AddonHelper (PR 14909) [Art4]
+    Deprecated OEmbed in favor of embed (PR 15160) [annando]
+    Deprecated Friendica\Core\Logger (PR 14758) [Art4]
+    General code cleanup [annando, Art4, nupplaphil, MrPetovan, Ramoonus, Raroun, Tealk]
+    Fixed posts send to groups are not send via connectors anymore [annando]
+    Fixed the display of profile addresses in frio [mfxa]
+    Fixed display of the wrong email address in instance information by the API (#8166) [mxfa]
+    Fixed missing name space in generated RSS/Atom feeds (#15413) [annando]
+    Fixed a bug in trust checks of activities (#14491) [annando]
+    Fixed missing source field in API (#15114) [annando]
+    Fixed wrongly displaying remote logins as pending registration in the admin panel (#14424) [annando]
+    Fixed malformed API responses to PushSubscriptions (#14325 #14450 #14469) [MrPetovan]
+    Fixed malformed OpenGraph information (#14524) [annando]
+    Fixed a bug leading to an empty community page (#14689) [MrPetovan]
+    Fixed non available remote_follow path (#14681) [annando]
+    Fixed item callback on filing items to folders (#14702) [MrPetovan]
+    Fixed line breaks in log-file (#14711) [MrPetovan]
+    Fixed wrong contact ID in vcards (#14607) [MrPetovan]
+    Fixed wrong contact account in API (#14744) [MrPetovan]
+    Fixed missing / blurred images (#14800) [annando]
+    Fixed the installer expecting the /addon directory [juliend2]
+    Fixed a bug handling notification links in emails (#15047) [annando]
+    Fixed a bug disallowing admins to create new accounts when invite_only is enabled [marcusxss]
+    Fixed a bug in contact suggestions (#15344) [annando]
+    Improved compatibility with 32bit systems [annando]
+    Improved the web app manifest by using the host name as short name (#15423) [annando]
+    Improved the performance of the background workers (#1509 #14609 #15434 #15435) [annando, Art4, ne20002]
+    Improved YT preview embedding (#14223 #14621) [annando]
+    Improved handling of YT URLs [haheute]
+    Improved dependency handling (#8583 #14519; PR 14523) [Art4]
+    Improved the display of ALT text for images (#14491) [annando, mfxa]
+    Improved FEP-b2b8 support (#15100) [annando]
+    Improved completing thread (#14572 #14850) [annando]
+    Improved completing thread from Bluesky [annando]
+    Improved image upload (#14680 #14695) [xundeenergie]
+    Improved federation with bridgy, diaspora, GotoSocial, IceShrimp, lemmy, mbin, Misskey, Mitra, peertube, pixelfed (#12771 #14723 #14851 #14692 #15006 #15262) [annando, randompenguin1]
+    Improved detection of relays (#14826) [annando]
+    Improved punctuation of the sign-up form (#14774) [waldyrious]
+    Improved database performance (#14759 #14763 #14914 #15043) [cluster15, Eduu, MrPetovan]
+    Improved browser language detection (#14881) [annando]
+    Improved performance of autocompletion [MrPetovon]
+    Improved DICE [Art4]
+    Improved CI/CD pipeline [Art4, nupplaphil]
+    Improved the gallery [haheute]
+    Improved handling of quoted posts [annando]
+    Improved the bin/console CLI tool [Art4]
+    Improved the performance of contact relation discovery [annando]
+    Improved screen reader accessibility [annando, KreerC]
+    Improved header levels and added missing titles for buttons [annando, KreerC]
+    Improved Embed (#1732 #4957 #9438 #10019 #10059 #14063 #14128 #14190) [annando]
+    Improved group RSS feeds by including shared items (#14433) [annando]
+    Improved monitoring of Friendica, adding cache statistics [nupplaphil]
+    Improved the installer for docker setups (PR 14784) [re20002]
+    Improved Mastodon API compatibility (#14835; #14978 #15114 #15165 #15392) [annando]
+    Improved ACL for images (#15008) [annando]
+    Improved remote_self to include reshared posts [annando]
+    Improved email notifications (#12504) [annando]
+    Improved display of notifications (#15097) [Raroun]
+    Improved handling of videos if ffmpeg is installed [annando]
+    Improved display of scheduled postings [randompenguin1]
+    Improved language detection of user subscribed tags [annando]
+    Improved theme settings in the admin panel [marcusxss]
+    Improved user import [annando, hrizibilel4]
+    Improved display of Matrix and XMPP accounts in profile [Tealk]
+
+  Friendica Addons
+    Updated the translations
+    Update the addon to used the AddonHelper class (#14535) [Art4]
+    blockbot
+      Fixed a potential loop (#14692) [annando]
+    bluesky
+      Added sending mentions to bluesky [annando]
+      Fixed then fetching of pinned feeds (#14667) [annando]
+      Fixed duplication of reshares [annando]
+      Improve following of accounts [annando]
+    mailstream
+      Improve mail threading [mexon]
+    markdown
+      Improve accessibility [annando]
+    monolog
+      Fix registration of the logging factory [Art4]
+    phpmailer
+      Updated PHPMailer version [tobiasd]
+    ratioed
+      Added statistics about "reply likes" and "reply guy" [mexon]
+      Improved UI [haheute]
+    rendertime
+      Improve accessibility [annando]
+    s3 storage
+      Fixed a bug, preventing the addon to work (#14834 #14998) [nupplaphil]
+    showmore
+      Improve accessibility [annando]
+    saml
+      Improve UI (#14701) [jakob]
+    tesseract
+      Improved usage of system resources [loma-one]
+    tumblr
+      Improved handling of tags [MrPetovan]
+    xmppchat
+      Added new XMPP based webchat addon [annando]
+
+  Closed Issues
+     1732,  4957,  8166,  8583,  9438, 10019, 10059, 12504, 12771,
+    13996, 14063, 14099, 14128, 14190, 14223, 14275, 14325, 14424,
+    14433, 14450, 14469, 14491, 14519, 14524, 14525, 14535, 14572,
+    14607, 14609, 14621, 14650, 14667, 14680, 14681, 14689, 14692,
+    14695, 14701, 14702, 14711, 14717, 14723, 14725, 14744, 14746,
+    14759, 14763, 14774, 14782, 14800, 14801, 14819, 14826, 14834,
+    14850, 14851, 14879, 14881, 14890, 14914, 14978, 14998, 15004,
+    15006, 15008, 15043, 15047, 15096, 15097, 15100, 15048, 15114,
+    15128, 15154, 15155, 15165, 15181, 15191, 15216, 15253, 15262,
+    15263, 15291, 15302, 15321, 15344, 15350, 15362, 15392, 15413,
+    15423
 
 Version 2024.12 (2024-12-31)
   Friendica Core

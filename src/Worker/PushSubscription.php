@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -41,7 +41,7 @@ class PushSubscription
 
 		try {
 			$notification = DI::notification()->selectOneById($nid);
-		} catch (NotFoundException $e) {
+		} catch (NotFoundException) {
 			DI::logger()->info('Notification not found', ['notification' => $nid]);
 			return;
 		}
@@ -82,7 +82,7 @@ class PushSubscription
 			'endpoint'        => $subscription['endpoint'],
 			'keys'            => [
 				'p256dh' => $subscription['pubkey'],
-				'auth'   => $subscription['secret']
+				'auth'   => $subscription['secret'],
 			],
 		]);
 

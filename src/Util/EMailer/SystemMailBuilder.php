@@ -1,7 +1,7 @@
 <?php
 
-// Copyright (C) 2010-2024, the Friendica project
-// SPDX-FileCopyrightText: 2010-2024 the Friendica project
+// Copyright (C) 2010-2026, the Friendica project
+// SPDX-FileCopyrightText: 2010-2026 the Friendica project
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -31,9 +31,14 @@ class SystemMailBuilder extends MailBuilder
 	/** @var string */
 	protected $siteAdmin;
 
-	public function __construct(L10n $l10n, BaseURL $baseUrl, IManageConfigValues $config, LoggerInterface $logger,
-	                            string $siteEmailAddress, string $siteName)
-	{
+	public function __construct(
+		L10n $l10n,
+		BaseURL $baseUrl,
+		IManageConfigValues $config,
+		LoggerInterface $logger,
+		string $siteEmailAddress,
+		string $siteName,
+	) {
 		parent::__construct($l10n, $baseUrl, $config, $logger);
 
 		if ($this->config->get('config', 'admin_name')) {

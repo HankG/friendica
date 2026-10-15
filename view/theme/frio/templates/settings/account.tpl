@@ -1,6 +1,6 @@
 {{*
-  * Copyright (C) 2010-2024, the Friendica project
-  * SPDX-FileCopyrightText: 2010-2024 the Friendica project
+  * Copyright (C) 2010-2026, the Friendica project
+  * SPDX-FileCopyrightText: 2010-2026 the Friendica project
   *
   * SPDX-License-Identifier: AGPL-3.0-or-later
   *}}
@@ -88,7 +88,10 @@
 						{{include file="field_checkbox.tpl" field=$profile_in_net_dir}}
 						{{if not $is_community}}{{include file="field_checkbox.tpl" field=$hide_friends}}{{/if}}
 						{{include file="field_checkbox.tpl" field=$hide_wall}}
-						{{if not $is_community}}{{include file="field_checkbox.tpl" field=$unlisted}}{{/if}}
+						{{if not $is_community}}
+						{{include file="field_checkbox.tpl" field=$unlisted}}
+						{{include file="field_checkbox.tpl" field=$prevent_relay}}
+						{{/if}}
 						{{include file="field_checkbox.tpl" field=$accessiblephotos}}
 						{{if not $is_community}}
 						{{include file="field_checkbox.tpl" field=$blockwall}}
